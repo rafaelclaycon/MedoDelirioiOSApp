@@ -11,4 +11,5 @@ struct InternalFolderNames {
     
     static let downloadedSounds = "downloaded_sounds/"
     static let downloadedSongs = "downloaded_songs/"
+    static let downloadedEpisodes = "downloaded_episodes/"
 }

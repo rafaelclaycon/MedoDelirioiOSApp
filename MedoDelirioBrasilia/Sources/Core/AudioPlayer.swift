@@ -5,8 +5,9 @@
 //  Created by Rafael Schmitt on 19/05/22.
 //
 
-import AVFoundation
 import Foundation
+import AVFoundation
+import MediaPlayer
 
 /// A class that manages audio playback using `AVAudioPlayer` with additional state management and updates.
 ///
@@ -39,7 +40,7 @@ final class AudioPlayer: NSObject, AVAudioPlayerDelegate {
         update: @escaping (State?) -> Void
     ) {
         do {
-            try AVAudioSession.sharedInstance().setCategory(AVAudioSession.Category.playback)
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [])
             try AVAudioSession.sharedInstance().setActive(true)
         } catch {
             return nil
@@ -57,13 +58,22 @@ final class AudioPlayer: NSObject, AVAudioPlayerDelegate {
         audioPlayer.delegate = self
     }
 
-    func togglePlay() {
+    func togglePlay(contentTitle: String) {
         if audioPlayer.isPlaying {
             audioPlayer.pause()
             timer?.invalidate()
             timer = nil
             notify()
         } else {
+            audioPlayer.prepareToPlay()
+
+            configureNowPlayingInfo(
+                title: contentTitle,
+                artist: "Cristiano e Pedro",
+                album: "Medo e Delírio",
+                coverImage: nil
+            )
+
             audioPlayer.play()
             if let t = timer {
                 t.invalidate()
@@ -115,7 +125,8 @@ final class AudioPlayer: NSObject, AVAudioPlayerDelegate {
     }
     
     func stop() {
-        audioPlayer.pause()
+        audioPlayer.stop()
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
         timer?.invalidate()
         timer = nil
         notify()
@@ -132,5 +143,28 @@ final class AudioPlayer: NSObject, AVAudioPlayerDelegate {
 
     deinit {
         cancel()
+    }
+
+    private func configureNowPlayingInfo(
+        title: String,
+        artist: String,
+        album: String,
+        coverImage: UIImage?
+    ) {
+        var nowPlayingInfo: [String: Any] = [
+            MPMediaItemPropertyTitle: title,
+            MPMediaItemPropertyArtist: artist,
+            MPMediaItemPropertyAlbumTitle: album,
+            MPMediaItemPropertyPlaybackDuration: audioPlayer.duration, // Total duration
+            MPNowPlayingInfoPropertyElapsedPlaybackTime: audioPlayer.currentTime, // Current playback time
+            MPNowPlayingInfoPropertyPlaybackRate: 1.0 // Playback rate
+        ]
+
+        if let image = coverImage {
+            let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+            nowPlayingInfo[MPMediaItemPropertyArtwork] = artwork
+        }
+
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
     }
 }

@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "apple_podcasts_hollow_icon.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

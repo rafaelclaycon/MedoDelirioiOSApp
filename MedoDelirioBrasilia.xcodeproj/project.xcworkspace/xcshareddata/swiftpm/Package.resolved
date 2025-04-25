@@ -1,6 +1,15 @@
 {
-  "originHash" : "0f03c33dd11561884c59533810dbd8d99984e985f55ab551517ca483a499b5d8",
+  "originHash" : "59f4d0cabe0e7fb38e5d9be8eaa8a89dc3a555190ac63ccc301e470039eca0c9",
   "pins" : [
+    {
+      "identity" : "feedkit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/nmdias/FeedKit",
+      "state" : {
+        "revision" : "68493a33d862c33c9a9f67ec729b3b7df1b20ade",
+        "version" : "9.1.2"
+      }
+    },
     {
       "identity" : "kingfisher",
       "kind" : "remoteSourceControl",

@@ -228,17 +228,18 @@ extension AppDelegate {
     func createFoldersForDownloadedContent() {
         createFolder(named: InternalFolderNames.downloadedSounds)
         createFolder(named: InternalFolderNames.downloadedSongs)
+        createFolder(named: InternalFolderNames.downloadedEpisodes)
     }
     
     func createFolder(named folderName: String) {
         let fileManager = FileManager.default
         let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
-        let downloadedSoundsURL = documentsURL.appendingPathComponent(folderName)
+        let folderUrl = documentsURL.appendingPathComponent(folderName)
         
         do {
             var isDirectory: ObjCBool = false
-            if !fileManager.fileExists(atPath: downloadedSoundsURL.path, isDirectory: &isDirectory) {
-                try fileManager.createDirectory(at: downloadedSoundsURL, withIntermediateDirectories: true, attributes: nil)
+            if !fileManager.fileExists(atPath: folderUrl.path, isDirectory: &isDirectory) {
+                try fileManager.createDirectory(at: folderUrl, withIntermediateDirectories: true, attributes: nil)
                 print(folderName + " folder created.")
             } else {
                 if isDirectory.boolValue {

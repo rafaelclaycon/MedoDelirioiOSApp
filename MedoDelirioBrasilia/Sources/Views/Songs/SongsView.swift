@@ -69,7 +69,7 @@ struct SongsView: View {
                                     .padding(.horizontal, UIDevice.current.userInterfaceIdiom == .phone ? 0 : 5)
                                     .onTapGesture {
                                         if viewModel.nowPlayingKeeper.contains(song.id) {
-                                            AudioPlayer.shared?.togglePlay()
+                                            AudioPlayer.shared?.togglePlay(contentTitle: song.title)
                                             viewModel.nowPlayingKeeper.removeAll()
                                         } else {
                                             viewModel.play(song: song)

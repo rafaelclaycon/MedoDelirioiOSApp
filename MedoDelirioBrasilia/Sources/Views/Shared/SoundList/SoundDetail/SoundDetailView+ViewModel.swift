@@ -124,7 +124,7 @@ extension SoundDetailView.ViewModel {
                 }
             })
 
-            AudioPlayer.shared?.togglePlay()
+            AudioPlayer.shared?.togglePlay(contentTitle: sound.title)
         } catch {
             if sound.isFromServer ?? false {
                 showServerSoundNotAvailableAlert()

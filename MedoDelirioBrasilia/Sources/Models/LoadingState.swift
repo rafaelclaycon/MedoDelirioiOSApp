@@ -72,3 +72,12 @@ enum ContentStatisticsState<T: Equatable>: Equatable {
         }
     }
 }
+
+enum PlayerState<T: Equatable>: Equatable {
+
+    case stopped
+    case downloading
+    case playing(T)
+    case paused
+    case error(String)
+}

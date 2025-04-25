@@ -17,6 +17,7 @@ struct MainView: View {
     @State private var reactionsPath = NavigationPath()
     @State private var authorsPath = NavigationPath()
     @State private var foldersPath = NavigationPath()
+    @State private var episodesPath = NavigationPath()
 
     @State private var isShowingSettingsSheet: Bool = false
     @StateObject private var settingsHelper = SettingsHelper()
@@ -38,6 +39,9 @@ struct MainView: View {
 
     // Sync
     @StateObject private var syncValues = SyncValues()
+
+    // Podcast Episodes
+    @StateObject private var episodesViewModel = EpisodesView.ViewModel(episodeRepository: EpisodeRepository())
 
     // MARK: - View Body
 
@@ -93,7 +97,23 @@ struct MainView: View {
                         Label("Músicas", systemImage: "music.quarternote.3")
                     }
                     .tag(PhoneTab.songs)
-                    
+
+                    NavigationStack(path: $episodesPath) {
+                        NowPlayingBar(
+                            content: EpisodesView(viewModel: episodesViewModel),
+                            currentState: episodesViewModel.playerState,
+                            playButtonAction: { episodesViewModel.onPlayPauseButtonSelected() }
+                        )
+                        .navigationDestination(for: GeneralNavigationDestination.self) { screen in
+                            GeneralRouter(destination: screen)
+                        }
+                    }
+                    .tabItem {
+                        Label("Episódios", systemImage: "rectangle.stack.fill")
+                    }
+                    //.tag(PhoneTab.songs)
+                    .environment(\.push, PushAction { episodesPath.append($0) })
+
                     NavigationView {
                         TrendsView(
                             tabSelection: $tabSelection,

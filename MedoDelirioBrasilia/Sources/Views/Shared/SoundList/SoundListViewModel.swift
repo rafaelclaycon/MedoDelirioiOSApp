@@ -110,7 +110,7 @@ extension SoundListViewModel {
     func onSoundSelected(sound: Sound) {
         if currentSoundsListMode.wrappedValue == .regular {
             if nowPlayingKeeper.contains(sound.id) {
-                AudioPlayer.shared?.togglePlay()
+                AudioPlayer.shared?.togglePlay(contentTitle: "")
                 nowPlayingKeeper.removeAll()
                 doPlaylistCleanup() // Needed because user tap a playing sound to stop playing a playlist.
             } else {
@@ -285,7 +285,7 @@ extension SoundListViewModel {
                 }
             )
 
-            AudioPlayer.shared?.togglePlay()
+            AudioPlayer.shared?.togglePlay(contentTitle: sound.title)
         } catch {
             if sound.isFromServer ?? false {
                 showServerSoundNotAvailableAlert(sound)
@@ -316,7 +316,7 @@ extension SoundListViewModel {
 
     func stopPlaying() {
         if nowPlayingKeeper.count > 0 {
-            AudioPlayer.shared?.togglePlay()
+            AudioPlayer.shared?.togglePlay(contentTitle: "")
             nowPlayingKeeper.removeAll()
             doPlaylistCleanup()
         }

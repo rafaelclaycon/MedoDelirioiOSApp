@@ -8,8 +8,10 @@
 import SwiftUI
 
 enum GeneralNavigationDestination: Hashable {
+
     case authorDetail(Author)
     case reactionDetail(Reaction)
+    case episodeDetail(Episode)
 }
 
 struct GeneralRouter: View {
@@ -30,6 +32,8 @@ struct GeneralRouter: View {
                 reaction: reaction,
                 currentSoundsListMode: $currentSoundListMode
             )
+        case .episodeDetail(let episode):
+            EpisodeDetailView(episode: episode)
         }
     }
 }
