@@ -31,7 +31,7 @@ struct WaveformView: View {
     private static let edgeHandleCornerRadius: CGFloat = 4
     private static let edgeHitArea: CGFloat = 36
 
-    private static let playheadProtrusion: CGFloat = 14
+    private static let playheadProtrusion: CGFloat = 24
     private static let totalHeight: CGFloat = viewHeight + playheadProtrusion
 
     private var step: CGFloat { Self.barWidth + Self.barSpacing }
@@ -112,7 +112,7 @@ struct WaveformView: View {
 
                 let rect = CGRect(x: x, y: y, width: Self.barWidth, height: barHeight)
                 let path = Path(roundedRect: rect, cornerRadius: Self.barCornerRadius)
-                context.fill(path, with: .color(insideClip ? .orange.opacity(0.7) : .secondary.opacity(0.35)))
+                context.fill(path, with: .color(insideClip ? .green : .secondary.opacity(0.35)))
             }
         }
     }
@@ -121,7 +121,7 @@ struct WaveformView: View {
 
     private var clipBodyOverlay: some View {
         RoundedRectangle(cornerRadius: Self.edgeHandleCornerRadius)
-            .strokeBorder(Color.orange, lineWidth: 2)
+            .strokeBorder(Color.darkestGreen, lineWidth: 2)
             .frame(width: clipRegionWidth, height: Self.viewHeight)
             .offset(x: clipXOffset)
             .gesture(
@@ -144,7 +144,7 @@ struct WaveformView: View {
                 bottomLeading: Self.edgeHandleCornerRadius
             )
         )
-        .offset(x: clipXOffset - (Self.edgeHitArea - Self.edgeHandleWidth) / 2)
+        .offset(x: clipXOffset - Self.edgeHandleWidth - (Self.edgeHitArea - Self.edgeHandleWidth) / 2)
         .gesture(
             DragGesture(minimumDistance: 0, coordinateSpace: .named("waveform"))
                 .onChanged { value in
@@ -162,7 +162,7 @@ struct WaveformView: View {
                 topTrailing: Self.edgeHandleCornerRadius
             )
         )
-        .offset(x: clipEndXOffset - Self.edgeHandleWidth - (Self.edgeHitArea - Self.edgeHandleWidth) / 2)
+        .offset(x: clipEndXOffset - (Self.edgeHitArea - Self.edgeHandleWidth) / 2)
         .gesture(
             DragGesture(minimumDistance: 0, coordinateSpace: .named("waveform"))
                 .onChanged { value in
@@ -176,7 +176,7 @@ struct WaveformView: View {
     private func edgeHandleView(corners: RectangleCornerRadii) -> some View {
         ZStack {
             UnevenRoundedRectangle(cornerRadii: corners)
-                .fill(Color.orange)
+                .fill(Color.darkestGreen)
 
             HStack(spacing: 1.5) {
                 ForEach(0..<3, id: \.self) { _ in
@@ -197,7 +197,7 @@ struct WaveformView: View {
         VStack(spacing: 0) {
             ZStack {
                 Capsule()
-                    .fill(Color.orange)
+                    .fill(Color.red)
 
                 HStack(spacing: 1.5) {
                     ForEach(0..<3, id: \.self) { _ in
@@ -211,7 +211,7 @@ struct WaveformView: View {
             .shadow(color: .black.opacity(0.15), radius: 3, y: 1)
 
             Rectangle()
-                .fill(Color.orange)
+                .fill(Color.red)
                 .frame(width: 2)
         }
         .frame(width: Self.edgeHitArea, height: Self.totalHeight)
