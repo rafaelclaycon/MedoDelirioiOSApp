@@ -96,66 +96,228 @@ extension OnboardingView {
 
         @Environment(\.colorScheme) private var colorScheme
 
+        @State private var glowAnimation = false
+        @State private var pulseAnimation = false
+        @State private var ringAnimation = false
+
+        private var hasHomeIndicator: Bool {
+            guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                  let window = windowScene.windows.first else {
+                return false
+            }
+            return window.safeAreaInsets.bottom > 0
+        }
+
+        private var gradientColors: [Color] {
+            if colorScheme == .dark {
+                return [
+                    Color(red: 0.0, green: 0.10, blue: 0.02),
+                    Color(red: 0.0, green: 0.18, blue: 0.04),
+                    Color(red: 0.05, green: 0.28, blue: 0.08)
+                ]
+            } else {
+                return [
+                    Color(red: 0.0, green: 0.52, blue: 0.02),
+                    Color(red: 0.15, green: 0.65, blue: 0.15),
+                    Color(red: 0.35, green: 0.78, blue: 0.30)
+                ]
+            }
+        }
+
+        private let accentGreen = Color(red: 0.0, green: 0.64, blue: 0.02)
+
+        private let flyingSymbols: [(symbol: String, angle: Double, delay: Double)] = [
+            ("speaker.wave.2", 0, 0.0),
+            ("waveform", 45, 1.1),
+            ("music.note", 90, 2.2),
+            ("face.smiling", 135, 3.3),
+            ("theatermasks", 180, 4.4),
+            ("quote.bubble", 225, 5.5),
+            ("speaker.wave.2", 270, 6.6),
+            ("waveform", 315, 7.7),
+            ("music.note", 22, 8.8),
+            ("theatermasks", 67, 9.9),
+            ("quote.bubble", 112, 11.0),
+            ("face.smiling", 157, 12.1),
+            ("waveform", 202, 13.2),
+        ]
+
         var body: some View {
-            VStack(spacing: 0) {
-                GeometryReader { geo in
+            ScrollView {
+                VStack(spacing: 0) {
+                    // Hero Header
                     ZStack {
                         LinearGradient(
-                            colors: [Color.darkerGreen, Color.brightGreen],
+                            colors: gradientColors,
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
+                        .mask(
+                            LinearGradient(
+                                stops: [
+                                    .init(color: .white, location: 0),
+                                    .init(color: .white, location: 0.7),
+                                    .init(color: .clear, location: 1.0)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
 
-                        VStack(spacing: 20) {
-                            Image("IconePadrao")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 120, height: 120)
-                                .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-                                .shadow(color: .black.opacity(0.3), radius: 20, y: 10)
+                        IntroducingUniversalSearchView.StarsView(colorScheme: colorScheme)
 
-                            Text("Medo e Delírio")
-                                .font(.system(size: 36, weight: .bold, design: .default))
+                        VStack(spacing: 16) {
+                            ZStack {
+                                ForEach(Array(flyingSymbols.enumerated()), id: \.offset) { _, item in
+                                    IntroducingUniversalSearchView.FlyingSymbolView(
+                                        symbol: item.symbol,
+                                        angle: item.angle,
+                                        delay: item.delay
+                                    )
+                                }
+
+                                ForEach(0..<3, id: \.self) { index in
+                                    Circle()
+                                        .stroke(.white.opacity(ringAnimation ? 0 : 0.3), lineWidth: 2)
+                                        .frame(width: 70, height: 70)
+                                        .scaleEffect(ringAnimation ? 2.2 : 1)
+                                        .animation(
+                                            .easeOut(duration: 2.5)
+                                            .repeatForever(autoreverses: false)
+                                            .delay(Double(index) * 0.8),
+                                            value: ringAnimation
+                                        )
+                                }
+
+                                Circle()
+                                    .fill(
+                                        RadialGradient(
+                                            colors: [
+                                                .white.opacity(pulseAnimation ? 0.4 : 0.2),
+                                                .white.opacity(0)
+                                            ],
+                                            center: .center,
+                                            startRadius: 30,
+                                            endRadius: pulseAnimation ? 70 : 55
+                                        )
+                                    )
+                                    .frame(width: 140, height: 140)
+                                    .animation(
+                                        .easeInOut(duration: 1.8).repeatForever(autoreverses: true),
+                                        value: pulseAnimation
+                                    )
+
+                                Circle()
+                                    .fill(.white.opacity(glowAnimation ? 0.35 : 0.25))
+                                    .frame(width: 80, height: 80)
+                                    .blur(radius: 15)
+                                    .animation(
+                                        .easeInOut(duration: 2).repeatForever(autoreverses: true),
+                                        value: glowAnimation
+                                    )
+
+                                TimelineView(.animation) { timeline in
+                                    let t = timeline.date.timeIntervalSinceReferenceDate
+
+                                    // Layer several sine waves at irrational ratios for organic, non-repeating motion
+                                    let a = sin(t * 1.7) * 0.04
+                                    let b = sin(t * 2.3) * 0.03
+                                    let c = sin(t * 0.9) * 0.02
+                                    let pulse = max(0, a + b + c)
+                                    let scale = 1.0 + pulse
+                                    let glowRadius = 8.0 + pulse * 40.0
+
+                                    Image("marketing-icon")
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 80, height: 80)
+                                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                        .shadow(color: .white.opacity(0.6 + pulse * 4.0), radius: glowRadius)
+                                        .scaleEffect(scale)
+                                }
+                            }
+                            .onAppear {
+                                glowAnimation = true
+                                pulseAnimation = true
+                                ringAnimation = true
+                            }
+
+                            Text("Eu não tô doido, não!")
+                                .font(.system(size: 34, weight: .bold, design: .rounded))
                                 .foregroundStyle(.white)
-
-                            Text("em Brasília")
-                                .font(.system(size: 22, weight: .medium, design: .default))
-                                .foregroundStyle(.white.opacity(0.85))
+                                .shadow(color: .black.opacity(0.6), radius: 12, x: 0, y: 2)
                         }
-                        .padding(.top, geo.safeAreaInsets.top + 30)
+                        .padding(.vertical, 40)
                     }
-                    .frame(width: geo.size.width, height: geo.size.height * 0.55)
-                    .clipped()
-                }
-                .frame(maxHeight: .infinity)
-                .ignoresSafeArea(edges: .top)
+                    .frame(height: 300)
 
-                VStack(spacing: 16) {
-                    Text("Sons, músicas e muito mais do seu podcast favorito.")
-                        .font(.title3)
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(.primary)
-                        .padding(.horizontal, 30)
-                        .padding(.top, 30)
+                    // Selling Points
+                    VStack(alignment: .leading, spacing: 24) {
+                        featureItem(
+                            icon: "quote.bubble",
+                            title: "Sons e Músicas",
+                            message: "Centenas de vírgulas e músicas do podcast para ouvir e compartilhar com seus amigos."
+                        )
 
-                    Spacer()
+                        featureItem(
+                            icon: "theatermasks",
+                            title: "Reações",
+                            message: "Encontre a resposta perfeita para o grupo com sons organizados por emoção, personagem e momento."
+                        )
+
+                        featureItem(
+                            icon: "radio",
+                            title: "Episódios no App",
+                            message: "Ouça todos os episódios direto no app, com marcadores e favoritos."
+                        )
+                    }
+                    .padding(.top, 16)
+                    .padding(.horizontal, 24)
                 }
             }
+            .ignoresSafeArea(edges: .top)
             .safeAreaInset(edge: .bottom) {
                 VStack(spacing: 12) {
                     GlassButton(
-                        title: "Vamos lá",
-                        color: .green,
+                        title: "BORA!",
+                        color: .darkerGreen,
                         fullWidth: true,
                         action: advanceAction
                     )
+
+                    Spacer()
+                        .frame(height: hasHomeIndicator ? 40 : 16)
                 }
                 .padding(.horizontal)
-                .padding(.bottom, 10)
+                .padding(.vertical, 10)
                 .background(Color.systemBackground)
             }
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
+            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+        }
+
+        private func featureItem(icon: String, title: String, message: String) -> some View {
+            HStack(alignment: .top, spacing: 16) {
+                Image(systemName: icon)
+                    .font(.system(size: 22, weight: .medium))
+                    .imageScale(.large)
+                    .foregroundStyle(accentGreen)
+                    .frame(width: 40, height: 40)
+                    .background(accentGreen.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+
+                    Text(message)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
         }
     }
 

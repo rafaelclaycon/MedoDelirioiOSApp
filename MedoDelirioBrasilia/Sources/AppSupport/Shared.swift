@@ -22,7 +22,7 @@ struct Shared {
         static func symbol(_ type: PhoneTab) -> String {
             switch type {
             case .sounds:
-                "headphones"
+                "quote.bubble"
             case .reactions:
                 "theatermasks"
             case .trends:
@@ -56,7 +56,7 @@ struct Shared {
         static func symbol(_ type: PadScreen) -> String {
             switch type {
             case .allSounds:
-                "headphones"
+                "quote.bubble"
             case .favorites:
                 "star"
             case .groupedByAuthor:
