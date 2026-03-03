@@ -4,23 +4,53 @@ struct NotificationsSettingsView: View {
 
     @State private var enableNotifications = false
     @State private var episodeNotifications = false
-    @State private var toast: Toast?
-    @State private var subscriptionStatus: String?
+    @State private var showSubscriptionError = false
+
+    private var enableNotificationsBinding: Binding<Bool> {
+        Binding(
+            get: { enableNotifications },
+            set: { newValue in
+                enableNotifications = newValue
+                if newValue {
+                    Task {
+                        await NotificationAide.registerForRemoteNotifications()
+                        enableNotifications = UserSettings().getUserAllowedNotifications()
+                    }
+                } else {
+                    UserSettings().setUserAllowedNotifications(to: false)
+                }
+            }
+        )
+    }
+
+    private var episodeNotificationsBinding: Binding<Bool> {
+        Binding(
+            get: { episodeNotifications },
+            set: { newValue in
+                episodeNotifications = newValue
+                Task {
+                    let result = if newValue {
+                        await EpisodeNotificationSubscriber.subscribe()
+                    } else {
+                        await EpisodeNotificationSubscriber.unsubscribe()
+                    }
+
+                    switch result {
+                    case .success:
+                        break
+                    case .failure:
+                        episodeNotifications = !newValue
+                        showSubscriptionError = true
+                    }
+                }
+            }
+        )
+    }
 
     var body: some View {
         Form {
             Section {
-                Toggle("Habilitar Notificações", isOn: $enableNotifications)
-                    .onChange(of: enableNotifications) {
-                        if enableNotifications {
-                            Task {
-                                await NotificationAide.registerForRemoteNotifications()
-                                enableNotifications = UserSettings().getUserAllowedNotifications()
-                            }
-                        } else {
-                            UserSettings().setUserAllowedNotifications(to: false)
-                        }
-                    }
+                Toggle("Habilitar Notificações", isOn: enableNotificationsBinding)
             } header: {
                 EmptyView()
             } footer: {
@@ -32,43 +62,11 @@ struct NotificationsSettingsView: View {
                     Toggle("Avisos", isOn: .constant(true))
                         .disabled(true)
 
-                    Toggle("Novos Episódios", isOn: $episodeNotifications)
-                        .onChange(of: episodeNotifications) {
-                            Task {
-                                let result = if episodeNotifications {
-                                    await EpisodeNotificationSubscriber.subscribe()
-                                } else {
-                                    await EpisodeNotificationSubscriber.unsubscribe()
-                                }
-
-                                switch result {
-                                case .success:
-                                    subscriptionStatus = episodeNotifications
-                                        ? "Inscrito com sucesso."
-                                        : "Inscrição removida."
-                                case .failure(let error):
-                                    episodeNotifications = !episodeNotifications
-                                    subscriptionStatus = "Erro: \(error.localizedDescription)"
-                                    toast = Toast(
-                                        message: "Não foi possível atualizar a inscrição. Tente novamente.",
-                                        type: .warning
-                                    )
-                                }
-                            }
-                        }
+                    Toggle("Novos Episódios", isOn: episodeNotificationsBinding)
                 } header: {
                     Text("Escolha o que quer receber")
                 } footer: {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Receba uma notificação quando um novo episódio do podcast estiver disponível.")
-
-                        if let subscriptionStatus {
-                            Text(subscriptionStatus)
-                                .foregroundStyle(
-                                    subscriptionStatus.hasPrefix("Erro") ? .red : .secondary
-                                )
-                        }
-                    }
+                    Text("Receba uma notificação quando um novo episódio do podcast estiver disponível.")
                 }
             }
 
@@ -83,7 +81,14 @@ struct NotificationsSettingsView: View {
         }
         .navigationTitle("Notificações")
         .navigationBarTitleDisplayMode(.inline)
-        .topToast($toast)
+        .alert(
+            "Houve um problema ao registrar este dispositivo para notificações",
+            isPresented: $showSubscriptionError
+        ) {
+            Button("OK") {}
+        } message: {
+            Text("Por favor, tente novamente em alguns minutos. Você também pode desligar e religar as notificações gerais para tentar corrigir o problema.")
+        }
         .onAppear {
             enableNotifications = UserSettings().getUserAllowedNotifications()
             episodeNotifications = UserSettings().getEnableEpisodeNotifications()
