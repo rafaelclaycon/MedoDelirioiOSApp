@@ -66,7 +66,7 @@ struct SearchResultsView: View {
                         CollapsibleResultSection(
                             items: soundsMatchingTitle,
                             itemCountWhenCollapsed: itemCountWhenCollapsed,
-                            headerSymbol: "headphones",
+                            headerSymbol: "quote.bubble",
                             headerTitle: "Nome das Vírgulas",
                             searchString: searchString,
                             contentView: { item in
@@ -101,7 +101,7 @@ struct SearchResultsView: View {
                         CollapsibleResultSection(
                             items: soundsMatchingContent,
                             itemCountWhenCollapsed: itemCountWhenCollapsed,
-                            headerSymbol: "headphones",
+                            headerSymbol: "quote.bubble",
                             headerTitle: "Conteúdo das Vírgulas",
                             searchString: searchString,
                             contentView: { item in

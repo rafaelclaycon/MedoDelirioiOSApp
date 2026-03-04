@@ -417,7 +417,7 @@ extension SearchSuggestionsView {
     struct FeatureDiscoveryView: View {
 
         private let searchableTypes: [(icon: String, name: String)] = [
-            ("headphones", "Vírgulas"),
+            ("quote.bubble", "Vírgulas"),
             ("music.quarternote.3", "Músicas"),
             ("person.2", "Autores"),
             ("folder", "Pastas"),
