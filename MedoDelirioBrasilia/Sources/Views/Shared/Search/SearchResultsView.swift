@@ -699,14 +699,14 @@ extension SearchResultsView {
         let episode: PodcastEpisode
 
         var body: some View {
-            VStack(alignment: .leading, spacing: .spacing(.xxxSmall)) {
+            VStack(alignment: .leading, spacing: .spacing(.xSmall)) {
                 Text(episode.formattedDate)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .textCase(.uppercase)
 
                 Text(episode.title)
-                    .font(.body)
+                    .font(.title3)
                     .fontDesign(.serif)
                     .lineLimit(2)
             }
@@ -762,14 +762,14 @@ extension SearchResultsView {
         }
 
         var body: some View {
-            VStack(alignment: .leading, spacing: .spacing(.xxxSmall)) {
+            VStack(alignment: .leading, spacing: .spacing(.xSmall)) {
                 Text(episode.formattedDate)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .textCase(.uppercase)
 
                 Text(episode.title)
-                    .font(.body)
+                    .font(.title3)
                     .fontDesign(.serif)
                     .lineLimit(2)
 
