@@ -150,6 +150,7 @@ public extension UIDevice {
             case "iPhone18,2":                                     return "iPhone 17 Pro Max" // 2025 - A19 Pro (4E,2P) - 12 GB
             case "iPhone18,3":                                     return "iPhone 17" // 2025 - A19 (4E,2P) - 8 GB
             case "iPhone18,4":                                     return "iPhone Air" // 2025 - A19 Pro (4E,2P) - 12 GB
+            case "iPhone18,5":                                     return "iPhone 17e" // 2026 - A19 (4E,2P) - 8 GB
 
             case "iPad7,5", "iPad7,6":                             return "iPad (6th generation)" // 2018 - A10 (2E,2P) - 2 GB
             case "iPad7,11", "iPad7,12":                           return "iPad (7th generation)" // 2019 - A10 - 3 GB
@@ -165,6 +166,8 @@ public extension UIDevice {
             case "iPad14,10":                                      return "iPad Air 13-inch (M2)" // 2024 - M2 - 8 GB
             case "iPad15,3":                                       return "iPad Air 11-inch (M3)" // 2025 - M3 - 8 GB
             case "iPad15,5":                                       return "iPad Air 13-inch (M3)" // 2025 - M3 - 8 GB
+            case "iPad16,9":                                       return "iPad Air 11-inch (M4)" // 2026 - M4 - 12 GB
+            case "iPad16,11":                                      return "iPad Air 13-inch (M4)" // 2026 - M4 - 12 GB
 
             case "iPad11,1", "iPad11,2":                           return "iPad mini (5th generation)" // 2019 - A12 - 3 GB
             case "iPad14,1", "iPad14,2":                           return "iPad mini (6th generation)" // 2021 - A15 - 4 GB
@@ -182,8 +185,11 @@ public extension UIDevice {
             case "iPad14,5", "iPad14,6":                           return "iPad Pro (12.9-inch) (6th generation)" // 2022 - M2 - 8 or 16 GB
             case "iPad16,3","iPad16,4":                            return "iPad Pro 11-inch (M4)" // 2024 - M4 (6E,3-4P) - 8 or 16 GB
             case "iPad16,6":                                       return "iPad Pro 13-inch (M4)" // 2024 - M4 (6E,3-4P) - 8 or 16 GB
+            case "iPad17,1","iPad17,2":                            return "iPad Pro 11-inch (M5)" // 2025 - M5 (6E,3-4P) - 12 or 16 GB
+            case "iPad17,4":                                       return "iPad Pro 13-inch (M5)" // 2025 - M5 (6E,3-4P) - 12 or 16 GB
 
-            case "RealityDevice14,1":                              return "Apple Vision Pro" // 2024 - M2 (4E,4P) - 16 GB
+            case "RealityDevice14,1":                              return "Apple Vision Pro (M2, Original)" // 2024 - M2 (4E,4P) - 16 GB
+            case "RealityDevice17,1":                              return "Apple Vision Pro (M5)" // 2025 - M5 (9 or 10 cores) - 16 GB
 
             case "i386", "x86_64", "arm64":                        return "Simulator \(mapToDevice(identifier: ProcessInfo().environment["SIMULATOR_MODEL_IDENTIFIER"] ?? "iOS"))"
             default:                                              return identifier
