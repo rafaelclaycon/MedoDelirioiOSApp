@@ -183,8 +183,8 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 
             let storedToken = AppPersistentMemory().getLastSentPushToken()
 
-            // Only send if token is different from what we've already sent
             guard token != storedToken else {
+                PushRegistrationStatus.shared.markRegistered()
                 return
             }
 
@@ -194,10 +194,11 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
                 let success = try await APIClient.shared.register(pushDevice: device)
                 if success {
                     AppPersistentMemory().setLastSentPushToken(to: token)
+                    PushRegistrationStatus.shared.markRegistered()
                 }
             } catch {
-                // Token stays nil/old, will retry next time iOS provides the token
                 print("Failed to register push token: \(error.localizedDescription)")
+                PushRegistrationStatus.shared.markFailed("Falha ao registrar o dispositivo no servidor.")
             }
         }
     }
@@ -207,6 +208,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         didFailToRegisterForRemoteNotificationsWithError error: Error
     ) {
         print("Failed to register: \(error.localizedDescription)")
+        PushRegistrationStatus.shared.markFailed("Falha ao registrar para notificações remotas.")
     }
 
     private func registerForPushNotificationsIfAuthorized() {
@@ -215,6 +217,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             let settings = await center.notificationSettings()
 
             if settings.authorizationStatus == .authorized {
+                PushRegistrationStatus.shared.markChecking()
                 await MainActor.run {
                     UIApplication.shared.registerForRemoteNotifications()
                 }

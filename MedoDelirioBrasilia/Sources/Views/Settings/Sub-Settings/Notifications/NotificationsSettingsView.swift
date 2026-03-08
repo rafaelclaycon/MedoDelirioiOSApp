@@ -6,6 +6,8 @@ struct NotificationsSettingsView: View {
     @State private var episodeNotifications = false
     @State private var showSubscriptionError = false
 
+    private var pushStatus = PushRegistrationStatus.shared
+
     private var enableNotificationsBinding: Binding<Bool> {
         Binding(
             get: { enableNotifications },
@@ -63,6 +65,9 @@ struct NotificationsSettingsView: View {
                         .disabled(true)
 
                     Toggle("Novos Episódios", isOn: episodeNotificationsBinding)
+                        .disabled(pushStatus.state != .registered)
+
+                    pushRegistrationStatusRow
                 } header: {
                     Text("Escolha o que quer receber")
                 } footer: {
@@ -92,6 +97,52 @@ struct NotificationsSettingsView: View {
         .onAppear {
             enableNotifications = UserSettings().getUserAllowedNotifications()
             episodeNotifications = UserSettings().getEnableEpisodeNotifications()
+            pushStatus.refresh()
+            if pushStatus.state == .unknown, enableNotifications {
+                retryRegistration()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var pushRegistrationStatusRow: some View {
+        switch pushStatus.state {
+        case .registered:
+            Label("Registro push OK", systemImage: "checkmark.circle")
+                .foregroundStyle(.green)
+                .font(.callout)
+
+        case .checking, .unknown:
+            HStack(spacing: 12) {
+                ProgressView()
+                Text("Registrando dispositivo...")
+                    .foregroundStyle(.secondary)
+                    .font(.callout)
+            }
+
+        case .failed(let message):
+            VStack(alignment: .leading, spacing: 8) {
+                Label(message, systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.orange)
+                    .font(.callout)
+
+                Button("Tentar Novamente") {
+                    retryRegistration()
+                }
+                .font(.callout)
+            }
+        }
+    }
+
+    private func retryRegistration() {
+        pushStatus.markChecking()
+        UIApplication.shared.registerForRemoteNotifications()
+
+        Task {
+            try? await Task.sleep(for: .seconds(10))
+            if pushStatus.state == .checking {
+                pushStatus.markFailed("Tempo esgotado. Verifique sua conexão e tente novamente.")
+            }
         }
     }
 }

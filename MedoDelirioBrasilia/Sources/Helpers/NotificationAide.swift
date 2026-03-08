@@ -7,8 +7,11 @@ class NotificationAide {
         let center = UNUserNotificationCenter.current()
         do {
             let granted = try await center.requestAuthorization(options: [.sound, .alert])
-            DispatchQueue.main.async {
-                UIApplication.shared.registerForRemoteNotifications()
+            if granted {
+                PushRegistrationStatus.shared.markChecking()
+                await MainActor.run {
+                    UIApplication.shared.registerForRemoteNotifications()
+                }
             }
             UserSettings().setUserAllowedNotifications(to: granted)
         } catch {
