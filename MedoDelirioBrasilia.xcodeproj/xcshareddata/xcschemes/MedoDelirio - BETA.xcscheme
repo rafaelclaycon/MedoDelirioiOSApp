@@ -73,19 +73,27 @@
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
+            argument = "-FIRDebugEnabled"
+            isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
             argument = "-IGNORE_CONTENT_UPDATE_WAIT"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-SHOW_MORE_DEV_OPTIONS"
-            isEnabled = "NO">
+            isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-FIRAnalyticsDebugEnabled"
+            isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>
       <EnvironmentVariables>
          <EnvironmentVariable
             key = "api_environment"
-            value = "local"
-            isEnabled = "NO">
+            value = "dev"
+            isEnabled = "YES">
          </EnvironmentVariable>
       </EnvironmentVariables>
    </LaunchAction>

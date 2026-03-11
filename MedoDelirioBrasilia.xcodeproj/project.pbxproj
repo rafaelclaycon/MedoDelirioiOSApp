@@ -340,6 +340,8 @@
 		D952DBA229B3CB03001F1E0E /* Rogerinho do Inga - Eu ja falei legal.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = D952DB9929B3CB03001F1E0E /* Rogerinho do Inga - Eu ja falei legal.mp3 */; };
 		D952DBA329B3CB03001F1E0E /* Igor Guimaraes - Se amar e crime eu sou traficante.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = D952DB9A29B3CB03001F1E0E /* Igor Guimaraes - Se amar e crime eu sou traficante.mp3 */; };
 		D952DBA429B3CB03001F1E0E /* Rogerinho do Inga - Legal.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = D952DB9B29B3CB03001F1E0E /* Rogerinho do Inga - Legal.mp3 */; };
+		D954371A2F61021D007F6093 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = D95437192F61021D007F6093 /* FirebaseAnalytics */; };
+		D954371C2F61021D007F6093 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = D954371B2F61021D007F6093 /* FirebaseCrashlytics */; };
 		D9545ED6299D579D00A130B1 /* Franciel Cruz - Lula e bicampeao mundial de conciliacao.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = D9545ED5299D579D00A130B1 /* Franciel Cruz - Lula e bicampeao mundial de conciliacao.mp3 */; };
 		D9545EDA299D64DD00A130B1 /* Queima Quengaral - Taca o pau.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = D9545ED9299D64DC00A130B1 /* Queima Quengaral - Taca o pau.mp3 */; };
 		D9547D7D28FDD7190020A800 /* Franciel Cruz - Rapaz.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = D9547D7528FDD7180020A800 /* Franciel Cruz - Rapaz.mp3 */; };
@@ -2559,6 +2561,8 @@
 			files = (
 				D905E75B2F45121900190A03 /* XMLKit in Frameworks */,
 				D9943F1A286406AF002C6B97 /* Kingfisher in Frameworks */,
+				D954371A2F61021D007F6093 /* FirebaseAnalytics in Frameworks */,
+				D954371C2F61021D007F6093 /* FirebaseCrashlytics in Frameworks */,
 				D9E69592283D2E2C00C341B2 /* SQLite in Frameworks */,
 				D94656D928450535008B4785 /* SQLiteMigrationManager in Frameworks */,
 				D905E7592F45121900190A03 /* FeedKit in Frameworks */,
@@ -4098,6 +4102,8 @@
 				D9625E7728238F9A00080852 /* Frameworks */,
 				D9625E7828238F9A00080852 /* Resources */,
 				4979104828BE844E00CDF01C /* Embed Foundation Extensions */,
+				D95437222F610603007F6093 /* Copy Firebase Plist */,
+				D95437232F610621007F6093 /* Upload dSYMs to Crashlytics */,
 			);
 			buildRules = (
 			);
@@ -4114,6 +4120,8 @@
 				D9943F19286406AF002C6B97 /* Kingfisher */,
 				D905E7582F45121900190A03 /* FeedKit */,
 				D905E75A2F45121900190A03 /* XMLKit */,
+				D95437192F61021D007F6093 /* FirebaseAnalytics */,
+				D954371B2F61021D007F6093 /* FirebaseCrashlytics */,
 			);
 			productName = MedoDelirioBrasilia;
 			productReference = D9625E7A28238F9A00080852 /* MedoDelirio.app */;
@@ -4196,6 +4204,7 @@
 				D94656D728450535008B4785 /* XCRemoteSwiftPackageReference "SQLiteMigrationManager" */,
 				D9943F18286406AF002C6B97 /* XCRemoteSwiftPackageReference "Kingfisher" */,
 				D905E7572F45121900190A03 /* XCRemoteSwiftPackageReference "FeedKit" */,
+				D95437182F61021D007F6093 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
 			productRefGroup = D9625E7B28238F9A00080852 /* Products */;
 			projectDirPath = "";
@@ -5439,6 +5448,52 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		D95437222F610603007F6093 /* Copy Firebase Plist */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Copy Firebase Plist";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [ \"${PRODUCT_BUNDLE_IDENTIFIER}\" = \"com.rafaelschmitt.MedoDelirioBrasilia.beta\" ]; then\n    cp \"${SRCROOT}/MedoDelirioBrasilia/Sources/AppSupport/GoogleService-Info-Beta.plist\" \\\n       \"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/GoogleService-Info.plist\"\nelse\n    cp \"${SRCROOT}/MedoDelirioBrasilia/Sources/AppSupport/GoogleService-Info-Prod.plist\" \\\n       \"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/GoogleService-Info.plist\"\nfi\n";
+		};
+		D95437232F610621007F6093 /* Upload dSYMs to Crashlytics */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}",
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${PRODUCT_NAME}",
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Info.plist",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/GoogleService-Info.plist",
+				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)",
+			);
+			name = "Upload dSYMs to Crashlytics";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		D9625E7628238F9A00080852 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -5670,6 +5725,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = "$(APP_VERSION)";
+				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = com.rafaelschmitt.MedoDelirioBrasilia.beta;
 				PRODUCT_NAME = MedoDelirio;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -5713,6 +5769,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = "$(APP_VERSION)";
+				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = com.rafaelschmitt.MedoDelirioBrasilia;
 				PRODUCT_NAME = MedoDelirio;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -5889,6 +5946,14 @@
 				minimumVersion = 0.8.0;
 			};
 		};
+		D95437182F61021D007F6093 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.10.0;
+			};
+		};
 		D9943F18286406AF002C6B97 /* XCRemoteSwiftPackageReference "Kingfisher" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/onevcat/Kingfisher";
@@ -5922,6 +5987,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = D94656D728450535008B4785 /* XCRemoteSwiftPackageReference "SQLiteMigrationManager" */;
 			productName = SQLiteMigrationManager;
+		};
+		D95437192F61021D007F6093 /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D95437182F61021D007F6093 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+		D954371B2F61021D007F6093 /* FirebaseCrashlytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D95437182F61021D007F6093 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCrashlytics;
 		};
 		D9943F19286406AF002C6B97 /* Kingfisher */ = {
 			isa = XCSwiftPackageProductDependency;

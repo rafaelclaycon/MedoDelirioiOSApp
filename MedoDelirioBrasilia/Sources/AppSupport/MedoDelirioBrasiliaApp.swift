@@ -5,6 +5,7 @@
 //  Created by Rafael Claycon Schmitt on 05/05/22.
 //
 
+import FirebaseCore
 import SwiftUI
 import UserNotifications
 
@@ -76,6 +77,8 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil
     ) -> Bool {
+        configureFirebase()
+
         print("APP - APP DELEGATE")
         UNUserNotificationCenter.current().delegate = self
 
@@ -122,6 +125,24 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         AudioPlayer.shared?.prepareToPlay()
     }
     
+    // MARK: - Firebase
+
+    private func configureFirebase() {
+        let plistName: String
+        if Bundle.main.bundleIdentifier == "com.rafaelschmitt.MedoDelirioBrasilia.beta" {
+            plistName = "GoogleService-Info-Beta"
+        } else {
+            plistName = "GoogleService-Info-Prod"
+        }
+
+        guard let filePath = Bundle.main.path(forResource: plistName, ofType: "plist"),
+              let options = FirebaseOptions(contentsOfFile: filePath)
+        else {
+            fatalError("Missing Firebase configuration file: \(plistName).plist")
+        }
+        FirebaseApp.configure(options: options)
+    }
+
     // MARK: - Telemetry
 
     private func collectTelemetry() async {

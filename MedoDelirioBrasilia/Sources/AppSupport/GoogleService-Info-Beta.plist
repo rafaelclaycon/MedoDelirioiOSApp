@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyAym4Thv8ZQqqCzJN6vXKsq8gtWdSFFfcc</string>
+	<key>GCM_SENDER_ID</key>
+	<string>7042164238</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.rafaelschmitt.MedoDelirioBrasilia.beta</string>
+	<key>PROJECT_ID</key>
+	<string>medo-delirio-ios-beta</string>
+	<key>STORAGE_BUCKET</key>
+	<string>medo-delirio-ios-beta.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:7042164238:ios:5c3ddf344ee2bae360be5f</string>
+</dict>
+</plist>
