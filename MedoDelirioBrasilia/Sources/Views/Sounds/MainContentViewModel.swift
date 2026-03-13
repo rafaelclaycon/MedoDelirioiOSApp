@@ -82,7 +82,7 @@ extension MainContentViewModel {
     public func onViewDidAppear() async {
         loadContent()
         let didUpdate = await contentUpdateService.update()
-        loadContent(clearCache: true)
+        loadContent(clearCache: didUpdate)
         
         // Always update sync status to stop the spinner
         syncValues.syncStatus = contentUpdateService.lastUpdateStatus

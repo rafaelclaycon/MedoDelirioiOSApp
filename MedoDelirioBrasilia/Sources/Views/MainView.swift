@@ -249,13 +249,8 @@ struct MainView: View {
                         }
                         .environment(\.push, PushAction { episodesPath.append($0) })
                         .safeAreaInset(edge: .bottom) {
-                            if episodePlayer.currentEpisode != nil {
-                                NowPlayingBar(episode: episodePlayer.currentEpisode, player: episodePlayer)
-                                    .onTapGesture {
-                                        showNowPlaying = true
-                                    }
-                                    .padding(.bottom, .spacing(.xSmall))
-                            }
+                            NowPlayingBarContainer(player: episodePlayer, showNowPlaying: $showNowPlaying)
+                                .padding(.bottom, .spacing(.xSmall))
                         }
                         .tabItem {
                             Label("Episódios", systemImage: "radio")
@@ -375,12 +370,7 @@ struct MainView: View {
                         }
                         .environment(\.push, PushAction { episodesPath.append($0) })
                         .safeAreaInset(edge: .bottom) {
-                            if episodePlayer.currentEpisode != nil {
-                                NowPlayingBar(episode: episodePlayer.currentEpisode, player: episodePlayer)
-                                    .onTapGesture {
-                                        showNowPlaying = true
-                                    }
-                            }
+                            NowPlayingBarContainer(player: episodePlayer, showNowPlaying: $showNowPlaying)
                         }
                     }
 
@@ -692,6 +682,25 @@ struct MainView: View {
                 originatingScreen: "MainView",
                 action: "issueSendingFolderResearchChanges(\(error.localizedDescription))"
             )
+        }
+    }
+}
+
+// MARK: - NowPlayingBarContainer
+
+/// Isolates `EpisodePlayer` observation so that high-frequency property changes
+/// (e.g. `currentTime` every 0.5s) only invalidate this small view, not the
+/// parent `MainView.body`. Fixes an iOS 18 over-tracking issue where accessing
+/// any `@Observable` property caused all mutations to trigger body re-evaluation.
+private struct NowPlayingBarContainer: View {
+
+    let player: EpisodePlayer
+    @Binding var showNowPlaying: Bool
+
+    var body: some View {
+        if player.currentEpisode != nil {
+            NowPlayingBar(episode: player.currentEpisode, player: player)
+                .onTapGesture { showNowPlaying = true }
         }
     }
 }

@@ -393,9 +393,7 @@ struct MainContentView: View {
                                 toast: $searchToast
                             )
                         }
-                        Task {
-                            await viewModel.onViewDidAppear()
-                        }
+                        await viewModel.onViewDidAppear()
                     }
                     .onChange(of: scenePhase) {
                         Task {

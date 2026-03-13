@@ -48,7 +48,7 @@ struct NowPlayingBar: View {
 
                 Spacer(minLength: 0)
 
-                HStack(spacing: .spacing(.medium)) {
+                HStack(spacing: .spacing(.xLarge)) {
                     Button {
                         Task {
                             await player.skipBackward()
@@ -72,12 +72,21 @@ struct NowPlayingBar: View {
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, .spacing(.medium))
             .padding(.vertical, .spacing(.small))
+            .padding(.leading, .spacing(.medium))
+            .padding(.trailing, .spacing(.large))
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 2)
             .padding(.horizontal, 12)
             .padding(.bottom, 4)
         }
     }
+}
+
+#Preview {
+    NowPlayingBar(
+        episode: .mockLastWeek,
+        player: EpisodePlayer()
+    )
+    .padding()
 }
