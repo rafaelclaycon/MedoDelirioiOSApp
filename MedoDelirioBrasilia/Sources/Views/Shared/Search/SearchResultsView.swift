@@ -31,7 +31,8 @@ struct SearchResultsView: View {
             !(results.authors?.isEmpty ?? true) ||
             !(results.folders?.isEmpty ?? true) ||
             !(results.episodesMatchingTitle?.isEmpty ?? true) ||
-            !(results.episodesMatchingDescription?.isEmpty ?? true)
+            !(results.episodesMatchingDescription?.isEmpty ?? true) ||
+            !(results.episodesMatchingTranscript?.isEmpty ?? true)
         return hasContent
     }
 
@@ -238,6 +239,24 @@ struct SearchResultsView: View {
                             .onTapGesture {
                                 push(GeneralNavigationDestination.episodeDetail(episode))
                             }
+                        }
+                    )
+                }
+
+                // MARK: - Episode Transcripts
+
+                if let transcriptResults = results.episodesMatchingTranscript, !transcriptResults.isEmpty {
+                    CollapsibleResultSection(
+                        items: transcriptResults,
+                        itemCountWhenCollapsed: itemCountWhenCollapsed,
+                        headerSymbol: "text.quote",
+                        headerTitle: "Transcrições dos Episódios",
+                        searchString: searchString,
+                        contentView: { result in
+                            TranscriptSearchResultRow(
+                                result: result,
+                                highlight: searchString
+                            )
                         }
                     )
                 }
@@ -781,6 +800,96 @@ extension SearchResultsView {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.vertical, .spacing(.xxSmall))
+        }
+    }
+}
+
+// MARK: - Transcript Search Result
+
+struct TranscriptSearchResultRow: View {
+
+    let result: TranscriptSearchResult
+    let highlight: String
+
+    @Environment(EpisodePlayer.self) private var player
+    @State private var showDownloadConfirmation = false
+
+    private var highlightedText: AttributedString {
+        let source = result.matchedCueText
+        let normalizedHighlight = highlight
+            .folding(options: .diacriticInsensitive, locale: .current)
+            .replacingOccurrences(of: "[^a-zA-Z0-9 ]", with: "", options: .regularExpression)
+
+        var attributed = AttributedString(source)
+        if let range = attributed.range(
+            of: normalizedHighlight,
+            options: [.caseInsensitive, .diacriticInsensitive]
+        ) {
+            attributed[range].foregroundColor = .yellow
+            attributed[range].font = .body.bold()
+        }
+        return attributed
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: .spacing(.xSmall)) {
+            HStack(spacing: .spacing(.xSmall)) {
+                Image(systemName: "play.fill")
+                    .font(.caption2)
+                    .foregroundStyle(Color.darkerGreen)
+
+                Text(result.formattedTimestamp)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .monospacedDigit()
+                    .foregroundStyle(Color.darkerGreen)
+            }
+
+            Text(highlightedText)
+                .font(.body)
+                .lineLimit(3)
+                .multilineTextAlignment(.leading)
+
+            Text("\(result.episode.title) · \(result.episode.formattedDate)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, .spacing(.xxSmall))
+        .contentShape(Rectangle())
+        .onTapGesture {
+            handleTap()
+        }
+        .alert(
+            "Baixar e reproduzir a partir de \(result.formattedTimestamp)?",
+            isPresented: $showDownloadConfirmation
+        ) {
+            Button("Baixar e Reproduzir") {
+                playFromTimestamp()
+            }
+            Button("Cancelar", role: .cancel) {}
+        } message: {
+            Text(result.episode.title)
+        }
+    }
+
+    private func handleTap() {
+        if EpisodePlayer.isDownloaded(result.episode) || player.isCurrentEpisode(result.episode) {
+            playFromTimestamp()
+        } else {
+            showDownloadConfirmation = true
+        }
+    }
+
+    private func playFromTimestamp() {
+        let episode = result.episode
+        let timestamp = result.timestamp
+
+        Task {
+            await player.play(episode: episode)
+            try? await Task.sleep(for: .milliseconds(300))
+            player.seek(to: timestamp)
         }
     }
 }

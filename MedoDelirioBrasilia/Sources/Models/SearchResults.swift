@@ -26,6 +26,7 @@ struct SearchResults {
     var folders: [UserFolder]?
     var episodesMatchingTitle: [PodcastEpisode]?
     var episodesMatchingDescription: [PodcastEpisode]?
+    var episodesMatchingTranscript: [TranscriptSearchResult]?
     var reactionsMatchingTitle: [Reaction]?
     var reactionsMatchingFeeling: [Reaction]?
 
@@ -38,6 +39,7 @@ struct SearchResults {
             folders?.isEmpty ?? true &&
             episodesMatchingTitle?.isEmpty ?? true &&
             episodesMatchingDescription?.isEmpty ?? true &&
+            episodesMatchingTranscript?.isEmpty ?? true &&
             reactionsMatchingTitle?.isEmpty ?? true &&
             reactionsMatchingFeeling?.isEmpty ?? true
     }
@@ -51,6 +53,7 @@ struct SearchResults {
         self.folders = nil
         self.episodesMatchingTitle = nil
         self.episodesMatchingDescription = nil
+        self.episodesMatchingTranscript = nil
         self.reactionsMatchingTitle = nil
         self.reactionsMatchingFeeling = nil
     }

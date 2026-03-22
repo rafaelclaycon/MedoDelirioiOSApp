@@ -19,6 +19,11 @@ struct SRTCue: Identifiable, Equatable {
 
 enum SRTParser {
 
+    /// Extracts plain text from SRT content, stripping timestamps and sequence numbers.
+    static func plainText(from content: String) -> String {
+        parse(content).map(\.text).joined(separator: " ")
+    }
+
     /// Parses standard SRT content into an array of cues sorted by start time.
     static func parse(_ content: String) -> [SRTCue] {
         let blocks = content
