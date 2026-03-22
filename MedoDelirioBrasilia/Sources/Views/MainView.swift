@@ -12,6 +12,8 @@ private let logger = os.Logger(subsystem: "com.rafaelschmitt.MedoDelirioBrasilia
 
 struct MainView: View {
 
+    @Environment(\.scenePhase) private var scenePhase
+
     private var tabSelection: Binding<PhoneTab>
     private var padSelection: Binding<PadScreen?>
 
@@ -60,30 +62,31 @@ struct MainView: View {
     @State private var contentRepository: ContentRepository
     private let trendsService = TrendsService.shared
     @State private var reactionRepository = ReactionRepository()
+    @State private var searchService: SearchService
 
     private let userFolderRepository: UserFolderRepositoryProtocol
-    private let searchService: SearchService
 
     init(
         tabSelection: Binding<PhoneTab>,
         padSelection: Binding<PadScreen?>,
-        contentRepository: ContentRepository = ContentRepository(database: LocalDatabase.shared),
+        contentRepository: ContentRepository,
         userFolderRepository: UserFolderRepositoryProtocol = UserFolderRepository(database: LocalDatabase.shared)
     ) {
         self.tabSelection = tabSelection
         self.padSelection = padSelection
-        self.contentRepository = contentRepository
         self.userFolderRepository = userFolderRepository
+        self._contentRepository = State(initialValue: contentRepository)
         self._sidebarFoldersViewModel = State(initialValue: SidebarFoldersViewModel(userFolderRepository: userFolderRepository))
 
-        // Create a single shared SearchService instance
-        self.searchService = SearchService(
-            contentRepository: contentRepository,
-            authorService: AuthorService(database: LocalDatabase.shared),
-            appMemory: AppPersistentMemory.shared,
-            userFolderRepository: userFolderRepository,
-            userSettings: UserSettings(),
-            reactionRepository: ReactionRepository()
+        self._searchService = State(initialValue:
+            SearchService(
+                contentRepository: contentRepository,
+                authorService: AuthorService(database: LocalDatabase.shared),
+                appMemory: AppPersistentMemory.shared,
+                userFolderRepository: userFolderRepository,
+                userSettings: UserSettings(),
+                reactionRepository: ReactionRepository()
+            )
         )
     }
 
@@ -509,6 +512,7 @@ struct MainView: View {
             episodePlayer.dismissNowPlaying = false
         }
         .onAppear {
+            episodePlayer.setSceneActive(scenePhase == .active)
             episodePlayer.progressStore = episodeProgressStore
             episodePlayer.bookmarkStore = episodeBookmarkStore
             episodePlayer.listenStore = episodeListenStore
@@ -530,6 +534,9 @@ struct MainView: View {
             Task {
                 try? await EpisodesService().syncEpisodes()
             }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            episodePlayer.setSceneActive(newPhase == .active)
         }
         .sheet(isPresented: $showingModalView) {
             switch subviewToOpen {
@@ -710,8 +717,8 @@ private struct NowPlayingBarContainer: View {
 #Preview {
     MainView(
         tabSelection: .constant(.sounds),
-        padSelection: .constant(.allSounds)
+        padSelection: .constant(.allSounds),
+        contentRepository: ContentRepository(database: LocalDatabase.shared)
     )
     .environment(EpisodePlayer())
 }
-

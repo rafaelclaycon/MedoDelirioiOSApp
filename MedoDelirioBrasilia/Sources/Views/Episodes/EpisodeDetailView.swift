@@ -27,10 +27,6 @@ struct EpisodeDetailView: View {
         playedStore.isPlayed(episode.id)
     }
 
-    private var isThisEpisodePlaying: Bool {
-        episodePlayer.isCurrentEpisode(episode) && episodePlayer.isPlaying
-    }
-
     private var episodeProgress: EpisodeProgressStore.EpisodeProgress? {
         progressStore.progress(for: episode.id)
     }
@@ -85,22 +81,6 @@ struct EpisodeDetailView: View {
                 .accessibilityLabel(favoritesStore.isFavorite(episode.id) ? "Remover dos favoritos" : "Adicionar aos favoritos")
             }
         }
-        .alert(
-            "Download Grande",
-            isPresented: Binding(
-                get: { episodePlayer.pendingCellularDownload != nil },
-                set: { _ in }
-            )
-        ) {
-            Button("Baixar Mesmo Assim") {
-                Task { await episodePlayer.confirmCellularDownload() }
-            }
-            Button("Cancelar", role: .cancel) {
-                episodePlayer.dismissCellularDownload()
-            }
-        } message: {
-            Text("Você está usando dados móveis e este episódio tem aproximadamente \(episodePlayer.pendingDownloadSizeMB) MB. Deseja continuar com o download?")
-        }
         .alert("Apagar Download", isPresented: $showDeleteConfirmation) {
             Button("Apagar", role: .destructive) {
                 try? FileManager.default.removeItem(at: EpisodePlayer.localFileURL(for: episode))
@@ -109,14 +89,7 @@ struct EpisodeDetailView: View {
         } message: {
             Text("O arquivo local deste episódio será removido. Você poderá baixá-lo novamente.")
         }
-        .alert("Erro", isPresented: Binding(
-            get: { episodePlayer.playerError != nil },
-            set: { if !$0 { episodePlayer.playerError = nil } }
-        )) {
-            Button("OK") { episodePlayer.playerError = nil }
-        } message: {
-            Text(episodePlayer.playerError ?? "")
-        }
+        .background(EpisodeDetailPlayerAlerts(player: episodePlayer))
     }
 
     // MARK: - Header
@@ -141,7 +114,7 @@ struct EpisodeDetailView: View {
                 .fontDesign(.serif)
 
             HStack(spacing: .spacing(.medium)) {
-                playButton
+                EpisodeDetailPlaybackControls(episode: episode)
 
                 if isPlayed {
                     Image(systemName: "checkmark")
@@ -198,61 +171,6 @@ struct EpisodeDetailView: View {
             return "\(minutes) min restantes"
         } else {
             return "< 1 min restante"
-        }
-    }
-
-    // MARK: - Play Button
-
-    @ViewBuilder
-    private var playButton: some View {
-        if episodePlayer.isDownloading(episode) {
-            downloadProgressIndicator
-        } else {
-            Button {
-                Task {
-                    await episodePlayer.play(episode: episode)
-                }
-            } label: {
-                Label(
-                    isThisEpisodePlaying ? "Pausar" : "Ouvir",
-                    systemImage: isThisEpisodePlaying ? "pause.fill" : "play.fill"
-                )
-                .font(.subheadline)
-                .fontWeight(.semibold)
-            }
-            .if_iOS26GlassElseBorderedProminent()
-        }
-    }
-
-    private var downloadProgressIndicator: some View {
-        let progress = episodePlayer.downloadProgress[episode.id] ?? 0
-
-        return VStack(spacing: .spacing(.xxxSmall)) {
-            ZStack {
-                Circle()
-                    .stroke(Color.primary.opacity(0.2), lineWidth: 3)
-
-                Circle()
-                    .trim(from: 0, to: progress)
-                    .stroke(Color.primary, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-
-                Button {
-                    episodePlayer.cancelDownload()
-                } label: {
-                    Image(systemName: "stop.fill")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.primary)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Cancelar download")
-            }
-            .frame(width: 32, height: 32)
-
-            Text("\(Int(progress * 100))%")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
         }
     }
 
@@ -439,6 +357,100 @@ struct EpisodeDetailView: View {
                 Label("Excluir", systemImage: "trash")
             }
         }
+    }
+}
+
+private struct EpisodeDetailPlaybackControls: View {
+    @Environment(EpisodePlayer.self) private var episodePlayer
+
+    let episode: PodcastEpisode
+
+    private var isThisEpisodePlaying: Bool {
+        episodePlayer.isCurrentEpisode(episode) && episodePlayer.isPlaying
+    }
+
+    var body: some View {
+        if episodePlayer.isDownloading(episode) {
+            downloadProgressIndicator
+        } else {
+            Button {
+                Task {
+                    await episodePlayer.play(episode: episode)
+                }
+            } label: {
+                Label(
+                    isThisEpisodePlaying ? "Pausar" : "Ouvir",
+                    systemImage: isThisEpisodePlaying ? "pause.fill" : "play.fill"
+                )
+                .font(.subheadline)
+                .fontWeight(.semibold)
+            }
+            .if_iOS26GlassElseBorderedProminent()
+        }
+    }
+
+    private var downloadProgressIndicator: some View {
+        let progress = episodePlayer.downloadProgress[episode.id] ?? 0
+
+        return VStack(spacing: .spacing(.xxxSmall)) {
+            ZStack {
+                Circle()
+                    .stroke(Color.primary.opacity(0.2), lineWidth: 3)
+
+                Circle()
+                    .trim(from: 0, to: progress)
+                    .stroke(Color.primary, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+
+                Button {
+                    episodePlayer.cancelDownload()
+                } label: {
+                    Image(systemName: "stop.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.primary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Cancelar download")
+            }
+            .frame(width: 32, height: 32)
+
+            Text("\(Int(progress * 100))%")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+        }
+    }
+}
+
+private struct EpisodeDetailPlayerAlerts: View {
+    let player: EpisodePlayer
+
+    var body: some View {
+        Color.clear
+            .alert(
+                "Download Grande",
+                isPresented: Binding(
+                    get: { player.pendingCellularDownload != nil },
+                    set: { _ in }
+                )
+            ) {
+                Button("Baixar Mesmo Assim") {
+                    Task { await player.confirmCellularDownload() }
+                }
+                Button("Cancelar", role: .cancel) {
+                    player.dismissCellularDownload()
+                }
+            } message: {
+                Text("Você está usando dados móveis e este episódio tem aproximadamente \(player.pendingDownloadSizeMB) MB. Deseja continuar com o download?")
+            }
+            .alert("Erro", isPresented: Binding(
+                get: { player.playerError != nil },
+                set: { if !$0 { player.playerError = nil } }
+            )) {
+                Button("OK") { player.playerError = nil }
+            } message: {
+                Text(player.playerError ?? "")
+            }
     }
 }
 

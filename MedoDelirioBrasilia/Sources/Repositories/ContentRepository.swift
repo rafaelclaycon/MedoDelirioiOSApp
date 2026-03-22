@@ -50,8 +50,7 @@ final class ContentRepository: ContentRepositoryProtocol {
         database: LocalDatabaseProtocol
     ) {
         self.database = database
-        self.allContent = []
-        loadAllContent()
+        self.allContent = nil
     }
 
     // MARK: - Functions

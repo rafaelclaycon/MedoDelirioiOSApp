@@ -164,31 +164,8 @@ struct EpisodesView: View {
                 )
             }
         }
-        .alert(
-            "Download Grande",
-            isPresented: Binding(
-                get: { episodePlayer.pendingCellularDownload != nil },
-                set: { _ in }
-            )
-        ) {
-            Button("Baixar Mesmo Assim") {
-                Task { await episodePlayer.confirmCellularDownload() }
-            }
-            Button("Cancelar", role: .cancel) {
-                episodePlayer.dismissCellularDownload()
-            }
-        } message: {
-            Text("Você está usando dados móveis e este episódio tem aproximadamente \(episodePlayer.pendingDownloadSizeMB) MB. Deseja continuar com o download?")
-        }
         .topToast($viewModel.toast)
-        .alert("Erro", isPresented: Binding(
-            get: { episodePlayer.playerError != nil },
-            set: { if !$0 { episodePlayer.playerError = nil } }
-        )) {
-            Button("OK") { episodePlayer.playerError = nil }
-        } message: {
-            Text(episodePlayer.playerError ?? "")
-        }
+        .background(EpisodePlayerAlerts(player: episodePlayer))
     }
 
     // MARK: - Empty States
@@ -241,7 +218,6 @@ struct EpisodesView: View {
     private func episodeRow(for episode: PodcastEpisode) -> some View {
         EpisodeRow(
             episode: episode,
-            episodePlayer: episodePlayer,
             isFavorite: favoritesStore.isFavorite(episode.id),
             bookmarkCount: bookmarkStore.bookmarks(for: episode.id).count,
             progress: progressStore.progress(for: episode.id),
@@ -351,15 +327,10 @@ extension EpisodesView {
     struct EpisodeRow: View {
 
         let episode: PodcastEpisode
-        let episodePlayer: EpisodePlayer
         let isFavorite: Bool
         let bookmarkCount: Int
         let progress: EpisodeProgressStore.EpisodeProgress?
         let isPlayed: Bool
-
-        private var isThisEpisodePlaying: Bool {
-            episodePlayer.isCurrentEpisode(episode) && episodePlayer.isPlaying
-        }
 
         private var hasProgress: Bool {
             guard let progress else { return false }
@@ -423,7 +394,7 @@ extension EpisodesView {
                         .frame(width: 60)
                 } else {
                     VStack(spacing: .spacing(.xSmall)) {
-                        playButton
+                        EpisodeRowPlaybackControls(episode: episode)
 
                         if hasProgress, let progress {
                             Text(Self.formatTimeRemaining(progress.duration - progress.currentTime))
@@ -459,114 +430,6 @@ extension EpisodesView {
                 return "< 1 min restante"
             }
         }
-
-        @ViewBuilder
-        private var playButton: some View {
-            if isThisEpisodePlaying {
-                pauseButton
-            } else if episodePlayer.isDownloading(episode) {
-                downloadProgressIndicator
-            } else if episodePlayer.isPreparing(episode) {
-                ProgressView()
-                    .frame(width: 32, height: 32)
-            } else {
-                playActionButton
-            }
-        }
-
-        @ViewBuilder
-        private var pauseButton: some View {
-            if #available(iOS 26.0, *) {
-                Button {
-                    episodePlayer.togglePlayPause()
-                } label: {
-                    Image(systemName: "pause.fill")
-                        .font(.title2)
-                        .foregroundStyle(.primary)
-                }
-                .buttonStyle(.borderless)
-                .padding(.spacing(.small))
-                .glassEffect(
-                    .regular.tint(
-                        Color.green.opacity(0.3)
-                    ).interactive()
-                )
-            } else {
-                Button {
-                    episodePlayer.togglePlayPause()
-                } label: {
-                    Image(systemName: "pause.fill")
-                        .font(.title2)
-                        .padding(.vertical, .spacing(.xxxSmall))
-                }
-                .capsule(colored: .accentColor)
-            }
-        }
-
-        @ViewBuilder
-        private var playActionButton: some View {
-            if #available(iOS 26.0, *) {
-                Button {
-                    Task {
-                        await episodePlayer.play(episode: episode)
-                    }
-                } label: {
-                    Image(systemName: "play.fill")
-                        .font(.title2)
-                        .foregroundStyle(.primary)
-                }
-                .buttonStyle(.borderless)
-                .padding(.spacing(.small))
-                .glassEffect(
-                    .regular.tint(
-                        Color.green.opacity(0.3)
-                    ).interactive()
-                )
-            } else {
-                Button {
-                    Task {
-                        await episodePlayer.play(episode: episode)
-                    }
-                } label: {
-                    Image(systemName: "play.fill")
-                        .font(.title2)
-                        .padding(.vertical, .spacing(.xxxSmall))
-                }
-                .capsule(colored: .accentColor)
-            }
-        }
-
-        private var downloadProgressIndicator: some View {
-            let progress = episodePlayer.downloadProgress[episode.id] ?? 0
-
-            return VStack(spacing: .spacing(.xxxSmall)) {
-                ZStack {
-                    Circle()
-                        .stroke(Color.primary.opacity(0.2), lineWidth: 3)
-
-                    Circle()
-                        .trim(from: 0, to: progress)
-                        .stroke(Color.primary, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-
-                    Button {
-                        episodePlayer.cancelDownload()
-                    } label: {
-                        Image(systemName: "stop.fill")
-                            .font(.system(size: 10))
-                            .foregroundStyle(.primary)
-                    }
-                    .buttonStyle(.plain)
-                }
-                .frame(width: 32, height: 32)
-
-                Text("\(Int(progress * 100))%")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-            }
-        }
-
     }
 
     struct LoadingView: View {
@@ -623,6 +486,154 @@ extension EpisodesView {
     }
 }
 
+private struct EpisodeRowPlaybackControls: View {
+    @Environment(EpisodePlayer.self) private var episodePlayer
+
+    let episode: PodcastEpisode
+
+    private var isThisEpisodePlaying: Bool {
+        episodePlayer.isCurrentEpisode(episode) && episodePlayer.isPlaying
+    }
+
+    var body: some View {
+        if isThisEpisodePlaying {
+            pauseButton
+        } else if episodePlayer.isDownloading(episode) {
+            downloadProgressIndicator
+        } else if episodePlayer.isPreparing(episode) {
+            ProgressView()
+                .frame(width: 32, height: 32)
+        } else {
+            playActionButton
+        }
+    }
+
+    @ViewBuilder
+    private var pauseButton: some View {
+        if #available(iOS 26.0, *) {
+            Button {
+                episodePlayer.togglePlayPause()
+            } label: {
+                Image(systemName: "pause.fill")
+                    .font(.title2)
+                    .foregroundStyle(.primary)
+            }
+            .buttonStyle(.borderless)
+            .padding(.spacing(.small))
+            .glassEffect(
+                .regular.tint(
+                    Color.green.opacity(0.3)
+                ).interactive()
+            )
+        } else {
+            Button {
+                episodePlayer.togglePlayPause()
+            } label: {
+                Image(systemName: "pause.fill")
+                    .font(.title2)
+                    .padding(.vertical, .spacing(.xxxSmall))
+            }
+            .capsule(colored: .accentColor)
+        }
+    }
+
+    @ViewBuilder
+    private var playActionButton: some View {
+        if #available(iOS 26.0, *) {
+            Button {
+                Task {
+                    await episodePlayer.play(episode: episode)
+                }
+            } label: {
+                Image(systemName: "play.fill")
+                    .font(.title2)
+                    .foregroundStyle(.primary)
+            }
+            .buttonStyle(.borderless)
+            .padding(.spacing(.small))
+            .glassEffect(
+                .regular.tint(
+                    Color.green.opacity(0.3)
+                ).interactive()
+            )
+        } else {
+            Button {
+                Task {
+                    await episodePlayer.play(episode: episode)
+                }
+            } label: {
+                Image(systemName: "play.fill")
+                    .font(.title2)
+                    .padding(.vertical, .spacing(.xxxSmall))
+            }
+            .capsule(colored: .accentColor)
+        }
+    }
+
+    private var downloadProgressIndicator: some View {
+        let progress = episodePlayer.downloadProgress[episode.id] ?? 0
+
+        return VStack(spacing: .spacing(.xxxSmall)) {
+            ZStack {
+                Circle()
+                    .stroke(Color.primary.opacity(0.2), lineWidth: 3)
+
+                Circle()
+                    .trim(from: 0, to: progress)
+                    .stroke(Color.primary, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+
+                Button {
+                    episodePlayer.cancelDownload()
+                } label: {
+                    Image(systemName: "stop.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.primary)
+                }
+                .buttonStyle(.plain)
+            }
+            .frame(width: 32, height: 32)
+
+            Text("\(Int(progress * 100))%")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+        }
+    }
+}
+
+private struct EpisodePlayerAlerts: View {
+    let player: EpisodePlayer
+
+    var body: some View {
+        Color.clear
+            .alert(
+                "Download Grande",
+                isPresented: Binding(
+                    get: { player.pendingCellularDownload != nil },
+                    set: { _ in }
+                )
+            ) {
+                Button("Baixar Mesmo Assim") {
+                    Task { await player.confirmCellularDownload() }
+                }
+                Button("Cancelar", role: .cancel) {
+                    player.dismissCellularDownload()
+                }
+            } message: {
+                Text("Você está usando dados móveis e este episódio tem aproximadamente \(player.pendingDownloadSizeMB) MB. Deseja continuar com o download?")
+            }
+            .alert("Erro", isPresented: Binding(
+                get: { player.playerError != nil },
+                set: { if !$0 { player.playerError = nil } }
+            )) {
+                Button("OK") { player.playerError = nil }
+            } message: {
+                Text(player.playerError ?? "")
+            }
+    }
+}
+
 // MARK: - Liquid Glass Helper
 
 private extension View {
@@ -653,23 +664,23 @@ private extension View {
 #Preview("Episode") {
     EpisodesView.EpisodeRow(
         episode: .mockLastWeek,
-        episodePlayer: EpisodePlayer(),
         isFavorite: false,
         bookmarkCount: 0,
         progress: nil,
         isPlayed: false
     )
     .padding()
+    .environment(EpisodePlayer())
 }
 
 #Preview("Played Episode") {
     EpisodesView.EpisodeRow(
         episode: .mockLastWeek,
-        episodePlayer: EpisodePlayer(),
         isFavorite: false,
         bookmarkCount: 0,
         progress: nil,
         isPlayed: true
     )
     .padding()
+    .environment(EpisodePlayer())
 }

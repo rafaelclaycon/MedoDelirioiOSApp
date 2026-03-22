@@ -227,6 +227,24 @@ extension LocalDatabase: CustomStringConvertible {
 
 }
 
+// MARK: - Date Parsing
+
+private let localDatabaseDateFormatter: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS"
+    formatter.timeZone = TimeZone(secondsFromGMT: 0)
+    return formatter
+}()
+
+extension LocalDatabase {
+
+    func parseLocalDatabaseDate(_ value: String?) -> Date? {
+        guard let value else { return nil }
+        return localDatabaseDateFormatter.date(from: value)
+    }
+}
+
 enum LocalDatabaseError: Error {
 
     case favoriteNotFound

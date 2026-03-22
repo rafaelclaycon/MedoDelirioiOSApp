@@ -10,6 +10,18 @@ import SQLite
 
 private typealias Expression = SQLite.Expression
 
+private enum SoundColumns {
+    static let id = Expression<String>("id")
+    static let title = Expression<String>("title")
+    static let authorId = Expression<String>("authorId")
+    static let description = Expression<String>("description")
+    static let filename = Expression<String>("filename")
+    static let dateAdded = Expression<String?>("dateAdded")
+    static let duration = Expression<Double>("duration")
+    static let isOffensive = Expression<Bool>("isOffensive")
+    static let isFromServer = Expression<Bool?>("isFromServer")
+}
+
 extension LocalDatabase {
 
     func soundCount() throws -> Int {
@@ -26,40 +38,21 @@ extension LocalDatabase {
     ) throws -> [Sound] {
         var queriedSounds = [Sound]()
 
-        let author_id = Expression<String>("authorId")
-        let id = Expression<String>("id")
-        let name = Expression<String>("name")
+        let authorId = Expression<String>("authorId")
+        let authorTableId = Expression<String>("id")
+        let authorName = Expression<String>("name")
         let isOffensive = Expression<Bool>("isOffensive")
 
-        let dateFormatter = DateFormatter()
-        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
-        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS"
-        dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)
-
-        var query = soundTable.select(soundTable[*], author[name])
-            .join(author, on: soundTable[author_id] == author[id])
+        var query = soundTable
+            .select(soundTable[*], author[authorName])
+            .join(author, on: soundTable[authorId] == author[authorTableId])
 
         if !allowSensitive {
             query = query.filter(isOffensive == false)
         }
 
-        for queriedSound in try db.prepare(query) {
-            var soundData: Sound = try queriedSound.decode()
-
-            if let dateString = try queriedSound.get(Expression<String?>("dateAdded")) {
-                if let date = dateFormatter.date(from: dateString) {
-                    soundData.dateAdded = date
-                }
-            }
-
-            if let isFromServer = try queriedSound.get(Expression<Bool?>("isFromServer")) {
-                soundData.isFromServer = isFromServer
-            }
-
-            let authorName = try queriedSound.get(author[name])
-            soundData.authorName = authorName
-
-            queriedSounds.append(soundData)
+        for row in try db.prepare(query) {
+            queriedSounds.append(try sound(from: row, authorName: row[author[authorName]]))
         }
         return queriedSounds
     }
@@ -67,27 +60,18 @@ extension LocalDatabase {
     func sound(withId soundId: String) throws -> Sound? {
         var queriedSounds = [Sound]()
 
-        let author_id = Expression<String>("authorId")
+        let authorId = Expression<String>("authorId")
+        let authorTableId = Expression<String>("id")
+        let authorName = Expression<String>("name")
         let id = Expression<String>("id")
-        let name = Expression<String>("name")
 
-        let query = soundTable.select(soundTable[*], author[name])
-            .join(author, on: soundTable[author_id] == author[id])
+        let query = soundTable
+            .select(soundTable[*], author[authorName])
+            .join(author, on: soundTable[authorId] == author[authorTableId])
             .filter(soundTable[id] == soundId)
 
-        for queriedSound in try db.prepare(query) {
-            var soundData: Sound = try queriedSound.decode()
-            if let dateString = try queriedSound.get(Expression<String?>("dateAdded")) {
-                if let date = dateFormatter.date(from: dateString) {
-                    soundData.dateAdded = date
-                }
-            }
-            if let isFromServer = try queriedSound.get(Expression<Bool?>("isFromServer")) {
-                soundData.isFromServer = isFromServer
-            }
-            let authorName = try queriedSound.get(author[name])
-            soundData.authorName = authorName
-            queriedSounds.append(soundData)
+        for row in try db.prepare(query) {
+            queriedSounds.append(try sound(from: row, authorName: row[author[authorName]]))
         }
         return queriedSounds.first
     }
@@ -95,30 +79,19 @@ extension LocalDatabase {
     func sounds(withIds soundIds: [String]) throws -> [Sound] {
         var queriedSounds = [String: Sound]()
 
-        let author_id = Expression<String>("authorId")
+        let authorId = Expression<String>("authorId")
+        let authorTableId = Expression<String>("id")
+        let authorName = Expression<String>("name")
         let id = Expression<String>("id")
-        let name = Expression<String>("name")
 
         let query = soundTable
-            .select(soundTable[*], author[name])
-            .join(author, on: soundTable[author_id] == author[id])
+            .select(soundTable[*], author[authorName])
+            .join(author, on: soundTable[authorId] == author[authorTableId])
             .filter(soundIds.contains(soundTable[id]))
 
-        for queriedSound in try db.prepare(query) {
-            var soundData: Sound = try queriedSound.decode()
-            if let dateString = try queriedSound.get(Expression<String?>("dateAdded")) {
-                if let date = dateFormatter.date(from: dateString) {
-                    soundData.dateAdded = date
-                }
-            }
-            if let isFromServer = try queriedSound.get(Expression<Bool?>("isFromServer")) {
-                soundData.isFromServer = isFromServer
-            }
-            let authorName = try queriedSound.get(author[name])
-            soundData.authorName = authorName
-
-            let soundId = try queriedSound.get(id)
-            queriedSounds[soundId] = soundData
+        for row in try db.prepare(query) {
+            let sound = try sound(from: row, authorName: row[author[authorName]])
+            queriedSounds[sound.id] = sound
         }
 
         var orderedSounds = [Sound]()
@@ -137,33 +110,22 @@ extension LocalDatabase {
     ) throws -> [Sound] {
         var queriedSounds = [Sound]()
 
-        let author_id = Expression<String>("authorId")
-        let id = Expression<String>("id")
-        let name = Expression<String>("name")
-        let is_offensive = Expression<Bool>("isOffensive")
+        let soundAuthorId = Expression<String>("authorId")
+        let authorTableId = Expression<String>("id")
+        let authorName = Expression<String>("name")
+        let isOffensive = Expression<Bool>("isOffensive")
 
         var query = soundTable
-            .select(soundTable[*], author[name])
-            .join(author, on: soundTable[author_id] == author[id])
-            .filter(author_id == authorId)
+            .select(soundTable[*], author[authorName])
+            .join(author, on: soundTable[soundAuthorId] == author[authorTableId])
+            .filter(soundAuthorId == authorId)
 
         if !isSensitiveContentAllowed {
-            query = query.filter(is_offensive == false)
+            query = query.filter(isOffensive == false)
         }
 
-        for queriedSound in try db.prepare(query) {
-            var soundData: Sound = try queriedSound.decode()
-            if let dateString = try queriedSound.get(Expression<String?>("dateAdded")) {
-                if let date = dateFormatter.date(from: dateString) {
-                    soundData.dateAdded = date
-                }
-            }
-            if let isFromServer = try queriedSound.get(Expression<Bool?>("isFromServer")) {
-                soundData.isFromServer = isFromServer
-            }
-            let authorName = try queriedSound.get(author[name])
-            soundData.authorName = authorName
-            queriedSounds.append(soundData)
+        for row in try db.prepare(query) {
+            queriedSounds.append(try sound(from: row, authorName: row[author[authorName]]))
         }
         return queriedSounds
     }
@@ -207,39 +169,22 @@ extension LocalDatabase {
     func randomSound(
         includeOffensive: Bool
     ) throws -> Sound? {
-        let author_id = Expression<String>("authorId")
-        let id = Expression<String>("id")
-        let name = Expression<String>("name")
-        let is_offensive = Expression<Bool>("isOffensive")
+        let authorId = Expression<String>("authorId")
+        let authorTableId = Expression<String>("id")
+        let authorName = Expression<String>("name")
+        let isOffensive = Expression<Bool>("isOffensive")
 
         let query = soundTable
-            .select(soundTable[*], author[name])
-            .join(author, on: soundTable[author_id] == author[id])
-            .where(soundTable[is_offensive] == includeOffensive)
-            .order(Expression<Void>(literal: "RANDOM()")) // SQLite's RANDOM() function to order the sounds randomly
+            .select(soundTable[*], author[authorName])
+            .join(author, on: soundTable[authorId] == author[authorTableId])
+            .where(soundTable[isOffensive] == includeOffensive)
+            .order(Expression<Void>(literal: "RANDOM()"))
             .limit(1)
 
-        // Fetch and decode a single result into a Sound object
-        if let queriedSound = try db.pluck(query) {
-            var soundData: Sound = try queriedSound.decode()
-
-            // Optional fields: dateAdded and isFromServer
-            if let dateString = try queriedSound.get(Expression<String?>("dateAdded")) {
-                if let date = dateFormatter.date(from: dateString) {
-                    soundData.dateAdded = date
-                }
-            }
-            if let isFromServer = try queriedSound.get(Expression<Bool?>("isFromServer")) {
-                soundData.isFromServer = isFromServer
-            }
-
-            // Set author name
-            let authorName = try queriedSound.get(author[name])
-            soundData.authorName = authorName
-
-            return soundData
+        if let row = try db.pluck(query) {
+            return try sound(from: row, authorName: row[author[authorName]])
         }
-        return nil // Return nil if no sound is found
+        return nil
     }
 
     func contentExists(withId contentId: String) throws -> Bool {
@@ -262,30 +207,39 @@ extension LocalDatabase {
     func sounds(matchingDescription searchText: String) throws -> [Sound] {
         var queriedSounds = [Sound]()
 
-        let author_id = Expression<String>("authorId")
-        let id = Expression<String>("id")
-        let name = Expression<String>("name")
+        let authorId = Expression<String>("authorId")
+        let authorTableId = Expression<String>("id")
+        let authorName = Expression<String>("name")
         let description = Expression<String>("description")
 
-        let query = soundTable.select(soundTable[*], author[name])
-            .join(author, on: soundTable[author_id] == author[id])
+        let query = soundTable
+            .select(soundTable[*], author[authorName])
+            .join(author, on: soundTable[authorId] == author[authorTableId])
             .filter(soundTable[description].like("%\(searchText)%"))
 
-        for queriedSound in try db.prepare(query) {
-            var soundData: Sound = try queriedSound.decode()
-            if let dateString = try queriedSound.get(Expression<String?>("dateAdded")) {
-                if let date = dateFormatter.date(from: dateString) {
-                    soundData.dateAdded = date
-                }
-            }
-            if let isFromServer = try queriedSound.get(Expression<Bool?>("isFromServer")) {
-                soundData.isFromServer = isFromServer
-            }
-            let authorName = try queriedSound.get(author[name])
-            soundData.authorName = authorName
-            queriedSounds.append(soundData)
+        for row in try db.prepare(query) {
+            queriedSounds.append(try sound(from: row, authorName: row[author[authorName]]))
         }
 
         return queriedSounds
     }
+}
+
+private extension LocalDatabase {
+
+    func sound(from row: Row, authorName: String) throws -> Sound {
+        Sound(
+            id: row[SoundColumns.id],
+            title: row[SoundColumns.title],
+            authorId: row[SoundColumns.authorId],
+            authorName: authorName,
+            description: row[SoundColumns.description],
+            filename: row[SoundColumns.filename],
+            dateAdded: parseLocalDatabaseDate(row[SoundColumns.dateAdded]),
+            duration: row[SoundColumns.duration],
+            isOffensive: row[SoundColumns.isOffensive],
+            isFromServer: try row.get(SoundColumns.isFromServer)
+        )
+    }
+
 }

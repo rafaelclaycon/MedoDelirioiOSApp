@@ -21,6 +21,8 @@ struct MedoDelirioBrasiliaApp: App {
 
     @State private var helper = PlayRandomSoundHelper()
 
+    private let contentRepository = ContentRepository(database: LocalDatabase.shared)
+
     /// Shared instance used across the app to ensure cache consistency
     private let userFolderRepository = UserFolderRepository(database: LocalDatabase.shared)
 
@@ -29,6 +31,7 @@ struct MedoDelirioBrasiliaApp: App {
             MainView(
                 tabSelection: $tabSelection,
                 padSelection: $state,
+                contentRepository: contentRepository,
                 userFolderRepository: userFolderRepository
             )
             .onOpenURL(perform: handleURL)

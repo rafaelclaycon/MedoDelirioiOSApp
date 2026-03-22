@@ -31,11 +31,9 @@ struct PodcastEpisode: Identifiable, Equatable, Hashable {
 
         if let daysAgo = calendar.dateComponents([.day], from: calendar.startOfDay(for: pubDate), to: calendar.startOfDay(for: now)).day,
            daysAgo >= 0, daysAgo <= 7 {
-            let formatter = RelativeDateTimeFormatter()
-            formatter.unitsStyle = .full
-            return formatter.localizedString(for: pubDate, relativeTo: now)
+            return Formatter.relativeDateTime.localizedString(for: pubDate, relativeTo: now)
         } else {
-            return pubDate.formatted(.dateTime.day().month(.wide).year())
+            return Formatter.episodeAbsoluteDate.string(from: pubDate)
         }
     }
 

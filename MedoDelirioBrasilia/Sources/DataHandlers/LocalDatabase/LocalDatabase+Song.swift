@@ -10,6 +10,18 @@ import SQLite
 
 private typealias Expression = SQLite.Expression
 
+private enum SongColumns {
+    static let id = Expression<String>("id")
+    static let title = Expression<String>("title")
+    static let description = Expression<String>("description")
+    static let genreId = Expression<String>("genreId")
+    static let duration = Expression<Double>("duration")
+    static let filename = Expression<String>("filename")
+    static let dateAdded = Expression<String?>("dateAdded")
+    static let isOffensive = Expression<Bool>("isOffensive")
+    static let isFromServer = Expression<Bool?>("isFromServer")
+}
+
 extension LocalDatabase {
 
     func insert(song newSong: Song) throws {
@@ -20,37 +32,21 @@ extension LocalDatabase {
     func songs(allowSensitive: Bool) throws -> [Song] {
         var queriedGenres = [Song]()
 
-        let genre_id = Expression<String>("genreId")
-        let genre_id_on_genre_table = Expression<String>("id")
-        let genre_name = Expression<String>("name")
+        let genreId = Expression<String>("genreId")
+        let genreTableId = Expression<String>("id")
+        let genreName = Expression<String>("name")
         let isOffensive = Expression<Bool>("isOffensive")
-        
-        let dateFormatter = DateFormatter()
-        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
-        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS"
-        dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)
 
-        var query = songTable.select(songTable[*], musicGenreTable[genre_name]).join(musicGenreTable, on: songTable[genre_id] == musicGenreTable[genre_id_on_genre_table])
+        var query = songTable
+            .select(songTable[*], musicGenreTable[genreName])
+            .join(musicGenreTable, on: songTable[genreId] == musicGenreTable[genreTableId])
 
         if !allowSensitive {
             query = query.filter(isOffensive == false)
         }
 
-        for queriedSong in try db.prepare(query) {
-            var song: Song = try queriedSong.decode()
-
-            if let dateString = try queriedSong.get(Expression<String?>("dateAdded")) {
-                if let date = dateFormatter.date(from: dateString) {
-                    song.dateAdded = date
-                }
-            }
-
-            if let isFromServer = try queriedSong.get(Expression<Bool?>("isFromServer")) {
-                song.isFromServer = isFromServer
-            }
-
-            song.genreName = try queriedSong.get(musicGenreTable[genre_name])
-            queriedGenres.append(song)
+        for row in try db.prepare(query) {
+            queriedGenres.append(try song(from: row, genreName: row[musicGenreTable[genreName]]))
         }
         return queriedGenres
     }
@@ -63,17 +59,16 @@ extension LocalDatabase {
         var queriedSongs = [Song]()
 
         let name = Expression<String>("name")
-        let genre_id = Expression<String>("genreId")
+        let genreId = Expression<String>("genreId")
         let id = Expression<String>("id")
 
-        let query = songTable.select(songTable[*], musicGenreTable[name])
-            .join(musicGenreTable, on: songTable[genre_id] == musicGenreTable[id])
+        let query = songTable
+            .select(songTable[*], musicGenreTable[name])
+            .join(musicGenreTable, on: songTable[genreId] == musicGenreTable[id])
             .filter(songTable[id] == songId)
 
-        for queriedSong in try db.prepare(query) {
-            var song: Song = try queriedSong.decode()
-            song.genreName = try queriedSong.get(name)
-            queriedSongs.append(song)
+        for row in try db.prepare(query) {
+            queriedSongs.append(try song(from: row, genreName: row[musicGenreTable[name]]))
         }
         return queriedSongs.first
     }
@@ -116,29 +111,18 @@ extension LocalDatabase {
     func songs(withIds songIds: [String]) throws -> [Song] {
         var queriedSongs = [String: Song]()
 
-        let genre_id = Expression<String>("genreId")
+        let genreId = Expression<String>("genreId")
         let id = Expression<String>("id")
         let name = Expression<String>("name")
 
         let query = songTable
             .select(songTable[*], musicGenreTable[name])
-            .join(musicGenreTable, on: songTable[genre_id] == musicGenreTable[id])
+            .join(musicGenreTable, on: songTable[genreId] == musicGenreTable[id])
             .filter(songIds.contains(songTable[id]))
 
-        for queriedSong in try db.prepare(query) {
-            var songData: Song = try queriedSong.decode()
-            if let dateString = try queriedSong.get(Expression<String?>("dateAdded")) {
-                if let date = dateFormatter.date(from: dateString) {
-                    songData.dateAdded = date
-                }
-            }
-            if let isFromServer = try queriedSong.get(Expression<Bool?>("isFromServer")) {
-                songData.isFromServer = isFromServer
-            }
-            songData.genreName = try queriedSong.get(name)
-
-            let songId = try queriedSong.get(id)
-            queriedSongs[songId] = songData
+        for row in try db.prepare(query) {
+            let song = try song(from: row, genreName: row[musicGenreTable[name]])
+            queriedSongs[song.id] = song
         }
 
         var orderedSongs = [Song]()
@@ -150,4 +134,23 @@ extension LocalDatabase {
 
         return orderedSongs
     }
+}
+
+private extension LocalDatabase {
+
+    func song(from row: Row, genreName: String) throws -> Song {
+        Song(
+            id: row[SongColumns.id],
+            title: row[SongColumns.title],
+            description: row[SongColumns.description],
+            genreId: row[SongColumns.genreId],
+            genreName: genreName,
+            duration: row[SongColumns.duration],
+            filename: row[SongColumns.filename],
+            dateAdded: parseLocalDatabaseDate(row[SongColumns.dateAdded]) ?? Date(),
+            isOffensive: row[SongColumns.isOffensive],
+            isFromServer: try row.get(SongColumns.isFromServer)
+        )
+    }
+
 }

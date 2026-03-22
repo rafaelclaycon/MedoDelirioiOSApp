@@ -77,6 +77,7 @@ final class EpisodePlayer {
     @ObservationIgnored private var lastProgressSaveTime: Date = .distantPast
     @ObservationIgnored private var currentSessionStart: Date?
     @ObservationIgnored private var currentSessionStartTime: TimeInterval = 0
+    @ObservationIgnored private var isSceneActive = true
 
     @ObservationIgnored private lazy var downloadCoordinator: DownloadCoordinator = {
         DownloadCoordinator { [weak self] progress in
@@ -142,7 +143,9 @@ final class EpisodePlayer {
             player.play()
             player.rate = playbackSpeed
             isPlaying = true
-            startTimer()
+            if isSceneActive {
+                startTimer()
+            }
         }
         updateNowPlayingInfo()
     }
@@ -185,20 +188,22 @@ final class EpisodePlayer {
         guard let player = audioPlayer else { return }
         let clamped = min(max(time, 0), duration)
         player.currentTime = clamped
-        currentTime = clamped
+        if isSceneActive {
+            currentTime = clamped
+        }
         updateNowPlayingInfo()
     }
 
     /// Skips forward by the given number of seconds (default 30).
     @MainActor
     func skipForward(_ seconds: TimeInterval = 30) {
-        seek(to: currentTime + seconds)
+        seek(to: currentPlaybackTime() + seconds)
     }
 
     /// Skips backward by the given number of seconds (default 15).
     @MainActor
     func skipBackward(_ seconds: TimeInterval = 15) {
-        seek(to: currentTime - seconds)
+        seek(to: currentPlaybackTime() - seconds)
     }
 
     /// Changes the playback speed and persists the choice.
@@ -234,6 +239,24 @@ final class EpisodePlayer {
     func dismissCellularDownload() {
         pendingCellularDownload = nil
         pendingDownloadSizeMB = 0
+    }
+
+    @MainActor
+    func setSceneActive(_ isActive: Bool) {
+        guard isSceneActive != isActive else { return }
+        isSceneActive = isActive
+
+        if isActive {
+            currentTime = currentPlaybackTime()
+            if isPlaying {
+                startTimer()
+            }
+        } else {
+            currentTime = currentPlaybackTime()
+            stopTimer()
+            updateNowPlayingInfo()
+            saveProgress()
+        }
     }
 
     // MARK: - Cellular Check
@@ -345,7 +368,9 @@ final class EpisodePlayer {
         if let saved = progressStore?.progress(for: episode.id),
            saved.currentTime > 0, saved.currentTime < player.duration {
             player.currentTime = saved.currentTime
-            currentTime = saved.currentTime
+            if isSceneActive {
+                currentTime = saved.currentTime
+            }
         }
 
         player.play()
@@ -355,7 +380,9 @@ final class EpisodePlayer {
         configureRemoteCommands()
         updateNowPlayingInfo()
         loadArtwork(for: episode)
-        startTimer()
+        if isSceneActive {
+            startTimer()
+        }
 
         Task {
             await analyticsService?.send(
@@ -396,9 +423,11 @@ final class EpisodePlayer {
         stopTimer()
         timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             guard let self, let player = self.audioPlayer else { return }
-            self.currentTime = player.currentTime
-            self.updateNowPlayingInfo()
-            self.saveProgressThrottled()
+            let playbackTime = player.currentTime
+            if self.isSceneActive {
+                self.currentTime = playbackTime
+            }
+            self.saveProgressThrottled(currentTime: playbackTime)
         }
     }
 
@@ -433,24 +462,30 @@ final class EpisodePlayer {
 
     // MARK: - Progress Persistence
 
+    @MainActor
     private func saveProgress() {
+        let playbackTime = currentPlaybackTime()
+        guard let episode = currentEpisode, playbackTime > 0, duration > 0 else { return }
+        progressStore?.save(episodeID: episode.id, currentTime: playbackTime, duration: duration)
+        lastProgressSaveTime = Date()
+    }
+
+    @MainActor
+    private func saveProgressThrottled(currentTime: TimeInterval) {
+        guard Date().timeIntervalSince(lastProgressSaveTime) >= 5 else { return }
         guard let episode = currentEpisode, currentTime > 0, duration > 0 else { return }
         progressStore?.save(episodeID: episode.id, currentTime: currentTime, duration: duration)
         lastProgressSaveTime = Date()
     }
 
-    private func saveProgressThrottled() {
-        guard Date().timeIntervalSince(lastProgressSaveTime) >= 5 else { return }
-        saveProgress()
-    }
-
     // MARK: - Listen Session Logging
 
+    @MainActor
     private func recordCurrentSession(didComplete: Bool) {
         guard let start = currentSessionStart,
               let episodeId = currentEpisode?.id else { return }
         let now = Date()
-        let listened = currentTime - currentSessionStartTime
+        let listened = currentPlaybackTime() - currentSessionStartTime
         guard listened > 0 else { return }
         listenStore?.recordSession(
             episodeId: episodeId,
@@ -463,9 +498,10 @@ final class EpisodePlayer {
         currentSessionStartTime = 0
     }
 
+    @MainActor
     private func beginSession() {
         currentSessionStart = Date()
-        currentSessionStartTime = currentTime
+        currentSessionStartTime = currentPlaybackTime()
     }
 
     // MARK: - Remote Commands
@@ -518,21 +554,27 @@ final class EpisodePlayer {
     @MainActor
     private func handleRemoteBookmark() {
         guard let episode = currentEpisode else { return }
-        bookmarkStore?.addBookmark(episodeId: episode.id, timestamp: currentTime)
+        bookmarkStore?.addBookmark(episodeId: episode.id, timestamp: currentPlaybackTime())
         pendingRemoteBookmark = true
     }
 
     // MARK: - Now Playing Info
 
+    @MainActor
     private func updateNowPlayingInfo() {
         guard let episode = currentEpisode else { return }
 
         var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [String: Any]()
         info[MPMediaItemPropertyTitle] = episode.title
         info[MPMediaItemPropertyPlaybackDuration] = duration
-        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
+        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentPlaybackTime()
         info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? Double(playbackSpeed) : 0.0
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
+
+    @MainActor
+    private func currentPlaybackTime() -> TimeInterval {
+        audioPlayer?.currentTime ?? currentTime
     }
 
     private func clearNowPlayingInfo() {
