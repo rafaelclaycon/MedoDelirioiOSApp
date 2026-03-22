@@ -344,6 +344,7 @@ extension AppDelegate {
         createFolder(named: InternalFolderNames.downloadedSounds)
         createFolder(named: InternalFolderNames.downloadedSongs)
         createFolder(named: InternalFolderNames.downloadedEpisodes)
+        createFolder(named: InternalFolderNames.transcripts)
     }
     
     func createFolder(named folderName: String) {

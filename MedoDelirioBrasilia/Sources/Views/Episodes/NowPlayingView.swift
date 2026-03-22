@@ -20,8 +20,14 @@ struct NowPlayingView: View {
     @State private var editingBookmark: EpisodeBookmark?
     @State private var bookmarksSortAscending: Bool = true
     @State private var showSidecastClip: Bool = false
+    @State private var transcriptProvider = TranscriptProvider()
+    @State private var showTranscript: Bool = false
 
     @Environment(\.colorScheme) private var colorScheme
+
+    private var transcriptEnabled: Bool {
+        FeatureFlag.isEnabled(.projectEleDisseIssoMesmo)
+    }
 
     var body: some View {
         ScrollView {
@@ -29,7 +35,7 @@ struct NowPlayingView: View {
                 Spacer()
                     .frame(height: .spacing(.xLarge))
 
-                artwork
+                heroSection
                     .padding(.top, .spacing(.medium))
 
                 Spacer()
@@ -51,6 +57,20 @@ struct NowPlayingView: View {
                     .frame(height: .spacing(.xxLarge))
 
                 HStack(spacing: .spacing(.medium)) {
+                    if transcriptEnabled {
+                        GlassButton(
+                            symbol: showTranscript ? "text.quote" : "text.quote",
+                            title: showTranscript ? "Ocultar Transcrição" : "Mostrar Transcrição",
+                            color: .darkerGreen,
+                            lightModeLabelColor: .darkerGreen,
+                            action: {
+                                withAnimation(.easeInOut(duration: 0.25)) {
+                                    showTranscript.toggle()
+                                }
+                            }
+                        )
+                    }
+
                     GlassButton(
                         symbol: "bookmark.fill",
                         title: "Marcar Esse Ponto",
@@ -101,6 +121,52 @@ struct NowPlayingView: View {
                 player.pendingRemoteBookmark = false
                 toast = Toast(message: "Marcador Adicionado", type: .success)
             }
+            if transcriptEnabled {
+                transcriptProvider.load(episodeId: player.currentEpisode?.id)
+            }
+        }
+        .onChange(of: player.currentEpisode?.id) {
+            if transcriptEnabled {
+                transcriptProvider.load(episodeId: player.currentEpisode?.id)
+            }
+        }
+        .onChange(of: player.currentTime) {
+            if showTranscript {
+                transcriptProvider.update(currentTime: player.currentTime)
+            }
+        }
+        .onChange(of: showTranscript) {
+            if showTranscript {
+                transcriptProvider.update(currentTime: player.currentTime)
+            }
+        }
+    }
+
+    // MARK: - Hero Section
+
+    @ViewBuilder
+    private var heroSection: some View {
+        if showTranscript {
+            switch transcriptProvider.state {
+            case .idle:
+                artwork
+            case .notAvailable(let reason):
+                TranscriptDebugView(reason: reason)
+            case .loaded:
+                VStack(alignment: .leading, spacing: .spacing(.xSmall)) {
+                    TranscriptOverlayView(
+                        previousCue: transcriptProvider.previousCue,
+                        currentCue: transcriptProvider.currentCue,
+                        nextCue: transcriptProvider.nextCue
+                    )
+
+                    Text("Transcrição automatizada. Podem haver erros.")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+        } else {
+            artwork
         }
     }
 
