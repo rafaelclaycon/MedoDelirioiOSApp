@@ -10,6 +10,7 @@ import SwiftUI
 struct NoSearchResultsView: View {
 
     let searchText: String
+    var showSuggestionButton: Bool = true
 
     @State private var showSuggestionAlert: Bool = false
 
@@ -36,8 +37,10 @@ struct NoSearchResultsView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
 
-                suggestionButton
-                    .padding(.top, .spacing(.large))
+                if showSuggestionButton {
+                    suggestionButton
+                        .padding(.top, .spacing(.large))
+                }
 
                 Spacer(minLength: .spacing(.xxxLarge))
             }

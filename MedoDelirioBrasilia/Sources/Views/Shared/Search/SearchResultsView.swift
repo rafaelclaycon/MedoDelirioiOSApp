@@ -75,7 +75,10 @@ struct SearchResultsView: View {
             }
 
             if showNoResultsView {
-                NoSearchResultsView(searchText: searchString)
+                NoSearchResultsView(
+                    searchText: searchString,
+                    showSuggestionButton: searchMode == .virgulas
+                )
             } else if searchMode == .virgulas {
                     LazyVGrid(
                         columns: columns,
@@ -237,26 +240,28 @@ struct SearchResultsView: View {
                 }
 
                 if searchMode == .episodios {
-                    // MARK: - Episode Transcripts (gated by download state)
+                    // MARK: - Episode Transcripts (gated by FF + download state)
 
-                    if transcriptsDownloaded {
-                        if let transcriptResults = results.episodesMatchingTranscript, !transcriptResults.isEmpty {
-                            CollapsibleResultSection(
-                                items: transcriptResults,
-                                itemCountWhenCollapsed: itemCountWhenCollapsed,
-                                headerSymbol: "text.quote",
-                                headerTitle: "Transcrições dos Episódios",
-                                searchString: searchString,
-                                contentView: { result in
-                                    TranscriptSearchResultRow(
-                                        result: result,
-                                        highlight: searchString
-                                    )
-                                }
-                            )
+                    if FeatureFlag.isEnabled(.projectEleDisseIssoMesmo) {
+                        if transcriptsDownloaded {
+                            if let transcriptResults = results.episodesMatchingTranscript, !transcriptResults.isEmpty {
+                                CollapsibleResultSection(
+                                    items: transcriptResults,
+                                    itemCountWhenCollapsed: itemCountWhenCollapsed,
+                                    headerSymbol: "text.quote",
+                                    headerTitle: "Transcrições dos Episódios",
+                                    searchString: searchString,
+                                    contentView: { result in
+                                        TranscriptSearchResultRow(
+                                            result: result,
+                                            highlight: searchString
+                                        )
+                                    }
+                                )
+                            }
+                        } else {
+                            TranscriptDownloadPromptView()
                         }
-                    } else {
-                        TranscriptDownloadPromptView()
                     }
 
                     // MARK: - Episodes (always visible)
