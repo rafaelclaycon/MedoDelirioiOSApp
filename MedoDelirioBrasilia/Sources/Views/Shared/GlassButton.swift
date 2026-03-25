@@ -7,6 +7,7 @@ struct GlassButton: View {
     let color: Color
     let lightModeLabelColor: Color
     let fullWidth: Bool
+    let compact: Bool
     let action: () -> Void
 
     @Environment(\.colorScheme) var colorScheme
@@ -17,6 +18,7 @@ struct GlassButton: View {
         color: Color,
         lightModeLabelColor: Color? = nil,
         fullWidth: Bool = false,
+        compact: Bool = false,
         action: @escaping () -> Void
     ) {
         self.symbol = symbol
@@ -24,6 +26,7 @@ struct GlassButton: View {
         self.color = color
         self.lightModeLabelColor = lightModeLabelColor ?? color
         self.fullWidth = fullWidth
+        self.compact = compact
         self.action = action
     }
 
@@ -41,7 +44,7 @@ struct GlassButton: View {
                 .fontWeight(.regular)
                 .foregroundStyle(resolvedForeground)
                 .frame(maxWidth: fullWidth ? .infinity : nil)
-                .padding(.vertical, .spacing(.medium))
+                .padding(.vertical, .spacing(compact ? .xSmall : .medium))
                 .padding(.horizontal, .spacing(.medium))
                 .glassEffect(
                     .regular.tint(
@@ -58,7 +61,7 @@ struct GlassButton: View {
                 label
                     .font(.subheadline)
                     .fontWeight(.regular)
-                    .padding(.vertical, .spacing(.xxSmall))
+                    .padding(.vertical, .spacing(compact ? .xxxSmall : .xxSmall))
                     .frame(maxWidth: fullWidth ? .infinity : nil)
             }
             .foregroundColor(.blue)
@@ -70,7 +73,7 @@ struct GlassButton: View {
                     .font(.body)
                     .fontWeight(.regular)
                     .foregroundStyle(color)
-                    .padding(.vertical, .spacing(.xxSmall))
+                    .padding(.vertical, .spacing(compact ? .xxxSmall : .xxSmall))
                     .frame(maxWidth: fullWidth ? .infinity : nil)
             }
             .buttonStyle(.bordered)

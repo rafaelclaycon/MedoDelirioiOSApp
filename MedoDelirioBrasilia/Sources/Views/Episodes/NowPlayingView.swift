@@ -21,7 +21,8 @@ struct NowPlayingView: View {
     @State private var bookmarksSortAscending: Bool = true
     @State private var showSidecastClip: Bool = false
     @State private var transcriptProvider = TranscriptProvider()
-    @State private var showTranscript: Bool = false
+    @AppStorage("showTranscript") private var showTranscript: Bool = false
+    @State private var showBookmarks: Bool = false
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -30,79 +31,12 @@ struct NowPlayingView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                Spacer()
-                    .frame(height: .spacing(.xLarge))
-
-                heroSection
-                    .padding(.top, .spacing(.medium))
-
-                Spacer()
-                    .frame(height: .spacing(.xxLarge))
-
-                episodeInfo
-
-                Spacer()
-                    .frame(height: .spacing(.xxLarge))
-
-                progressSection
-
-                Spacer()
-                    .frame(height: .spacing(.small))
-
-                playbackControls
-
-                Spacer()
-                    .frame(height: .spacing(.xxLarge))
-
-                HStack(spacing: .spacing(.medium)) {
-                    if transcriptEnabled {
-                        GlassButton(
-                            symbol: showTranscript ? "text.quote" : "text.quote",
-                            title: showTranscript ? "Ocultar Transcrição" : "Mostrar Transcrição",
-                            color: .darkerGreen,
-                            lightModeLabelColor: .darkerGreen,
-                            action: {
-                                withAnimation(.easeInOut(duration: 0.25)) {
-                                    showTranscript.toggle()
-                                }
-                            }
-                        )
-                    }
-
-                    GlassButton(
-                        symbol: "bookmark.fill",
-                        title: "Marcar Esse Ponto",
-                        color: .rubyRed,
-                        lightModeLabelColor: .rubyRed,
-                        action: {
-                            guard let episodeId = player.currentEpisode?.id else { return }
-                            bookmarkStore.addBookmark(episodeId: episodeId, timestamp: player.currentTime)
-                            toast = Toast(message: "Marcador Adicionado", type: .success)
-                        }
-                    )
-
-                    if FeatureFlag.isEnabled(.projectSidecast) {
-                        GlassIconButton(
-                            symbol: "scissors",
-                            color: .orange,
-                            action: {
-                                if player.isPlaying {
-                                    player.togglePlayPause()
-                                }
-                                showSidecastClip = true
-                            }
-                        )
-                    }
-                }
-
-                Spacer()
-                    .frame(height: .spacing(.xLarge))
-
-                bookmarkList
+        Group {
+            if transcriptEnabled {
+                enhancedLayout
+            } else {
+                legacyLayout
             }
-            .padding(.horizontal, .spacing(.xLarge))
         }
         .presentationDragIndicator(.visible)
         .topToast($toast)
@@ -142,31 +76,220 @@ struct NowPlayingView: View {
         }
     }
 
-    // MARK: - Hero Section
+    // MARK: - Layouts
+
+    private var legacyLayout: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                Spacer()
+                    .frame(height: .spacing(.xLarge))
+
+                artwork
+                    .padding(.top, .spacing(.medium))
+
+                Spacer()
+                    .frame(height: .spacing(.xxLarge))
+
+                episodeInfo
+
+                Spacer()
+                    .frame(height: .spacing(.xxLarge))
+
+                progressSection
+
+                Spacer()
+                    .frame(height: .spacing(.small))
+
+                playbackControls
+
+                Spacer()
+                    .frame(height: .spacing(.xxLarge))
+
+                actionButtons
+
+                Spacer()
+                    .frame(height: .spacing(.xLarge))
+
+                bookmarkList
+            }
+            .padding(.horizontal, .spacing(.xLarge))
+        }
+    }
+
+    private var enhancedLayout: some View {
+        VStack(spacing: 0) {
+            topContent
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.top, .spacing(.xxxLarge))
+
+            toggleRow
+                .padding(.top, .spacing(.medium))
+                .padding(.bottom, .spacing(.medium))
+
+            episodeInfo
+
+            Spacer()
+                .frame(height: .spacing(.medium))
+
+            progressSection
+
+            Spacer()
+                .frame(height: .spacing(.small))
+
+            playbackControls
+
+            Spacer()
+                .frame(height: .spacing(.large))
+
+            actionButtons
+
+            Spacer()
+                .frame(height: .spacing(.small))
+        }
+        .padding(.horizontal, .spacing(.xLarge))
+    }
+
+    // MARK: - Enhanced Layout Components
 
     @ViewBuilder
-    private var heroSection: some View {
-        if showTranscript {
-            switch transcriptProvider.state {
-            case .idle:
-                artwork
-            case .notAvailable(let reason):
-                TranscriptDebugView(reason: reason)
-            case .loaded:
-                VStack(alignment: .leading, spacing: .spacing(.xSmall)) {
-                    TranscriptOverlayView(
-                        previousCue: transcriptProvider.previousCue,
-                        currentCue: transcriptProvider.currentCue,
-                        nextCue: transcriptProvider.nextCue
-                    )
-
-                    Text("Transcrição automatizada. Podem haver erros.")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
-            }
+    private var topContent: some View {
+        if showBookmarks {
+            bookmarksContent
+        } else if showTranscript {
+            transcriptContent
         } else {
             artwork
+        }
+    }
+
+    @ViewBuilder
+    private var transcriptContent: some View {
+        switch transcriptProvider.state {
+        case .idle:
+            artwork
+        case .notAvailable(let reason):
+            TranscriptDebugView(reason: reason)
+        case .loaded:
+            VStack(alignment: .leading, spacing: .spacing(.xSmall)) {
+                TranscriptOverlayView(
+                    previousCue: transcriptProvider.previousCue,
+                    currentCue: transcriptProvider.currentCue,
+                    nextCue: transcriptProvider.nextCue
+                )
+
+                Text("Transcrição gerada por IA. Pode conter erros.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var bookmarksContent: some View {
+        let bookmarks = sortedBookmarks
+        if bookmarks.isEmpty {
+            emptyBookmarksView
+        } else {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack {
+                        Text("Meus Marcadores")
+                            .font(.headline)
+
+                        Spacer()
+
+                        Button {
+                            bookmarksSortAscending.toggle()
+                        } label: {
+                            Image(systemName: bookmarksSortAscending ? "arrow.up" : "arrow.down")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(Color.rubyRed)
+                        }
+                    }
+                    .padding(.bottom, .spacing(.small))
+
+                    ForEach(Array(bookmarks.enumerated()), id: \.element.id) { index, bookmark in
+                        bookmarkRow(bookmark)
+
+                        if index < bookmarks.count - 1 {
+                            Divider()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var emptyBookmarksView: some View {
+        VStack(spacing: .spacing(.small)) {
+            Image(systemName: "bookmark")
+                .font(.system(size: 36))
+                .foregroundStyle(.secondary)
+
+            Text("Nenhum marcador adicionado")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var toggleRow: some View {
+        HStack(spacing: .spacing(.small)) {
+            GlassButton(
+                symbol: showTranscript && !showBookmarks ? "text.quote" : nil,
+                title: "Transcrição",
+                color: .clear,
+                lightModeLabelColor: .clear,
+                compact: true,
+                action: {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        showBookmarks = false
+                        showTranscript.toggle()
+                    }
+                }
+            )
+
+            GlassButton(
+                symbol: showBookmarks ? "bookmark.fill" : nil,
+                title: "Marcadores",
+                color: .clear,
+                lightModeLabelColor: .clear,
+                compact: true,
+                action: {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        showBookmarks.toggle()
+                    }
+                }
+            )
+        }
+    }
+
+    private var actionButtons: some View {
+        HStack(spacing: .spacing(.medium)) {
+            GlassButton(
+                symbol: "bookmark.fill",
+                title: "Marcar",
+                color: .rubyRed,
+                lightModeLabelColor: .rubyRed,
+                action: {
+                    guard let episodeId = player.currentEpisode?.id else { return }
+                    bookmarkStore.addBookmark(episodeId: episodeId, timestamp: player.currentTime)
+                    toast = Toast(message: "Marcador Adicionado", type: .success)
+                }
+            )
+
+            if FeatureFlag.isEnabled(.projectSidecast) {
+                GlassIconButton(
+                    symbol: "scissors",
+                    color: .orange,
+                    action: {
+                        if player.isPlaying {
+                            player.togglePlayPause()
+                        }
+                        showSidecastClip = true
+                    }
+                )
+            }
         }
     }
 
