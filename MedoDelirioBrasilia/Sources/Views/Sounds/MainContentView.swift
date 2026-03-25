@@ -32,6 +32,7 @@ struct MainContentView: View {
     @State private var reactionsState: LoadingState<[Reaction]> = .loading
     @State private var showSearchFeedbackAlert: Bool = false
     @State private var searchPlayable: PlayableContentState?
+    @State private var searchMode: SearchMode = .virgulas
 
     // Folders
     @State private var deleteFolderAide = DeleteFolderViewAide()
@@ -172,6 +173,7 @@ struct MainContentView: View {
                                     reactionsState: reactionsState,
                                     searchToast: $searchToast,
                                     isInSearchMode: $isInSearchMode,
+                                    searchMode: $searchMode,
                                     searchSuggestionsContent: searchSuggestionsContent,
                                     playable: searchPlayable,
                                     containerWidth: geometry.size.width,
@@ -240,6 +242,7 @@ struct MainContentView: View {
                                 reactionsState: reactionsState,
                                 searchToast: $searchToast,
                                 isInSearchMode: $isInSearchMode,
+                                searchMode: $searchMode,
                                 searchSuggestionsContent: searchSuggestionsContent,
                                 playable: searchPlayable,
                                 containerWidth: geometry.size.width,
@@ -262,6 +265,7 @@ struct MainContentView: View {
                                 reactionsState: reactionsState,
                                 searchToast: $searchToast,
                                 isInSearchMode: $isInSearchMode,
+                                searchMode: $searchMode,
                                 searchSuggestionsContent: searchSuggestionsContent,
                                 playable: searchPlayable,
                                 containerWidth: geometry.size.width,
@@ -533,6 +537,7 @@ extension MainContentView {
         let reactionsState: LoadingState<[Reaction]>
         @Binding var searchToast: Toast?
         @Binding var isInSearchMode: Bool
+        @Binding var searchMode: SearchMode
         let searchSuggestionsContent: SuggestionsContent
         let playable: PlayableContentState?
         let containerWidth: CGFloat
@@ -559,6 +564,7 @@ extension MainContentView {
                             containerWidth: containerWidth,
                             toast: $searchToast,
                             menuOptions: [.sharingOptions(), .organizingOptions(), .detailsOptions()],
+                            searchMode: $searchMode,
                             retryLoadReactionsAction: retryLoadReactionsAction
                         )
                     }

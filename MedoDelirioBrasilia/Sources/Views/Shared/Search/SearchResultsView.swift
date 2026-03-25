@@ -17,32 +17,38 @@ struct SearchResultsView: View {
     let containerWidth: CGFloat
     var toast: Binding<Toast?>
     var menuOptions: [ContextMenuSection]
+    @Binding var searchMode: SearchMode
     var retryLoadReactionsAction: (() async -> Void)? = nil
 
     @State private var columns: [GridItem] = []
 
     private let itemCountWhenCollapsed: Int = 4
+    private let transcriptsDownloaded: Bool = false
 
     private var hasAnyNonReactionResults: Bool {
-        let hasContent = !(results.soundsMatchingTitle?.isEmpty ?? true) ||
-            !(results.soundsMatchingContent?.isEmpty ?? true) ||
-            !(results.songsMatchingTitle?.isEmpty ?? true) ||
-            !(results.songsMatchingContent?.isEmpty ?? true) ||
-            !(results.authors?.isEmpty ?? true) ||
-            !(results.folders?.isEmpty ?? true) ||
-            !(results.episodesMatchingTitle?.isEmpty ?? true) ||
-            !(results.episodesMatchingDescription?.isEmpty ?? true) ||
-            !(results.episodesMatchingTranscript?.isEmpty ?? true)
-        return hasContent
+        switch searchMode {
+        case .virgulas:
+            return !(results.soundsMatchingTitle?.isEmpty ?? true) ||
+                !(results.soundsMatchingContent?.isEmpty ?? true) ||
+                !(results.songsMatchingTitle?.isEmpty ?? true) ||
+                !(results.songsMatchingContent?.isEmpty ?? true) ||
+                !(results.authors?.isEmpty ?? true) ||
+                !(results.folders?.isEmpty ?? true)
+        case .episodios:
+            return !(results.episodesMatchingTitle?.isEmpty ?? true) ||
+                !(results.episodesMatchingDescription?.isEmpty ?? true)
+        }
     }
 
     private var showNoResultsView: Bool {
-        // Show no results only if we have no content AND reactions are loaded with no matches
         guard !hasAnyNonReactionResults else { return false }
-        guard case .loaded = reactionsState else { return false }
-        let hasMatchingTitle = !(results.reactionsMatchingTitle?.isEmpty ?? true)
-        let hasMatchingFeeling = !(results.reactionsMatchingFeeling?.isEmpty ?? true)
-        return !hasMatchingTitle && !hasMatchingFeeling
+        if searchMode == .virgulas {
+            guard case .loaded = reactionsState else { return false }
+            let hasMatchingTitle = !(results.reactionsMatchingTitle?.isEmpty ?? true)
+            let hasMatchingFeeling = !(results.reactionsMatchingFeeling?.isEmpty ?? true)
+            return !hasMatchingTitle && !hasMatchingFeeling
+        }
+        return true
     }
 
     // MARK: - Environment
@@ -53,221 +59,242 @@ struct SearchResultsView: View {
     // MARK: - View Body
 
     var body: some View {
-        if showNoResultsView {
-            NoSearchResultsView(searchText: searchString)
-        } else {
-            VStack(spacing: .spacing(.medium)) {
-                LazyVGrid(
-                    columns: columns,
-                    spacing: .spacing(.medium)
-                ) {
-                    // MARK: - Sounds
+        VStack(spacing: .spacing(.medium)) {
+            Picker("", selection: $searchMode) {
+                ForEach(SearchMode.allCases) { mode in
+                    Text(mode.displayName).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, .spacing(.medium))
+            .onAppear {
+                UISegmentedControl.appearance().setTitleTextAttributes(
+                    [.font: UIFont.systemFont(ofSize: 15, weight: .semibold)],
+                    for: .normal
+                )
+            }
 
-                    if let soundsMatchingTitle = results.soundsMatchingTitle, !soundsMatchingTitle.isEmpty {
-                        CollapsibleResultSection(
-                            items: soundsMatchingTitle,
-                            itemCountWhenCollapsed: itemCountWhenCollapsed,
-                            headerSymbol: "quote.bubble",
-                            headerTitle: "Nome das Vírgulas",
-                            searchString: searchString,
-                            contentView: { item in
-                                PlayableContentView(
-                                    content: item,
-                                    favorites: playable.favoritesKeeper,
-                                    highlighted: Set<String>(),
-                                    nowPlaying: playable.nowPlayingKeeper,
-                                    selectedItems: Set<String>(),
-                                    currentContentListMode: .constant(.regular)
-                                )
-                                .contentShape(
-                                    .contextMenuPreview,
-                                    RoundedRectangle(cornerRadius: .spacing(.large), style: .continuous)
-                                )
-                                .onTapGesture {
-                                    onContentSelected(item, loadedContent: soundsMatchingTitle)
-                                }
-                                .contextMenu {
-                                    contextMenuOptionsView(
+            if showNoResultsView {
+                NoSearchResultsView(searchText: searchString)
+            } else if searchMode == .virgulas {
+                    LazyVGrid(
+                        columns: columns,
+                        spacing: .spacing(.medium)
+                    ) {
+                        // MARK: - Sounds
+
+                        if let soundsMatchingTitle = results.soundsMatchingTitle, !soundsMatchingTitle.isEmpty {
+                            CollapsibleResultSection(
+                                items: soundsMatchingTitle,
+                                itemCountWhenCollapsed: itemCountWhenCollapsed,
+                                headerSymbol: "quote.bubble",
+                                headerTitle: "Nome das Vírgulas",
+                                searchString: searchString,
+                                contentView: { item in
+                                    PlayableContentView(
                                         content: item,
-                                        menuOptions: menuOptions,
                                         favorites: playable.favoritesKeeper,
-                                        loadedContent: soundsMatchingTitle
+                                        highlighted: Set<String>(),
+                                        nowPlaying: playable.nowPlayingKeeper,
+                                        selectedItems: Set<String>(),
+                                        currentContentListMode: .constant(.regular)
+                                    )
+                                    .contentShape(
+                                        .contextMenuPreview,
+                                        RoundedRectangle(cornerRadius: .spacing(.large), style: .continuous)
+                                    )
+                                    .onTapGesture {
+                                        onContentSelected(item, loadedContent: soundsMatchingTitle)
+                                    }
+                                    .contextMenu {
+                                        contextMenuOptionsView(
+                                            content: item,
+                                            menuOptions: menuOptions,
+                                            favorites: playable.favoritesKeeper,
+                                            loadedContent: soundsMatchingTitle
+                                        )
+                                    }
+                                }
+                            )
+                        }
+
+                        if let soundsMatchingContent = results.soundsMatchingContent, !soundsMatchingContent.isEmpty {
+                            CollapsibleResultSection(
+                                items: soundsMatchingContent,
+                                itemCountWhenCollapsed: itemCountWhenCollapsed,
+                                headerSymbol: "quote.bubble",
+                                headerTitle: "Conteúdo das Vírgulas",
+                                searchString: searchString,
+                                contentView: { item in
+                                    ContentWithDescriptionMatch(
+                                        content: item,
+                                        highlight: searchString,
+                                        playable: playable
                                     )
                                 }
-                            }
-                        )
-                    }
+                            )
+                        }
 
-                    if let soundsMatchingContent = results.soundsMatchingContent, !soundsMatchingContent.isEmpty {
-                        CollapsibleResultSection(
-                            items: soundsMatchingContent,
-                            itemCountWhenCollapsed: itemCountWhenCollapsed,
-                            headerSymbol: "quote.bubble",
-                            headerTitle: "Conteúdo das Vírgulas",
-                            searchString: searchString,
-                            contentView: { item in
-                                ContentWithDescriptionMatch(
-                                    content: item,
-                                    highlight: searchString,
-                                    playable: playable
-                                )
-                            }
-                        )
-                    }
+                        // MARK: - Songs
 
-                    // MARK: - Songs
-
-                    if let songsMatchingTitle = results.songsMatchingTitle, !songsMatchingTitle.isEmpty {
-                        CollapsibleResultSection(
-                            items: songsMatchingTitle,
-                            itemCountWhenCollapsed: itemCountWhenCollapsed,
-                            headerSymbol: "music.quarternote.3",
-                            headerTitle: "Nome das Músicas",
-                            searchString: searchString,
-                            contentView: { item in
-                                PlayableContentView(
-                                    content: item,
-                                    favorites: playable.favoritesKeeper,
-                                    highlighted: Set<String>(),
-                                    nowPlaying: playable.nowPlayingKeeper,
-                                    selectedItems: Set<String>(),
-                                    currentContentListMode: .constant(.regular)
-                                )
-                                .contentShape(
-                                    .contextMenuPreview,
-                                    RoundedRectangle(cornerRadius: .spacing(.large), style: .continuous)
-                                )
-                                .onTapGesture {
-                                    onContentSelected(item, loadedContent: songsMatchingTitle)
-                                }
-                                .contextMenu {
-                                    contextMenuOptionsView(
+                        if let songsMatchingTitle = results.songsMatchingTitle, !songsMatchingTitle.isEmpty {
+                            CollapsibleResultSection(
+                                items: songsMatchingTitle,
+                                itemCountWhenCollapsed: itemCountWhenCollapsed,
+                                headerSymbol: "music.quarternote.3",
+                                headerTitle: "Nome das Músicas",
+                                searchString: searchString,
+                                contentView: { item in
+                                    PlayableContentView(
                                         content: item,
-                                        menuOptions: menuOptions,
                                         favorites: playable.favoritesKeeper,
-                                        loadedContent: songsMatchingTitle
+                                        highlighted: Set<String>(),
+                                        nowPlaying: playable.nowPlayingKeeper,
+                                        selectedItems: Set<String>(),
+                                        currentContentListMode: .constant(.regular)
+                                    )
+                                    .contentShape(
+                                        .contextMenuPreview,
+                                        RoundedRectangle(cornerRadius: .spacing(.large), style: .continuous)
+                                    )
+                                    .onTapGesture {
+                                        onContentSelected(item, loadedContent: songsMatchingTitle)
+                                    }
+                                    .contextMenu {
+                                        contextMenuOptionsView(
+                                            content: item,
+                                            menuOptions: menuOptions,
+                                            favorites: playable.favoritesKeeper,
+                                            loadedContent: songsMatchingTitle
+                                        )
+                                    }
+                                }
+                            )
+                        }
+
+                        if let songsMatchingContent = results.songsMatchingContent, !songsMatchingContent.isEmpty {
+                            CollapsibleResultSection(
+                                items: songsMatchingContent,
+                                itemCountWhenCollapsed: itemCountWhenCollapsed,
+                                headerSymbol: "music.quarternote.3",
+                                headerTitle: "Conteúdo das Músicas",
+                                searchString: searchString,
+                                contentView: { item in
+                                    ContentWithDescriptionMatch(
+                                        content: item,
+                                        highlight: searchString,
+                                        playable: playable
                                     )
                                 }
-                            }
-                        )
+                            )
+                        }
+
+                        // MARK: - Authors
+
+                        if let authors = results.authors, !authors.isEmpty {
+                            CollapsibleResultSection(
+                                items: authors,
+                                itemCountWhenCollapsed: itemCountWhenCollapsed,
+                                headerSymbol: "person.2",
+                                headerTitle: "Autores",
+                                searchString: searchString,
+                                contentView: { item in
+                                    VerticalAuthorView(author: item)
+                                        .onTapGesture {
+                                            push(GeneralNavigationDestination.authorDetail(item))
+                                        }
+                                }
+                            )
+                        }
+
+                        // MARK: - Folders
+
+                        if let folders = results.folders, !folders.isEmpty {
+                            CollapsibleResultSection(
+                                items: folders,
+                                itemCountWhenCollapsed: itemCountWhenCollapsed,
+                                headerSymbol: "folder",
+                                headerTitle: "Pastas",
+                                searchString: searchString,
+                                contentView: { item in
+                                    FolderView(folder: item)
+                                        .onTapGesture {
+                                            push(GeneralNavigationDestination.folderDetail(item))
+                                        }
+                                }
+                            )
+                        }
                     }
 
-                    if let songsMatchingContent = results.songsMatchingContent, !songsMatchingContent.isEmpty {
-                        CollapsibleResultSection(
-                            items: songsMatchingContent,
-                            itemCountWhenCollapsed: itemCountWhenCollapsed,
-                            headerSymbol: "music.quarternote.3",
-                            headerTitle: "Conteúdo das Músicas",
-                            searchString: searchString,
-                            contentView: { item in
-                                ContentWithDescriptionMatch(
-                                    content: item,
-                                    highlight: searchString,
-                                    playable: playable
-                                )
-                            }
-                        )
-                    }
+                    // MARK: - Reactions
 
-                    // MARK: - Authors
-
-                    if let authors = results.authors, !authors.isEmpty {
-                        CollapsibleResultSection(
-                            items: authors,
-                            itemCountWhenCollapsed: itemCountWhenCollapsed,
-                            headerSymbol: "person.2",
-                            headerTitle: "Autores",
-                            searchString: searchString,
-                            contentView: { item in
-                                VerticalAuthorView(author: item)
-                                    .onTapGesture {
-                                        push(GeneralNavigationDestination.authorDetail(item))
-                                    }
-                            }
-                        )
-                    }
-
-                    // MARK: - Folders
-
-                    if let folders = results.folders, !folders.isEmpty {
-                        CollapsibleResultSection(
-                            items: folders,
-                            itemCountWhenCollapsed: itemCountWhenCollapsed,
-                            headerSymbol: "folder",
-                            headerTitle: "Pastas",
-                            searchString: searchString,
-                            contentView: { item in
-                                FolderView(folder: item)
-                                    .onTapGesture {
-                                        push(GeneralNavigationDestination.folderDetail(item))
-                                    }
-                            }
-                        )
+                    LazyVGrid(
+                        columns: columns,
+                        spacing: .spacing(.medium)
+                    ) {
+                        reactionsSection
                     }
                 }
 
-                // MARK: - Episodes
+                if searchMode == .episodios {
+                    // MARK: - Episode Transcripts (gated by download state)
 
-                if let episodesMatchingTitle = results.episodesMatchingTitle, !episodesMatchingTitle.isEmpty {
-                    CollapsibleResultSection(
-                        items: episodesMatchingTitle,
-                        itemCountWhenCollapsed: itemCountWhenCollapsed,
-                        headerSymbol: "radio",
-                        headerTitle: "Nome dos Episódios",
-                        searchString: searchString,
-                        contentView: { episode in
-                            EpisodeSearchResult(episode: episode)
+                    if transcriptsDownloaded {
+                        if let transcriptResults = results.episodesMatchingTranscript, !transcriptResults.isEmpty {
+                            CollapsibleResultSection(
+                                items: transcriptResults,
+                                itemCountWhenCollapsed: itemCountWhenCollapsed,
+                                headerSymbol: "text.quote",
+                                headerTitle: "Transcrições dos Episódios",
+                                searchString: searchString,
+                                contentView: { result in
+                                    TranscriptSearchResultRow(
+                                        result: result,
+                                        highlight: searchString
+                                    )
+                                }
+                            )
+                        }
+                    } else {
+                        TranscriptDownloadPromptView()
+                    }
+
+                    // MARK: - Episodes (always visible)
+
+                    if let episodesMatchingTitle = results.episodesMatchingTitle, !episodesMatchingTitle.isEmpty {
+                        CollapsibleResultSection(
+                            items: episodesMatchingTitle,
+                            itemCountWhenCollapsed: itemCountWhenCollapsed,
+                            headerSymbol: "radio",
+                            headerTitle: "Nome dos Episódios",
+                            searchString: searchString,
+                            contentView: { episode in
+                                EpisodeSearchResult(episode: episode)
+                                    .onTapGesture {
+                                        push(GeneralNavigationDestination.episodeDetail(episode))
+                                    }
+                            }
+                        )
+                    }
+
+                    if let episodesMatchingDescription = results.episodesMatchingDescription, !episodesMatchingDescription.isEmpty {
+                        CollapsibleResultSection(
+                            items: episodesMatchingDescription,
+                            itemCountWhenCollapsed: itemCountWhenCollapsed,
+                            headerSymbol: "radio",
+                            headerTitle: "Descrição dos Episódios",
+                            searchString: searchString,
+                            contentView: { episode in
+                                EpisodeDescriptionSearchResult(
+                                    episode: episode,
+                                    highlight: searchString
+                                )
                                 .onTapGesture {
                                     push(GeneralNavigationDestination.episodeDetail(episode))
                                 }
-                        }
-                    )
-                }
-
-                if let episodesMatchingDescription = results.episodesMatchingDescription, !episodesMatchingDescription.isEmpty {
-                    CollapsibleResultSection(
-                        items: episodesMatchingDescription,
-                        itemCountWhenCollapsed: itemCountWhenCollapsed,
-                        headerSymbol: "radio",
-                        headerTitle: "Conteúdo dos Episódios",
-                        searchString: searchString,
-                        contentView: { episode in
-                            EpisodeDescriptionSearchResult(
-                                episode: episode,
-                                highlight: searchString
-                            )
-                            .onTapGesture {
-                                push(GeneralNavigationDestination.episodeDetail(episode))
                             }
-                        }
-                    )
-                }
-
-                // MARK: - Episode Transcripts
-
-                if let transcriptResults = results.episodesMatchingTranscript, !transcriptResults.isEmpty {
-                    CollapsibleResultSection(
-                        items: transcriptResults,
-                        itemCountWhenCollapsed: itemCountWhenCollapsed,
-                        headerSymbol: "text.quote",
-                        headerTitle: "Transcrições dos Episódios",
-                        searchString: searchString,
-                        contentView: { result in
-                            TranscriptSearchResultRow(
-                                result: result,
-                                highlight: searchString
-                            )
-                        }
-                    )
-                }
-
-                // MARK: - Reactions
-
-                LazyVGrid(
-                    columns: columns,
-                    spacing: .spacing(.medium)
-                ) {
-                    reactionsSection
+                        )
+                    }
                 }
             }
             .playableContentUI(
@@ -287,7 +314,6 @@ struct SearchResultsView: View {
             .onChange(of: containerWidth) {
                 updateGridLayout()
             }
-        }
     }
 
     // MARK: - Actions
@@ -894,9 +920,61 @@ struct TranscriptSearchResultRow: View {
     }
 }
 
+// MARK: - Transcript Download Prompt
+
+struct TranscriptDownloadPromptView: View {
+
+    @State private var mockProgress: Double = 0
+
+    var body: some View {
+        VStack(spacing: .spacing(.large)) {
+            Spacer()
+                .frame(height: .spacing(.large))
+
+            Image(systemName: "arrow.down.circle")
+                .font(.system(size: 48))
+                .foregroundStyle(.secondary)
+
+            Text("Buscar dentro dos episódios?")
+                .font(.title3)
+                .fontWeight(.semibold)
+                .multilineTextAlignment(.center)
+
+            Text("Para pesquisar nas transcrições dos episódios, é necessário baixar os arquivos primeiro. Isso usa poucos dados.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, .spacing(.large))
+
+            Button {
+                // Non-functional mock
+            } label: {
+                HStack {
+                    Spacer()
+                    Text("Baixar Transcrições")
+                        .bold()
+                    Spacer()
+                }
+            }
+            .largeRoundedRectangleBordered(colored: .green)
+            .padding(.horizontal, .spacing(.huge))
+
+            ProgressView(value: mockProgress, total: 1.0)
+                .padding(.horizontal, .spacing(.huge))
+                .opacity(0.5)
+
+            Spacer()
+                .frame(height: .spacing(.large))
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
 // MARK: - Previews
 
 #Preview("No Results") {
+    @Previewable @State var searchMode: SearchMode = .virgulas
+
     GeometryReader { geometry in
         ScrollView {
             SearchResultsView(
@@ -912,7 +990,8 @@ struct TranscriptSearchResultRow: View {
                 reactionsState: .loaded([]),
                 containerWidth: geometry.size.width,
                 toast: .constant(nil),
-                menuOptions: []
+                menuOptions: [],
+                searchMode: $searchMode
             )
             .padding(.all, .spacing(.medium))
         }
@@ -920,6 +999,8 @@ struct TranscriptSearchResultRow: View {
 }
 
 #Preview("Complete") {
+    @Previewable @State var searchMode: SearchMode = .virgulas
+
     GeometryReader { geometry in
         ScrollView {
             SearchResultsView(
@@ -942,7 +1023,8 @@ struct TranscriptSearchResultRow: View {
                 reactionsState: .loaded([]),
                 containerWidth: geometry.size.width,
                 toast: .constant(nil),
-                menuOptions: []
+                menuOptions: [],
+                searchMode: $searchMode
             )
             .padding(.all, .spacing(.medium))
         }
@@ -950,6 +1032,8 @@ struct TranscriptSearchResultRow: View {
 }
 
 #Preview("Reactions Loading") {
+    @Previewable @State var searchMode: SearchMode = .virgulas
+
     GeometryReader { geometry in
         ScrollView {
             SearchResultsView(
@@ -967,7 +1051,8 @@ struct TranscriptSearchResultRow: View {
                 reactionsState: .loading,
                 containerWidth: geometry.size.width,
                 toast: .constant(nil),
-                menuOptions: []
+                menuOptions: [],
+                searchMode: $searchMode
             )
             .padding(.all, .spacing(.medium))
         }
@@ -975,6 +1060,8 @@ struct TranscriptSearchResultRow: View {
 }
 
 #Preview("Reactions Error") {
+    @Previewable @State var searchMode: SearchMode = .virgulas
+
     GeometryReader { geometry in
         ScrollView {
             SearchResultsView(
@@ -993,6 +1080,7 @@ struct TranscriptSearchResultRow: View {
                 containerWidth: geometry.size.width,
                 toast: .constant(nil),
                 menuOptions: [],
+                searchMode: $searchMode,
                 retryLoadReactionsAction: {}
             )
             .padding(.all, .spacing(.medium))

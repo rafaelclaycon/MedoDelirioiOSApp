@@ -21,6 +21,7 @@ struct StandaloneSearchView: View {
     @State private var playable: PlayableContentState?
     @State private var reactionsState: LoadingState<[Reaction]> = .loading
     @State private var showFeedbackAlert: Bool = false
+    @State private var searchMode: SearchMode = .virgulas
 
     @Environment(\.push) private var push
 
@@ -52,6 +53,7 @@ struct StandaloneSearchView: View {
                                 containerWidth: geometry.size.width,
                                 toast: $toast,
                                 menuOptions: [.sharingOptions(), .organizingOptions(), .detailsOptions()],
+                                searchMode: $searchMode,
                                 retryLoadReactionsAction: loadReactions
                             )
                             .padding(.horizontal, UIDevice.isiPhone ? .spacing(.xSmall) : 0)
