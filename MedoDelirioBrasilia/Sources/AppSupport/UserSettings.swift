@@ -141,6 +141,13 @@ extension UserSettings {
         }
         return Bool(value as! Bool)
     }
+
+    func getAutoDeletePlayedEpisodes() -> Bool {
+        guard let value = userDefaults.object(forKey: "autoDeletePlayedEpisodes") else {
+            return true
+        }
+        return Bool(value as! Bool)
+    }
 }
 
 // MARK: - Setters
@@ -209,5 +216,9 @@ extension UserSettings {
 
     func setEnableEpisodeNotifications(to newValue: Bool) {
         userDefaults.set(newValue, forKey: "enableEpisodeNotifications")
+    }
+
+    func setAutoDeletePlayedEpisodes(to newValue: Bool) {
+        userDefaults.set(newValue, forKey: "autoDeletePlayedEpisodes")
     }
 }

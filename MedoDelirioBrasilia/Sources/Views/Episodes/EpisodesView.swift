@@ -233,6 +233,10 @@ struct EpisodesView: View {
                     progressStore.clear(episodeID: episode.id)
                     let memory = AppPersistentMemory.shared
                     memory.setEpisodesCompletedCount(memory.getEpisodesCompletedCount() + 1)
+
+                    if UserSettings().getAutoDeletePlayedEpisodes() {
+                        try? FileManager.default.removeItem(at: EpisodePlayer.localFileURL(for: episode))
+                    }
                 }
                 playedStore.toggle(episode.id)
             } label: {

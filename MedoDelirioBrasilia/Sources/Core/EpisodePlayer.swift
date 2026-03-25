@@ -401,6 +401,11 @@ final class EpisodePlayer {
                 playedStore?.toggle(id)
             }
         }
+
+        if let episode = currentEpisode, UserSettings().getAutoDeletePlayedEpisodes() {
+            try? FileManager.default.removeItem(at: Self.localFileURL(for: episode))
+        }
+
         isPlaying = false
         currentTime = 0
         duration = 0

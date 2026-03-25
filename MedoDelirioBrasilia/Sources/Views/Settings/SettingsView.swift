@@ -75,14 +75,12 @@ struct SettingsView: View {
                         }
                     }
 
-                    if showChangeAppIcon {
-                        NavigationLink(value: SettingsDestination.changeAppIcon) {
-                            Label {
-                                Text("Ícone do app")
-                            } icon: {
-                                Image(systemName: "app")
-                                    .foregroundColor(.orange)
-                            }
+                    NavigationLink(value: SettingsDestination.storageSettings) {
+                        Label {
+                            Text("Armazenamento")
+                        } icon: {
+                            Image(systemName: "internaldrive")
+                                .foregroundColor(.gray)
                         }
                     }
 
@@ -92,6 +90,17 @@ struct SettingsView: View {
                         } icon: {
                             Image(systemName: "hand.raised")
                                 .foregroundColor(.blue)
+                        }
+                    }
+
+                    if showChangeAppIcon {
+                        NavigationLink(value: SettingsDestination.changeAppIcon) {
+                            Label {
+                                Text("Ícone do app")
+                            } icon: {
+                                Image(systemName: "app")
+                                    .foregroundColor(.orange)
+                            }
                         }
                     }
                 }
@@ -223,6 +232,9 @@ struct SettingsView: View {
                     
                 case .privacySettings:
                     PrivacySettingsView()
+
+                case .storageSettings:
+                    StorageSettingsView()
                 }
             }
         }
@@ -252,6 +264,7 @@ enum SettingsDestination: Hashable {
     case help
     case notificationSettings
     case privacySettings
+    case storageSettings
 }
 
 // MARK: - Dev Options
