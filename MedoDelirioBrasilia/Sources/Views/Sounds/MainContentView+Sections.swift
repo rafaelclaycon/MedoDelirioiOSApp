@@ -181,6 +181,14 @@ extension MainContentView {
                     startDebouncedTranscriptSearch(searchText)
                 }
             }
+            .onChange(of: transcriptDownloadService.state) { oldState, newState in
+                if case .downloading = oldState, newState == .completed {
+                    viewModel.toast.wrappedValue = Toast(
+                        message: "Transcrições atualizadas!",
+                        type: .success
+                    )
+                }
+            }
             .onChange(of: viewModel.currentViewMode) {
                 Task {
                     await viewModel.onSelectedViewModeChanged()

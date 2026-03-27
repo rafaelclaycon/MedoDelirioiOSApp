@@ -49,7 +49,7 @@ struct TranscriptDownloadBannerView: View {
                         ProgressView()
                             .controlSize(.small)
 
-                        Text("Baixando transcrições…")
+                        Text(service.transcriptsDownloaded ? "Atualizando transcrições…" : "Baixando transcrições…")
                             .font(.subheadline)
                             .foregroundStyle(colorScheme == .dark ? .primary : Color.darkestGreen)
 
@@ -65,7 +65,7 @@ struct TranscriptDownloadBannerView: View {
                             .foregroundStyle(.white)
                             .font(.subheadline)
 
-                        Text("Erro ao baixar transcrições")
+                        Text(service.transcriptsDownloaded ? "Erro ao atualizar transcrições" : "Erro ao baixar transcrições")
                             .font(.subheadline)
                             .foregroundStyle(.white)
 
@@ -92,7 +92,7 @@ struct TranscriptDownloadBannerView: View {
             .onTapGesture {
                 if isFailed { showErrorAlert = true }
             }
-            .alert("Erro ao Baixar Transcrições", isPresented: $showErrorAlert) {
+            .alert(service.transcriptsDownloaded ? "Erro ao Atualizar Transcrições" : "Erro ao Baixar Transcrições", isPresented: $showErrorAlert) {
                 Button("Tentar Novamente") {
                     Task { await service.downloadTranscripts() }
                 }

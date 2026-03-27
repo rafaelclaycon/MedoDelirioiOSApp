@@ -47,6 +47,8 @@ final class TranscriptDownloadService {
 
     // MARK: - Public
 
+    private static let visibleSyncThreshold = 5
+
     @MainActor
     func syncNewTranscriptsIfNeeded() async {
         guard transcriptsDownloaded else { return }
@@ -57,12 +59,28 @@ final class TranscriptDownloadService {
             let filesToDownload = try diffAgainstLocal(manifest: manifest)
             guard !filesToDownload.isEmpty else { return }
 
-            for entry in filesToDownload {
-                try await downloadSRT(entry: entry)
+            let showProgress = filesToDownload.count >= Self.visibleSyncThreshold
+
+            if showProgress {
+                state = .downloading(progress: 0)
             }
-            NotificationCenter.default.post(name: Self.transcriptsDidUpdate, object: nil)
+
+            for (index, entry) in filesToDownload.enumerated() {
+                try await downloadSRT(entry: entry)
+                if showProgress {
+                    state = .downloading(progress: Double(index + 1) / Double(filesToDownload.count))
+                }
+            }
+
+            if showProgress {
+                markCompleted()
+            } else {
+                NotificationCenter.default.post(name: Self.transcriptsDidUpdate, object: nil)
+            }
         } catch {
-            // Silent failure — background convenience sync
+            if case .downloading = state {
+                state = .failed(message: error.localizedDescription)
+            }
         }
     }
 
