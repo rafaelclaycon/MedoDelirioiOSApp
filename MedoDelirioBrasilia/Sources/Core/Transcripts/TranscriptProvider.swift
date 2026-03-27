@@ -10,7 +10,7 @@ import Foundation
 enum TranscriptState: Equatable {
 
     case idle
-    case notAvailable(reason: String)
+    case notAvailable(reason: String, isComingSoon: Bool = false)
     case loaded(cues: [SRTCue])
 }
 
@@ -31,7 +31,7 @@ final class TranscriptProvider {
 
     // MARK: - Loading
 
-    func load(episodeId: String?) {
+    func load(episodeId: String?, pubDate: Date? = nil) {
         cues = []
         lastCueIndex = nil
         previousCue = nil
@@ -44,7 +44,14 @@ final class TranscriptProvider {
         }
 
         guard let fileURL = Self.findSRTFile(for: episodeId) else {
-            state = .notAvailable(reason: "Transcrição não encontrada para o episódio \(episodeId).")
+            if let pubDate, Self.isRecent(pubDate) {
+                state = .notAvailable(
+                    reason: "Transcrição a caminho! Episódios recentes podem levar alguns dias.",
+                    isComingSoon: true
+                )
+            } else {
+                state = .notAvailable(reason: "Transcrição não encontrada para esse episódio.")
+            }
             return
         }
 
@@ -107,6 +114,13 @@ final class TranscriptProvider {
         }
 
         return nil
+    }
+
+    // MARK: - Helpers
+
+    private static func isRecent(_ date: Date) -> Bool {
+        let daysSincePublished = Calendar.current.dateComponents([.day], from: date, to: .now).day ?? 0
+        return daysSincePublished < 5
     }
 
     // MARK: - File Path

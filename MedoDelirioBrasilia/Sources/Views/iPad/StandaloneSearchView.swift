@@ -22,7 +22,10 @@ struct StandaloneSearchView: View {
     @State private var reactionsState: LoadingState<[Reaction]> = .loading
     @State private var showFeedbackAlert: Bool = false
     @State private var searchMode: SearchMode = .virgulas
+    @State private var transcriptSearchTask: Task<Void, Never>?
+    @State private var isSearchingTranscripts = false
 
+    @Environment(TranscriptDownloadService.self) private var transcriptDownloadService
     @Environment(\.push) private var push
 
     var body: some View {
@@ -54,6 +57,7 @@ struct StandaloneSearchView: View {
                                 toast: $toast,
                                 menuOptions: [.sharingOptions(), .organizingOptions(), .detailsOptions()],
                                 searchMode: $searchMode,
+                                isSearchingTranscripts: isSearchingTranscripts,
                                 retryLoadReactionsAction: loadReactions
                             )
                             .padding(.horizontal, UIDevice.isiPhone ? .spacing(.xSmall) : 0)
@@ -92,6 +96,16 @@ struct StandaloneSearchView: View {
                 .onChange(of: searchText) {
                     onSearchStringChanged(newString: searchText)
                 }
+                .onChange(of: searchMode) {
+                    onSearchModeChanged()
+                }
+                .onChange(of: transcriptDownloadService.transcriptsDownloaded) {
+                    if transcriptDownloadService.transcriptsDownloaded,
+                       searchMode == .episodios,
+                       !searchText.isEmpty {
+                        startDebouncedTranscriptSearch(searchText)
+                    }
+                }
             }
             .toast($toast)
             .onAppear {
@@ -118,11 +132,41 @@ struct StandaloneSearchView: View {
     }
 
     private func onSearchStringChanged(newString: String) {
+        transcriptSearchTask?.cancel()
         guard !newString.isEmpty else {
             searchResults.clearAll()
+            isSearchingTranscripts = false
+            searchService.releaseTranscriptCache()
             return
         }
-        searchResults = searchService.results(matching: newString)
+        searchResults = searchService.results(matching: newString, mode: searchMode)
+        if searchMode == .episodios {
+            startDebouncedTranscriptSearch(newString)
+        }
+    }
+
+    private func onSearchModeChanged() {
+        transcriptSearchTask?.cancel()
+        guard !searchText.isEmpty else { return }
+        searchResults = searchService.results(matching: searchText, mode: searchMode)
+        if searchMode == .episodios {
+            startDebouncedTranscriptSearch(searchText)
+        } else {
+            isSearchingTranscripts = false
+        }
+    }
+
+    private func startDebouncedTranscriptSearch(_ text: String) {
+        transcriptSearchTask?.cancel()
+        isSearchingTranscripts = true
+        transcriptSearchTask = Task {
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled else { return }
+            let results = await searchService.searchTranscripts(matching: text)
+            guard !Task.isCancelled else { return }
+            searchResults.episodesMatchingTranscript = results
+            isSearchingTranscripts = false
+        }
     }
 }
 

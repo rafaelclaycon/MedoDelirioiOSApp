@@ -13,6 +13,7 @@ private let logger = os.Logger(subsystem: "com.rafaelschmitt.MedoDelirioBrasilia
 struct MainView: View {
 
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(TranscriptDownloadService.self) private var transcriptDownloadService
 
     private var tabSelection: Binding<PhoneTab>
     private var padSelection: Binding<PadScreen?>
@@ -533,6 +534,12 @@ struct MainView: View {
 
             Task {
                 try? await EpisodesService().syncEpisodes()
+            }
+
+            if FeatureFlag.isEnabled(.projectEleDisseIssoMesmo) {
+                Task {
+                    await transcriptDownloadService.syncNewTranscriptsIfNeeded()
+                }
             }
         }
         .onChange(of: scenePhase) { _, newPhase in

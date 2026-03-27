@@ -11,12 +11,16 @@ protocol SearchServiceProtocol {
 
     var reactionsState: LoadingState<[Reaction]> { get }
 
-    func results(matching searchString: String) -> SearchResults
+    func results(matching searchString: String, mode: SearchMode) -> SearchResults
+    func searchTranscripts(matching searchString: String) async -> [EpisodeTranscriptGroup]
     func loadReactions() async
 
     func save(searchString: String)
     func recentSearches() -> [String]
     func clearRecentSearches()
+
+    func invalidateTranscriptCache()
+    func releaseTranscriptCache()
 }
 
 @MainActor
@@ -35,12 +39,17 @@ final class SearchService: SearchServiceProtocol {
     private var saveWorkItem: DispatchWorkItem?
     private var reactionsLoadedAt: Date?
     private var cachedEpisodes: [PodcastEpisode]?
-    private var cachedTranscriptCues: [String: [SRTCue]]?
+    private var cachedTranscriptIndex: [String: [TranscriptIndexEntry]]?
 
     private let reactionsCacheMaxAge: TimeInterval = 30 * 60 // 30 minutes
+    private let maxMatchesPerEpisode = 5
+    private var transcriptObserver: Any?
 
     deinit {
         saveWorkItem?.cancel()
+        if let observer = transcriptObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
 
     // MARK: - Initializer
@@ -62,30 +71,85 @@ final class SearchService: SearchServiceProtocol {
         self.reactionRepository = reactionRepository
         self.database = database
         self.searches = appMemory.recentSearches() ?? []
+
+        transcriptObserver = NotificationCenter.default.addObserver(
+            forName: TranscriptDownloadService.transcriptsDidUpdate,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.invalidateTranscriptCache()
+        }
     }
 
     // MARK: - Functions
 
-    func results(matching searchString: String) -> SearchResults {
+    func results(matching searchString: String, mode: SearchMode) -> SearchResults {
         save(searchString: searchString)
-        let allowSensitive = userSettings.getShowExplicitContent()
-        let titleMatchedEpisodes = episodes(matchingTitle: searchString)
-        let titleMatchedIds = Set(titleMatchedEpisodes?.map(\.id) ?? [])
-        let descriptionMatchedEpisodes = episodes(matchingDescription: searchString, excludingIds: titleMatchedIds)
-        let descriptionMatchedIds = Set(descriptionMatchedEpisodes?.map(\.id) ?? [])
-        let alreadyMatchedIds = titleMatchedIds.union(descriptionMatchedIds)
-        return SearchResults(
-            soundsMatchingTitle: contentRepository.sounds(matchingTitle: searchString, allowSensitive),
-            soundsMatchingContent: contentRepository.sounds(matchingDescription: searchString, allowSensitive),
-            songsMatchingTitle: contentRepository.songs(matchingTitle: searchString, allowSensitive),
-            songsMatchingContent: contentRepository.songs(matchingDescription: searchString, allowSensitive),
-            authors: authorService.authors(matchingName: searchString),
-            folders: userFolderRepository.folders(matchingName: searchString),
-            episodesMatchingTitle: titleMatchedEpisodes,
-            episodesMatchingDescription: descriptionMatchedEpisodes,
-            episodesMatchingTranscript: episodes(matchingTranscript: searchString, excludingIds: alreadyMatchedIds),
-            reactionsMatchingTitle: reactions(matchingTitle: searchString)
-        )
+
+        switch mode {
+        case .virgulas:
+            let allowSensitive = userSettings.getShowExplicitContent()
+            return SearchResults(
+                soundsMatchingTitle: contentRepository.sounds(matchingTitle: searchString, allowSensitive),
+                soundsMatchingContent: contentRepository.sounds(matchingDescription: searchString, allowSensitive),
+                songsMatchingTitle: contentRepository.songs(matchingTitle: searchString, allowSensitive),
+                songsMatchingContent: contentRepository.songs(matchingDescription: searchString, allowSensitive),
+                authors: authorService.authors(matchingName: searchString),
+                folders: userFolderRepository.folders(matchingName: searchString),
+                reactionsMatchingTitle: reactions(matchingTitle: searchString)
+            )
+
+        case .episodios:
+            let titleMatched = episodes(matchingTitle: searchString)
+            let titleIds = Set(titleMatched?.map(\.id) ?? [])
+            let descMatched = episodes(matchingDescription: searchString, excludingIds: titleIds)
+            return SearchResults(
+                episodesMatchingTitle: titleMatched,
+                episodesMatchingDescription: descMatched
+            )
+        }
+    }
+
+    func searchTranscripts(matching searchString: String) async -> [EpisodeTranscriptGroup] {
+        guard FeatureFlag.isEnabled(.projectEleDisseIssoMesmo) else { return [] }
+
+        let index = loadTranscriptIndexIfNeeded()
+        guard !index.isEmpty else { return [] }
+
+        let allEpisodes = loadEpisodesIfNeeded()
+        let episodeMap = Dictionary(uniqueKeysWithValues: allEpisodes.map { ($0.id, $0) })
+        let normalizedSearch = searchString.normalizedForSearch()
+        let perEpisodeCap = maxMatchesPerEpisode
+
+        let titleMatched = episodes(matchingTitle: searchString)
+        let titleIds = Set(titleMatched?.map(\.id) ?? [])
+        let descMatched = episodes(matchingDescription: searchString, excludingIds: titleIds)
+        let descIds = Set(descMatched?.map(\.id) ?? [])
+        let excludingIds = titleIds.union(descIds)
+
+        let groups: [EpisodeTranscriptGroup] = await Task.detached {
+            var result: [EpisodeTranscriptGroup] = []
+            for (episodeId, entries) in index {
+                if excludingIds.contains(episodeId) { continue }
+                guard let episode = episodeMap[episodeId] else { continue }
+
+                let matchingEntries = entries
+                    .filter { $0.normalizedText.contains(normalizedSearch) }
+                    .prefix(perEpisodeCap)
+
+                if !matchingEntries.isEmpty {
+                    result.append(EpisodeTranscriptGroup(
+                        episode: episode,
+                        matches: matchingEntries.map { entry in
+                            TranscriptMatch(cueText: entry.originalText, timestamp: entry.startTime)
+                        }
+                    ))
+                }
+            }
+            return result.sorted { $0.episode.pubDate > $1.episode.pubDate }
+        }.value
+
+        return groups
     }
 
     func loadReactions() async {
@@ -139,6 +203,14 @@ final class SearchService: SearchServiceProtocol {
     func clearRecentSearches() {
         searches = []
         appMemory.saveRecentSearches([])
+    }
+
+    func invalidateTranscriptCache() {
+        cachedTranscriptIndex = nil
+    }
+
+    func releaseTranscriptCache() {
+        cachedTranscriptIndex = nil
     }
 
     /// Immediately executes any pending save operation. Useful for testing.
@@ -196,8 +268,14 @@ extension SearchService {
 
     // MARK: - Transcript Search
 
-    private func loadTranscriptCuesIfNeeded() -> [String: [SRTCue]] {
-        if let cached = cachedTranscriptCues { return cached }
+    private struct TranscriptIndexEntry {
+        let normalizedText: String
+        let originalText: String
+        let startTime: TimeInterval
+    }
+
+    private func loadTranscriptIndexIfNeeded() -> [String: [TranscriptIndexEntry]] {
+        if let cached = cachedTranscriptIndex { return cached }
 
         let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         let transcriptsDir = documentsURL.appendingPathComponent(InternalFolderNames.transcripts)
@@ -206,23 +284,30 @@ extension SearchService {
             at: transcriptsDir,
             includingPropertiesForKeys: nil
         ) else {
-            cachedTranscriptCues = [:]
+            cachedTranscriptIndex = [:]
             return [:]
         }
 
-        var result: [String: [SRTCue]] = [:]
+        var result: [String: [TranscriptIndexEntry]] = [:]
         for file in files where file.pathExtension.lowercased() == "srt" {
             let stem = file.deletingPathExtension().lastPathComponent
             let episodeId = Self.extractEpisodeId(from: stem)
             guard !episodeId.isEmpty,
                   let content = try? String(contentsOf: file, encoding: .utf8) else { continue }
             let cues = SRTParser.parse(content)
-            if !cues.isEmpty {
-                result[episodeId] = cues
+            let entries = cues.map { cue in
+                TranscriptIndexEntry(
+                    normalizedText: cue.text.normalizedForSearch(),
+                    originalText: cue.text,
+                    startTime: cue.startTime
+                )
+            }
+            if !entries.isEmpty {
+                result[episodeId] = entries
             }
         }
 
-        cachedTranscriptCues = result
+        cachedTranscriptIndex = result
         return result
     }
 
@@ -235,32 +320,5 @@ extension SearchService {
             return String(stem[stem.startIndex..<underscoreIndex])
         }
         return stem
-    }
-
-    private func episodes(matchingTranscript searchString: String, excludingIds: Set<String>) -> [TranscriptSearchResult]? {
-        guard FeatureFlag.isEnabled(.projectEleDisseIssoMesmo) else { return nil }
-        let allCues = loadTranscriptCuesIfNeeded()
-        guard !allCues.isEmpty else { return nil }
-
-        let allEpisodes = loadEpisodesIfNeeded()
-        let normalizedSearch = searchString.normalizedForSearch()
-        let episodeMap = Dictionary(uniqueKeysWithValues: allEpisodes.map { ($0.id, $0) })
-
-        var results: [TranscriptSearchResult] = []
-
-        for (episodeId, cues) in allCues {
-            guard !excludingIds.contains(episodeId),
-                  let episode = episodeMap[episodeId] else { continue }
-
-            if let matchingCue = cues.first(where: { $0.text.normalizedForSearch().contains(normalizedSearch) }) {
-                results.append(TranscriptSearchResult(
-                    episode: episode,
-                    matchedCueText: matchingCue.text,
-                    timestamp: matchingCue.startTime
-                ))
-            }
-        }
-
-        return results.sorted { $0.episode.pubDate > $1.episode.pubDate }
     }
 }

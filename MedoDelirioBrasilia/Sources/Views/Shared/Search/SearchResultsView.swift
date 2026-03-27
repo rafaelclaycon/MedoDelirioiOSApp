@@ -18,12 +18,14 @@ struct SearchResultsView: View {
     var toast: Binding<Toast?>
     var menuOptions: [ContextMenuSection]
     @Binding var searchMode: SearchMode
+    var isSearchingTranscripts: Bool = false
     var retryLoadReactionsAction: (() async -> Void)? = nil
 
     @State private var columns: [GridItem] = []
 
     private let itemCountWhenCollapsed: Int = 4
-    private let transcriptsDownloaded: Bool = false
+
+    @Environment(TranscriptDownloadService.self) private var transcriptService
 
     private var hasAnyNonReactionResults: Bool {
         switch searchMode {
@@ -48,6 +50,7 @@ struct SearchResultsView: View {
             let hasMatchingFeeling = !(results.reactionsMatchingFeeling?.isEmpty ?? true)
             return !hasMatchingTitle && !hasMatchingFeeling
         }
+        if isSearchingTranscripts { return false }
         return true
     }
 
@@ -243,22 +246,28 @@ struct SearchResultsView: View {
                     // MARK: - Episode Transcripts (gated by FF + download state)
 
                     if FeatureFlag.isEnabled(.projectEleDisseIssoMesmo) {
-                        if transcriptsDownloaded {
-                            if let transcriptResults = results.episodesMatchingTranscript, !transcriptResults.isEmpty {
+                        if transcriptService.transcriptsDownloaded {
+                            if isSearchingTranscripts {
+                                TranscriptSearchLoadingView()
+                            } else if let groups = results.episodesMatchingTranscript, !groups.isEmpty {
                                 CollapsibleResultSection(
-                                    items: transcriptResults,
+                                    items: groups,
                                     itemCountWhenCollapsed: itemCountWhenCollapsed,
                                     headerSymbol: "text.quote",
                                     headerTitle: "Transcrições dos Episódios",
                                     searchString: searchString,
-                                    contentView: { result in
-                                        TranscriptSearchResultRow(
-                                            result: result,
+                                    contentView: { group in
+                                        TranscriptEpisodeCard(
+                                            group: group,
                                             highlight: searchString
                                         )
                                     }
                                 )
                             }
+                        } else if case .downloading = transcriptService.state {
+                            TranscriptDownloadBannerView()
+                        } else if case .failed = transcriptService.state {
+                            TranscriptDownloadBannerView()
                         } else {
                             TranscriptDownloadPromptView()
                         }
@@ -835,18 +844,61 @@ extension SearchResultsView {
     }
 }
 
-// MARK: - Transcript Search Result
+// MARK: - Transcript Episode Card
 
-struct TranscriptSearchResultRow: View {
+struct TranscriptEpisodeCard: View {
 
-    let result: TranscriptSearchResult
+    let group: EpisodeTranscriptGroup
+    let highlight: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: .spacing(.small)) {
+            VStack(alignment: .leading, spacing: .spacing(.xxxSmall)) {
+                Text(group.episode.formattedDate)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .textCase(.uppercase)
+
+                Text(group.episode.title)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .fontDesign(.serif)
+                    .lineLimit(2)
+            }
+
+            ForEach(Array(group.matches.enumerated()), id: \.element.id) { index, match in
+                if index > 0 {
+                    Divider()
+                }
+
+                TranscriptCueRow(
+                    match: match,
+                    episode: group.episode,
+                    highlight: highlight
+                )
+            }
+        }
+        .padding(.spacing(.medium))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.secondary.opacity(0.1))
+        )
+    }
+}
+
+struct TranscriptCueRow: View {
+
+    let match: TranscriptMatch
+    let episode: PodcastEpisode
     let highlight: String
 
     @Environment(EpisodePlayer.self) private var player
     @State private var showDownloadConfirmation = false
+    @State private var isLoading = false
 
     private var highlightedText: AttributedString {
-        let source = result.matchedCueText
+        let source = match.cueText
         let normalizedHighlight = highlight
             .folding(options: .diacriticInsensitive, locale: .current)
             .replacingOccurrences(of: "[^a-zA-Z0-9 ]", with: "", options: .regularExpression)
@@ -863,37 +915,41 @@ struct TranscriptSearchResultRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: .spacing(.xSmall)) {
+        VStack(alignment: .leading, spacing: .spacing(.xxxSmall)) {
             HStack(spacing: .spacing(.xSmall)) {
                 Image(systemName: "play.fill")
                     .font(.caption2)
                     .foregroundStyle(Color.darkerGreen)
 
-                Text(result.formattedTimestamp)
+                Text(match.formattedTimestamp)
                     .font(.subheadline)
                     .fontWeight(.semibold)
                     .monospacedDigit()
                     .foregroundStyle(Color.darkerGreen)
+
+                Spacer()
+
+                if isLoading {
+                    ProgressView()
+                        .controlSize(.small)
+                }
             }
 
             Text(highlightedText)
                 .font(.body)
                 .lineLimit(3)
                 .multilineTextAlignment(.leading)
-
-            Text("\(result.episode.title) · \(result.episode.formattedDate)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, .spacing(.xxSmall))
+        .padding(.vertical, .spacing(.xxxSmall))
         .contentShape(Rectangle())
+        .opacity(isLoading ? 0.6 : 1)
         .onTapGesture {
+            guard !isLoading else { return }
             handleTap()
         }
         .alert(
-            "Baixar e reproduzir a partir de \(result.formattedTimestamp)?",
+            "Baixar e reproduzir a partir de \(match.formattedTimestamp)?",
             isPresented: $showDownloadConfirmation
         ) {
             Button("Baixar e Reproduzir") {
@@ -901,12 +957,12 @@ struct TranscriptSearchResultRow: View {
             }
             Button("Cancelar", role: .cancel) {}
         } message: {
-            Text(result.episode.title)
+            Text(episode.title)
         }
     }
 
     private func handleTap() {
-        if EpisodePlayer.isDownloaded(result.episode) || player.isCurrentEpisode(result.episode) {
+        if EpisodePlayer.isDownloaded(episode) || player.isCurrentEpisode(episode) {
             playFromTimestamp()
         } else {
             showDownloadConfirmation = true
@@ -914,22 +970,35 @@ struct TranscriptSearchResultRow: View {
     }
 
     private func playFromTimestamp() {
-        let episode = result.episode
-        let timestamp = result.timestamp
-
+        isLoading = true
         Task {
             await player.play(episode: episode)
             try? await Task.sleep(for: .milliseconds(300))
-            player.seek(to: timestamp)
+            player.seek(to: match.timestamp)
+            isLoading = false
         }
     }
 }
 
 // MARK: - Transcript Download Prompt
 
+struct TranscriptSearchLoadingView: View {
+
+    var body: some View {
+        HStack(spacing: .spacing(.small)) {
+            ProgressView()
+            Text("Buscando nas transcrições...")
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, .spacing(.medium))
+    }
+}
+
 struct TranscriptDownloadPromptView: View {
 
-    @State private var mockProgress: Double = 0
+    @Environment(TranscriptDownloadService.self) private var service
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(spacing: .spacing(.large)) {
@@ -951,22 +1020,36 @@ struct TranscriptDownloadPromptView: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, .spacing(.large))
 
-            Button {
-                // Non-functional mock
-            } label: {
-                HStack {
-                    Spacer()
+            if #available(iOS 26, *) {
+                Button {
+                    Task { await service.downloadTranscripts() }
+                } label: {
                     Text("Baixar Transcrições")
+                        .font(.callout)
                         .bold()
-                    Spacer()
+                        .foregroundStyle(colorScheme == .dark ? .primary : Color.darkestGreen)
+                        .padding(.vertical, .spacing(.small))
+                        .padding(.horizontal, .spacing(.xLarge))
+                        .glassEffect(
+                            .regular.tint(
+                                Color.green.opacity(0.3)
+                            ).interactive()
+                        )
                 }
-            }
-            .largeRoundedRectangleBordered(colored: .green)
-            .padding(.horizontal, .spacing(.huge))
-
-            ProgressView(value: mockProgress, total: 1.0)
+            } else {
+                Button {
+                    Task { await service.downloadTranscripts() }
+                } label: {
+                    HStack {
+                        Spacer()
+                        Text("Baixar Transcrições")
+                            .bold()
+                        Spacer()
+                    }
+                }
+                .largeRoundedRectangleBordered(colored: .green)
                 .padding(.horizontal, .spacing(.huge))
-                .opacity(0.5)
+            }
 
             Spacer()
                 .frame(height: .spacing(.large))

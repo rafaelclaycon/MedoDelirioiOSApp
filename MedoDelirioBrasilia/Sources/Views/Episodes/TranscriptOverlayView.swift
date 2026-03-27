@@ -47,20 +47,22 @@ struct TranscriptOverlayView: View {
 }
 
 /// Shown when no SRT transcript is available for the current episode.
-struct TranscriptDebugView: View {
+struct TranscriptNotAvailableView: View {
 
     let reason: String
+    var isComingSoon: Bool = false
 
     var body: some View {
         VStack(spacing: .spacing(.small)) {
-            Image(systemName: "text.quote")
+            Image(systemName: isComingSoon ? "clock.badge.checkmark" : "text.quote")
                 .font(.system(size: 36))
                 .foregroundStyle(.secondary)
 
             Text(reason)
-                .font(.footnote)
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
         }
         .frame(maxWidth: .infinity, minHeight: 280, maxHeight: 400)
     }
@@ -76,6 +78,13 @@ struct TranscriptDebugView: View {
     )
 }
 
-#Preview("Debug - not available") {
-    TranscriptDebugView(reason: "Transcrição não encontrada para o episódio 12345.")
+#Preview("Not available") {
+    TranscriptNotAvailableView(reason: "Transcrição não encontrada para esse episódio.")
+}
+
+#Preview("Coming soon") {
+    TranscriptNotAvailableView(
+        reason: "Transcrição a caminho! Episódios recentes podem levar alguns dias.",
+        isComingSoon: true
+    )
 }

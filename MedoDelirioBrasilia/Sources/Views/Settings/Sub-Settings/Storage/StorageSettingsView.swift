@@ -10,6 +10,8 @@ import Kingfisher
 
 struct StorageSettingsView: View {
 
+    @Environment(TranscriptDownloadService.self) private var transcriptDownloadService
+
     @State private var episodesBytes: UInt64 = 0
     @State private var soundsBytes: UInt64 = 0
     @State private var songsBytes: UInt64 = 0
@@ -27,6 +29,9 @@ struct StorageSettingsView: View {
     @State private var showDeleteAllConfirmation = false
     @State private var showDeleteAllSuccess = false
     @State private var showClearImageCacheSuccess = false
+
+    @State private var showDeleteTranscriptsConfirmation = false
+    @State private var showDeleteTranscriptsSuccess = false
 
     @State private var isLoading = true
 
@@ -148,6 +153,25 @@ struct StorageSettingsView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
+
+                    Button("Apagar todas as transcrições", role: .destructive) {
+                        showDeleteTranscriptsConfirmation = true
+                    }
+                    .disabled(transcriptsBytes == 0)
+                    .alert(
+                        "Apagar todas as transcrições?",
+                        isPresented: $showDeleteTranscriptsConfirmation
+                    ) {
+                        Button("Apagar", role: .destructive) {
+                            deleteAllTranscripts()
+                        }
+                        Button("Cancelar", role: .cancel) {}
+                    } message: {
+                        Text("As transcrições baixadas serão removidas. Para pesquisar dentro dos episódios, será necessário baixá-las novamente.")
+                    }
+                    .alert("Transcrições apagadas com sucesso", isPresented: $showDeleteTranscriptsSuccess) {
+                        Button("OK") {}
+                    }
                 }
             }
 
@@ -236,6 +260,21 @@ struct StorageSettingsView: View {
             // Size will reflect whatever was partially deleted
             refreshEpisodeStats()
         }
+    }
+
+    private func deleteAllTranscripts() {
+        do {
+            try transcriptDownloadService.deleteAllTranscripts()
+            refreshTranscriptStats()
+            showDeleteTranscriptsSuccess = true
+        } catch {
+            refreshTranscriptStats()
+        }
+    }
+
+    private func refreshTranscriptStats() {
+        let transcripts = documentsURL.appendingPathComponent(InternalFolderNames.transcripts)
+        transcriptsBytes = (try? StorageHelper.sizeOfDirectory(at: transcripts)) ?? 0
     }
 
     private func updateImageCacheBytes() {
@@ -335,4 +374,5 @@ struct StorageBarView: View {
     NavigationStack {
         StorageSettingsView()
     }
+    .environment(TranscriptDownloadService())
 }

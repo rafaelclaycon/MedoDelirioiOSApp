@@ -202,7 +202,8 @@ extension LocalDatabase {
             AddEpisodeStateTables(),
             AddPodcastEpisodeTable(),
             AddEpisodeBookmarkTable(),
-            AddEpisodeListenLogTable()
+            AddEpisodeListenLogTable(),
+            CleanUpSlashEpisodeId()
         ]
     }
 

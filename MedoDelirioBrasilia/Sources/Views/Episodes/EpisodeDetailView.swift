@@ -102,6 +102,17 @@ struct EpisodeDetailView: View {
                     .foregroundStyle(.secondary)
                     .textCase(.uppercase)
 
+                if CommandLine.arguments.contains("-SHOW_MORE_DEV_OPTIONS") {
+                    Text("·")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Text(episode.id)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+
                 if favoritesStore.isFavorite(episode.id) {
                     Image(systemName: "star.fill")
                         .font(.caption2)

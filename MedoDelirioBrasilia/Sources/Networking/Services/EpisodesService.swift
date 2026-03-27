@@ -72,14 +72,23 @@ final class EpisodesService: EpisodesServiceProtocol {
         )
     }
 
-    /// Extracts the numeric Spreaker ID from a GUID that may be a full URL
-    /// (e.g. "https://api.spreaker.com/episode/69980761" -> "69980761").
-    /// Returns the string as-is when it is not a URL.
+    /// Extracts a stable episode ID from a GUID that may be a full URL.
+    /// Handles two known formats:
+    /// - Spreaker: "https://api.spreaker.com/episode/69980761" -> "69980761"
+    /// - WordPress (central3): "http://www.central3.com.br/?p=40097" -> "40097"
     nonisolated static func parseEpisodeId(from guid: String?) -> String? {
         guard let guid else { return nil }
         if let url = URL(string: guid), url.scheme != nil {
             let lastComponent = url.lastPathComponent
-            return lastComponent.isEmpty ? guid : lastComponent
+            if !lastComponent.isEmpty, lastComponent != "/" {
+                return lastComponent
+            }
+            if let components = URLComponents(string: guid),
+               let pValue = components.queryItems?.first(where: { $0.name == "p" })?.value,
+               !pValue.isEmpty {
+                return pValue
+            }
+            return guid
         }
         return guid
     }

@@ -163,7 +163,7 @@ struct SearchServiceTests {
             reactionRepository: FakeReactionRepository()
         )
 
-        let results = service.results(matching: "test")
+        let results = service.results(matching: "test", mode: .virgulas)
 
         #expect(results.reactionsMatchingTitle == nil)
     }
@@ -180,7 +180,7 @@ struct SearchServiceTests {
         )
 
         await service.loadReactions()
-        let results = service.results(matching: "test")
+        let results = service.results(matching: "test", mode: .virgulas)
 
         #expect(results.reactionsMatchingTitle?.isEmpty == true)
     }

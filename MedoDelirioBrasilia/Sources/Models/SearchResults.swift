@@ -26,7 +26,7 @@ struct SearchResults {
     var folders: [UserFolder]?
     var episodesMatchingTitle: [PodcastEpisode]?
     var episodesMatchingDescription: [PodcastEpisode]?
-    var episodesMatchingTranscript: [TranscriptSearchResult]?
+    var episodesMatchingTranscript: [EpisodeTranscriptGroup]?
     var reactionsMatchingTitle: [Reaction]?
     var reactionsMatchingFeeling: [Reaction]?
 

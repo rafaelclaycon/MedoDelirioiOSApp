@@ -14,6 +14,7 @@ struct EpisodesView: View {
     @Environment(EpisodeProgressStore.self) private var progressStore
     @Environment(EpisodePlayedStore.self) private var playedStore
     @Environment(EpisodeBookmarkStore.self) private var bookmarkStore
+    @Environment(TranscriptDownloadService.self) private var transcriptService
     @Environment(\.push) private var push
     @State private var viewModel = ViewModel(episodesService: EpisodesService())
     @State private var selectedFilter: EpisodeFilterOption = .all
@@ -61,6 +62,11 @@ struct EpisodesView: View {
                                 .padding([.top, .horizontal], .spacing(.medium))
                         }
 
+                        if FeatureFlag.isEnabled(.projectEleDisseIssoMesmo) {
+                            TranscriptDownloadBannerView()
+                                .padding([.top, .horizontal], .spacing(.medium))
+                        }
+
                         if filtered.isEmpty {
                             emptyStateForFilter(selectedFilter)
                         } else {
@@ -74,6 +80,16 @@ struct EpisodesView: View {
                                         Text(String(group.year))
                                             .font(.title3)
                                             .fontWeight(.bold)
+                                    }
+                                }
+
+                                if CommandLine.arguments.contains("-SHOW_MORE_DEV_OPTIONS") {
+                                    Section {
+                                        Text("\(episodes.count) episodes in DB · \(filtered.count) after filters")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                            .frame(maxWidth: .infinity)
+                                            .listRowSeparator(.hidden)
                                     }
                                 }
                             }
@@ -663,6 +679,7 @@ private extension View {
     .environment(EpisodeProgressStore())
     .environment(EpisodePlayedStore())
     .environment(EpisodeBookmarkStore())
+    .environment(TranscriptDownloadService())
 }
 
 #Preview("Episode") {

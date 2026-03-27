@@ -11,8 +11,12 @@ final class FakeSearchService: SearchServiceProtocol {
 
     var reactionsState: LoadingState<[Reaction]> = .loaded([])
 
-    func results(matching searchString: String) -> SearchResults {
+    func results(matching searchString: String, mode: SearchMode) -> SearchResults {
         SearchResults()
+    }
+
+    func searchTranscripts(matching searchString: String) async -> [EpisodeTranscriptGroup] {
+        []
     }
 
     func loadReactions() async {
@@ -28,6 +32,14 @@ final class FakeSearchService: SearchServiceProtocol {
     }
 
     func clearRecentSearches() {
+        //
+    }
+
+    func invalidateTranscriptCache() {
+        //
+    }
+
+    func releaseTranscriptCache() {
         //
     }
 }

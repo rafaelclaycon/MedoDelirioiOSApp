@@ -7,13 +7,20 @@
 
 import Foundation
 
-struct TranscriptSearchResult: Identifiable, Equatable {
+struct EpisodeTranscriptGroup: Identifiable, Equatable {
 
     let episode: PodcastEpisode
-    let matchedCueText: String
+    let matches: [TranscriptMatch]
+
+    var id: String { episode.id }
+}
+
+struct TranscriptMatch: Identifiable, Equatable {
+
+    let cueText: String
     let timestamp: TimeInterval
 
-    var id: String { "\(episode.id)-\(Int(timestamp))" }
+    var id: String { "\(Int(timestamp))" }
 
     var formattedTimestamp: String {
         let totalSeconds = Int(timestamp)

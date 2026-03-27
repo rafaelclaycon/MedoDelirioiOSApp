@@ -56,12 +56,12 @@ struct NowPlayingView: View {
                 toast = Toast(message: "Marcador Adicionado", type: .success)
             }
             if transcriptEnabled {
-                transcriptProvider.load(episodeId: player.currentEpisode?.id)
+                transcriptProvider.load(episodeId: player.currentEpisode?.id, pubDate: player.currentEpisode?.pubDate)
             }
         }
         .onChange(of: player.currentEpisode?.id) {
             if transcriptEnabled {
-                transcriptProvider.load(episodeId: player.currentEpisode?.id)
+                transcriptProvider.load(episodeId: player.currentEpisode?.id, pubDate: player.currentEpisode?.pubDate)
             }
         }
         .onChange(of: player.currentTime) {
@@ -167,8 +167,8 @@ struct NowPlayingView: View {
         switch transcriptProvider.state {
         case .idle:
             artwork
-        case .notAvailable(let reason):
-            TranscriptDebugView(reason: reason)
+        case .notAvailable(let reason, let isComingSoon):
+            TranscriptNotAvailableView(reason: reason, isComingSoon: isComingSoon)
         case .loaded:
             VStack(alignment: .leading, spacing: .spacing(.xSmall)) {
                 TranscriptOverlayView(

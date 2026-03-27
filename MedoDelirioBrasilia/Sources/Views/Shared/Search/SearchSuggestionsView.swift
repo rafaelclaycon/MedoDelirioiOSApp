@@ -32,6 +32,7 @@ struct SearchSuggestionsView: View {
 
     @Environment(\.sizeCategory) private var sizeCategory
     @Environment(\.push) private var push
+    @Environment(TranscriptDownloadService.self) private var transcriptService
 
     // MARK: - Computed Properties
 
@@ -54,6 +55,10 @@ struct SearchSuggestionsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: .spacing(.xLarge)) {
+            if FeatureFlag.isEnabled(.projectEleDisseIssoMesmo) {
+                TranscriptDownloadBannerView()
+            }
+
             if showFeatureDiscovery {
                 FeatureDiscoveryView()
             } else {
@@ -573,4 +578,5 @@ extension SearchSuggestionsView {
             .padding(.spacing(.medium))
         }
     }
+    .environment(TranscriptDownloadService())
 }

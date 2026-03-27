@@ -20,6 +20,7 @@ struct MedoDelirioBrasiliaApp: App {
     @State private var state: PadScreen? = PadScreen.allSounds
 
     @State private var helper = PlayRandomSoundHelper()
+    @State private var transcriptDownloadService = TranscriptDownloadService()
 
     private let contentRepository = ContentRepository(database: LocalDatabase.shared)
 
@@ -41,6 +42,7 @@ struct MedoDelirioBrasiliaApp: App {
                 }
             }
             .environment(helper)
+            .environment(transcriptDownloadService)
         }
     }
 
