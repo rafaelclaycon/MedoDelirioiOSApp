@@ -84,7 +84,7 @@ struct TranscriptNotAvailableView: View {
 
 #Preview("Coming soon") {
     TranscriptNotAvailableView(
-        reason: "Transcrição a caminho! Episódios recentes podem levar alguns dias.",
+        reason: "Transcrição a caminho! Episódios recentes podem levar algumas horas.",
         isComingSoon: true
     )
 }

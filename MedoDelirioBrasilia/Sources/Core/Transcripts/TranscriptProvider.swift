@@ -46,7 +46,7 @@ final class TranscriptProvider {
         guard let fileURL = Self.findSRTFile(for: episodeId) else {
             if let pubDate, Self.isRecent(pubDate) {
                 state = .notAvailable(
-                    reason: "Transcrição a caminho! Episódios recentes podem levar alguns dias.",
+                    reason: "Transcrição a caminho! Episódios recentes podem levar algumas horas.",
                     isComingSoon: true
                 )
             } else {
