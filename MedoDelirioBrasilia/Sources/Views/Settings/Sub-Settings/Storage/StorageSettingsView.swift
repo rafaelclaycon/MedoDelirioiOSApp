@@ -32,6 +32,8 @@ struct StorageSettingsView: View {
 
     @State private var showDeleteTranscriptsConfirmation = false
     @State private var showDeleteTranscriptsSuccess = false
+    @State private var showDeleteTranscriptsError = false
+    @State private var deleteTranscriptsErrorMessage = ""
 
     @State private var isLoading = true
 
@@ -172,6 +174,11 @@ struct StorageSettingsView: View {
                     .alert("Transcrições apagadas com sucesso", isPresented: $showDeleteTranscriptsSuccess) {
                         Button("OK") {}
                     }
+                    .alert("Erro ao apagar transcrições", isPresented: $showDeleteTranscriptsError) {
+                        Button("OK") {}
+                    } message: {
+                        Text(deleteTranscriptsErrorMessage)
+                    }
                 }
             }
 
@@ -269,6 +276,8 @@ struct StorageSettingsView: View {
             showDeleteTranscriptsSuccess = true
         } catch {
             refreshTranscriptStats()
+            deleteTranscriptsErrorMessage = error.localizedDescription
+            showDeleteTranscriptsError = true
         }
     }
 
