@@ -49,6 +49,18 @@ struct DiagnosticsView: View {
             ChannelLogsView()
 
             CrashTestView()
+
+            if FeatureFlag.isEnabled(.projectEleDisseIssoMesmo) {
+                Section("Transcrições") {
+                    NavigationLink("Arquivos de transcrição") {
+                        TranscriptFilesBrowserView()
+                    }
+
+                    NavigationLink("Log de operações") {
+                        TranscriptLogView()
+                    }
+                }
+            }
         }
         .navigationTitle("Diagnóstico")
         .navigationBarTitleDisplayMode(.inline)

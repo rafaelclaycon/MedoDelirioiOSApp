@@ -21,6 +21,14 @@ struct TranscriptFileEntry: Codable {
     let size: Int
 }
 
+// MARK: - Log Model
+
+struct TranscriptLogEntry: Codable, Identifiable {
+    let date: Date
+    let message: String
+    var id: Date { date }
+}
+
 // MARK: - Service
 
 @Observable
@@ -35,6 +43,7 @@ final class TranscriptDownloadService {
 
     private(set) var state: State = .idle
     private(set) var transcriptsDownloaded: Bool
+    private(set) var operationLog: [TranscriptLogEntry] = []
 
     private let userDefaultsKey = "transcriptsDownloaded"
     private let session = URLSession(configuration: .default)
@@ -43,6 +52,7 @@ final class TranscriptDownloadService {
 
     init() {
         transcriptsDownloaded = UserDefaults.standard.bool(forKey: userDefaultsKey)
+        operationLog = Self.loadLog()
     }
 
     // MARK: - Public
@@ -59,6 +69,8 @@ final class TranscriptDownloadService {
             let filesToDownload = try diffAgainstLocal(manifest: manifest)
             guard !filesToDownload.isEmpty else { return }
 
+            appendLog("Sync: \(filesToDownload.count) arquivo(s) para atualizar")
+
             let showProgress = filesToDownload.count >= Self.visibleSyncThreshold
 
             if showProgress {
@@ -72,12 +84,15 @@ final class TranscriptDownloadService {
                 }
             }
 
+            appendLog("Sync concluído: \(filesToDownload.count) arquivo(s)")
+
             if showProgress {
                 markCompleted()
             } else {
                 NotificationCenter.default.post(name: Self.transcriptsDidUpdate, object: nil)
             }
         } catch {
+            appendLog("Sync falhou: \(error.localizedDescription)")
             if case .downloading = state {
                 state = .failed(message: error.localizedDescription)
             }
@@ -90,6 +105,7 @@ final class TranscriptDownloadService {
         transcriptsDownloaded = false
         UserDefaults.standard.set(false, forKey: userDefaultsKey)
         state = .idle
+        appendLog("Todas as transcrições apagadas")
         NotificationCenter.default.post(name: Self.transcriptsDidUpdate, object: nil)
     }
 
@@ -97,12 +113,14 @@ final class TranscriptDownloadService {
     func downloadTranscripts() async {
         guard state != .downloading(progress: 0) else { return }
         state = .downloading(progress: 0)
+        appendLog("Iniciando download de transcrições")
 
         do {
             let manifest = try await fetchManifest()
             let filesToDownload = try diffAgainstLocal(manifest: manifest)
 
             if filesToDownload.isEmpty {
+                appendLog("Download concluído: 0 arquivo(s) (tudo atualizado)")
                 markCompleted()
                 return
             }
@@ -112,10 +130,17 @@ final class TranscriptDownloadService {
                 state = .downloading(progress: Double(index + 1) / Double(filesToDownload.count))
             }
 
+            appendLog("Download concluído: \(filesToDownload.count) arquivo(s)")
             markCompleted()
         } catch {
+            appendLog("Download falhou: \(error.localizedDescription)")
             state = .failed(message: error.localizedDescription)
         }
+    }
+
+    func clearLog() {
+        operationLog = []
+        try? FileManager.default.removeItem(at: Self.logFileURL())
     }
 
     // MARK: - Private
@@ -164,6 +189,34 @@ final class TranscriptDownloadService {
     static func transcriptsDirectory() -> URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
             .appendingPathComponent(InternalFolderNames.transcripts)
+    }
+
+    // MARK: - Operation Log
+
+    static func logFileURL() -> URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+            .appendingPathComponent("transcript_log.json")
+    }
+
+    private func appendLog(_ message: String) {
+        let entry = TranscriptLogEntry(date: .now, message: message)
+        operationLog.append(entry)
+        Self.persistLog(operationLog)
+    }
+
+    private static func persistLog(_ entries: [TranscriptLogEntry]) {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        guard let data = try? encoder.encode(entries) else { return }
+        try? data.write(to: logFileURL(), options: .atomic)
+    }
+
+    private static func loadLog() -> [TranscriptLogEntry] {
+        let url = logFileURL()
+        guard let data = try? Data(contentsOf: url) else { return [] }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return (try? decoder.decode([TranscriptLogEntry].self, from: data)) ?? []
     }
 }
 
