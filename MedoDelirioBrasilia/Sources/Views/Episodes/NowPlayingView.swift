@@ -20,11 +20,15 @@ struct NowPlayingView: View {
     @State private var editingBookmark: EpisodeBookmark?
     @State private var bookmarksSortAscending: Bool = true
     @State private var showSidecastClip: Bool = false
-    @State private var transcriptProvider = TranscriptProvider()
+    @State private var transcriptProvider: TranscriptProvider
     @AppStorage("showTranscript") private var showTranscript: Bool = false
     @State private var showBookmarks: Bool = false
 
     @Environment(\.colorScheme) private var colorScheme
+
+    init(transcriptProvider: TranscriptProvider = TranscriptProvider()) {
+        _transcriptProvider = State(initialValue: transcriptProvider)
+    }
 
     private var transcriptEnabled: Bool {
         FeatureFlag.isEnabled(.projectEleDisseIssoMesmo)
@@ -55,7 +59,7 @@ struct NowPlayingView: View {
                 player.pendingRemoteBookmark = false
                 toast = Toast(message: "Marcador Adicionado", type: .success)
             }
-            if transcriptEnabled {
+            if transcriptEnabled, case .idle = transcriptProvider.state {
                 transcriptProvider.load(episodeId: player.currentEpisode?.id, pubDate: player.currentEpisode?.pubDate)
             }
         }
@@ -121,10 +125,10 @@ struct NowPlayingView: View {
             topContent
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(.top, .spacing(.xxxLarge))
+                //.border(.blue)
 
             toggleRow
-                .padding(.top, .spacing(.medium))
-                .padding(.bottom, .spacing(.medium))
+                .padding(.vertical, .spacing(.xLarge))
 
             episodeInfo
 
@@ -137,14 +141,12 @@ struct NowPlayingView: View {
                 .frame(height: .spacing(.small))
 
             playbackControls
+                //.border(.red)
 
             Spacer()
-                .frame(height: .spacing(.large))
+                .frame(height: .spacing(.xxLarge))
 
             actionButtons
-
-            Spacer()
-                .frame(height: .spacing(.small))
         }
         .padding(.horizontal, .spacing(.xLarge))
     }
@@ -234,7 +236,7 @@ struct NowPlayingView: View {
     }
 
     private var toggleRow: some View {
-        HStack(spacing: .spacing(.small)) {
+        HStack(spacing: .spacing(.medium)) {
             GlassButton(
                 symbol: showTranscript && !showBookmarks ? "text.quote" : nil,
                 title: "Transcrição",
@@ -329,7 +331,7 @@ struct NowPlayingView: View {
     // MARK: - Episode Info
 
     private var episodeInfo: some View {
-        VStack(spacing: .spacing(.xxxSmall)) {
+        VStack(spacing: .spacing(.xxSmall)) {
             Text(player.currentEpisode?.title ?? "")
                 .font(.title2)
                 .fontDesign(.serif)
@@ -641,5 +643,71 @@ private extension View {
         }
     }
 
+    return SheetHost()
+}
+
+#Preview("With Transcript") {
+    struct SheetHost: View {
+        @State private var isPresented = true
+
+        let player: EpisodePlayer = {
+            let p = EpisodePlayer()
+            p.currentEpisode = .mockRecent
+            p.duration = PodcastEpisode.mockRecent.duration ?? 3945
+            p.currentTime = 620
+            return p
+        }()
+
+        static let previewDefaults: UserDefaults = {
+            let defaults = UserDefaults(suiteName: "NowPlayingTranscriptPreview")!
+            defaults.set(true, forKey: "showTranscript")
+            return defaults
+        }()
+
+        var body: some View {
+            Color.clear
+                .sheet(isPresented: $isPresented) {
+                    NowPlayingView(transcriptProvider: .mockLoaded())
+                        .environment(player)
+                        .environment(EpisodeBookmarkStore())
+                        .defaultAppStorage(Self.previewDefaults)
+                }
+        }
+    }
+
+    FeatureFlag.setEnabled(.projectEleDisseIssoMesmo, to: true)
+    return SheetHost()
+}
+
+#Preview("Transcript – Long Lines") {
+    struct SheetHost: View {
+        @State private var isPresented = true
+
+        let player: EpisodePlayer = {
+            let p = EpisodePlayer()
+            p.currentEpisode = .mockRecent
+            p.duration = PodcastEpisode.mockRecent.duration ?? 3945
+            p.currentTime = 620
+            return p
+        }()
+
+        static let previewDefaults: UserDefaults = {
+            let defaults = UserDefaults(suiteName: "NowPlayingLongLinesPreview")!
+            defaults.set(true, forKey: "showTranscript")
+            return defaults
+        }()
+
+        var body: some View {
+            Color.clear
+                .sheet(isPresented: $isPresented) {
+                    NowPlayingView(transcriptProvider: .mockLoadedLongLines())
+                        .environment(player)
+                        .environment(EpisodeBookmarkStore())
+                        .defaultAppStorage(Self.previewDefaults)
+                }
+        }
+    }
+
+    FeatureFlag.setEnabled(.projectEleDisseIssoMesmo, to: true)
     return SheetHost()
 }

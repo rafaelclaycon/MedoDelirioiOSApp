@@ -149,3 +149,38 @@ final class TranscriptProvider {
         }
     }
 }
+
+// MARK: - Mocks
+
+extension TranscriptProvider {
+
+    static func mockLoaded() -> TranscriptProvider {
+        let provider = TranscriptProvider()
+        let mockCues: [SRTCue] = [
+            SRTCue(index: 1, startTime: 0, endTime: 4, text: "Boa noite, boa noite."),
+            SRTCue(index: 2, startTime: 4, endTime: 8, text: "Hoje o assunto é sério, gente."),
+            SRTCue(index: 3, startTime: 8, endTime: 12, text: "Vamos lá que o bagulho tá doido."),
+        ]
+        provider.cues = mockCues
+        provider.state = .loaded(cues: mockCues)
+        provider.previousCue = mockCues[0]
+        provider.currentCue = mockCues[1]
+        provider.nextCue = mockCues[2]
+        return provider
+    }
+
+    static func mockLoadedLongLines() -> TranscriptProvider {
+        let provider = TranscriptProvider()
+        let mockCues: [SRTCue] = [
+            SRTCue(index: 1, startTime: 0, endTime: 6, text: "E aí o cara chegou lá na sessão do Congresso e falou assim: \"Olha, eu não vou aceitar essa situação de jeito nenhum, porque isso aqui é um absurdo completo.\""),
+            SRTCue(index: 2, startTime: 6, endTime: 14, text: "Aí o outro respondeu na mesma hora, no microfone aberto pra todo mundo ouvir: \"O senhor está completamente equivocado, e eu tenho aqui os documentos que provam exatamente o contrário do que o senhor está dizendo nesta tribuna.\""),
+            SRTCue(index: 3, startTime: 14, endTime: 20, text: "E o plenário inteiro ficou naquele burburinho, todo mundo falando ao mesmo tempo, ninguém se entendendo, e o presidente da mesa tentando colocar ordem naquela bagunça toda que não tinha mais jeito nenhum."),
+        ]
+        provider.cues = mockCues
+        provider.state = .loaded(cues: mockCues)
+        provider.previousCue = mockCues[0]
+        provider.currentCue = mockCues[1]
+        provider.nextCue = mockCues[2]
+        return provider
+    }
+}
