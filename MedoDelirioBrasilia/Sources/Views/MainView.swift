@@ -260,6 +260,35 @@ struct MainView: View {
                             Label("Episódios", systemImage: "radio")
                         }
                         .tag(PhoneTab.trends)
+
+                        NavigationStack(path: $searchTabPath) {
+                            StandaloneSearchView(
+                                searchService: searchService,
+                                trendsService: trendsService,
+                                contentRepository: contentRepository,
+                                userFolderRepository: userFolderRepository,
+                                analyticsService: AnalyticsService()
+                            )
+                            .navigationDestination(for: GeneralNavigationDestination.self) { screen in
+                                GeneralRouter(destination: screen, contentRepository: contentRepository)
+                            }
+                            .navigationDestination(for: SearchNavigationDestination.self) { screen in
+                                switch screen {
+                                case .trends:
+                                    TrendsView(
+                                        audienceViewModel: MostSharedByAudienceView.ViewModel(trendsService: trendsService),
+                                        tabSelection: tabSelection,
+                                        activePadScreen: .constant(.trends)
+                                    )
+                                    .environment(trendsHelper)
+                                }
+                            }
+                        }
+                        .tabItem {
+                            Label(Shared.TabInfo.name(.search), systemImage: Shared.TabInfo.symbol(.search))
+                        }
+                        .tag(PhoneTab.search)
+                        .environment(\.push, PushAction { searchTabPath.append($0) })
                     }
                     .onContinueUserActivity(Shared.ActivityTypes.playAndShareSounds, perform: { _ in
                         tabSelection.wrappedValue = .sounds

@@ -327,10 +327,5 @@ extension MainContentView {
                 matchedTransitionNamespace: namespace
             )
         }
-        .if(!UIDevice.isIOS26OrLater) { view in
-            view
-                .searchable(text: $searchText, placement: .navigationBarDrawer, prompt: Shared.Search.searchPrompt)
-                .autocorrectionDisabled()
-        }
     }
 }

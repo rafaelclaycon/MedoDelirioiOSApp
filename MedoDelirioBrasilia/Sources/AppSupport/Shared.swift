@@ -15,7 +15,7 @@ struct Shared {
             case .settings:
                 "Configurações"
             case .search:
-                ""
+                "Pesquisar"
             }
         }
 
@@ -30,7 +30,7 @@ struct Shared {
             case .settings:
                 ""
             case .search:
-                ""
+                "magnifyingglass"
             }
         }
 
