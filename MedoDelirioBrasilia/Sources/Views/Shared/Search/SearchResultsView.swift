@@ -247,6 +247,8 @@ struct SearchResultsView: View {
 
                     if FeatureFlag.isEnabled(.projectEleDisseIssoMesmo) {
                         if transcriptService.transcriptsDownloaded {
+                            TranscriptDownloadBannerView()
+
                             if isSearchingTranscripts {
                                 TranscriptSearchLoadingView()
                             } else if let groups = results.episodesMatchingTranscript, !groups.isEmpty {
@@ -997,6 +999,11 @@ struct TranscriptSearchLoadingView: View {
 
 struct TranscriptDownloadPromptView: View {
 
+    var icon: String = "arrow.down.circle"
+    var title: String = "Buscar dentro dos episódios?"
+    var subtitle: String = "Para pesquisar nas transcrições dos episódios, é necessário baixar os arquivos primeiro. Isso usa poucos dados."
+    var priorityEpisodeId: String? = nil
+
     @Environment(TranscriptDownloadService.self) private var service
     @Environment(\.colorScheme) private var colorScheme
 
@@ -1005,16 +1012,16 @@ struct TranscriptDownloadPromptView: View {
             Spacer()
                 .frame(height: .spacing(.large))
 
-            Image(systemName: "arrow.down.circle")
+            Image(systemName: icon)
                 .font(.system(size: 48))
                 .foregroundStyle(.secondary)
 
-            Text("Buscar dentro dos episódios?")
+            Text(title)
                 .font(.title3)
                 .fontWeight(.semibold)
                 .multilineTextAlignment(.center)
 
-            Text("Para pesquisar nas transcrições dos episódios, é necessário baixar os arquivos primeiro. Isso usa poucos dados.")
+            Text(subtitle)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -1022,7 +1029,7 @@ struct TranscriptDownloadPromptView: View {
 
             if #available(iOS 26, *) {
                 Button {
-                    Task { await service.downloadTranscripts() }
+                    Task { await service.downloadTranscripts(priorityEpisodeId: priorityEpisodeId) }
                 } label: {
                     Text("Baixar Transcrições")
                         .font(.callout)
@@ -1038,7 +1045,7 @@ struct TranscriptDownloadPromptView: View {
                 }
             } else {
                 Button {
-                    Task { await service.downloadTranscripts() }
+                    Task { await service.downloadTranscripts(priorityEpisodeId: priorityEpisodeId) }
                 } label: {
                     HStack {
                         Spacer()

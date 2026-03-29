@@ -13,6 +13,7 @@ struct NowPlayingView: View {
 
     @Environment(EpisodePlayer.self) private var player
     @Environment(EpisodeBookmarkStore.self) private var bookmarkStore
+    @Environment(TranscriptDownloadService.self) private var transcriptDownloadService
 
     @State private var isScrubbing: Bool = false
     @State private var scrubValue: TimeInterval = 0
@@ -59,12 +60,17 @@ struct NowPlayingView: View {
                 player.pendingRemoteBookmark = false
                 toast = Toast(message: "Marcador Adicionado", type: .success)
             }
-            if transcriptEnabled, case .idle = transcriptProvider.state {
+            if transcriptEnabled, transcriptDownloadService.transcriptsDownloaded, case .idle = transcriptProvider.state {
                 transcriptProvider.load(episodeId: player.currentEpisode?.id, pubDate: player.currentEpisode?.pubDate)
             }
         }
         .onChange(of: player.currentEpisode?.id) {
-            if transcriptEnabled {
+            if transcriptEnabled, transcriptDownloadService.transcriptsDownloaded {
+                transcriptProvider.load(episodeId: player.currentEpisode?.id, pubDate: player.currentEpisode?.pubDate)
+            }
+        }
+        .onChange(of: transcriptDownloadService.transcriptsDownloaded) {
+            if transcriptEnabled, transcriptDownloadService.transcriptsDownloaded {
                 transcriptProvider.load(episodeId: player.currentEpisode?.id, pubDate: player.currentEpisode?.pubDate)
             }
         }
@@ -166,22 +172,36 @@ struct NowPlayingView: View {
 
     @ViewBuilder
     private var transcriptContent: some View {
-        switch transcriptProvider.state {
-        case .idle:
-            artwork
-        case .notAvailable(let reason, let isComingSoon):
-            TranscriptNotAvailableView(reason: reason, isComingSoon: isComingSoon)
-        case .loaded:
-            VStack(alignment: .leading, spacing: .spacing(.xSmall)) {
-                TranscriptOverlayView(
-                    previousCue: transcriptProvider.previousCue,
-                    currentCue: transcriptProvider.currentCue,
-                    nextCue: transcriptProvider.nextCue
+        if !transcriptDownloadService.transcriptsDownloaded {
+            if case .downloading = transcriptDownloadService.state {
+                TranscriptDownloadingView()
+            } else {
+                TranscriptDownloadPromptView(
+                    icon: "text.quote",
+                    title: "Acompanhe o que está sendo dito",
+                    subtitle: "Baixe as transcrições para ler junto enquanto ouve. É rápido e usa poucos dados.",
+                    priorityEpisodeId: player.currentEpisode?.id
                 )
+                .frame(minHeight: 280, maxHeight: 400)
+            }
+        } else {
+            switch transcriptProvider.state {
+            case .idle:
+                artwork
+            case .notAvailable(let reason, let isComingSoon):
+                TranscriptNotAvailableView(reason: reason, isComingSoon: isComingSoon)
+            case .loaded:
+                VStack(alignment: .leading, spacing: .spacing(.xSmall)) {
+                    TranscriptOverlayView(
+                        previousCue: transcriptProvider.previousCue,
+                        currentCue: transcriptProvider.currentCue,
+                        nextCue: transcriptProvider.nextCue
+                    )
 
-                Text("Transcrição gerada por IA. Pode conter erros.")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    Text("Transcrição gerada por IA. Pode conter erros.")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
             }
         }
     }

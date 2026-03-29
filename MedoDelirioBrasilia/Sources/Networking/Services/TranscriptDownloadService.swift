@@ -45,6 +45,7 @@ final class TranscriptDownloadService {
     private(set) var transcriptsDownloaded: Bool
     private(set) var operationLog: [TranscriptLogEntry] = []
 
+    private var isDownloading = false
     private let userDefaultsKey = "transcriptsDownloaded"
     private let session = URLSession(configuration: .default)
 
@@ -61,8 +62,10 @@ final class TranscriptDownloadService {
 
     @MainActor
     func syncNewTranscriptsIfNeeded() async {
-        guard transcriptsDownloaded else { return }
-        guard state == .idle || state == .completed else { return }
+        guard transcriptsDownloaded, !isDownloading else { return }
+        isDownloading = true
+
+        defer { isDownloading = false }
 
         do {
             let manifest = try await fetchManifest()
@@ -77,14 +80,23 @@ final class TranscriptDownloadService {
                 state = .downloading(progress: 0)
             }
 
+            var failedCount = 0
+
             for (index, entry) in filesToDownload.enumerated() {
-                try await downloadSRT(entry: entry)
+                do {
+                    try await downloadSRT(entry: entry)
+                } catch {
+                    failedCount += 1
+                    appendLog("Sync falha no arquivo \(entry.episodeId): \(error.localizedDescription)")
+                    continue
+                }
                 if showProgress {
                     state = .downloading(progress: Double(index + 1) / Double(filesToDownload.count))
                 }
             }
 
-            appendLog("Sync concluído: \(filesToDownload.count) arquivo(s)")
+            let successCount = filesToDownload.count - failedCount
+            appendLog("Sync concluído: \(successCount) arquivo(s), \(failedCount) falha(s)")
 
             if showProgress {
                 markCompleted()
@@ -110,14 +122,17 @@ final class TranscriptDownloadService {
     }
 
     @MainActor
-    func downloadTranscripts() async {
-        guard state != .downloading(progress: 0) else { return }
+    func downloadTranscripts(priorityEpisodeId: String? = nil) async {
+        guard !isDownloading else { return }
+        isDownloading = true
         state = .downloading(progress: 0)
         appendLog("Iniciando download de transcrições")
 
+        defer { isDownloading = false }
+
         do {
             let manifest = try await fetchManifest()
-            let filesToDownload = try diffAgainstLocal(manifest: manifest)
+            var filesToDownload = try diffAgainstLocal(manifest: manifest)
 
             if filesToDownload.isEmpty {
                 appendLog("Download concluído: 0 arquivo(s) (tudo atualizado)")
@@ -125,13 +140,42 @@ final class TranscriptDownloadService {
                 return
             }
 
-            for (index, entry) in filesToDownload.enumerated() {
-                try await downloadSRT(entry: entry)
-                state = .downloading(progress: Double(index + 1) / Double(filesToDownload.count))
+            if let priorityId = priorityEpisodeId,
+               let idx = filesToDownload.firstIndex(where: { $0.episodeId == priorityId }) {
+                let priority = filesToDownload.remove(at: idx)
+                filesToDownload.insert(priority, at: 0)
             }
 
-            appendLog("Download concluído: \(filesToDownload.count) arquivo(s)")
-            markCompleted()
+            var failedCount = 0
+
+            for (index, entry) in filesToDownload.enumerated() {
+                do {
+                    try await downloadSRT(entry: entry)
+                } catch {
+                    failedCount += 1
+                    appendLog("Falha no arquivo \(entry.episodeId): \(error.localizedDescription)")
+                    continue
+                }
+
+                state = .downloading(progress: Double(index + 1) / Double(filesToDownload.count))
+
+                if index == 0, priorityEpisodeId != nil, !transcriptsDownloaded {
+                    transcriptsDownloaded = true
+                    UserDefaults.standard.set(true, forKey: userDefaultsKey)
+                    NotificationCenter.default.post(name: Self.transcriptsDidUpdate, object: nil)
+                }
+            }
+
+            let successCount = filesToDownload.count - failedCount
+            appendLog("Download concluído: \(successCount) arquivo(s), \(failedCount) falha(s)")
+
+            if failedCount > 0 && successCount == 0 {
+                state = .failed(message: "Todas as \(failedCount) transcrições falharam ao baixar.")
+            } else if failedCount > 0 {
+                markCompleted()
+            } else {
+                markCompleted()
+            }
         } catch {
             appendLog("Download falhou: \(error.localizedDescription)")
             state = .failed(message: error.localizedDescription)

@@ -68,6 +68,21 @@ struct TranscriptNotAvailableView: View {
     }
 }
 
+/// Shown in Now Playing while transcripts are being downloaded for the first time.
+struct TranscriptDownloadingView: View {
+
+    var body: some View {
+        VStack(spacing: .spacing(.small)) {
+            ProgressView()
+
+            Text("Transcrições baixando…")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, minHeight: 280, maxHeight: 400)
+    }
+}
+
 // MARK: - Preview
 
 #Preview("With cues") {
