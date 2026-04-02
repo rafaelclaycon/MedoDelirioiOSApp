@@ -38,6 +38,7 @@ struct MainView: View {
     @State private var subviewToOpen: MainViewModalToOpen = .onboarding
     @State private var showingModalView: Bool = false
     @State private var showEpisodesWhatsNew: Bool = false
+    @State private var showTranscriptsWhatsNew: Bool = false
 
     // iPad
     @State private var sidebarFoldersViewModel: SidebarFoldersViewModel
@@ -553,6 +554,7 @@ struct MainView: View {
             sendUserPersonalTrendsToServerIfEnabled()
             displayOnboardingIfNeeded()
             displayEpisodesWhatsNewIfNeeded()
+            displayTranscriptsWhatsNewIfNeeded()
 
             Task {
 //                if AppPersistentMemory.shared.hasAllowedContentUpdate() {
@@ -610,6 +612,11 @@ struct MainView: View {
             AppPersistentMemory.shared.hasSeenEpisodesWhatsNewScreen(true)
         }) {
             IntroducingEpisodesView(appMemory: AppPersistentMemory.shared)
+        }
+        .sheet(isPresented: $showTranscriptsWhatsNew, onDismiss: {
+            AppPersistentMemory.shared.hasSeenTranscriptsWhatsNewScreen(true)
+        }) {
+            IntroducingTranscriptsView(appMemory: AppPersistentMemory.shared)
         }
         .sheet(isPresented: $showNowPlaying) {
             NowPlayingView()
@@ -709,6 +716,15 @@ struct MainView: View {
         guard !AppPersistentMemory.shared.hasSeenEpisodesWhatsNewScreen() else { return }
 
         showEpisodesWhatsNew = true
+    }
+
+    private func displayTranscriptsWhatsNewIfNeeded() {
+        guard FeatureFlag.isEnabled(.projectEleDisseIssoMesmo) else { return }
+        guard AppPersistentMemory.shared.hasShownNotificationsOnboarding() else { return }
+        guard AppPersistentMemory.shared.hasSeenEpisodesWhatsNewScreen() else { return }
+        guard !AppPersistentMemory.shared.hasSeenTranscriptsWhatsNewScreen() else { return }
+
+        showTranscriptsWhatsNew = true
     }
 
     private func sendFolderResearchChanges() async {
