@@ -77,14 +77,6 @@ final class FakeAppPersistentMemory: AppPersistentMemoryProtocol {
         //
     }
 
-    func hasSeenEpisodesWhatsNewScreen() -> Bool {
-        return false
-    }
-
-    func hasSeenEpisodesWhatsNewScreen(_ newValue: Bool) {
-        //
-    }
-
     func hasSeenTranscriptsWhatsNewScreen() -> Bool {
         return false
     }

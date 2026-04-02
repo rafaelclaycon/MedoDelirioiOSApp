@@ -143,42 +143,40 @@ struct StorageSettingsView: View {
                 Text("Esses arquivos são essenciais para o funcionamento do app e não podem ser removidos.")
             }
 
-            if FeatureFlag.isEnabled(.projectEleDisseIssoMesmo) {
-                Section("Transcrições") {
-                    HStack {
-                        Text("Tamanho")
-                        Spacer()
-                        if isLoading {
-                            ProgressView()
-                        } else {
-                            Text(StorageHelper.formattedSize(transcriptsBytes))
-                                .foregroundStyle(.secondary)
-                        }
+            Section("Transcrições") {
+                HStack {
+                    Text("Tamanho")
+                    Spacer()
+                    if isLoading {
+                        ProgressView()
+                    } else {
+                        Text(StorageHelper.formattedSize(transcriptsBytes))
+                            .foregroundStyle(.secondary)
                     }
+                }
 
-                    Button("Apagar todas as transcrições", role: .destructive) {
-                        showDeleteTranscriptsConfirmation = true
+                Button("Apagar todas as transcrições", role: .destructive) {
+                    showDeleteTranscriptsConfirmation = true
+                }
+                .disabled(transcriptsBytes == 0)
+                .alert(
+                    "Apagar todas as transcrições?",
+                    isPresented: $showDeleteTranscriptsConfirmation
+                ) {
+                    Button("Apagar", role: .destructive) {
+                        deleteAllTranscripts()
                     }
-                    .disabled(transcriptsBytes == 0)
-                    .alert(
-                        "Apagar todas as transcrições?",
-                        isPresented: $showDeleteTranscriptsConfirmation
-                    ) {
-                        Button("Apagar", role: .destructive) {
-                            deleteAllTranscripts()
-                        }
-                        Button("Cancelar", role: .cancel) {}
-                    } message: {
-                        Text("As transcrições baixadas serão removidas. Para pesquisar dentro dos episódios, será necessário baixá-las novamente.")
-                    }
-                    .alert("Transcrições apagadas com sucesso", isPresented: $showDeleteTranscriptsSuccess) {
-                        Button("OK") {}
-                    }
-                    .alert("Erro ao apagar transcrições", isPresented: $showDeleteTranscriptsError) {
-                        Button("OK") {}
-                    } message: {
-                        Text(deleteTranscriptsErrorMessage)
-                    }
+                    Button("Cancelar", role: .cancel) {}
+                } message: {
+                    Text("As transcrições baixadas serão removidas. Para pesquisar dentro dos episódios, será necessário baixá-las novamente.")
+                }
+                .alert("Transcrições apagadas com sucesso", isPresented: $showDeleteTranscriptsSuccess) {
+                    Button("OK") {}
+                }
+                .alert("Erro ao apagar transcrições", isPresented: $showDeleteTranscriptsError) {
+                    Button("OK") {}
+                } message: {
+                    Text(deleteTranscriptsErrorMessage)
                 }
             }
 
@@ -319,9 +317,7 @@ struct StorageBarView: View {
             ("Vírgulas", soundsBytes, .green),
             ("Músicas", songsBytes, .purple),
         ]
-        if FeatureFlag.isEnabled(.projectEleDisseIssoMesmo) {
-            result.append(("Transcrições", transcriptsBytes, .orange))
-        }
+        result.append(("Transcrições", transcriptsBytes, .orange))
         result.append(("Imagens", imageCacheBytes, .yellow))
         return result
     }

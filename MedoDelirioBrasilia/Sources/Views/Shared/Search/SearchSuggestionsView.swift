@@ -55,9 +55,7 @@ struct SearchSuggestionsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: .spacing(.xLarge)) {
-            if FeatureFlag.isEnabled(.projectEleDisseIssoMesmo) {
-                TranscriptDownloadBannerView()
-            }
+            TranscriptDownloadBannerView()
 
             if showFeatureDiscovery {
                 FeatureDiscoveryView()

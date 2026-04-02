@@ -37,7 +37,6 @@ struct MainView: View {
 
     @State private var subviewToOpen: MainViewModalToOpen = .onboarding
     @State private var showingModalView: Bool = false
-    @State private var showEpisodesWhatsNew: Bool = false
     @State private var showTranscriptsWhatsNew: Bool = false
 
     // iPad
@@ -553,7 +552,6 @@ struct MainView: View {
             logger.debug("MainView appeared")
             sendUserPersonalTrendsToServerIfEnabled()
             displayOnboardingIfNeeded()
-            displayEpisodesWhatsNewIfNeeded()
             displayTranscriptsWhatsNewIfNeeded()
 
             Task {
@@ -567,10 +565,8 @@ struct MainView: View {
                 try? await EpisodesService().syncEpisodes()
             }
 
-            if FeatureFlag.isEnabled(.projectEleDisseIssoMesmo) {
-                Task {
-                    await transcriptDownloadService.syncNewTranscriptsIfNeeded()
-                }
+            Task {
+                await transcriptDownloadService.syncNewTranscriptsIfNeeded()
             }
         }
         .onChange(of: scenePhase) { _, newPhase in
@@ -607,11 +603,6 @@ struct MainView: View {
         }
         .sheet(isPresented: $isShowingSupportSheet) {
             StandaloneSupportView()
-        }
-        .sheet(isPresented: $showEpisodesWhatsNew, onDismiss: {
-            AppPersistentMemory.shared.hasSeenEpisodesWhatsNewScreen(true)
-        }) {
-            IntroducingEpisodesView(appMemory: AppPersistentMemory.shared)
         }
         .sheet(isPresented: $showTranscriptsWhatsNew, onDismiss: {
             AppPersistentMemory.shared.hasSeenTranscriptsWhatsNewScreen(true)
@@ -711,17 +702,8 @@ struct MainView: View {
         }
     }
 
-    private func displayEpisodesWhatsNewIfNeeded() {
-        guard AppPersistentMemory.shared.hasShownNotificationsOnboarding() else { return }
-        guard !AppPersistentMemory.shared.hasSeenEpisodesWhatsNewScreen() else { return }
-
-        showEpisodesWhatsNew = true
-    }
-
     private func displayTranscriptsWhatsNewIfNeeded() {
-        guard FeatureFlag.isEnabled(.projectEleDisseIssoMesmo) else { return }
         guard AppPersistentMemory.shared.hasShownNotificationsOnboarding() else { return }
-        guard AppPersistentMemory.shared.hasSeenEpisodesWhatsNewScreen() else { return }
         guard !AppPersistentMemory.shared.hasSeenTranscriptsWhatsNewScreen() else { return }
 
         showTranscriptsWhatsNew = true

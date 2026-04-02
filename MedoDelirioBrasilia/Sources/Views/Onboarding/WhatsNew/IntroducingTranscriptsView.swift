@@ -13,6 +13,7 @@ struct IntroducingTranscriptsView: View {
 
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
+    @Environment(TranscriptDownloadService.self) private var transcriptDownloadService
 
     private var hasHomeIndicator: Bool {
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
@@ -126,13 +127,13 @@ struct IntroducingTranscriptsView: View {
             }
             .ignoresSafeArea(edges: .top)
             .safeAreaInset(edge: .bottom) {
-                VStack(alignment: .center) {
-                    dismissButton
+                VStack(alignment: .center, spacing: .spacing(.medium)) {
+                    bottomButtons
 
                     Spacer()
                         .frame(height: hasHomeIndicator ? 40 : 16)
                 }
-                .padding(.vertical, 10)
+                .padding(.top, 10)
                 .padding(.horizontal, 20)
                 .background(Color.systemBackground)
             }
@@ -141,34 +142,56 @@ struct IntroducingTranscriptsView: View {
     }
 
     @ViewBuilder
-    private var dismissButton: some View {
+    private var bottomButtons: some View {
         if #available(iOS 26.0, *) {
+            Button {
+                appMemory.hasSeenTranscriptsWhatsNewScreen(true)
+                Task { await transcriptDownloadService.downloadTranscripts() }
+                dismiss()
+            } label: {
+                Text("Baixar Transcrições")
+                    .font(.headline)
+                    .bold()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+            }
+            .buttonStyle(.glassProminent)
+            .tint(.orange)
+
             Button {
                 appMemory.hasSeenTranscriptsWhatsNewScreen(true)
                 dismiss()
             } label: {
-                Text("Bora!")
-                    .font(.headline)
-                    .bold()
+                Text("Depois")
+                    .font(.subheadline)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
+                    .padding(.vertical, 8)
             }
-            .buttonStyle(.glassProminent)
-            .tint(.orange)
+            .buttonStyle(.glass)
         } else {
             Button {
                 appMemory.hasSeenTranscriptsWhatsNewScreen(true)
+                Task { await transcriptDownloadService.downloadTranscripts() }
                 dismiss()
             } label: {
                 HStack {
                     Spacer()
-                    Text("Bora!")
+                    Text("Baixar Transcrições")
                         .font(.headline)
                         .bold()
                     Spacer()
                 }
             }
             .largeRoundedRectangleBorderedProminent(colored: accentAmber)
+
+            Button {
+                appMemory.hasSeenTranscriptsWhatsNewScreen(true)
+                dismiss()
+            } label: {
+                Text("Depois")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -314,6 +337,7 @@ extension IntroducingTranscriptsView {
 
 #Preview("As Standalone View") {
     IntroducingTranscriptsView(appMemory: AppPersistentMemory.shared)
+        .environment(TranscriptDownloadService())
 }
 
 #Preview("As Sheet") {
@@ -324,5 +348,6 @@ extension IntroducingTranscriptsView {
     }
     .sheet(isPresented: .constant(true)) {
         IntroducingTranscriptsView(appMemory: AppPersistentMemory.shared)
+            .environment(TranscriptDownloadService())
     }
 }

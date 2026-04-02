@@ -31,17 +31,9 @@ struct NowPlayingView: View {
         _transcriptProvider = State(initialValue: transcriptProvider)
     }
 
-    private var transcriptEnabled: Bool {
-        FeatureFlag.isEnabled(.projectEleDisseIssoMesmo)
-    }
-
     var body: some View {
         Group {
-            if transcriptEnabled {
-                enhancedLayout
-            } else {
-                legacyLayout
-            }
+            enhancedLayout
         }
         .presentationDragIndicator(.visible)
         .topToast($toast)
@@ -60,17 +52,17 @@ struct NowPlayingView: View {
                 player.pendingRemoteBookmark = false
                 toast = Toast(message: "Marcador Adicionado", type: .success)
             }
-            if transcriptEnabled, transcriptDownloadService.transcriptsDownloaded, case .idle = transcriptProvider.state {
+            if transcriptDownloadService.transcriptsDownloaded, case .idle = transcriptProvider.state {
                 transcriptProvider.load(episodeId: player.currentEpisode?.id, pubDate: player.currentEpisode?.pubDate)
             }
         }
         .onChange(of: player.currentEpisode?.id) {
-            if transcriptEnabled, transcriptDownloadService.transcriptsDownloaded {
+            if transcriptDownloadService.transcriptsDownloaded {
                 transcriptProvider.load(episodeId: player.currentEpisode?.id, pubDate: player.currentEpisode?.pubDate)
             }
         }
         .onChange(of: transcriptDownloadService.transcriptsDownloaded) {
-            if transcriptEnabled, transcriptDownloadService.transcriptsDownloaded {
+            if transcriptDownloadService.transcriptsDownloaded {
                 transcriptProvider.load(episodeId: player.currentEpisode?.id, pubDate: player.currentEpisode?.pubDate)
             }
         }
@@ -86,45 +78,7 @@ struct NowPlayingView: View {
         }
     }
 
-    // MARK: - Layouts
-
-    private var legacyLayout: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                Spacer()
-                    .frame(height: .spacing(.xLarge))
-
-                artwork
-                    .padding(.top, .spacing(.medium))
-
-                Spacer()
-                    .frame(height: .spacing(.xxLarge))
-
-                episodeInfo
-
-                Spacer()
-                    .frame(height: .spacing(.xxLarge))
-
-                progressSection
-
-                Spacer()
-                    .frame(height: .spacing(.small))
-
-                playbackControls
-
-                Spacer()
-                    .frame(height: .spacing(.xxLarge))
-
-                actionButtons
-
-                Spacer()
-                    .frame(height: .spacing(.xLarge))
-
-                bookmarkList
-            }
-            .padding(.horizontal, .spacing(.xLarge))
-        }
-    }
+    // MARK: - Layout
 
     private var enhancedLayout: some View {
         VStack(spacing: 0) {
@@ -695,7 +649,6 @@ private extension View {
         }
     }
 
-    FeatureFlag.setEnabled(.projectEleDisseIssoMesmo, to: true)
     return SheetHost()
 }
 
@@ -728,6 +681,5 @@ private extension View {
         }
     }
 
-    FeatureFlag.setEnabled(.projectEleDisseIssoMesmo, to: true)
     return SheetHost()
 }

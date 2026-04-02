@@ -243,36 +243,34 @@ struct SearchResultsView: View {
                 }
 
                 if searchMode == .episodios {
-                    // MARK: - Episode Transcripts (gated by FF + download state)
+                    // MARK: - Episode Transcripts
 
-                    if FeatureFlag.isEnabled(.projectEleDisseIssoMesmo) {
-                        if transcriptService.transcriptsDownloaded {
-                            TranscriptDownloadBannerView()
+                    if transcriptService.transcriptsDownloaded {
+                        TranscriptDownloadBannerView()
 
-                            if isSearchingTranscripts {
-                                TranscriptSearchLoadingView()
-                            } else if let groups = results.episodesMatchingTranscript, !groups.isEmpty {
-                                CollapsibleResultSection(
-                                    items: groups,
-                                    itemCountWhenCollapsed: itemCountWhenCollapsed,
-                                    headerSymbol: "text.quote",
-                                    headerTitle: "Transcrições dos Episódios",
-                                    searchString: searchString,
-                                    contentView: { group in
-                                        TranscriptEpisodeCard(
-                                            group: group,
-                                            highlight: searchString
-                                        )
-                                    }
-                                )
-                            }
-                        } else if case .downloading = transcriptService.state {
-                            TranscriptDownloadBannerView()
-                        } else if case .failed = transcriptService.state {
-                            TranscriptDownloadBannerView()
-                        } else {
-                            TranscriptDownloadPromptView()
+                        if isSearchingTranscripts {
+                            TranscriptSearchLoadingView()
+                        } else if let groups = results.episodesMatchingTranscript, !groups.isEmpty {
+                            CollapsibleResultSection(
+                                items: groups,
+                                itemCountWhenCollapsed: itemCountWhenCollapsed,
+                                headerSymbol: "text.quote",
+                                headerTitle: "Transcrições dos Episódios",
+                                searchString: searchString,
+                                contentView: { group in
+                                    TranscriptEpisodeCard(
+                                        group: group,
+                                        highlight: searchString
+                                    )
+                                }
+                            )
                         }
+                    } else if case .downloading = transcriptService.state {
+                        TranscriptDownloadBannerView()
+                    } else if case .failed = transcriptService.state {
+                        TranscriptDownloadBannerView()
+                    } else {
+                        TranscriptDownloadPromptView()
                     }
 
                     // MARK: - Episodes (always visible)

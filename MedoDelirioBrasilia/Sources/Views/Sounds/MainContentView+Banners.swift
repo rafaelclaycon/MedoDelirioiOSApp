@@ -19,11 +19,9 @@ extension MainContentView {
 
         var body: some View {
             VStack {
-                if FeatureFlag.isEnabled(.projectEleDisseIssoMesmo) {
-                    TranscriptDownloadBannerView()
-                        .padding(.top, .spacing(.xxxSmall))
-                        .padding(.bottom, .spacing(.xSmall))
-                }
+                TranscriptDownloadBannerView()
+                    .padding(.top, .spacing(.xxxSmall))
+                    .padding(.bottom, .spacing(.xSmall))
 
                 if showDunBanner {
                     DunBannerView(isBeingShown: $showDunBanner)

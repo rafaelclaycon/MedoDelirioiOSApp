@@ -111,8 +111,6 @@ final class SearchService: SearchServiceProtocol {
     }
 
     func searchTranscripts(matching searchString: String) async -> [EpisodeTranscriptGroup] {
-        guard FeatureFlag.isEnabled(.projectEleDisseIssoMesmo) else { return [] }
-
         let index = loadTranscriptIndexIfNeeded()
         guard !index.isEmpty else { return [] }
 

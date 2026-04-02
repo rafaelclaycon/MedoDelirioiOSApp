@@ -62,10 +62,8 @@ struct EpisodesView: View {
                                 .padding([.top, .horizontal], .spacing(.medium))
                         }
 
-                        if FeatureFlag.isEnabled(.projectEleDisseIssoMesmo) {
-                            TranscriptDownloadBannerView()
-                                .padding([.top, .horizontal], .spacing(.medium))
-                        }
+                        TranscriptDownloadBannerView()
+                            .padding([.top, .horizontal], .spacing(.medium))
 
                         if filtered.isEmpty {
                             emptyStateForFilter(selectedFilter)

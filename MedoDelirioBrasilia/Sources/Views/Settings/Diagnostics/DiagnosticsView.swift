@@ -50,15 +50,13 @@ struct DiagnosticsView: View {
 
             CrashTestView()
 
-            if FeatureFlag.isEnabled(.projectEleDisseIssoMesmo) {
-                Section("Transcrições") {
-                    NavigationLink("Arquivos de transcrição") {
-                        TranscriptFilesBrowserView()
-                    }
+            Section("Transcrições") {
+                NavigationLink("Arquivos de transcrição") {
+                    TranscriptFilesBrowserView()
+                }
 
-                    NavigationLink("Log de operações") {
-                        TranscriptLogView()
-                    }
+                NavigationLink("Log de operações") {
+                    TranscriptLogView()
                 }
             }
         }
