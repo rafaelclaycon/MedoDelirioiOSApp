@@ -111,7 +111,14 @@ final class SearchService: SearchServiceProtocol {
     }
 
     func searchTranscripts(matching searchString: String) async -> [EpisodeTranscriptGroup] {
-        let index = loadTranscriptIndexIfNeeded()
+        let index: [String: [TranscriptIndexEntry]]
+        if let cached = cachedTranscriptIndex {
+            index = cached
+        } else {
+            let loaded = await Task.detached { Self.buildTranscriptIndex() }.value
+            cachedTranscriptIndex = loaded
+            index = loaded
+        }
         guard !index.isEmpty else { return [] }
 
         let allEpisodes = loadEpisodesIfNeeded()
@@ -272,9 +279,7 @@ extension SearchService {
         let startTime: TimeInterval
     }
 
-    private func loadTranscriptIndexIfNeeded() -> [String: [TranscriptIndexEntry]] {
-        if let cached = cachedTranscriptIndex { return cached }
-
+    nonisolated private static func buildTranscriptIndex() -> [String: [TranscriptIndexEntry]] {
         let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         let transcriptsDir = documentsURL.appendingPathComponent(InternalFolderNames.transcripts)
 
@@ -282,14 +287,13 @@ extension SearchService {
             at: transcriptsDir,
             includingPropertiesForKeys: nil
         ) else {
-            cachedTranscriptIndex = [:]
             return [:]
         }
 
         var result: [String: [TranscriptIndexEntry]] = [:]
         for file in files where file.pathExtension.lowercased() == "srt" {
             let stem = file.deletingPathExtension().lastPathComponent
-            let episodeId = Self.extractEpisodeId(from: stem)
+            let episodeId = extractEpisodeId(from: stem)
             guard !episodeId.isEmpty,
                   let content = try? String(contentsOf: file, encoding: .utf8) else { continue }
             let cues = SRTParser.parse(content)
@@ -305,12 +309,11 @@ extension SearchService {
             }
         }
 
-        cachedTranscriptIndex = result
         return result
     }
 
     /// Extracts the episode ID prefix from a filename stem (e.g., "70791487-2026-19-com-trad" -> "70791487").
-    private static func extractEpisodeId(from stem: String) -> String {
+    nonisolated private static func extractEpisodeId(from stem: String) -> String {
         if let dashIndex = stem.firstIndex(of: "-") {
             return String(stem[stem.startIndex..<dashIndex])
         }
