@@ -35,6 +35,7 @@ struct MainContentView: View {
     @State var searchMode: SearchMode = .virgulas
     @State var transcriptSearchTask: Task<Void, Never>?
     @State var isSearchingTranscripts = false
+    @State var hasSentTranscriptSearchAnalytics = false
 
     // Folders
     @State var deleteFolderAide = DeleteFolderViewAide()

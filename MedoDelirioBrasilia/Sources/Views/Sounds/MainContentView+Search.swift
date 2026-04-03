@@ -38,6 +38,7 @@ extension MainContentView {
         guard !newString.isEmpty else {
             searchResults.clearAll()
             isSearchingTranscripts = false
+            hasSentTranscriptSearchAnalytics = false
             searchService.releaseTranscriptCache()
             return
         }
@@ -64,6 +65,10 @@ extension MainContentView {
         transcriptSearchTask = Task {
             try? await Task.sleep(for: .milliseconds(300))
             guard !Task.isCancelled else { return }
+            if !hasSentTranscriptSearchAnalytics {
+                hasSentTranscriptSearchAnalytics = true
+                Task { await AnalyticsService().send(originatingScreen: "Search", action: "transcript_searched") }
+            }
             let results = await searchService.searchTranscripts(matching: text)
             guard !Task.isCancelled else { return }
             searchResults.episodesMatchingTranscript = results

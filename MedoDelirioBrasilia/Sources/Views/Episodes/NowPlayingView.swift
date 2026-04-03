@@ -24,6 +24,7 @@ struct NowPlayingView: View {
     @State private var transcriptProvider: TranscriptProvider
     @AppStorage("showTranscript") private var showTranscript: Bool = false
     @State private var showBookmarks: Bool = false
+    @State private var hasSentTranscriptViewedAnalytics: Bool = false
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -74,6 +75,10 @@ struct NowPlayingView: View {
         .onChange(of: showTranscript) {
             if showTranscript {
                 transcriptProvider.update(currentTime: player.currentTime)
+                if !hasSentTranscriptViewedAnalytics {
+                    hasSentTranscriptViewedAnalytics = true
+                    Task { await AnalyticsService().send(originatingScreen: "NowPlaying", action: "transcript_viewed") }
+                }
             }
         }
     }
@@ -134,7 +139,8 @@ struct NowPlayingView: View {
                     icon: "text.quote",
                     title: "Acompanhe o que está sendo dito",
                     subtitle: "Baixe as transcrições para ler junto enquanto ouve. É rápido e usa poucos dados.",
-                    priorityEpisodeId: player.currentEpisode?.id
+                    priorityEpisodeId: player.currentEpisode?.id,
+                    analyticsSource: "NowPlaying"
                 )
                 .frame(minHeight: 280, maxHeight: 400)
             }

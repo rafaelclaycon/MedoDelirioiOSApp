@@ -1001,6 +1001,7 @@ struct TranscriptDownloadPromptView: View {
     var title: String = "Buscar dentro dos episódios?"
     var subtitle: String = "Para pesquisar nas transcrições dos episódios, é necessário baixar os arquivos primeiro. Isso usa poucos dados."
     var priorityEpisodeId: String? = nil
+    var analyticsSource: String = "Search"
 
     @Environment(TranscriptDownloadService.self) private var service
     @Environment(\.colorScheme) private var colorScheme
@@ -1028,6 +1029,7 @@ struct TranscriptDownloadPromptView: View {
             if #available(iOS 26, *) {
                 Button {
                     Task { await service.downloadTranscripts(priorityEpisodeId: priorityEpisodeId) }
+                    Task { await AnalyticsService().send(originatingScreen: analyticsSource, action: "transcripts_opted_in") }
                 } label: {
                     Text("Baixar Transcrições")
                         .font(.callout)
@@ -1044,6 +1046,7 @@ struct TranscriptDownloadPromptView: View {
             } else {
                 Button {
                     Task { await service.downloadTranscripts(priorityEpisodeId: priorityEpisodeId) }
+                    Task { await AnalyticsService().send(originatingScreen: analyticsSource, action: "transcripts_opted_in") }
                 } label: {
                     HStack {
                         Spacer()

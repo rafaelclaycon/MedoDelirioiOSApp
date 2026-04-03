@@ -147,6 +147,7 @@ struct IntroducingTranscriptsView: View {
             Button {
                 appMemory.hasSeenTranscriptsWhatsNewScreen(true)
                 Task { await transcriptDownloadService.downloadTranscripts() }
+                Task { await AnalyticsService().send(originatingScreen: "TranscriptsWhatsNew", action: "transcripts_opted_in") }
                 dismiss()
             } label: {
                 Text("Baixar Transcrições")
@@ -172,6 +173,7 @@ struct IntroducingTranscriptsView: View {
             Button {
                 appMemory.hasSeenTranscriptsWhatsNewScreen(true)
                 Task { await transcriptDownloadService.downloadTranscripts() }
+                Task { await AnalyticsService().send(originatingScreen: "TranscriptsWhatsNew", action: "transcripts_opted_in") }
                 dismiss()
             } label: {
                 HStack {
