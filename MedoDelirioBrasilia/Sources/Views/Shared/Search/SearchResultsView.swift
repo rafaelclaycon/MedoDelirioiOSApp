@@ -38,7 +38,8 @@ struct SearchResultsView: View {
                 !(results.folders?.isEmpty ?? true)
         case .episodios:
             return !(results.episodesMatchingTitle?.isEmpty ?? true) ||
-                !(results.episodesMatchingDescription?.isEmpty ?? true)
+                !(results.episodesMatchingDescription?.isEmpty ?? true) ||
+                !(results.episodesMatchingTranscript?.isEmpty ?? true)
         }
     }
 
