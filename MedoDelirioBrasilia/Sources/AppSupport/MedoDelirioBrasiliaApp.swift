@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-let baseURL: String = CommandLine.arguments.contains("-UNDER_DEVELOPMENT") ? "http://127.0.0.1:8080/" : "http://medodelirioios.online:8080/"
+let baseURL: String = CommandLine.arguments.contains("-UNDER_DEVELOPMENT") ? "http://127.0.0.1:8080/" : "https://api.medodelirioios.com/"
 
 var moveDatabaseIssue: String = .empty
 
