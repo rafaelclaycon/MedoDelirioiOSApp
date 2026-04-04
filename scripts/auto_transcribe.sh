@@ -6,17 +6,33 @@
 # regenerates the manifest, uploads via SFTP, and verifies.
 #
 # Usage:
-#   ./auto_transcribe.sh              # normal run
+#   ./auto_transcribe.sh              # normal run (respects 6 PM – 8 AM window)
 #   ./auto_transcribe.sh --dry-run    # detect new episodes without processing
+#   ./auto_transcribe.sh --force      # run immediately, ignoring the time window
 #
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# Time-window guard: exit silently outside 6 PM – 8 AM
+# Flags
 # ---------------------------------------------------------------------------
-hour=$(date +%H)
-if [ "$hour" -ge 8 ] && [ "$hour" -lt 18 ]; then
-    exit 0
+DRY_RUN=false
+FORCE_RUN=false
+
+for arg in "$@"; do
+    case "$arg" in
+        --dry-run) DRY_RUN=true ;;
+        --force)   FORCE_RUN=true ;;
+    esac
+done
+
+# ---------------------------------------------------------------------------
+# Time-window guard: exit silently outside 6 PM – 8 AM (skip with --force)
+# ---------------------------------------------------------------------------
+if [[ "$FORCE_RUN" != true ]]; then
+    hour=$(date +%H)
+    if [ "$hour" -ge 8 ] && [ "$hour" -lt 18 ]; then
+        exit 0
+    fi
 fi
 
 # ---------------------------------------------------------------------------
@@ -32,11 +48,6 @@ MIRROR_DIR="/Users/rafaelschmitt/MedoDelirioTranscripts"
 WORK_DIR="${MIRROR_DIR}/work"
 LOG_DIR="${MIRROR_DIR}/logs"
 MANIFEST_URL="https://api.medodelirioios.com/transcripts/v1/manifest.json"
-
-DRY_RUN=false
-if [[ "${1:-}" == "--dry-run" ]]; then
-    DRY_RUN=true
-fi
 
 # Pedro Daltro name-fix pairs (wrong=correct)
 NAME_FIX_PAIRS=(
