@@ -30,6 +30,14 @@ extension APIClient {
             let responseBody = String(data: data, encoding: .utf8)
             let success = statusCode == 200
 
+            if statusCode == 404 {
+                ChannelLogStore.shared.logEvent(
+                    "Dispositivo não encontrado (404)",
+                    success: true
+                )
+                return []
+            }
+
             ChannelLogStore.shared.log(
                 method: "GET",
                 url: url.absoluteString,

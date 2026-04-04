@@ -46,8 +46,6 @@ struct DiagnosticsView: View {
 
             PushTokenCacheView()
 
-            ChannelLogsView()
-
             CrashTestView()
 
             Section("Transcrições") {
@@ -404,67 +402,6 @@ extension DiagnosticsView {
         }
     }
 
-    struct ChannelLogsView: View {
-
-        private var store = ChannelLogStore.shared
-
-        private static let timestampFormatter: DateFormatter = {
-            let f = DateFormatter()
-            f.dateFormat = "HH:mm:ss.SSS"
-            return f
-        }()
-
-        var body: some View {
-            Section("Logs de canais (inscrição)") {
-                if store.entries.isEmpty {
-                    Text("Sem registros nesta sessão")
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(store.entries) { entry in
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Image(systemName: entry.success ? "checkmark.circle.fill" : "xmark.circle.fill")
-                                    .foregroundStyle(entry.success ? .green : .red)
-
-                                Text("\(entry.method) — \(Self.timestampFormatter.string(from: entry.timestamp))")
-                                    .font(.footnote.bold())
-
-                                if let code = entry.statusCode {
-                                    Text("\(code)")
-                                        .font(.footnote.bold().monospaced())
-                                        .foregroundStyle(code == 200 ? .green : .red)
-                                }
-                            }
-
-                            Text(entry.url)
-                                .font(.caption.monospaced())
-                                .foregroundStyle(.secondary)
-                                .lineLimit(2)
-
-                            if let body = entry.requestBody {
-                                Text("REQ: \(body)")
-                                    .font(.caption.monospaced())
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            if let responseBody = entry.responseBody, !responseBody.isEmpty {
-                                Text("RES: \(responseBody)")
-                                    .font(.caption.monospaced())
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            if let error = entry.errorMessage {
-                                Text(error)
-                                    .font(.caption)
-                                    .foregroundStyle(.red)
-                            }
-                        }
-                        .padding(.vertical, 4)
-                    }
-                }
-            }
-        }
-    }
 }
 
 #Preview {

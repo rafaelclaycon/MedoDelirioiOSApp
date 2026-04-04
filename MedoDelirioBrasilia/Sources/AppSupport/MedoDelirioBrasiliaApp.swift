@@ -210,6 +210,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             let storedToken = AppPersistentMemory().getLastSentPushToken()
 
             guard token != storedToken else {
+                ChannelLogStore.shared.logEvent("Push token em cache (já enviado)", success: true)
                 PushRegistrationStatus.shared.markRegistered()
                 return
             }
@@ -220,10 +221,12 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
                 let success = try await APIClient.shared.register(pushDevice: device)
                 if success {
                     AppPersistentMemory().setLastSentPushToken(to: token)
+                    ChannelLogStore.shared.logEvent("Push token enviado ao servidor", success: true)
                     PushRegistrationStatus.shared.markRegistered()
                 }
             } catch {
                 print("Failed to register push token: \(error.localizedDescription)")
+                ChannelLogStore.shared.logEvent("Falha ao enviar push token ao servidor", success: false, errorMessage: error.localizedDescription)
                 PushRegistrationStatus.shared.markFailed("Falha ao registrar o dispositivo no servidor.")
             }
         }
@@ -234,6 +237,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         didFailToRegisterForRemoteNotificationsWithError error: Error
     ) {
         print("Failed to register: \(error.localizedDescription)")
+        ChannelLogStore.shared.logEvent("Falha ao registrar para notificações remotas", success: false, errorMessage: error.localizedDescription)
         PushRegistrationStatus.shared.markFailed("Falha ao registrar para notificações remotas.")
     }
 
