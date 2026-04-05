@@ -525,6 +525,7 @@ struct MainView: View {
                 }
             }
         }
+        .environment(transcriptDownloadService)
         .environment(syncValues)
         .environment(episodePlayer)
         .environment(episodeFavoritesStore)
@@ -577,6 +578,7 @@ struct MainView: View {
             case .settings:
                 SettingsView(apiClient: APIClient.shared)
                     .environment(settingsHelper)
+                    .environment(transcriptDownloadService)
 
             case .onboarding:
                 OnboardingView()
@@ -600,6 +602,7 @@ struct MainView: View {
         .sheet(isPresented: $isShowingSettingsSheet) {
             SettingsView(apiClient: APIClient.shared)
                 .environment(settingsHelper)
+                .environment(transcriptDownloadService)
         }
         .sheet(isPresented: $isShowingSupportSheet) {
             StandaloneSupportView()
@@ -608,11 +611,13 @@ struct MainView: View {
             AppPersistentMemory.shared.hasSeenTranscriptsWhatsNewScreen(true)
         }) {
             IntroducingTranscriptsView(appMemory: AppPersistentMemory.shared)
+                .environment(transcriptDownloadService)
         }
         .sheet(isPresented: $showNowPlaying) {
             NowPlayingView()
                 .environment(episodePlayer)
                 .environment(episodeBookmarkStore)
+                .environment(transcriptDownloadService)
         }
         .sheet(isPresented: $episodePlayer.showSupportPrompt, onDismiss: {
             let memory = AppPersistentMemory.shared
