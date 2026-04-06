@@ -9,6 +9,7 @@ enum EpisodeNotificationSubscriber {
             return .success(())
         } catch {
             UserSettings().setEnableEpisodeNotifications(to: false)
+            Task { await AnalyticsService().send(originatingScreen: "EpisodeNotificationSubscriber", action: "episode_notifications_subscribe_failed") }
             return .failure(error)
         }
     }

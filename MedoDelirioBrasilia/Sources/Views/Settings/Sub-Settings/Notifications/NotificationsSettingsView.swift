@@ -41,7 +41,9 @@ struct NotificationsSettingsView: View {
 
                     switch result {
                     case .success:
-                        break
+                        if newValue {
+                            await AnalyticsService().send(originatingScreen: "NotificationsSettings", action: "episode_notifications_resubscribed")
+                        }
                     case .failure:
                         episodeNotifications = !newValue
                         showSubscriptionError = true

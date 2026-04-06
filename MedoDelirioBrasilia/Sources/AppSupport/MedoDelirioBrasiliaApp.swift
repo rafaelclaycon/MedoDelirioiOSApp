@@ -274,6 +274,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
            let type = PushNotificationType(rawValue: typeString) {
             switch type {
             case .newEpisode:
+                Task { await AnalyticsService().send(originatingScreen: "PushNotification", action: "episode_notification_opened") }
                 NotificationCenter.default.post(
                     name: .navigateToTab,
                     object: nil,

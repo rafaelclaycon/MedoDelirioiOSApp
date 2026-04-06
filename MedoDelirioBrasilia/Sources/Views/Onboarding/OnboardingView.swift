@@ -72,11 +72,15 @@ struct OnboardingView: View {
                     AskEpisodeNotificationsView(
                         optInAction: {
                             Task {
-                                _ = await EpisodeNotificationSubscriber.subscribe()
+                                let result = await EpisodeNotificationSubscriber.subscribe()
+                                if case .success = result {
+                                    await AnalyticsService().send(originatingScreen: "Onboarding", action: "episode_notifications_opted_in")
+                                }
                                 dismiss()
                             }
                         },
                         skipAction: {
+                            Task { await AnalyticsService().send(originatingScreen: "Onboarding", action: "episode_notifications_skipped") }
                             dismiss()
                         }
                     )

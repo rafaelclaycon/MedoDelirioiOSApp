@@ -25,6 +25,7 @@ struct EpisodeNotificationsBannerView: View {
         let result = await EpisodeNotificationSubscriber.subscribe()
         switch result {
         case .success:
+            Task { await AnalyticsService().send(originatingScreen: "EpisodesBanner", action: "episode_notifications_opted_in") }
             isBeingShown = false
         case .failure:
             toast = Toast(
@@ -91,6 +92,7 @@ struct EpisodeNotificationsBannerView: View {
         }
         .overlay(alignment: .topTrailing) {
             Button {
+                Task { await AnalyticsService().send(originatingScreen: "EpisodesBanner", action: "episode_notifications_banner_dismissed") }
                 AppPersistentMemory.shared.setHasDismissedEpisodeNotificationsBanner(to: true)
                 isBeingShown = false
             } label: {
