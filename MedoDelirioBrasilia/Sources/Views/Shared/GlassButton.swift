@@ -51,6 +51,7 @@ struct GlassButton: View {
                         colorScheme == .dark ? color.opacity(0.3) : color.opacity(0.1)
                     ).interactive()
                 )
+                .contentShape(Rectangle())
                 .onTapGesture {
                     action()
                 }
@@ -111,6 +112,7 @@ struct GlassIconButton: View {
                         colorScheme == .dark ? color.opacity(0.3) : color.opacity(0.1)
                     ).interactive()
                 )
+                .contentShape(Rectangle())
                 .onTapGesture {
                     action()
                 }
