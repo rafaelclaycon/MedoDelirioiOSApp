@@ -196,8 +196,14 @@ struct SearchResultsView: View {
                             )
                         }
 
-                        // MARK: - Authors
+                    }
 
+                    // MARK: - Authors
+
+                    LazyVGrid(
+                        columns: [GridItem(.flexible())],
+                        spacing: .spacing(.medium)
+                    ) {
                         if let authors = results.authors, !authors.isEmpty {
                             CollapsibleResultSection(
                                 items: authors,
@@ -206,16 +212,21 @@ struct SearchResultsView: View {
                                 headerTitle: "Autores",
                                 searchString: searchString,
                                 contentView: { item in
-                                    VerticalAuthorView(author: item)
+                                    HorizontalAuthorView(author: item)
                                         .onTapGesture {
                                             push(GeneralNavigationDestination.authorDetail(item))
                                         }
                                 }
                             )
                         }
+                    }
 
-                        // MARK: - Folders
+                    // MARK: - Folders
 
+                    LazyVGrid(
+                        columns: columns,
+                        spacing: .spacing(.medium)
+                    ) {
                         if let folders = results.folders, !folders.isEmpty {
                             CollapsibleResultSection(
                                 items: folders,
