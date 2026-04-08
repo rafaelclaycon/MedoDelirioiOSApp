@@ -431,7 +431,7 @@ extension MostSharedByAudienceView {
                 contentRepository: FakeContentRepository()
             )
         ),
-        tabSelection: .constant(.trends),
+        tabSelection: .constant(.episodes),
         activePadScreen: .constant(.trends)
     )
 }

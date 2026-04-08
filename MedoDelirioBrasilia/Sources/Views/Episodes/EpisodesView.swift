@@ -53,8 +53,7 @@ struct EpisodesView: View {
                         .scrollClipDisabled()
 
                         if
-                            FeatureFlag.isEnabled(.episodeNotifications)
-                            && !AppPersistentMemory.shared.getHasDismissedEpisodeNotificationsBanner()
+                            !AppPersistentMemory.shared.getHasDismissedEpisodeNotificationsBanner()
                             && !UserSettings().getEnableEpisodeNotifications()
                             && showEpisodeNotificationsBanner
                         {
@@ -119,15 +118,13 @@ struct EpisodesView: View {
             }
         }
         .toolbar {
-            if FeatureFlag.isEnabled(.episodeNotifications) {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        showNotificationSettings = true
-                    } label: {
-                        Image(systemName: "bell.badge")
-                    }
-                    .accessibilityLabel("Configurações de notificações")
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    showNotificationSettings = true
+                } label: {
+                    Image(systemName: "bell.badge")
                 }
+                .accessibilityLabel("Configurações de notificações")
             }
 
             ToolbarItem(placement: .topBarTrailing) {

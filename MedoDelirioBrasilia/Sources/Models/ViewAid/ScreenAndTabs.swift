@@ -14,5 +14,5 @@ enum PadScreen: Int {
 
 enum PhoneTab: Int {
 
-    case sounds, reactions, trends, settings, search
+    case sounds, reactions, episodes, settings, search
 }

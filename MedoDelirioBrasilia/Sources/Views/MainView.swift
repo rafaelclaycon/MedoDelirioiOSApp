@@ -146,7 +146,7 @@ struct MainView: View {
                         .environment(\.push, PushAction { reactionsPath.append($0) })
                     }
 
-                    Tab("Episódios", systemImage: "radio", value: .trends) {
+                    Tab("Episódios", systemImage: "radio", value: .episodes) {
                         NavigationStack(path: $episodesPath) {
                             EpisodesView()
                                 .navigationDestination(for: PodcastEpisode.self) { episode in
@@ -154,7 +154,7 @@ struct MainView: View {
                                 }
                         }
                         .environment(\.push, PushAction { episodesPath.append($0) })
-                        .tag(PhoneTab.trends)
+                        .tag(PhoneTab.episodes)
                     }
 
                     Tab(value: .search, role: .search) {
@@ -259,7 +259,7 @@ struct MainView: View {
                         .tabItem {
                             Label("Episódios", systemImage: "radio")
                         }
-                        .tag(PhoneTab.trends)
+                        .tag(PhoneTab.episodes)
 
                         NavigationStack(path: $searchTabPath) {
                             StandaloneSearchView(
@@ -300,19 +300,19 @@ struct MainView: View {
                     //                    tabSelection = .songs
                     //                })
                     .onContinueUserActivity(Shared.ActivityTypes.viewLast24HoursTopChart, perform: { _ in
-                        tabSelection.wrappedValue = .trends
+                        tabSelection.wrappedValue = .episodes
                         trendsHelper.timeIntervalToGoTo = .last24Hours
                     })
                     .onContinueUserActivity(Shared.ActivityTypes.viewLastWeekTopChart, perform: { _ in
-                        tabSelection.wrappedValue = .trends
+                        tabSelection.wrappedValue = .episodes
                         trendsHelper.timeIntervalToGoTo = .lastWeek
                     })
                     .onContinueUserActivity(Shared.ActivityTypes.viewLastMonthTopChart, perform: { _ in
-                        tabSelection.wrappedValue = .trends
+                        tabSelection.wrappedValue = .episodes
                         trendsHelper.timeIntervalToGoTo = .lastMonth
                     })
                     .onContinueUserActivity(Shared.ActivityTypes.viewAllTimeTopChart, perform: { _ in
-                        tabSelection.wrappedValue = .trends
+                        tabSelection.wrappedValue = .episodes
                         trendsHelper.timeIntervalToGoTo = .allTime
                     })
                 }

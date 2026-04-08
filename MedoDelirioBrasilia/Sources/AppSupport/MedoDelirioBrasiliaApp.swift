@@ -278,7 +278,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
                 NotificationCenter.default.post(
                     name: .navigateToTab,
                     object: nil,
-                    userInfo: [NavigateToTabKey.phoneTab: PhoneTab.trends]
+                    userInfo: [NavigateToTabKey.phoneTab: PhoneTab.episodes]
                 )
             }
         }

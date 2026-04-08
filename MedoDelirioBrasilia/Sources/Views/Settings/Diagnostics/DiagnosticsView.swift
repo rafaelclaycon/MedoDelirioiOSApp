@@ -46,6 +46,8 @@ struct DiagnosticsView: View {
 
             PushTokenCacheView()
 
+            ChannelLogsView()
+
             CrashTestView()
 
             Section("Transcrições") {
@@ -371,6 +373,70 @@ extension DiagnosticsView {
                 Text("Push token")
             } footer: {
                 Text("Limpar o cache força o app a reenviar o push token ao servidor na próxima vez que o app abrir. Útil se você trocou de servidor.")
+            }
+        }
+    }
+
+    struct ChannelLogsView: View {
+
+        private var store = ChannelLogStore.shared
+
+        private static let timestampFormatter: DateFormatter = {
+            let f = DateFormatter()
+            f.dateFormat = "dd/MM HH:mm:ss.SSS"
+            return f
+        }()
+
+        var body: some View {
+            Section("Logs de push") {
+                if store.entries.isEmpty {
+                    Text("Sem registros nesta sessão")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(store.entries) { entry in
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Image(systemName: entry.success ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                    .foregroundStyle(entry.success ? .green : .red)
+
+                                Text("\(entry.method) — \(Self.timestampFormatter.string(from: entry.timestamp))")
+                                    .font(.footnote.bold())
+
+                                if let code = entry.statusCode {
+                                    Text("\(code)")
+                                        .font(.footnote.bold().monospaced())
+                                        .foregroundStyle(code == 200 ? .green : .red)
+                                }
+                            }
+
+                            if !entry.url.isEmpty {
+                                Text(entry.url)
+                                    .font(.caption.monospaced())
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                            }
+
+                            if let body = entry.requestBody {
+                                Text("REQ: \(body)")
+                                    .font(.caption.monospaced())
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            if let responseBody = entry.responseBody, !responseBody.isEmpty {
+                                Text("RES: \(responseBody)")
+                                    .font(.caption.monospaced())
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            if let error = entry.errorMessage {
+                                Text(error)
+                                    .font(.caption)
+                                    .foregroundStyle(.red)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
             }
         }
     }

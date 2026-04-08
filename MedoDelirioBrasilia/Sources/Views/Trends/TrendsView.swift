@@ -115,7 +115,7 @@ struct TrendsView: View {
                 contentRepository: FakeContentRepository()
             )
         ),
-        tabSelection: .constant(.trends),
+        tabSelection: .constant(.episodes),
         activePadScreen: .constant(.trends)
     )
 }

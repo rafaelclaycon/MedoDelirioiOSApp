@@ -10,7 +10,7 @@ struct Shared {
                 "Vírgulas"
             case .reactions:
                 "Reações"
-            case .trends:
+            case .episodes:
                 "Tendências"
             case .settings:
                 "Configurações"
@@ -25,7 +25,7 @@ struct Shared {
                 "quote.bubble"
             case .reactions:
                 "theatermasks"
-            case .trends:
+            case .episodes:
                 "chart.line.uptrend.xyaxis"
             case .settings:
                 ""
