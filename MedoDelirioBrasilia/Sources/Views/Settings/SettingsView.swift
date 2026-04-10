@@ -17,6 +17,7 @@ struct SettingsView: View {
 
     @State private var showAskForMoneyView: Bool = false
     @State private var showOnboardingPreview: Bool = false
+    @State private var showTranscriptsWhatsNewPreview: Bool = false
     @State private var toast: Toast?
     @State private var donors: [Donor]? = nil
 
@@ -25,6 +26,7 @@ struct SettingsView: View {
     // MARK: - Environment
 
     @Environment(SettingsHelper.self) private var helper
+    @Environment(TranscriptDownloadService.self) private var transcriptDownloadService
     @Environment(\.dismiss) var dismiss
 
     // MARK: - Initializer
@@ -195,6 +197,10 @@ struct SettingsView: View {
             .sheet(isPresented: $showOnboardingPreview) {
                 OnboardingView()
             }
+            .sheet(isPresented: $showTranscriptsWhatsNewPreview) {
+                IntroducingTranscriptsView(appMemory: AppPersistentMemory.shared)
+                    .environment(transcriptDownloadService)
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     CloseButton {
@@ -216,7 +222,10 @@ struct SettingsView: View {
                     ChangeAppIconView()
 
                 case .devOptions:
-                    DevOptionsView(showOnboardingPreview: $showOnboardingPreview)
+                    DevOptionsView(
+                        showOnboardingPreview: $showOnboardingPreview,
+                        showTranscriptsWhatsNewPreview: $showTranscriptsWhatsNewPreview
+                    )
 
                 case .diagnostics:
                     DiagnosticsView(
@@ -272,6 +281,7 @@ enum SettingsDestination: Hashable {
 struct DevOptionsView: View {
 
     @Binding var showOnboardingPreview: Bool
+    @Binding var showTranscriptsWhatsNewPreview: Bool
 
     var body: some View {
         Form {
@@ -280,6 +290,10 @@ struct DevOptionsView: View {
             Section("Tools") {
                 Button("Reexibir Onboarding") {
                     showOnboardingPreview = true
+                }
+
+                Button("Reexibir Transcripts What's New") {
+                    showTranscriptsWhatsNewPreview = true
                 }
             }
         }
