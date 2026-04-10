@@ -74,6 +74,8 @@ final class EpisodePlayer {
     @ObservationIgnored private var downloadingEpisodeId: String?
     @ObservationIgnored private var playGeneration: Int = 0
     @ObservationIgnored private var remoteCommandsConfigured = false
+    @ObservationIgnored private var audioSessionObserversConfigured = false
+    @ObservationIgnored private var wasPlayingBeforeInterruption = false
     @ObservationIgnored private var lastProgressSaveTime: Date = .distantPast
     @ObservationIgnored private var currentSessionStart: Date?
     @ObservationIgnored private var currentSessionStartTime: TimeInterval = 0
@@ -378,6 +380,7 @@ final class EpisodePlayer {
         isPlaying = true
         beginSession()
         configureRemoteCommands()
+        configureAudioSessionObservers()
         updateNowPlayingInfo()
         loadArtwork(for: episode)
         if isSceneActive {
@@ -561,6 +564,91 @@ final class EpisodePlayer {
         guard let episode = currentEpisode else { return }
         bookmarkStore?.addBookmark(episodeId: episode.id, timestamp: currentPlaybackTime())
         pendingRemoteBookmark = true
+    }
+
+    // MARK: - Audio Session Observers
+
+    private func configureAudioSessionObservers() {
+        guard !audioSessionObserversConfigured else { return }
+        audioSessionObserversConfigured = true
+
+        NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: .main
+        ) { [weak self] notification in
+            guard let self,
+                  let info = notification.userInfo,
+                  let typeValue = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  let type = AVAudioSession.InterruptionType(rawValue: typeValue)
+            else { return }
+
+            switch type {
+            case .began:
+                self.handleInterruptionBegan()
+            case .ended:
+                let options = AVAudioSession.InterruptionOptions(
+                    rawValue: (info[AVAudioSessionInterruptionOptionKey] as? UInt) ?? 0
+                )
+                self.handleInterruptionEnded(shouldResume: options.contains(.shouldResume))
+            @unknown default:
+                break
+            }
+        }
+
+        NotificationCenter.default.addObserver(
+            forName: AVAudioSession.routeChangeNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: .main
+        ) { [weak self] notification in
+            guard let self,
+                  let info = notification.userInfo,
+                  let reasonValue = info[AVAudioSessionRouteChangeReasonKey] as? UInt,
+                  let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue),
+                  reason == .oldDeviceUnavailable
+            else { return }
+
+            self.handleOldDeviceUnavailable()
+        }
+    }
+
+    @MainActor
+    private func handleInterruptionBegan() {
+        guard audioPlayer != nil, isPlaying else { return }
+        wasPlayingBeforeInterruption = true
+        recordCurrentSession(didComplete: false)
+        isPlaying = false
+        stopTimer()
+        saveProgress()
+        updateNowPlayingInfo()
+    }
+
+    @MainActor
+    private func handleInterruptionEnded(shouldResume: Bool) {
+        guard shouldResume, wasPlayingBeforeInterruption, let player = audioPlayer else {
+            wasPlayingBeforeInterruption = false
+            return
+        }
+        wasPlayingBeforeInterruption = false
+        beginSession()
+        player.play()
+        player.rate = playbackSpeed
+        isPlaying = true
+        if isSceneActive {
+            startTimer()
+        }
+        updateNowPlayingInfo()
+    }
+
+    @MainActor
+    private func handleOldDeviceUnavailable() {
+        guard audioPlayer != nil, isPlaying else { return }
+        recordCurrentSession(didComplete: false)
+        audioPlayer?.pause()
+        isPlaying = false
+        stopTimer()
+        saveProgress()
+        updateNowPlayingInfo()
     }
 
     // MARK: - Now Playing Info
