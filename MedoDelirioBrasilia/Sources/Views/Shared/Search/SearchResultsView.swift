@@ -30,7 +30,8 @@ struct SearchResultsView: View {
     private var hasAnyNonReactionResults: Bool {
         switch searchMode {
         case .virgulas:
-            return !(results.soundsMatchingTitle?.isEmpty ?? true) ||
+            return !(results.topHits?.isEmpty ?? true) ||
+                !(results.soundsMatchingTitle?.isEmpty ?? true) ||
                 !(results.soundsMatchingContent?.isEmpty ?? true) ||
                 !(results.songsMatchingTitle?.isEmpty ?? true) ||
                 !(results.songsMatchingContent?.isEmpty ?? true) ||
@@ -84,6 +85,25 @@ struct SearchResultsView: View {
                     showSuggestionButton: searchMode == .virgulas
                 )
             } else if searchMode == .virgulas {
+
+                    // MARK: - Top Hits
+
+                    if let topHits = results.topHits, !topHits.isEmpty {
+                        LazyVGrid(columns: columns, spacing: .spacing(.medium)) {
+                            Section {
+                                ForEach(topHits) { hit in
+                                    topHitView(for: hit)
+                                }
+                            } header: {
+                                HeaderView(
+                                    symbol: "star",
+                                    title: "Melhores Resultados",
+                                    resultCount: topHits.count
+                                )
+                            }
+                        }
+                    }
+
                     LazyVGrid(
                         columns: columns,
                         spacing: .spacing(.medium)
@@ -357,6 +377,54 @@ struct SearchResultsView: View {
     }
 
     // MARK: - Subviews
+
+    @MainActor @ViewBuilder
+    private func topHitView(for hit: TopHit) -> some View {
+        switch hit.item {
+        case .sound(let content), .song(let content):
+            PlayableContentView(
+                content: content,
+                favorites: playable.favoritesKeeper,
+                highlighted: Set<String>(),
+                nowPlaying: playable.nowPlayingKeeper,
+                selectedItems: Set<String>(),
+                currentContentListMode: .constant(.regular)
+            )
+            .contentShape(
+                .contextMenuPreview,
+                RoundedRectangle(cornerRadius: .spacing(.large), style: .continuous)
+            )
+            .onTapGesture {
+                onContentSelected(content, loadedContent: [content])
+            }
+            .contextMenu {
+                contextMenuOptionsView(
+                    content: content,
+                    menuOptions: menuOptions,
+                    favorites: playable.favoritesKeeper,
+                    loadedContent: [content]
+                )
+            }
+
+        case .author(let author):
+            HorizontalAuthorView(author: author, compact: true)
+                .onTapGesture {
+                    push(GeneralNavigationDestination.authorDetail(author))
+                }
+
+        case .folder(let folder):
+            FolderView(folder: folder)
+                .onTapGesture {
+                    push(GeneralNavigationDestination.folderDetail(folder))
+                }
+
+        case .reaction(let reaction):
+            ReactionItem(reaction: reaction)
+                .onTapGesture {
+                    push(GeneralNavigationDestination.reactionDetail(reaction))
+                }
+        }
+    }
 
     @MainActor @ViewBuilder
     private var reactionsSection: some View {

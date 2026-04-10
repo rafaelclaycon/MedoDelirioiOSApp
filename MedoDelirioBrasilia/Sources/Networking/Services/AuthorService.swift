@@ -12,6 +12,7 @@ protocol AuthorServiceProtocol {
     func allAuthors(_ sortOrder: AuthorSortOption) throws -> [Author]
 
     func authors(matchingName name: String) -> [Author]?
+    func authors(fuzzyMatchingName name: String) -> [ScoredItem<Author>]?
 }
 
 final class AuthorService: AuthorServiceProtocol {
@@ -44,6 +45,19 @@ final class AuthorService: AuthorServiceProtocol {
         let copy = allAuthors.filter { $0.name.normalizedForSearch().contains(normalizedSearch) }
         let authors = sort(authors: copy, by: .nameAscending)
         return authors.isEmpty ? nil : authors
+    }
+
+    func authors(fuzzyMatchingName name: String) -> [ScoredItem<Author>]? {
+        guard !name.isEmpty else { return nil }
+        guard let allAuthors, allAuthors.count > 0 else { return nil }
+        let scored = allAuthors
+            .compactMap { author -> ScoredItem<Author>? in
+                let score = FuzzyMatcher.score(query: name, against: author.name)
+                guard score >= FuzzyMatcher.minimumScoreThreshold else { return nil }
+                return ScoredItem(item: author, score: score)
+            }
+            .sorted { $0.score > $1.score }
+        return scored.isEmpty ? nil : scored
     }
 }
 

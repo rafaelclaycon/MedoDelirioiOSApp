@@ -19,4 +19,8 @@ class FakeAuthorService: AuthorServiceProtocol {
     func authors(matchingName name: String) -> [Author]? {
         nil
     }
+
+    func authors(fuzzyMatchingName name: String) -> [ScoredItem<Author>]? {
+        nil
+    }
 }

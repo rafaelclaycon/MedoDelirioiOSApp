@@ -11,6 +11,7 @@ protocol UserFolderRepositoryProtocol {
 
     func allFolders() async throws -> [UserFolder]
     func folders(matchingName name: String) -> [UserFolder]?
+    func folders(fuzzyMatchingName name: String) -> [ScoredItem<UserFolder>]?
 
     func add(_ userFolder: UserFolder) throws
     func insert(contentId: String, intoUserFolder userFolderId: String) throws
@@ -57,6 +58,18 @@ final class UserFolderRepository: UserFolderRepositoryProtocol {
         return allFolders.filter { folder in
             folder.name.normalizedForSearch().contains(normalizedSearch)
         }
+    }
+
+    func folders(fuzzyMatchingName name: String) -> [ScoredItem<UserFolder>]? {
+        guard let allFolders else { return nil }
+        let scored = allFolders
+            .compactMap { folder -> ScoredItem<UserFolder>? in
+                let score = FuzzyMatcher.score(query: name, against: folder.name)
+                guard score >= FuzzyMatcher.minimumScoreThreshold else { return nil }
+                return ScoredItem(item: folder, score: score)
+            }
+            .sorted { $0.score > $1.score }
+        return scored.isEmpty ? nil : scored
     }
 
     func add(_ userFolder: UserFolder) throws {

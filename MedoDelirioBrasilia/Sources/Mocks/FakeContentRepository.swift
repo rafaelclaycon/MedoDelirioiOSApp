@@ -46,6 +46,14 @@ final class FakeContentRepository: ContentRepositoryProtocol {
         []
     }
 
+    func sounds(fuzzyMatchingTitle title: String, _ allowSensitive: Bool) -> [ScoredItem<AnyEquatableMedoContent>] {
+        []
+    }
+
+    func sounds(fuzzyMatchingDescription description: String, _ allowSensitive: Bool) -> [ScoredItem<AnyEquatableMedoContent>] {
+        []
+    }
+
     func randomSound(_ allowSensitive: Bool) -> Sound? {
         nil
     }
@@ -78,6 +86,14 @@ final class FakeContentRepository: ContentRepositoryProtocol {
     }
 
     func songs(matchingDescription description: String, _ allowSensitive: Bool) -> [AnyEquatableMedoContent] {
+        []
+    }
+
+    func songs(fuzzyMatchingTitle title: String, _ allowSensitive: Bool) -> [ScoredItem<AnyEquatableMedoContent>] {
+        []
+    }
+
+    func songs(fuzzyMatchingDescription description: String, _ allowSensitive: Bool) -> [ScoredItem<AnyEquatableMedoContent>] {
         []
     }
 

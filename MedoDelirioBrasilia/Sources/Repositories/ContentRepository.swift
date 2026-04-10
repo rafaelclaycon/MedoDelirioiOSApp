@@ -22,6 +22,8 @@ protocol ContentRepositoryProtocol {
 
     func sounds(matchingTitle title: String, _ allowSensitive: Bool) -> [AnyEquatableMedoContent]
     func sounds(matchingDescription description: String, _ allowSensitive: Bool) -> [AnyEquatableMedoContent]
+    func sounds(fuzzyMatchingTitle title: String, _ allowSensitive: Bool) -> [ScoredItem<AnyEquatableMedoContent>]
+    func sounds(fuzzyMatchingDescription description: String, _ allowSensitive: Bool) -> [ScoredItem<AnyEquatableMedoContent>]
     /// Returns a random Sound.
     func randomSound(_ allowSensitive: Bool) -> Sound?
 
@@ -32,6 +34,8 @@ protocol ContentRepositoryProtocol {
 
     func songs(matchingTitle title: String, _ allowSensitive: Bool) -> [AnyEquatableMedoContent]
     func songs(matchingDescription description: String, _ allowSensitive: Bool) -> [AnyEquatableMedoContent]
+    func songs(fuzzyMatchingTitle title: String, _ allowSensitive: Bool) -> [ScoredItem<AnyEquatableMedoContent>]
+    func songs(fuzzyMatchingDescription description: String, _ allowSensitive: Bool) -> [ScoredItem<AnyEquatableMedoContent>]
 
     func author(withId authorId: String) throws -> Author?
 
@@ -160,6 +164,44 @@ final class ContentRepository: ContentRepositoryProtocol {
         return sort(content: content, by: .titleAscending)
     }
 
+    func sounds(fuzzyMatchingTitle title: String, _ allowSensitive: Bool) -> [ScoredItem<AnyEquatableMedoContent>] {
+        if allContent == nil {
+            loadAllContent()
+        }
+        guard let allContent, allContent.count > 0 else { return [] }
+        var content = allContent.filter { $0.type == .sound }
+        if !allowSensitive {
+            content = content.filter { !$0.isOffensive }
+        }
+        return content
+            .compactMap { item -> ScoredItem<AnyEquatableMedoContent>? in
+                let score = FuzzyMatcher.score(query: title, against: item.title)
+                guard score >= FuzzyMatcher.minimumScoreThreshold else { return nil }
+                return ScoredItem(item: item, score: score)
+            }
+            .sorted { $0.score > $1.score }
+    }
+
+    func sounds(fuzzyMatchingDescription description: String, _ allowSensitive: Bool) -> [ScoredItem<AnyEquatableMedoContent>] {
+        if allContent == nil {
+            loadAllContent()
+        }
+        guard let allContent, allContent.count > 0 else { return [] }
+        var content = allContent.filter { $0.type == .sound }
+        if !allowSensitive {
+            content = content.filter { !$0.isOffensive }
+        }
+        return content
+            .compactMap { item -> ScoredItem<AnyEquatableMedoContent>? in
+                let titleScore = FuzzyMatcher.score(query: description, against: item.title)
+                guard titleScore < FuzzyMatcher.minimumScoreThreshold else { return nil }
+                let descScore = FuzzyMatcher.score(query: description, against: item.description)
+                guard descScore >= FuzzyMatcher.minimumScoreThreshold else { return nil }
+                return ScoredItem(item: item, score: descScore)
+            }
+            .sorted { $0.score > $1.score }
+    }
+
     func randomSound(_ allowSensitive: Bool) -> Sound? {
         do {
             return try LocalDatabase.shared.randomSound(includeOffensive: allowSensitive)
@@ -216,6 +258,44 @@ final class ContentRepository: ContentRepositoryProtocol {
             !$0.title.normalizedForSearch().contains(normalizedSearch)
         }
         return sort(content: content, by: .titleAscending)
+    }
+
+    func songs(fuzzyMatchingTitle title: String, _ allowSensitive: Bool) -> [ScoredItem<AnyEquatableMedoContent>] {
+        if allContent == nil {
+            loadAllContent()
+        }
+        guard let allContent, allContent.count > 0 else { return [] }
+        var content = allContent.filter { $0.type == .song }
+        if !allowSensitive {
+            content = content.filter { !$0.isOffensive }
+        }
+        return content
+            .compactMap { item -> ScoredItem<AnyEquatableMedoContent>? in
+                let score = FuzzyMatcher.score(query: title, against: item.title)
+                guard score >= FuzzyMatcher.minimumScoreThreshold else { return nil }
+                return ScoredItem(item: item, score: score)
+            }
+            .sorted { $0.score > $1.score }
+    }
+
+    func songs(fuzzyMatchingDescription description: String, _ allowSensitive: Bool) -> [ScoredItem<AnyEquatableMedoContent>] {
+        if allContent == nil {
+            loadAllContent()
+        }
+        guard let allContent, allContent.count > 0 else { return [] }
+        var content = allContent.filter { $0.type == .song }
+        if !allowSensitive {
+            content = content.filter { !$0.isOffensive }
+        }
+        return content
+            .compactMap { item -> ScoredItem<AnyEquatableMedoContent>? in
+                let titleScore = FuzzyMatcher.score(query: description, against: item.title)
+                guard titleScore < FuzzyMatcher.minimumScoreThreshold else { return nil }
+                let descScore = FuzzyMatcher.score(query: description, against: item.description)
+                guard descScore >= FuzzyMatcher.minimumScoreThreshold else { return nil }
+                return ScoredItem(item: item, score: descScore)
+            }
+            .sorted { $0.score > $1.score }
     }
 
     // MARK: - Author

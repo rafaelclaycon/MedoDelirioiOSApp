@@ -18,6 +18,7 @@ import Foundation
 
 struct SearchResults {
 
+    var topHits: [TopHit]?
     var soundsMatchingTitle: [AnyEquatableMedoContent]?
     var soundsMatchingContent: [AnyEquatableMedoContent]?
     var songsMatchingTitle: [AnyEquatableMedoContent]?
@@ -31,7 +32,8 @@ struct SearchResults {
     var reactionsMatchingFeeling: [Reaction]?
 
     var noResults: Bool {
-        return soundsMatchingTitle?.isEmpty ?? true &&
+        return topHits?.isEmpty ?? true &&
+            soundsMatchingTitle?.isEmpty ?? true &&
             soundsMatchingContent?.isEmpty ?? true &&
             songsMatchingTitle?.isEmpty ?? true &&
             songsMatchingContent?.isEmpty ?? true &&
@@ -45,6 +47,7 @@ struct SearchResults {
     }
 
     public mutating func clearAll() {
+        self.topHits = nil
         self.soundsMatchingTitle = nil
         self.soundsMatchingContent = nil
         self.songsMatchingTitle = nil

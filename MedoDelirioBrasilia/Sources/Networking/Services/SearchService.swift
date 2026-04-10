@@ -89,15 +89,46 @@ final class SearchService: SearchServiceProtocol {
         switch mode {
         case .virgulas:
             let allowSensitive = userSettings.getShowExplicitContent()
-            return SearchResults(
-                soundsMatchingTitle: contentRepository.sounds(matchingTitle: searchString, allowSensitive),
-                soundsMatchingContent: contentRepository.sounds(matchingDescription: searchString, allowSensitive),
-                songsMatchingTitle: contentRepository.songs(matchingTitle: searchString, allowSensitive),
-                songsMatchingContent: contentRepository.songs(matchingDescription: searchString, allowSensitive),
-                authors: authorService.authors(matchingName: searchString),
-                folders: userFolderRepository.folders(matchingName: searchString),
-                reactionsMatchingTitle: reactions(matchingTitle: searchString)
-            )
+            if FeatureFlag.isEnabled(.projectGravity) {
+                let scoredSoundsTitle = contentRepository.sounds(fuzzyMatchingTitle: searchString, allowSensitive)
+                let scoredSoundsDesc = contentRepository.sounds(fuzzyMatchingDescription: searchString, allowSensitive)
+                let scoredSongsTitle = contentRepository.songs(fuzzyMatchingTitle: searchString, allowSensitive)
+                let scoredSongsDesc = contentRepository.songs(fuzzyMatchingDescription: searchString, allowSensitive)
+                let scoredAuthors = authorService.authors(fuzzyMatchingName: searchString)
+                let scoredFolders = userFolderRepository.folders(fuzzyMatchingName: searchString)
+                let scoredReactions = scoredReactions(fuzzyMatchingTitle: searchString)
+
+                let topHits = buildTopHits(
+                    soundsTitle: scoredSoundsTitle,
+                    soundsDesc: scoredSoundsDesc,
+                    songsTitle: scoredSongsTitle,
+                    songsDesc: scoredSongsDesc,
+                    authors: scoredAuthors,
+                    folders: scoredFolders,
+                    reactions: scoredReactions
+                )
+
+                return SearchResults(
+                    topHits: topHits,
+                    soundsMatchingTitle: scoredSoundsTitle.map(\.item),
+                    soundsMatchingContent: scoredSoundsDesc.map(\.item),
+                    songsMatchingTitle: scoredSongsTitle.map(\.item),
+                    songsMatchingContent: scoredSongsDesc.map(\.item),
+                    authors: scoredAuthors?.map(\.item),
+                    folders: scoredFolders?.map(\.item),
+                    reactionsMatchingTitle: scoredReactions?.map(\.item)
+                )
+            } else {
+                return SearchResults(
+                    soundsMatchingTitle: contentRepository.sounds(matchingTitle: searchString, allowSensitive),
+                    soundsMatchingContent: contentRepository.sounds(matchingDescription: searchString, allowSensitive),
+                    songsMatchingTitle: contentRepository.songs(matchingTitle: searchString, allowSensitive),
+                    songsMatchingContent: contentRepository.songs(matchingDescription: searchString, allowSensitive),
+                    authors: authorService.authors(matchingName: searchString),
+                    folders: userFolderRepository.folders(matchingName: searchString),
+                    reactionsMatchingTitle: reactions(matchingTitle: searchString)
+                )
+            }
 
         case .episodios:
             let titleMatched = episodes(matchingTitle: searchString)
@@ -245,6 +276,91 @@ extension SearchService {
         return reactions.filter {
             $0.title.normalizedForSearch().contains(normalizedSearch)
         }
+    }
+
+    private func scoredReactions(fuzzyMatchingTitle title: String) -> [ScoredItem<Reaction>]? {
+        guard case .loaded(let reactions) = reactionsState else { return nil }
+        let scored = reactions
+            .compactMap { reaction -> ScoredItem<Reaction>? in
+                let score = FuzzyMatcher.score(query: title, against: reaction.title)
+                guard score >= FuzzyMatcher.minimumScoreThreshold else { return nil }
+                return ScoredItem(item: reaction, score: score)
+            }
+            .sorted { $0.score > $1.score }
+        return scored.isEmpty ? [] : scored
+    }
+
+    func buildTopHits(
+        soundsTitle: [ScoredItem<AnyEquatableMedoContent>],
+        soundsDesc: [ScoredItem<AnyEquatableMedoContent>],
+        songsTitle: [ScoredItem<AnyEquatableMedoContent>],
+        songsDesc: [ScoredItem<AnyEquatableMedoContent>],
+        authors: [ScoredItem<Author>]?,
+        folders: [ScoredItem<UserFolder>]?,
+        reactions: [ScoredItem<Reaction>]?
+    ) -> [TopHit]? {
+        var candidates: [TopHit] = []
+
+        if let best = soundsTitle.first {
+            candidates.append(TopHit(
+                id: best.item.id,
+                item: .sound(best.item),
+                weightedScore: best.score * SearchField.title.weight
+            ))
+        }
+        if let best = soundsDesc.first {
+            candidates.append(TopHit(
+                id: best.item.id,
+                item: .sound(best.item),
+                weightedScore: best.score * SearchField.description.weight
+            ))
+        }
+        if let best = songsTitle.first {
+            candidates.append(TopHit(
+                id: best.item.id,
+                item: .song(best.item),
+                weightedScore: best.score * SearchField.title.weight
+            ))
+        }
+        if let best = songsDesc.first {
+            candidates.append(TopHit(
+                id: best.item.id,
+                item: .song(best.item),
+                weightedScore: best.score * SearchField.description.weight
+            ))
+        }
+        if let best = authors?.first {
+            candidates.append(TopHit(
+                id: best.item.id,
+                item: .author(best.item),
+                weightedScore: best.score * SearchField.authorName.weight
+            ))
+        }
+        if let best = folders?.first {
+            candidates.append(TopHit(
+                id: best.item.id,
+                item: .folder(best.item),
+                weightedScore: best.score * SearchField.folderName.weight
+            ))
+        }
+        if let best = reactions?.first {
+            candidates.append(TopHit(
+                id: best.item.id,
+                item: .reaction(best.item),
+                weightedScore: best.score * SearchField.reactionTitle.weight
+            ))
+        }
+
+        guard !candidates.isEmpty else { return nil }
+
+        let deduped = Dictionary(candidates.map { ($0.id, $0) }) { lhs, rhs in
+            lhs.weightedScore >= rhs.weightedScore ? lhs : rhs
+        }
+
+        return Array(deduped.values)
+            .sorted { $0.weightedScore > $1.weightedScore }
+            .prefix(3)
+            .map { $0 }
     }
 
     private func loadEpisodesIfNeeded() -> [PodcastEpisode] {

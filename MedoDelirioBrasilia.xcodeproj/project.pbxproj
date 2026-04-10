@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		3C5105B8CEFB48DEAC9382D4 /* FuzzyMatcherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EC565119D8B487A810DF0B0 /* FuzzyMatcherTests.swift */; };
 		491110262926B9CC0055F4EE /* Desconhecido - Eu por forca de lei sou obrigado.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 491110252926B9CC0055F4EE /* Desconhecido - Eu por forca de lei sou obrigado.mp3 */; };
 		491110282926BA2F0055F4EE /* Desconhecido - Socorro nos ajudem.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 491110272926BA2F0055F4EE /* Desconhecido - Socorro nos ajudem.mp3 */; };
 		4911102A2926BA6F0055F4EE /* Desconhecido - Um movimento passivo.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 491110292926BA6F0055F4EE /* Desconhecido - Um movimento passivo.mp3 */; };
@@ -1248,6 +1249,7 @@
 		D9FD0F1628B2B2FA0000616A /* Funk do Sentar na Mesa.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = D9FD0F1228B2B2FA0000616A /* Funk do Sentar na Mesa.mp3 */; };
 		D9FD0F1728B2B2FA0000616A /* Eu vou, eu vou, sentar na mesa eu vou funk.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = D9FD0F1328B2B2FA0000616A /* Eu vou, eu vou, sentar na mesa eu vou funk.mp3 */; };
 		D9FF3F9B2B14325A007AE773 /* UpdateIncentiveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9FF3F9A2B14325A007AE773 /* UpdateIncentiveTests.swift */; };
+		EA40BB71F7224B3AAB7B4DAE /* SearchServiceFuzzyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E358B9D7D9043ACB323F141 /* SearchServiceFuzzyTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -1282,6 +1284,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		2EC565119D8B487A810DF0B0 /* FuzzyMatcherTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FuzzyMatcherTests.swift; sourceTree = "<group>"; };
 		40F192C0CBCA2E306EEA5B76 /* EpisodeListenStatsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeListenStatsTests.swift; sourceTree = "<group>"; };
 		491110252926B9CC0055F4EE /* Desconhecido - Eu por forca de lei sou obrigado.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "Desconhecido - Eu por forca de lei sou obrigado.mp3"; sourceTree = "<group>"; };
 		491110272926BA2F0055F4EE /* Desconhecido - Socorro nos ajudem.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "Desconhecido - Socorro nos ajudem.mp3"; sourceTree = "<group>"; };
@@ -1366,6 +1369,7 @@
 		49E5D33A28C634F20057FF7D /* Nao e hora pra desespero completo.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "Nao e hora pra desespero completo.mp3"; sourceTree = "<group>"; };
 		49F921FF28E334C1009AC743 /* Eu to esmagada.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "Eu to esmagada.mp3"; sourceTree = "<group>"; };
 		49F9220128E33576009AC743 /* Ey ey eymael funk meme.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "Ey ey eymael funk meme.mp3"; sourceTree = "<group>"; };
+		7E358B9D7D9043ACB323F141 /* SearchServiceFuzzyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchServiceFuzzyTests.swift; sourceTree = "<group>"; };
 		9235B1A4C6190535D767EE97 /* EpisodeListenStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeListenStoreTests.swift; sourceTree = "<group>"; };
 		D900B9C42A6DF6D300C1BC3A /* FakeLoggerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeLoggerService.swift; sourceTree = "<group>"; };
 		D903DB0329DF3FD300D9BE42 /* Bolsonaro e morte, Bolsonaro e uma peste.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "Bolsonaro e morte, Bolsonaro e uma peste.mp3"; sourceTree = "<group>"; };
@@ -3846,6 +3850,7 @@
 				D96892DD2C9F7DC40084F646 /* VideoMakerTests.swift */,
 				D920BF632CD1E5A800C6BD72 /* FolderResearchProviderTests.swift */,
 				40F192C0CBCA2E306EEA5B76 /* EpisodeListenStatsTests.swift */,
+				2EC565119D8B487A810DF0B0 /* FuzzyMatcherTests.swift */,
 			);
 			path = Helpers;
 			sourceTree = "<group>";
@@ -3896,6 +3901,7 @@
 			isa = PBXGroup;
 			children = (
 				D906012B2F1C281B00BD238A /* SearchServiceTests.swift */,
+				7E358B9D7D9043ACB323F141 /* SearchServiceFuzzyTests.swift */,
 				D95C3E092A02AB1800172C17 /* ContentUpdateServiceTests.swift */,
 			);
 			path = Services;
@@ -5508,6 +5514,8 @@
 			files = (
 				D9DE92102B9B98F800268626 /* SyncManagerTests.swift in Sources */,
 				D906012C2F1C281B00BD238A /* SearchServiceTests.swift in Sources */,
+				3C5105B8CEFB48DEAC9382D4 /* FuzzyMatcherTests.swift in Sources */,
+				EA40BB71F7224B3AAB7B4DAE /* SearchServiceFuzzyTests.swift in Sources */,
 				D920BF642CD1E5A800C6BD72 /* FolderResearchProviderTests.swift in Sources */,
 				D9A3AB6F28F063FF0064CB7A /* DateExtensionTests.swift in Sources */,
 				D9FF3F9B2B14325A007AE773 /* UpdateIncentiveTests.swift in Sources */,

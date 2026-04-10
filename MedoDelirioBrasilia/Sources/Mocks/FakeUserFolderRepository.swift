@@ -28,6 +28,10 @@ final class FakeUserFolderRepository: UserFolderRepositoryProtocol {
         nil
     }
 
+    func folders(fuzzyMatchingName name: String) -> [ScoredItem<UserFolder>]? {
+        nil
+    }
+
     func add(_ userFolder: UserFolder) throws {
         didCallAdd = true
     }

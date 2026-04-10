@@ -11,6 +11,7 @@ import Kingfisher
 struct HorizontalAuthorView: View {
 
     let author: Author
+    var compact: Bool = false
 
     @Environment(\.colorScheme) var colorScheme
 
@@ -37,49 +38,90 @@ struct HorizontalAuthorView: View {
                     .blur(radius: 200, opaque: false)
             }
 
-            HStack {
-                if author.photo?.isEmpty == false {
-                    KFImage(URL(string: author.photo ?? ""))
-                        .placeholder {
-                            Image(systemName: "person.fill")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(height: 50)
-                                .foregroundColor(.gray)
-                                .opacity(0.3)
-                        }
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 96, height: 96)
-                        .clipped()
-                }
-
-                VStack(alignment: .leading) {
-                    Text(author.name)
-                        .foregroundColor(.primary)
-                        .bold()
-                        .multilineTextAlignment(.leading)
-                        .lineLimit(2)
-                }
-                .padding(.leading, author.photo?.isEmpty == false ? 15 : 25)
-
-                Spacer()
-
-                NumberBadgeView(
-                    number: "\(author.soundCount ?? 0)",
-                    showBackgroundCircle: true,
-                    lightModeOpacity: hasBackgroundImage ? 0.5 : 0.2,
-                    darkModeOpacity: hasBackgroundImage ? 0.25 : 0.5,
-                    circleColor: hasBackgroundImage ? .white : .gray
-                )
-                .foregroundColor(.primary)
+            if compact {
+                compactContent
+            } else {
+                fullWidthContent
             }
-            .padding(.trailing, 18)
         }
         .mask {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
         }
         .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    // MARK: - Subviews
+
+    @ViewBuilder
+    private var fullWidthContent: some View {
+        HStack {
+            if author.photo?.isEmpty == false {
+                KFImage(URL(string: author.photo ?? ""))
+                    .placeholder {
+                        Image(systemName: "person.fill")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(height: 50)
+                            .foregroundColor(.gray)
+                            .opacity(0.3)
+                    }
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 96, height: 96)
+                    .clipped()
+            }
+
+            VStack(alignment: .leading) {
+                Text(author.name)
+                    .foregroundColor(.primary)
+                    .bold()
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(2)
+            }
+            .padding(.leading, author.photo?.isEmpty == false ? 15 : 25)
+
+            Spacer()
+
+            NumberBadgeView(
+                number: "\(author.soundCount ?? 0)",
+                showBackgroundCircle: true,
+                lightModeOpacity: hasBackgroundImage ? 0.5 : 0.2,
+                darkModeOpacity: hasBackgroundImage ? 0.25 : 0.5,
+                circleColor: hasBackgroundImage ? .white : .gray
+            )
+            .foregroundColor(.primary)
+        }
+        .padding(.trailing, 18)
+    }
+
+    @ViewBuilder
+    private var compactContent: some View {
+        VStack(spacing: 6) {
+            if hasBackgroundImage {
+                KFImage(URL(string: author.photo ?? ""))
+                    .placeholder {
+                        Image(systemName: "person.fill")
+                            .foregroundColor(.gray)
+                    }
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 36, height: 36)
+                    .clipShape(Circle())
+            } else {
+                Image(systemName: "person.fill")
+                    .font(.title)
+                    .foregroundColor(.gray)
+                    .frame(width: 36, height: 36)
+            }
+
+            Text(author.name)
+                .foregroundColor(.primary)
+                .bold()
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .padding(.horizontal, 8)
+        }
+        .frame(maxWidth: .infinity)
     }
 }
 
@@ -126,6 +168,45 @@ struct HorizontalAuthorView: View {
         HorizontalAuthorView(
             author: .init(id: "", name: "Samira Close", photo: "abc", soundCount: 1)
         )
+    }
+    .padding()
+}
+
+#Preview("Compact") {
+    VStack {
+        HStack(spacing: 12) {
+            HorizontalAuthorView(
+                author: .init(id: "", name: "Jair Bolsonaro", soundCount: 10),
+                compact: true
+            )
+
+            HorizontalAuthorView(
+                author: .init(
+                    id: "",
+                    name: "Samira Close",
+                    photo: "https://yt3.ggpht.com/ytc/AKedOLRjdzsZyL8rKC0c83BV7_muqPkBtd2TM1kYrV76iA=s900-c-k-c0x00ffffff-no-rj",
+                    soundCount: 1
+                ),
+                compact: true
+            )
+        }
+
+        HStack(spacing: 12) {
+            HorizontalAuthorView(
+                author: .init(id: "", name: "Maria Conceição Tavares", soundCount: 10),
+                compact: true
+            )
+
+            HorizontalAuthorView(
+                author: .init(
+                    id: "",
+                    name: "Samira Close Samira Close Samira",
+                    photo: "https://yt3.ggpht.com/ytc/AKedOLRjdzsZyL8rKC0c83BV7_muqPkBtd2TM1kYrV76iA=s900-c-k-c0x00ffffff-no-rj",
+                    soundCount: 1
+                ),
+                compact: true
+            )
+        }
     }
     .padding()
 }
