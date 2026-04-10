@@ -36,6 +36,7 @@ struct NowPlayingAccessoryView: View {
                     .font(.subheadline)
                     .fontWeight(.medium)
                     .lineLimit(1)
+                    .marquee()
 
                 Spacer(minLength: 0)
 

@@ -45,18 +45,23 @@ struct MarqueeModifier: ViewModifier {
     let spacing: CGFloat
     let delay: TimeInterval
     let speedBasis: SpeedBasis
+    let fadeWidth: CGFloat
     
     @State private var contentSize: CGSize?
     @State private var availableWidth: CGFloat?
     
     @State private var offset: CGFloat = 0
     
+    private var isOverflowing: Bool {
+        guard let availableWidth, let contentSize else { return false }
+        return availableWidth < contentSize.width
+    }
+    
     func body(content: Content) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: spacing) {
                 content
                     .fixedSize()
-                    // .border(.blue)
                     .overlay(
                         GeometryReader { geometry in
                             Color.clear
@@ -65,13 +70,11 @@ struct MarqueeModifier: ViewModifier {
                     )
                     .onPreferenceChange(ContentSizeKey.self) { value in
                         contentSize = value
-                        // print("Content size: \(contentSize!)")
                     }
                 
                 if let availableWidth, let contentSize, availableWidth < contentSize.width {
                     content
                         .fixedSize()
-                        // .border(.green)
                         .onAppear {
                             withAnimation(
                                 Animation.linear(duration: speedBasis.duration(distance: contentSize.width + spacing))
@@ -99,8 +102,20 @@ struct MarqueeModifier: ViewModifier {
         )
         .onPreferenceChange(AvailableWidthKey.self) { value in
             availableWidth = value
-            // print("Available width: \(value)")
-            // print("Content size: \(contentSize ?? .zero)")
+        }
+        .mask(fadeMask)
+    }
+    
+    @ViewBuilder
+    private var fadeMask: some View {
+        if isOverflowing, fadeWidth > 0 {
+            HStack(spacing: 0) {
+                Color.black
+                LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
+                    .frame(width: fadeWidth)
+            }
+        } else {
+            Color.black
         }
     }
 }
@@ -110,13 +125,15 @@ extension View {
     func marquee(
         spacing: CGFloat = 10,
         delay: TimeInterval = 3,
-        speedBasis: SpeedBasis = .velocity(50)
+        speedBasis: SpeedBasis = .velocity(50),
+        fadeWidth: CGFloat = 8
     ) -> some View {
         self.modifier(
             MarqueeModifier(
                 spacing: spacing,
                 delay: delay,
-                speedBasis: speedBasis
+                speedBasis: speedBasis,
+                fadeWidth: fadeWidth
             )
         )
     }
