@@ -19,6 +19,12 @@ extension MainContentView {
 
         var body: some View {
             VStack {
+                if FeatureFlag.isEnabled(.projectFirula) {
+                    BirthdayBannerView()
+                        .padding(.top, .spacing(.xxxSmall))
+                        .padding(.bottom, .spacing(.xSmall))
+                }
+
                 TranscriptDownloadBannerView()
                     .padding(.top, .spacing(.xxxSmall))
                     .padding(.bottom, .spacing(.xSmall))

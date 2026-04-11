@@ -15,7 +15,7 @@ struct ChangeAppIconView: View {
 
     var body: some View {
         VStack {
-            List(Icon.allCases) { icon in
+            List(Icon.allCases.filter { $0 != .birthday }) { icon in
                 Button {
                     model.setAlternateAppIcon(icon: icon)
                     selectedIcon = icon.id
