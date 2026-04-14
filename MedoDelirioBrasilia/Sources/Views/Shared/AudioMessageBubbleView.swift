@@ -10,6 +10,7 @@ struct AudioMessageBubbleView: View {
 
     let audioURL: URL
     let senderName: String
+    var senderImage: Image?
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -20,7 +21,9 @@ struct AudioMessageBubbleView: View {
     @State private var timer: Timer?
 
     private var bubbleColor: Color {
-        colorScheme == .dark ? .whatsAppDarkGreen : .whatsAppLightGreen
+        colorScheme == .dark
+            ? Color(.systemGray5)
+            : Color(.systemGray6)
     }
 
     private var displayTime: String {
@@ -30,50 +33,36 @@ struct AudioMessageBubbleView: View {
         return String(format: "%d:%02d", minutes, seconds)
     }
 
+    private let thumbColor = Color.accentColor
+
     var body: some View {
         VStack(alignment: .leading, spacing: .spacing(.xxxSmall)) {
             HStack(spacing: .spacing(.small)) {
-                Circle()
-                    .fill(Color.darkerGreen)
-                    .frame(width: 36, height: 36)
-                    .overlay {
-                        Text(String(senderName.prefix(1)).uppercased())
-                            .font(.subheadline.bold())
-                            .foregroundStyle(.white)
-                    }
-
                 Button {
                     togglePlayback()
                 } label: {
                     Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                        .font(.title3)
-                        .foregroundStyle(Color.darkerGreen)
-                        .frame(width: 32, height: 32)
+                        .font(.title)
+                        .foregroundStyle(Color(.systemGray))
+                        .frame(width: 36, height: 36)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
 
-                VStack(alignment: .leading, spacing: .spacing(.xxxSmall)) {
-                    GeometryReader { geometry in
-                        ZStack(alignment: .leading) {
-                            waveformBars(width: geometry.size.width, filled: false)
+                waveformSection
 
-                            waveformBars(width: geometry.size.width, filled: true)
-                                .mask(alignment: .leading) {
-                                    Rectangle()
-                                        .frame(width: geometry.size.width * progress)
-                                }
-                        }
+                avatarView
+                    .frame(width: 48, height: 48)
+                    .clipShape(Circle())
+                    .overlay(alignment: .bottomTrailing) {
+                        Image(systemName: "mic.fill")
+                            .font(.system(size: 10))
+                            .foregroundStyle(thumbColor)
+                            .offset(x: 2, y: 2)
                     }
-                    .frame(height: 20)
-
-                    Text(displayTime)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                }
             }
-            .padding(.horizontal, .spacing(.small))
+            .padding(.leading, .spacing(.small))
+            .padding(.trailing, .spacing(.xSmall))
             .padding(.vertical, .spacing(.xSmall))
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -93,25 +82,71 @@ struct AudioMessageBubbleView: View {
         }
     }
 
+    // MARK: - Subviews
+
+    private var waveformSection: some View {
+        VStack(alignment: .leading, spacing: .spacing(.xxxSmall)) {
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    waveformBars(width: geometry.size.width, played: false)
+
+                    waveformBars(width: geometry.size.width, played: true)
+                        .mask(alignment: .leading) {
+                            Rectangle()
+                                .frame(width: geometry.size.width * progress)
+                        }
+
+                    Circle()
+                        .fill(thumbColor)
+                        .frame(width: 10, height: 10)
+                        .offset(x: max(0, geometry.size.width * progress - 5))
+                }
+            }
+            .frame(height: 24)
+
+            Text(displayTime)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+        }
+    }
+
+    @ViewBuilder
+    private var avatarView: some View {
+        if let senderImage {
+            senderImage
+                .resizable()
+                .scaledToFill()
+        } else {
+            Circle()
+                .fill(Color.darkerGreen)
+                .overlay {
+                    Text(String(senderName.prefix(1)).uppercased())
+                        .font(.headline.bold())
+                        .foregroundStyle(.white)
+                }
+        }
+    }
+
     // MARK: - Waveform
 
-    private func waveformBars(width: CGFloat, filled: Bool) -> some View {
+    private func waveformBars(width: CGFloat, played: Bool) -> some View {
         HStack(alignment: .center, spacing: 2) {
             ForEach(0..<barCount(for: width), id: \.self) { index in
-                RoundedRectangle(cornerRadius: 1)
-                    .fill(filled ? Color.darkerGreen : Color.darkerGreen.opacity(0.3))
+                RoundedRectangle(cornerRadius: 1.5)
+                    .fill(played ? thumbColor : Color(.systemGray3))
                     .frame(width: 2.5, height: barHeight(for: index))
             }
         }
     }
 
     private func barCount(for width: CGFloat) -> Int {
-        max(1, Int(width / 4.5))
+        max(1, Int(width / 5))
     }
 
     private func barHeight(for index: Int) -> CGFloat {
         let seed = Double(index)
-        let height = 4 + 14 * abs(sin(seed * 0.8 + 0.3) * cos(seed * 0.4 + 1.2))
+        let height = 3 + 18 * abs(sin(seed * 0.8 + 0.3) * cos(seed * 0.4 + 1.2))
         return CGFloat(height)
     }
 
