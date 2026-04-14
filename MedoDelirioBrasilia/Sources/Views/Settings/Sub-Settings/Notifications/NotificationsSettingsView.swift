@@ -2,12 +2,19 @@ import SwiftUI
 
 struct NotificationsSettingsView: View {
 
+    var showCloseButton: Bool
+
+    @Environment(\.dismiss) private var dismiss
     @State private var enableNotifications = false
     @State private var episodeNotifications = false
     @State private var showSubscriptionError = false
     @State private var toast: Toast?
 
     private var pushStatus = PushRegistrationStatus.shared
+
+    init(showCloseButton: Bool = false) {
+        self.showCloseButton = showCloseButton
+    }
 
     private var enableNotificationsBinding: Binding<Bool> {
         Binding(
@@ -94,6 +101,15 @@ struct NotificationsSettingsView: View {
         .toast($toast)
         .navigationTitle("Notificações")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if showCloseButton {
+                ToolbarItem(placement: .topBarLeading) {
+                    CloseButton {
+                        dismiss()
+                    }
+                }
+            }
+        }
         .alert(
             "Houve um problema ao registrar este dispositivo para notificações",
             isPresented: $showSubscriptionError

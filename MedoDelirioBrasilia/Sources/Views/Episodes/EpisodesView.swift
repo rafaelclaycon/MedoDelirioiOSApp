@@ -114,7 +114,7 @@ struct EpisodesView: View {
         .navigationTitle("Episódios")
         .sheet(isPresented: $showNotificationSettings) {
             NavigationStack {
-                NotificationsSettingsView()
+                NotificationsSettingsView(showCloseButton: true)
             }
         }
         .toolbar {
