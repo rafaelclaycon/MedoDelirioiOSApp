@@ -28,6 +28,15 @@ struct StandaloneSearchView: View {
     @Environment(TranscriptDownloadService.self) private var transcriptDownloadService
     @Environment(\.push) private var push
 
+    private var searchPrompt: String {
+        switch searchMode {
+        case .virgulas:
+            Shared.Search.searchPrompt
+        case .episodios:
+            Shared.Search.episodeSearchPrompt
+        }
+    }
+
     var body: some View {
         GeometryReader { geometry in
             ScrollView {
@@ -66,7 +75,7 @@ struct StandaloneSearchView: View {
                 }
                 .padding(.all, UIDevice.isiPad ? .spacing(.medium) : .spacing(.xSmall))
                 .navigationTitle(Text("Buscar"))
-                .searchable(text: $searchText, placement: .navigationBarDrawer, prompt: Shared.Search.searchPrompt)
+                .searchable(text: $searchText, placement: .navigationBarDrawer, prompt: searchPrompt)
                 .autocorrectionDisabled()
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
