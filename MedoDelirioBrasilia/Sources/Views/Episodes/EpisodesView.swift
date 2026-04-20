@@ -14,6 +14,7 @@ struct EpisodesView: View {
     @Environment(EpisodeProgressStore.self) private var progressStore
     @Environment(EpisodePlayedStore.self) private var playedStore
     @Environment(EpisodeBookmarkStore.self) private var bookmarkStore
+    @Environment(EpisodesBadgeStore.self) private var badgeStore
     @Environment(TranscriptDownloadService.self) private var transcriptService
     @Environment(\.push) private var push
     @State private var viewModel = ViewModel(episodesService: EpisodesService())
@@ -112,7 +113,9 @@ struct EpisodesView: View {
             }
         }
         .navigationTitle("Episódios")
-        .sheet(isPresented: $showNotificationSettings) {
+        .sheet(isPresented: $showNotificationSettings, onDismiss: {
+            badgeStore.recompute()
+        }) {
             NavigationStack {
                 NotificationsSettingsView(showCloseButton: true)
             }
@@ -168,6 +171,7 @@ struct EpisodesView: View {
             await viewModel.onViewLoaded()
         }
         .onAppear {
+            badgeStore.markAsVisited()
             Task {
                 await AnalyticsService().send(
                     originatingScreen: "EpisodesView",
@@ -674,6 +678,7 @@ private extension View {
     .environment(EpisodeProgressStore())
     .environment(EpisodePlayedStore())
     .environment(EpisodeBookmarkStore())
+    .environment(EpisodesBadgeStore())
     .environment(TranscriptDownloadService())
 }
 

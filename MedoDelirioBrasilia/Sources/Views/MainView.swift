@@ -58,6 +58,7 @@ struct MainView: View {
     @State private var episodePlayedStore = EpisodePlayedStore()
     @State private var episodeBookmarkStore = EpisodeBookmarkStore()
     @State private var episodeListenStore = EpisodeListenStore()
+    @State private var episodesBadgeStore = EpisodesBadgeStore()
     @State private var showNowPlaying = false
 
     @State private var contentRepository: ContentRepository
@@ -156,6 +157,7 @@ struct MainView: View {
                         .environment(\.push, PushAction { episodesPath.append($0) })
                         .tag(PhoneTab.episodes)
                     }
+                    .badge(episodesBadgeText)
 
                     Tab(value: .search, role: .search) {
                         NavigationStack(path: $searchTabPath) {
@@ -259,6 +261,7 @@ struct MainView: View {
                         .tabItem {
                             Label("Episódios", systemImage: "radio")
                         }
+                        .badge(episodesBadgeText)
                         .tag(PhoneTab.episodes)
 
                         NavigationStack(path: $searchTabPath) {
@@ -406,6 +409,7 @@ struct MainView: View {
                             NowPlayingBarContainer(player: episodePlayer, showNowPlaying: $showNowPlaying)
                         }
                     }
+                    .badge(episodesBadgeText)
 
                     TabSection("Minhas Pastas") {
                         Tab(Shared.TabInfo.name(.allFolders), systemImage: Shared.TabInfo.symbol(.allFolders)) {
@@ -533,6 +537,12 @@ struct MainView: View {
         .environment(episodePlayedStore)
         .environment(episodeBookmarkStore)
         .environment(episodeListenStore)
+        .environment(episodesBadgeStore)
+        .onChange(of: tabSelection.wrappedValue) { _, newTab in
+            if newTab == .episodes {
+                episodesBadgeStore.markAsVisited()
+            }
+        }
         .onChange(of: episodePlayer.pendingRemoteBookmark) { _, isPending in
             guard isPending else { return }
             showNowPlaying = true
@@ -564,6 +574,11 @@ struct MainView: View {
 
             Task {
                 try? await EpisodesService().syncEpisodes()
+                episodesBadgeStore.recompute()
+            }
+
+            if tabSelection.wrappedValue == .episodes {
+                episodesBadgeStore.markAsVisited()
             }
 
             Task {
@@ -572,6 +587,9 @@ struct MainView: View {
         }
         .onChange(of: scenePhase) { _, newPhase in
             episodePlayer.setSceneActive(newPhase == .active)
+            if newPhase == .active {
+                episodesBadgeStore.recompute()
+            }
         }
         .sheet(isPresented: $showingModalView) {
             switch subviewToOpen {
@@ -663,6 +681,17 @@ struct MainView: View {
                     )
                 }
             }
+        }
+    }
+
+    // MARK: - Computed
+
+    private var episodesBadgeText: Text? {
+        switch episodesBadgeStore.badge {
+        case .none:
+            return nil
+        case .count(let n):
+            return Text("\(n)")
         }
     }
 

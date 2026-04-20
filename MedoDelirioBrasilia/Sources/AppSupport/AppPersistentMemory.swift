@@ -319,6 +319,15 @@ extension AppPersistentMemory {
         }
         return true
     }
+
+    // MARK: Episodes Tab Badge
+
+    func getEpisodesTabLastVisitedAt() -> Date? {
+        guard let value = userDefaults.object(forKey: "episodesTabLastVisitedAt") else {
+            return nil
+        }
+        return Date(timeIntervalSince1970: value as! Double)
+    }
 }
 
 // MARK: - Setters
@@ -470,5 +479,11 @@ extension AppPersistentMemory {
 
     func setLastSupportPromptDate(_ newValue: Date) {
         userDefaults.set(newValue.timeIntervalSince1970, forKey: "lastSupportPromptDate")
+    }
+
+    // MARK: Episodes Tab Badge
+
+    func setEpisodesTabLastVisitedAt(_ newValue: Date) {
+        userDefaults.set(newValue.timeIntervalSince1970, forKey: "episodesTabLastVisitedAt")
     }
 }
