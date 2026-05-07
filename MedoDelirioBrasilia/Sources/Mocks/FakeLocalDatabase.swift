@@ -50,6 +50,9 @@ class FakeLocalDatabase: LocalDatabaseProtocol {
     var numberOfTimesInsertUpdateEventWasCalled = 0
 
     var sounds = [Sound]()
+    var pendingShareStats = [PendingShareCountStat]()
+    var bundleIdLogs = [ServerShareBundleIdLog]()
+    var markedShareLogIds = [String]()
 
     var didCallDeletePinnedReaction = false
 
@@ -392,6 +395,18 @@ class FakeLocalDatabase: LocalDatabaseProtocol {
 
     func markAllUserShareLogsAsSentToServer() throws {
         //
+    }
+
+    func pendingShareStatsNotSentToServer() throws -> [PendingShareCountStat] {
+        pendingShareStats
+    }
+
+    func getUniqueBundleIdsThatWereSharedTo() throws -> [ServerShareBundleIdLog] {
+        bundleIdLogs
+    }
+
+    func markUserShareLogsAsSent(logIds: [String]) throws {
+        markedShareLogIds.append(contentsOf: logIds)
     }
 
     func clearAudienceSharingStatisticTable() throws {

@@ -40,34 +40,53 @@ class Podium {
         guard await apiClient.serverIsAvailable() else { return .failed("Servidor indisponível.") }
 
         // Prepare local stats to be sent
-        guard let stats = Logger.shared.shareCountStatsForServer() else {
+        let pendingStats: [PendingShareCountStat]
+        let bundleIdLogs: [ServerShareBundleIdLog]
+        do {
+            pendingStats = try database.pendingShareStatsNotSentToServer()
+            bundleIdLogs = try database.getUniqueBundleIdsThatWereSharedTo()
+        } catch {
+            return .failed("Falha carregando estatísticas locais de compartilhamento.")
+        }
+
+        guard !pendingStats.isEmpty else {
             return .noStatsToSend
         }
 
-        // Send them
-        for stat in stats {
+        // Send them and keep track of successes only.
+        var successfulLogIds = [String]()
+        var failedStats = [ServerShareCountStat]()
+        for pending in pendingStats {
             do {
-                try await self.apiClient.post(shareCountStat: stat)
+                try await self.apiClient.post(shareCountStat: pending.payload)
+                successfulLogIds.append(pending.localLogId)
             } catch {
-                print("Sending of \(stat) failed: \(error.localizedDescription)")
+                print("Sending of \(pending.payload) failed: \(error.localizedDescription)")
+                failedStats.append(pending.payload)
             }
         }
 
+        if !successfulLogIds.isEmpty {
+            do {
+                try self.database.markUserShareLogsAsSent(logIds: successfulLogIds)
+            } catch {
+                return .failed("Falha ao marcar compartilhamentos enviados localmente.")
+            }
+        }
+
+        if !failedStats.isEmpty {
+            return .failed("Falha ao enviar \(failedStats.count) compartilhamentos.")
+        }
+
+        // Send bundles IDs as well (independent from share-log sent markers).
         let bundleIdUrl = URL(string: apiClient.serverPath + "v1/shared-to-bundle-id")!
-
-        // Send bundles IDs as well
-        if let bundleIdLogs = Logger.shared.uniqueBundleIdsForServer() {
-            for log in bundleIdLogs {
-                do {
-                    let _: ServerShareBundleIdLog = try await APIClient.shared.post(to: bundleIdUrl, body: log)
-                } catch {
-                    return .failed("Sending of \(log) failed.")
-                }
+        for log in bundleIdLogs {
+            do {
+                try await apiClient.post(to: bundleIdUrl, body: log)
+            } catch {
+                return .failed("Sending of \(log) failed.")
             }
         }
-
-        // Marking them as sent guarantees we won't send them again
-        try? self.database.markAllUserShareLogsAsSentToServer()
 
         return .successful
     }

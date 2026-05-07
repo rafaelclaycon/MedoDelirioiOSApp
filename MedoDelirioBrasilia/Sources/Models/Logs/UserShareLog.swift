@@ -44,6 +44,31 @@ enum ContentType: Int {
     case sound, song, videoFromSound, videoFromSong
 }
 
+extension ContentType {
+
+    static func shareType(for mediaType: MediaType) -> ContentType? {
+        switch mediaType {
+        case .sound:
+            return .sound
+        case .song:
+            return .song
+        default:
+            return nil
+        }
+    }
+
+    static func videoShareType(for mediaType: MediaType) -> ContentType? {
+        switch mediaType {
+        case .sound:
+            return .videoFromSound
+        case .song:
+            return .videoFromSong
+        default:
+            return nil
+        }
+    }
+}
+
 enum ShareDestination: Int {
 
     case whatsApp, telegram, other

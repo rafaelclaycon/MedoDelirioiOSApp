@@ -27,6 +27,16 @@ extension LocalDatabase {
             //print("'\(logId)' update failed.")
         }
     }
+
+    func markUserShareLogsAsSent(logIds: [String]) throws {
+        guard !logIds.isEmpty else { return }
+
+        let id = Expression<String>("id")
+        let sent_to_server = Expression<Bool>("sentToServer")
+        let logsToUpdate = userShareLog.filter(logIds.contains(id))
+        let numberOfRecordsUpdated = try db.run(logsToUpdate.update(sent_to_server <- true))
+        print("Set \(numberOfRecordsUpdated) selected user share logs as sent to server.")
+    }
     
     func markAllUserShareLogsAsSentToServer() throws {
         let sent_to_server = Expression<Bool>("sentToServer")

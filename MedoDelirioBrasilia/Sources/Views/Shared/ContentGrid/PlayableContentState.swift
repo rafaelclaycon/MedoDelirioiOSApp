@@ -116,12 +116,17 @@ extension PlayableContentState {
     }
 
     public func share(content: AnyEquatableMedoContent) {
+        guard let contentType = ContentType.shareType(for: content.type) else {
+            showUnableToGetContentAlert(content.title)
+            return
+        }
+
         if UIDevice.isiPhone {
             do {
                 try SharingUtility.shareSound(
                     from: content.fileURL(),
                     andContentId: content.id,
-                    context: .sound
+                    context: contentType
                 ) { didShare in
                     if didShare {
                         self.toast.wrappedValue = Toast(message: Shared.soundSharedSuccessfullyMessage, type: .success)
@@ -141,7 +146,7 @@ extension PlayableContentState {
                             return
                         }
                         let destination = ShareDestination.translateFrom(activityTypeRawValue: activity.rawValue)
-                        Logger.shared.logShared(.sound, contentId: content.id, destination: destination, destinationBundleId: activity.rawValue)
+                        Logger.shared.logShared(contentType, contentId: content.id, destination: destination, destinationBundleId: activity.rawValue)
 
                         AppStoreReviewSteward.requestReviewBasedOnVersionAndCount()
 
@@ -317,10 +322,12 @@ extension PlayableContentState {
         andContentId contentId: String,
         title soundTitle: String
     ) {
+        let videoType = ContentType.videoShareType(for: selectedContent?.type ?? .sound) ?? .videoFromSound
+
         if UIDevice.isiPhone {
             do {
                 try SharingUtility.share(
-                    .videoFromSound,
+                    videoType,
                     withPath: filepath,
                     andContentId: contentId,
                     shareSheetDelayInSeconds: 0.6
@@ -350,7 +357,7 @@ extension PlayableContentState {
                     }
                     let destination = ShareDestination.translateFrom(activityTypeRawValue: activity.rawValue)
                     Logger.shared.logShared(
-                        .videoFromSound,
+                        videoType,
                         contentId: contentId,
                         destination: destination,
                         destinationBundleId: activity.rawValue

@@ -41,3 +41,10 @@ struct ServerShareBundleIdLog: Hashable, Codable {
     var bundleId: String
     var count: Int
 }
+
+/// Local upload unit that links a pending user-share log row to server payload.
+struct PendingShareCountStat: Hashable {
+
+    let localLogId: String
+    let payload: ServerShareCountStat
+}

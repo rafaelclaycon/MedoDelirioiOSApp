@@ -53,7 +53,10 @@ class SharingUtility {
 
                 let destination = ShareDestination.translateFrom(activityTypeRawValue: activity.rawValue)
                 content.forEach {
-                    Logger.shared.logShared(.sound, contentId: $0.id, destination: destination, destinationBundleId: activity.rawValue)
+                    guard let contentType = ContentType.shareType(for: $0.type) else {
+                        return
+                    }
+                    Logger.shared.logShared(contentType, contentId: $0.id, destination: destination, destinationBundleId: activity.rawValue)
                 }
 
                 AppStoreReviewSteward.requestReviewBasedOnVersionAndCount()

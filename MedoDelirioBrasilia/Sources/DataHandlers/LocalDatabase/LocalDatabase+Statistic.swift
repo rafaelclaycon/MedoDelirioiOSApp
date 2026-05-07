@@ -6,34 +6,42 @@ private typealias Expression = SQLite.Expression
 extension LocalDatabase {
 
     // MARK: - User statistics to be sent to the server
-    
-    func userShareStatsNotSentToServer() throws -> [ServerShareCountStat] {
-        var result = [ServerShareCountStat]()
-        
+
+    func pendingShareStatsNotSentToServer() throws -> [PendingShareCountStat] {
+        var result = [PendingShareCountStat]()
+
+        let id = Expression<String>("id")
         let install_id = Expression<String>("installId")
         let content_id = Expression<String>("contentId")
         let content_type = Expression<Int>("contentType")
         let sent_to_server = Expression<Bool>("sentToServer")
         let date_time = Expression<Date>("dateTime")
-        
+
         for row in try db.prepare(
             userShareLog
-                .select(install_id, content_id, content_type, date_time)
+                .select(id, install_id, content_id, content_type, date_time)
                 .where(sent_to_server == false)
         ) {
             result.append(
-                ServerShareCountStat(
-                    installId: row[install_id],
-                    contentId: row[content_id],
-                    contentType: row[content_type],
-                    shareCount: 1,
-                    dateTime: row[date_time].iso8601withFractionalSeconds
+                PendingShareCountStat(
+                    localLogId: row[id],
+                    payload: ServerShareCountStat(
+                        installId: row[install_id],
+                        contentId: row[content_id],
+                        contentType: row[content_type],
+                        shareCount: 1,
+                        dateTime: row[date_time].iso8601withFractionalSeconds
+                    )
                 )
             )
         }
         return result
     }
-    
+
+    func userShareStatsNotSentToServer() throws -> [ServerShareCountStat] {
+        try pendingShareStatsNotSentToServer().map(\.payload)
+    }
+
     func getUniqueBundleIdsThatWereSharedTo() throws -> [ServerShareBundleIdLog] {
         var result = [ServerShareBundleIdLog]()
         

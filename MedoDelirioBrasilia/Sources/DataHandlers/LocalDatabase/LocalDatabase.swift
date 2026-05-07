@@ -121,6 +121,9 @@ internal protocol LocalDatabaseProtocol {
     func allListenDates() throws -> [Date]
     func deleteAllEpisodeListenLogs() throws
 
+    func pendingShareStatsNotSentToServer() throws -> [PendingShareCountStat]
+    func getUniqueBundleIdsThatWereSharedTo() throws -> [ServerShareBundleIdLog]
+    func markUserShareLogsAsSent(logIds: [String]) throws
     func markAllUserShareLogsAsSentToServer() throws
     func clearAudienceSharingStatisticTable() throws
 }

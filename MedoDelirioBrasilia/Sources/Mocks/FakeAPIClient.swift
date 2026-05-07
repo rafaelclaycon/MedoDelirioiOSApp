@@ -15,6 +15,11 @@ class FakeAPIClient: APIClientProtocol {
     var fetchUpdateEventsResult: ContentUpdateResult = .nothingToUpdate
 
     var updateEvents = [UpdateEvent]()
+    var shareCountStatsPosted = [ServerShareCountStat]()
+    var failShareCountPostAtIndexes = Set<Int>()
+    var shareCountPostCalls = 0
+    var postedBundleIdLogs = [ServerShareBundleIdLog]()
+    var shouldFailBundleIdPost = false
 
     var sound: Sound?
     var song: Song?
@@ -34,7 +39,12 @@ class FakeAPIClient: APIClientProtocol {
     }
 
     func post(shareCountStat: ServerShareCountStat) async throws {
-        //
+        if failShareCountPostAtIndexes.contains(shareCountPostCalls) {
+            shareCountPostCalls += 1
+            throw APIClientError.unexpectedStatusCode
+        }
+        shareCountStatsPosted.append(shareCountStat)
+        shareCountPostCalls += 1
     }
 
     func post(clientDeviceInfo: ClientDeviceInfo) async throws {
@@ -49,7 +59,12 @@ class FakeAPIClient: APIClientProtocol {
     }
 
     func post<T>(to url: URL, body: T) async throws where T : Encodable {
-        //
+        if let log = body as? ServerShareBundleIdLog {
+            if shouldFailBundleIdPost {
+                throw APIClientError.unexpectedStatusCode
+            }
+            postedBundleIdLogs.append(log)
+        }
     }
 
     func getString(from url: URL) async throws -> String? {
