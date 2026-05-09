@@ -63,15 +63,53 @@ struct FourthBirthdayView: View {
                 heroHeader
 
                 VStack(alignment: .leading, spacing: .spacing(.large)) {
-                    Text("4 Anos do App iOS")
-                        .font(.largeTitle)
+                    Text("Um obrigado gigante do Rafael (criador do app iOS) e dos criadores do podcast.")
+                        .font(.body)
                         .bold()
                         .foregroundStyle(.primary)
 
-                    Text("Há 4 anos nascia este app, feito com carinho para a comunidade do podcast. O que começou como uma brincadeira virou algo que milhares de pessoas usam todos os dias para rir, reagir e compartilhar os melhores momentos.\n\nNada disso existiria sem vocês. Obrigado por cada compartilhamento, cada sugestão e cada risada. Que venham muitos mais anos juntos!")
+                    Text("Há 4 anos, no dia 20 de maio de 2022, esse app foi lançado pela primeira vez na App Store. O que começou como uma brincadeira virou algo que centenas de pessoas usam todos os dias para rir, reagir e compartilhar as partes mais marcantes do podcast.\n\nNada disso existiria sem vocês. Obrigado por cada compartilhamento, cada sugestão e cada risada. Que venham muitos mais anos juntos!")
                         .font(.body)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+
+                    if let audioURL = Bundle.main.url(forResource: "cristiano-4-anos", withExtension: "mp3") {
+                        AudioMessageBubbleView(
+                            audioURL: audioURL,
+                            senderName: "Cristiano"
+                        )
+                    }
+
+                    Text("Quer apoiar o app?")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    GlassButton(
+                        symbol: "app.gift",
+                        title: "Apoio recorrente",
+                        color: accentGreen,
+                        fullWidth: true,
+                        action: {
+                            AppIcon().setAlternateAppIcon(icon: .birthday)
+                            withAnimation {
+                                didChangeIcon = true
+                            }
+                        }
+                    )
+
+                    GlassButton(
+                        symbol: "app.gift",
+                        title: "Apoio recorrente",
+                        color: accentGreen,
+                        fullWidth: true,
+                        action: {
+                            AppIcon().setAlternateAppIcon(icon: .birthday)
+                            withAnimation {
+                                didChangeIcon = true
+                            }
+                        }
+                    )
 
                     VStack(spacing: .spacing(.small)) {
                         GlassButton(
@@ -94,36 +132,20 @@ struct FourthBirthdayView: View {
                                 .transition(.opacity.combined(with: .move(edge: .top)))
                         }
                     }
-
-                    if let audioURL = Bundle.main.url(forResource: "cristiano-4-anos", withExtension: "mp3") {
-                        AudioMessageBubbleView(
-                            audioURL: audioURL,
-                            senderName: "Cristiano"
-                        )
-                    }
                 }
                 .padding(.top, .spacing(.large))
                 .padding(.horizontal, 24)
             }
         }
         .ignoresSafeArea(edges: .top)
-        .safeAreaInset(edge: .bottom) {
-            VStack(spacing: 12) {
-                GlassButton(
-                    title: "Fechar",
-                    color: .clear,
-                    fullWidth: true,
-                    action: { dismiss() }
-                )
-
-                Spacer()
-                    .frame(height: hasHomeIndicator ? 40 : 16)
-            }
-            .padding(.horizontal)
-            .padding(.vertical, 10)
-            .background(Color.systemBackground)
-        }
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                CloseButton {
+                    dismiss()
+                }
+            }
+        }
     }
 
     // MARK: - Hero Header
@@ -223,7 +245,7 @@ struct FourthBirthdayView: View {
                     ringAnimation = true
                 }
 
-                Text("Parabéns pra nós! 🎂")
+                Text("4 Anos do App iOS!")
                     .font(.system(size: 34, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                     .shadow(color: .black.opacity(0.6), radius: 12, x: 0, y: 2)
@@ -237,5 +259,10 @@ struct FourthBirthdayView: View {
 // MARK: - Preview
 
 #Preview {
-    FourthBirthdayView()
+    VStack {
+        Text("Background View")
+    }
+    .sheet(isPresented: .constant(true)) {
+        FourthBirthdayView()
+    }
 }

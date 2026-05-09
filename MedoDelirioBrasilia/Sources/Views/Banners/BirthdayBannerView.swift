@@ -14,20 +14,20 @@ struct BirthdayBannerView: View {
             showBirthdayView = true
         } label: {
             HStack(alignment: .center, spacing: .spacing(.medium)) {
-                Image(systemName: "gift.fill")
+                Image(systemName: "balloon.2")
                     .font(.system(size: 24))
                     .foregroundStyle(.white)
 
-                Text("O app faz 4 anos!")
+                Text("Comemore os 4 anos do app com a gente!")
                     .bold()
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.leading)
 
                 Spacer()
 
-                Image(systemName: "chevron.right")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.8))
+                Image(systemName: "hand.tap")
+                    .font(.title.weight(.semibold))
+                    .foregroundStyle(.white)
             }
             .padding(.horizontal, .spacing(.medium))
             .padding(.vertical, .spacing(.medium))
