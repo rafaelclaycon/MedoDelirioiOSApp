@@ -86,9 +86,9 @@ struct FourthBirthdayView: View {
                         .fixedSize(horizontal: false, vertical: true)
 
                     GlassButton(
-                        symbol: "app.gift",
+                        symbol: "arrow.trianglehead.2.counterclockwise",
                         title: "Apoio recorrente",
-                        color: accentGreen,
+                        color: .rubyRed,
                         fullWidth: true,
                         action: {
                             AppIcon().setAlternateAppIcon(icon: .birthday)
@@ -99,9 +99,9 @@ struct FourthBirthdayView: View {
                     )
 
                     GlassButton(
-                        symbol: "app.gift",
-                        title: "Apoio recorrente",
-                        color: accentGreen,
+                        symbol: "banknote",
+                        title: "Apoio pontual",
+                        color: .blue,
                         fullWidth: true,
                         action: {
                             AppIcon().setAlternateAppIcon(icon: .birthday)

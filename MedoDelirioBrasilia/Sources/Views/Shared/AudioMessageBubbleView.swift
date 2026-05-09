@@ -17,6 +17,8 @@ struct AudioMessageBubbleView: View {
     @State private var player: AVAudioPlayer?
     @State private var isPlaying = false
     @State private var progress: Double = 0
+    @State private var isScrubbing = false
+    @State private var scrubProgress: Double = 0
     @State private var duration: TimeInterval = 0
     @State private var timer: Timer?
 
@@ -27,7 +29,8 @@ struct AudioMessageBubbleView: View {
     }
 
     private var displayTime: String {
-        let time = isPlaying ? duration * (1 - progress) : duration
+        let currentProgress = isScrubbing ? scrubProgress : progress
+        let time = (isPlaying || isScrubbing) ? duration * (1 - currentProgress) : duration
         let minutes = Int(time) / 60
         let seconds = Int(time) % 60
         return String(format: "%d:%02d", minutes, seconds)
@@ -87,20 +90,30 @@ struct AudioMessageBubbleView: View {
     private var waveformSection: some View {
         VStack(alignment: .leading, spacing: .spacing(.xxxSmall)) {
             GeometryReader { geometry in
+                let displayProgress = isScrubbing ? scrubProgress : progress
+                let thumbSize: CGFloat = 10
+                let thumbOffset = max(
+                    0,
+                    min(geometry.size.width - thumbSize, geometry.size.width * displayProgress - thumbSize / 2)
+                )
+
                 ZStack(alignment: .leading) {
                     waveformBars(width: geometry.size.width, played: false)
 
                     waveformBars(width: geometry.size.width, played: true)
                         .mask(alignment: .leading) {
                             Rectangle()
-                                .frame(width: geometry.size.width * progress)
+                                .frame(width: geometry.size.width * displayProgress)
                         }
 
                     Circle()
                         .fill(thumbColor)
-                        .frame(width: 10, height: 10)
-                        .offset(x: max(0, geometry.size.width * progress - 5))
+                        .frame(width: thumbSize, height: thumbSize)
+                        .offset(x: thumbOffset)
                 }
+                .frame(height: 24)
+                .contentShape(Rectangle())
+                .gesture(scrubGesture(width: geometry.size.width))
             }
             .frame(height: 24)
 
@@ -152,6 +165,35 @@ struct AudioMessageBubbleView: View {
 
     // MARK: - Playback
 
+    private func scrubGesture(width: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { value in
+                updateScrubProgress(for: value.location.x, width: width, shouldSeekPlayer: true)
+            }
+            .onEnded { value in
+                updateScrubProgress(for: value.location.x, width: width, shouldSeekPlayer: true)
+                progress = scrubProgress
+                isScrubbing = false
+            }
+    }
+
+    private func updateScrubProgress(for xPosition: CGFloat, width: CGFloat, shouldSeekPlayer: Bool) {
+        guard duration > 0, width > 0 else { return }
+
+        if !isScrubbing {
+            scrubProgress = progress
+            isScrubbing = true
+        }
+
+        let clampedXPosition = min(max(xPosition, 0), width)
+        let nextProgress = Double(clampedXPosition / width)
+        scrubProgress = min(max(nextProgress, 0), 1)
+
+        guard shouldSeekPlayer else { return }
+
+        player?.currentTime = duration * scrubProgress
+    }
+
     private func preparePlayer() {
         guard let audioPlayer = try? AVAudioPlayer(contentsOf: audioURL) else { return }
         audioPlayer.prepareToPlay()
@@ -171,6 +213,7 @@ struct AudioMessageBubbleView: View {
             if progress >= 1.0 {
                 player.currentTime = 0
                 progress = 0
+                scrubProgress = 0
             }
 
             try? AVAudioSession.sharedInstance().setCategory(.playback)
@@ -180,10 +223,13 @@ struct AudioMessageBubbleView: View {
 
             timer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { _ in
                 guard let p = self.player else { return }
+                guard !self.isScrubbing else { return }
+
                 if p.isPlaying {
                     self.progress = p.currentTime / p.duration
                 } else {
                     self.progress = 1.0
+                    self.scrubProgress = 1.0
                     self.isPlaying = false
                     self.timer?.invalidate()
                     self.timer = nil

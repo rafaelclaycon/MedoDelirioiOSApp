@@ -26,7 +26,7 @@ struct BirthdayBannerView: View {
                 Spacer()
 
                 Image(systemName: "hand.tap")
-                    .font(.title.weight(.semibold))
+                    .font(.title)
                     .foregroundStyle(.white)
             }
             .padding(.horizontal, .spacing(.medium))
