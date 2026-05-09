@@ -121,7 +121,7 @@ struct Shared {
     }
     static let contentNotFoundAlertMessage = "Devido a um problema técnico, o conteúdo que você quer acessar não está disponível."
     static let serverContentNotAvailableMessage = "Provavelmente houve um problema com o download desse conteúdo.\n\nPor favor, reporte esse erro para mim através do e-mail nas Configurações."
-    static let serverContentNotAvailableRedownloadMessage = "Houve um problema com o download desse conteúdo durante a atualização.\n\nVocê pode tentar baixá-lo novamente."
+    static let serverContentNotAvailableRedownloadMessage = "Houve um problema com o download desse conteúdo."
     static let soundSharedSuccessfullyMessage = "Conteúdo compartilhado com sucesso."
     static let soundExportedSuccessfullyMessage = "Conteúdo exportado com sucesso."
     static let soundsExportedSuccessfullyMessage = "Conteúdos exportados com sucesso."

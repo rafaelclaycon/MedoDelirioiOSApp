@@ -69,7 +69,7 @@ struct PlayableContentUIModifier: ViewModifier {
                     Text("Baixar Novamente"),
                     action: { state.onRedownloadContentOptionSelected() }
                 ),
-                secondaryButton: .cancel(Text("Fechar"))
+                secondaryButton: .cancel(Text("Cancelar"))
             )
 
         case .issueSharingContent:
@@ -80,7 +80,7 @@ struct PlayableContentUIModifier: ViewModifier {
                     Text("Relatar Problema por E-mail"),
                     action: { Task { await state.onReportContentIssueSelected() } }
                 ),
-                secondaryButton: .cancel(Text("Fechar"))
+                secondaryButton: .cancel(Text("Cancelar"))
             )
 
         case .unableToRedownloadContent:
