@@ -18,16 +18,16 @@ struct BirthdayBannerView: View {
                     .font(.system(size: 24))
                     .foregroundStyle(.white)
 
-                Text("Comemore os 4 anos do app com a gente!")
+                Text("Uma mensagem especial do Cristiano")
                     .bold()
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.leading)
 
                 Spacer()
 
-                Image(systemName: "hand.tap")
-                    .font(.title)
-                    .foregroundStyle(.white)
+//                Image(systemName: "hand.tap")
+//                    .font(.title)
+//                    .foregroundStyle(.white)
             }
             .padding(.horizontal, .spacing(.medium))
             .padding(.vertical, .spacing(.medium))

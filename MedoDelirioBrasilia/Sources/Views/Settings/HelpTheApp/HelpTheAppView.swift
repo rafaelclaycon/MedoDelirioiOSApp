@@ -7,6 +7,11 @@
 
 import SwiftUI
 
+extension HelpTheAppView {
+
+    static let pixKey: String = "contato@medodelirioios.com"
+}
+
 struct HelpTheAppView: View {
 
     let donors: [Donor]?
@@ -141,8 +146,6 @@ extension HelpTheAppView {
         @Binding var toast: Toast?
         var showSectionDivider: Bool = false
         @State private var pixAlertAmount: Int?
-
-        private let pixKey: String = "contato@medodelirioios.com"
 
         // MARK: - Tier Data
 
