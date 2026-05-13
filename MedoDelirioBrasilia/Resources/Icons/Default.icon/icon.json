@@ -36,7 +36,7 @@
             },
             {
               "appearance" : "dark",
-              "value" : 1
+              "value" : 0.85
             },
             {
               "appearance" : "tinted",
@@ -74,7 +74,7 @@
           "opacity-specializations" : [
             {
               "appearance" : "dark",
-              "value" : 0.7
+              "value" : 0.24
             },
             {
               "appearance" : "tinted",
