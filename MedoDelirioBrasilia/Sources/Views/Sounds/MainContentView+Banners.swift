@@ -14,12 +14,13 @@ extension MainContentView {
         let bannerRepository: BannerRepositoryProtocol
         @Binding var toast: Toast?
 
-        @State private var data: DynamicBannerData?
+        @State private var dynamicBanner: DynamicBannerData?
+        @State private var showBirthdayBanner: Bool = false
         @State private var showDunBanner = !AppPersistentMemory.shared.hasDismissedDunBanner()
 
         var body: some View {
             VStack {
-                if FeatureFlag.isEnabled(.projectFirula) {
+                if showBirthdayBanner {
                     BirthdayBannerView()
                         .padding(.top, .spacing(.xxxSmall))
                         .padding(.bottom, .spacing(.xSmall))
@@ -35,9 +36,9 @@ extension MainContentView {
                         .padding(.bottom, .spacing(.xSmall))
                 }
 
-                if let data {
+                if let dynamicBanner {
                     DynamicBanner(
-                        bannerData: data,
+                        bannerData: dynamicBanner,
                         textCopyFeedback: { message in
                             self.toast = Toast(message: message, type: .thankYou)
                         }
@@ -48,7 +49,10 @@ extension MainContentView {
             }
             .onAppear {
                 Task{
-                    data = await bannerRepository.dynamicBanner()
+                    dynamicBanner = await bannerRepository.dynamicBanner()
+                }
+                Task{
+                    showBirthdayBanner = await bannerRepository.showAnniversaryBanner()
                 }
             }
         }

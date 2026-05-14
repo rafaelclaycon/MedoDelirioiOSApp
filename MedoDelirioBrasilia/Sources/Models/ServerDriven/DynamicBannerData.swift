@@ -46,3 +46,9 @@ enum DynamicBannerButtonType: String, Codable {
 
     case copyText, openLink
 }
+
+struct AnniversaryBannerData: Codable {
+
+    let enabled: Bool
+    let excludedVersion: String
+}
