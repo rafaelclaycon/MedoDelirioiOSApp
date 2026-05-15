@@ -65,8 +65,14 @@ struct FourthBirthdayView: View {
                 VStack(spacing: 0) {
                     heroHeader
 
+                    Button {
+                        //
+                    } label: {
+                        Label("Lançar de novo", systemImage: "party.popper")
+                    }
+
                     VStack(spacing: .spacing(.large)) {
-                        Text("Há 4 anos, no dia 20 de maio de 2022, esse app foi lançado pela primeira vez na App Store. O que começou como uma brincadeira virou algo que centenas de pessoas usam todos os dias para rir, reagir e compartilhar as partes mais marcantes do podcast.")
+                        Text("Em 20 de maio de 2022 o app Medo e Delírio era lançado pela primeira vez para iPhone. O que começou como uma brincadeira virou algo que centenas de pessoas usam todos os dias para rir, reagir e compartilhar as partes mais marcantes do podcast.\n\nNesses anos tivemos...")
                             .font(.body)
                             .fixedSize(horizontal: false, vertical: true)
 
@@ -82,15 +88,10 @@ struct FourthBirthdayView: View {
 
                         StatView(
                             title: "4.080",
-                            subtitle: "média de usuários mensais"
+                            subtitle: "usuários mensais (média dos últimos 3 meses)"
                         )
 
-                        Text("Nada disso existiria sem vocês. Obrigado por cada compartilhamento, cada sugestão e cada risada.")
-
-                        Text("Um obrigado gigante do Rafael (criador do app iOS) e dos criadores do podcast.")
-                            .font(.body)
-                            .bold()
-                            .foregroundStyle(.primary)
+                        Text("Nada disso existiria sem vocês. Um obrigado imenso de mim, Rafael, por cada compartilhamento, cada sugestão e cada risada.\n\nE um agradecimento especial de alguém que vocês já conhecem:")
 
                         if let audioURL = Bundle.main.url(forResource: "cristiano-4-anos", withExtension: "mp3") {
                             AudioMessageBubbleView(
@@ -102,7 +103,7 @@ struct FourthBirthdayView: View {
 
                         Text("Que tal pingar um capilé pro app?")
                             .font(.body)
-                            .foregroundStyle(.secondary)
+                            //.foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
 
                         GlassButton(
@@ -326,7 +327,7 @@ extension FourthBirthdayView {
         let subtitle: String
 
         var body: some View {
-            VStack(spacing: .spacing(.xxxSmall)) {
+            VStack(spacing: .spacing(.nano)) {
                 Text(title)
                     .font(.largeTitle)
                     .bold()
@@ -343,84 +344,88 @@ extension FourthBirthdayView {
 private struct BirthdayConfettiView: View {
 
     let isFalling: Bool
+    /// Y coordinate where the cannon fires from. Defaults to bottom of the 300pt header.
+    var originY: CGFloat = 300
+
+    @State private var startDate: Date = .distantFuture
 
     private static let colors: [Color] = [
-        .rubyRed,
-        .darkerGreen,
-        .yellow,
-        .blue,
-        .pink,
-        .orange,
-        .purple
+        .rubyRed, .darkerGreen, .yellow, .blue, .pink, .orange, .purple
     ]
 
     private let pieces = BirthdayConfettiPiece.all
 
+    /// Pixels per second² — tune to taste. Higher = pieces fall back faster.
+    private let gravity: CGFloat = 700
+
     var body: some View {
         GeometryReader { geometry in
-            ZStack {
-                ForEach(pieces) { piece in
-                    BirthdayConfettiShapeView(kind: piece.shape)
-                        .fill(Self.colors[piece.colorIndex % Self.colors.count])
-                        .frame(width: piece.width, height: piece.height)
-                        .rotationEffect(.degrees(isFalling ? piece.finalRotation : piece.initialRotation))
-                        .position(
-                            x: xPosition(for: piece, in: geometry.size),
-                            y: yPosition(for: piece, in: geometry.size)
-                        )
-                        .animation(
-                            .timingCurve(0.16, 0.85, 0.28, 1.0, duration: piece.duration)
-                                .delay(piece.delay),
-                            value: isFalling
-                        )
+            TimelineView(.animation) { context in
+                let elapsed = max(0, context.date.timeIntervalSince(startDate))
+
+                ZStack {
+                    ForEach(pieces) { piece in
+                        let visible = elapsed >= piece.delay
+                        let t: CGFloat = CGFloat(max(0, elapsed - piece.delay))
+
+                        let x: CGFloat = geometry.size.width / 2 + piece.velocityX * t
+
+                        let gravityTerm: CGFloat = 0.5 * gravity * t * t
+                        let y: CGFloat = originY + piece.velocityY * t + gravityTerm
+
+                        let rotation: Double = piece.initialRotation + Double(t) * piece.rotationSpeed
+
+                        BirthdayConfettiShapeView(kind: piece.shape)
+                            .fill(Self.colors[piece.colorIndex % Self.colors.count])
+                            .frame(width: piece.width, height: piece.height)
+                            .rotationEffect(.degrees(rotation))
+                            .position(x: x, y: y)
+                            .opacity(visible ? 1 : 0)
+                    }
                 }
             }
-            .frame(width: geometry.size.width, height: geometry.size.height)
         }
-    }
-
-    private func xPosition(for piece: BirthdayConfettiPiece, in size: CGSize) -> CGFloat {
-        if isFalling {
-            min(max(size.width * piece.xFraction + piece.drift, -30), size.width + 30)
-        } else {
-            size.width / 2 + piece.initialSpread
+        .onAppear {
+            if isFalling { startDate = Date() }
         }
-    }
-
-    private func yPosition(for piece: BirthdayConfettiPiece, in size: CGSize) -> CGFloat {
-        isFalling ? size.height + 80 : -40 - piece.popHeight
+        .onChange(of: isFalling) { _, newValue in
+            startDate = newValue ? Date() : .distantFuture
+        }
     }
 }
 
 private struct BirthdayConfettiPiece: Identifiable {
 
     let id: Int
-    let xFraction: CGFloat
-    let initialSpread: CGFloat
-    let drift: CGFloat
-    let popHeight: CGFloat
+    let velocityX: CGFloat        // horizontal speed (pts/s)
+    let velocityY: CGFloat        // vertical speed (pts/s) — negative = upward
+    let rotationSpeed: Double     // degrees per second
     let width: CGFloat
     let height: CGFloat
     let delay: Double
-    let duration: Double
     let initialRotation: Double
-    let finalRotation: Double
     let colorIndex: Int
     let shape: BirthdayConfettiShape
 
     static let all: [BirthdayConfettiPiece] = (0..<90).map { index in
-        BirthdayConfettiPiece(
+        // Fan-shaped launch angle: from -135° to -45°
+        // (i.e. up-left through straight-up to up-right).
+        // In screen coordinates, "up" is negative Y, so sin(angle) is negative.
+        let angleProgress = unit(index, salt: 12.9898)             // 0...1
+        let angle = -.pi * (0.25 + angleProgress * 0.5)            // -π/4 ... -3π/4
+
+        // Initial speed varies a bit so pieces don't all reach the same height.
+        let speed = 550 + unit(index, salt: 78.233) * 450          // 550...1000 pts/s
+
+        return BirthdayConfettiPiece(
             id: index,
-            xFraction: CGFloat(unit(index, salt: 12.9898)),
-            initialSpread: CGFloat((unit(index, salt: 78.233) - 0.5) * 90),
-            drift: CGFloat((unit(index, salt: 37.719) - 0.5) * 120),
-            popHeight: CGFloat(unit(index, salt: 19.19) * 70),
+            velocityX: CGFloat(cos(angle) * speed),
+            velocityY: CGFloat(sin(angle) * speed),                // negative = up
+            rotationSpeed: 180 + unit(index, salt: 19.19) * 540,   // 180...720 deg/s
             width: CGFloat(5 + unit(index, salt: 91.7) * 7),
             height: CGFloat(8 + unit(index, salt: 53.37) * 14),
-            delay: unit(index, salt: 29.17) * 0.8,
-            duration: 2.6 + unit(index, salt: 43.11) * 1.5,
-            initialRotation: unit(index, salt: 61.4) * 120,
-            finalRotation: 540 + unit(index, salt: 17.31) * 900,
+            delay: unit(index, salt: 29.17) * 0.35,                // small stagger
+            initialRotation: unit(index, salt: 61.4) * 360,
             colorIndex: index,
             shape: BirthdayConfettiShape(rawValue: index % BirthdayConfettiShape.allCases.count) ?? .rectangle
         )
