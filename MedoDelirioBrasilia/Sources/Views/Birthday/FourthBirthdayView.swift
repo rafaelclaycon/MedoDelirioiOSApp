@@ -88,7 +88,7 @@ struct FourthBirthdayView: View {
 
                         StatView(
                             title: "720.763",
-                            subtitle: "compartilhamentos totais"
+                            subtitle: "compartilhamentos de vírgulas e músicas"
                         )
 
                         StatView(
@@ -96,7 +96,16 @@ struct FourthBirthdayView: View {
                             subtitle: "usuários mensais (média dos últimos 3 meses)"
                         )
 
-                        Text("Nada disso existiria sem vocês. Um obrigado imenso de mim, Rafael, por cada compartilhamento, cada sugestão e cada risada.\n\nE um agradecimento especial de alguém que vocês já conhecem:")
+                        VStack(spacing: .spacing(.nano)) {
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(.gray)
+                                .frame(width: 180, height: 100)
+
+                            Text("vírgula mais compartilhada (7.186 compartilhamentos e contando)")
+                        }
+                        .multilineTextAlignment(.center)
+
+                        Text("Nada disso existiria sem vocês. Esse app é desenvolvido de forma independente, por amor ao podcast. Obrigado por cada compartilhamento, cada sugestão e cada risada.\n\nUma mensagem especial do Cristiano para vocês:")
 
                         if let audioURL = Bundle.main.url(forResource: "cristiano-4-anos", withExtension: "mp3") {
                             AudioMessageBubbleView(
