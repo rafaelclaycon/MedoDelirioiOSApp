@@ -11,10 +11,6 @@ struct MostSharedByMeView: View {
 
     @State private var viewModel = MostSharedByMeViewViewModel()
 
-    @State private var showRetrospectiveStories: Bool = false
-    @State private var showRetroBanner: Bool = true
-    @State private var userHasStats: Bool = false
-
     let columns = [
         GridItem(.flexible())
     ]
@@ -36,29 +32,12 @@ struct MostSharedByMeView: View {
                 if items.isEmpty {
                     NoDataView()
                 } else {
-                    VStack {
-                        if showRetroBanner && userHasStats {
-                            Retro2025Banner(
-                                style: .small,
-                                openStoriesAction: {
-                                    showRetrospectiveStories = true
-                                },
-                               dismissAction: {
-                                   AppPersistentMemory().dismissedRetro2025BannerInTrends(true)
-                                   showRetroBanner = false
-                               }
-                            )
-                            .padding(.horizontal, .spacing(.medium))
-                            .padding(.bottom, .spacing(.small))
+                    LazyVGrid(columns: columns, spacing: 10) {
+                        ForEach(items) { item in
+                            TopChartRow(item: item)
                         }
-
-                        LazyVGrid(columns: columns, spacing: 10) {
-                            ForEach(items) { item in
-                                TopChartRow(item: item)
-                            }
-                        }
-                        .padding(.horizontal, 14)
                     }
+                    .padding(.horizontal, 14)
                     .padding(.bottom, 20)
                 }
             case .error(let errorMessage):
@@ -69,21 +48,6 @@ struct MostSharedByMeView: View {
             Task {
                 await viewModel.onViewAppeared()
             }
-
-            showRetroBanner = !AppPersistentMemory().hasDismissedRetro2025BannerInTrends()
-            userHasStats = LocalDatabase.shared.totalShareCountFor2025Retro() > 0
-        }
-        .fullScreenCover(isPresented: $showRetrospectiveStories) {
-            StoriesView(onShareAnalytics: { analyticsString in
-                // Note: This logs intent to share (tap on share button), not confirmed shares.
-                // User may cancel the share sheet without actually sharing.
-                Task {
-                    await AnalyticsService().send(
-                        originatingScreen: "Retro2025",
-                        action: analyticsString
-                    )
-                }
-            })
         }
     }
 }
