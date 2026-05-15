@@ -18,6 +18,7 @@ struct SearchResultsView: View {
     var toast: Binding<Toast?>
     var menuOptions: [ContextMenuSection]
     @Binding var searchMode: SearchMode
+    var isSearching: Bool = false
     var isSearchingTranscripts: Bool = false
     var retryLoadReactionsAction: (() async -> Void)? = nil
 
@@ -45,6 +46,7 @@ struct SearchResultsView: View {
     }
 
     private var showNoResultsView: Bool {
+        if isSearching { return false }
         guard !hasAnyNonReactionResults else { return false }
         if searchMode == .virgulas {
             guard case .loaded = reactionsState else { return false }
@@ -79,6 +81,7 @@ struct SearchResultsView: View {
                 )
             }
 
+            VStack(spacing: .spacing(.medium)) {
             if showNoResultsView {
                 NoSearchResultsView(
                     searchText: searchString,
@@ -273,6 +276,19 @@ struct SearchResultsView: View {
                         reactionsSection
                     }
                 }
+            }
+            .overlay(alignment: .top) {
+                if isSearching && searchMode == .virgulas {
+                    HStack(spacing: .spacing(.small)) {
+                        ProgressView()
+                        Text("Buscando...")
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, .spacing(.medium))
+                    .background(Color.systemBackground)
+                }
+            }
 
                 if searchMode == .episodios {
                     // MARK: - Episode Transcripts

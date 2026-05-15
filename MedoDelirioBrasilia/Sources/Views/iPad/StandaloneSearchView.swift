@@ -22,7 +22,9 @@ struct StandaloneSearchView: View {
     @State private var reactionsState: LoadingState<[Reaction]> = .loading
     @State private var showFeedbackAlert: Bool = false
     @State private var searchMode: SearchMode = .virgulas
+    @State private var searchTask: Task<Void, Never>?
     @State private var transcriptSearchTask: Task<Void, Never>?
+    @State private var isSearching = false
     @State private var isSearchingTranscripts = false
 
     @Environment(TranscriptDownloadService.self) private var transcriptDownloadService
@@ -66,6 +68,7 @@ struct StandaloneSearchView: View {
                                 toast: $toast,
                                 menuOptions: [.sharingOptions(), .organizingOptions(), .detailsOptions()],
                                 searchMode: $searchMode,
+                                isSearching: isSearching,
                                 isSearchingTranscripts: isSearchingTranscripts,
                                 retryLoadReactionsAction: loadReactions
                             )
@@ -141,27 +144,39 @@ struct StandaloneSearchView: View {
     }
 
     private func onSearchStringChanged(newString: String) {
+        runSearch(text: newString, mode: searchMode, debounceMs: 250)
+    }
+
+    private func onSearchModeChanged() {
+        if searchMode != .episodios {
+            isSearchingTranscripts = false
+        }
+        runSearch(text: searchText, mode: searchMode, debounceMs: 0)
+    }
+
+    private func runSearch(text: String, mode: SearchMode, debounceMs: Int) {
+        searchTask?.cancel()
         transcriptSearchTask?.cancel()
-        guard !newString.isEmpty else {
+        guard !text.isEmpty else {
             searchResults.clearAll()
+            isSearching = false
             isSearchingTranscripts = false
             searchService.releaseTranscriptCache()
             return
         }
-        searchResults = searchService.results(matching: newString, mode: searchMode)
-        if searchMode == .episodios {
-            startDebouncedTranscriptSearch(newString)
-        }
-    }
-
-    private func onSearchModeChanged() {
-        transcriptSearchTask?.cancel()
-        guard !searchText.isEmpty else { return }
-        searchResults = searchService.results(matching: searchText, mode: searchMode)
-        if searchMode == .episodios {
-            startDebouncedTranscriptSearch(searchText)
-        } else {
-            isSearchingTranscripts = false
+        isSearching = true
+        searchTask = Task {
+            if debounceMs > 0 {
+                try? await Task.sleep(for: .milliseconds(debounceMs))
+                guard !Task.isCancelled else { return }
+            }
+            let results = searchService.results(matching: text, mode: mode)
+            guard !Task.isCancelled else { return }
+            searchResults = results
+            isSearching = false
+            if mode == .episodios {
+                startDebouncedTranscriptSearch(text)
+            }
         }
     }
 
