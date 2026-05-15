@@ -17,6 +17,7 @@ struct FourthBirthdayView: View {
     @State private var confettiIsFalling = false
     @State private var presentAlert = false
     @State private var confettiTrigger = 0
+    @State private var mostSharedSound: Sound = .sampleBolsoA
 
     private var hasHomeIndicator: Bool {
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
@@ -96,10 +97,32 @@ struct FourthBirthdayView: View {
                             subtitle: "usuários mensais (média dos últimos 3 meses)"
                         )
 
-                        VStack(spacing: .spacing(.nano)) {
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(.gray)
-                                .frame(width: 180, height: 100)
+                        VStack(spacing: .spacing(.xxSmall)) {
+                            PlayableContentView(
+                                content: mostSharedSound,
+                                showNewTag: false,
+                                favorites: Set<String>(),
+                                highlighted: Set<String>(),
+                                nowPlaying: Set<String>(), // TODO: This will need to change
+                                selectedItems: Set<String>(),
+                                currentContentListMode: .constant(.regular)
+                            )
+                            .contentShape(
+                                .contextMenuPreview,
+                                RoundedRectangle(cornerRadius: .spacing(.large), style: .continuous)
+                            )
+                            .onTapGesture {
+                                //viewModel.onContentSelected(content, loadedContent: loadedContent)
+                            }
+//                            .contextMenu {
+//                                contextMenuOptionsView(
+//                                    content: mostSharedSound,
+//                                    menuOptions: [.sharingOptions()],
+//                                    favorites: viewModel.favoritesKeeper,
+//                                    loadedContent: loadedContent
+//                                )
+//                            }
+                            .frame(width: 180)
 
                             Text("vírgula mais compartilhada (7.186 compartilhamentos e contando)")
                         }
@@ -190,6 +213,54 @@ struct FourthBirthdayView: View {
             Button("OK") { presentAlert.toggle() }
         } message: {
             Text("Cole no app do seu banco para enviar.\n\nObrigado! 💚")
+        }
+    }
+
+    @MainActor @ViewBuilder
+    private func contextMenuOptionsView(
+        content: AnyEquatableMedoContent,
+        menuOptions: [ContextMenuSection],
+        favorites: Set<String>,
+        loadedContent: [AnyEquatableMedoContent]
+    ) -> some View {
+        ForEach(menuOptions, id: \.title) { section in
+            Section {
+                ForEach(section.options(content)) { option in
+                    if option.appliesTo.contains(content.type) {
+                        optionRow(
+                            option: option,
+                            isFavorite: favorites.contains(content.id),
+                            content: content,
+                            loadedContent: loadedContent
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    @MainActor
+    @ViewBuilder
+    private func optionRow(
+        option: ContextMenuOption,
+        isFavorite: Bool,
+        content: AnyEquatableMedoContent,
+        loadedContent: [AnyEquatableMedoContent]
+    ) -> some View {
+        let optionTitle = option.title(isFavorite)
+
+        Button {
+//            option.action(
+//                viewModel,
+//                ContextMenuPassthroughData(
+//                    selectedContent: content,
+//                    loadedContent: loadedContent,
+//                    isFavoritesOnlyView: isFavoritesOnlyView
+//                )
+//            )
+            print("Tapped")
+        } label: {
+            Label(optionTitle, systemImage: option.symbol(isFavorite))
         }
     }
 
@@ -299,6 +370,8 @@ struct FourthBirthdayView: View {
         }
         .frame(height: 300)
     }
+
+    // MARK: - Helper Functions
 
     private static func sendAnalytics(for action: String) async {
         await AnalyticsService().send(
