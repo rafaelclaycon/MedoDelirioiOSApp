@@ -24,8 +24,8 @@ struct AudioMessageBubbleView: View {
 
     private var bubbleColor: Color {
         colorScheme == .dark
-            ? Color(.systemGray5)
-            : Color(.systemGray6)
+        ? .gray.opacity(0.3)
+        : .gray.opacity(0.18)
     }
 
     private var displayTime: String {
