@@ -203,10 +203,28 @@ struct AudioMessageBubbleView: View {
     }
 
     private func preparePlayer() {
+        configureAudioSession()
+
         guard let audioPlayer = try? AVAudioPlayer(contentsOf: audioURL) else { return }
         audioPlayer.prepareToPlay()
         player = audioPlayer
         duration = audioPlayer.duration
+    }
+
+    private func configureAudioSession() {
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(
+                .playback,
+                mode: .default,
+                options: [.mixWithOthers]
+            )
+            // NOTE: we do NOT call setActive(true) here.
+            // Just setting the category is enough so AVAudioPlayer
+            // doesn't interrupt other audio when it's instantiated.
+        } catch {
+            print("Audio session config failed: \(error)")
+        }
     }
 
     private func togglePlayback() {
@@ -224,8 +242,7 @@ struct AudioMessageBubbleView: View {
                 scrubProgress = 0
             }
 
-            try? AVAudioSession.sharedInstance().setCategory(.playback)
-            try? AVAudioSession.sharedInstance().setActive(true)
+            activateAudioSession()
             player.play()
             isPlaying = true
 
@@ -252,6 +269,31 @@ struct AudioMessageBubbleView: View {
         player?.stop()
         player = nil
         isPlaying = false
+        deactivateAudioSession()
+    }
+
+    private func activateAudioSession() {
+        let session = AVAudioSession.sharedInstance()
+        do {
+            // .playback = audible even with silent switch on
+            // .mixWithOthers = don't interrupt Music/Spotify/podcasts
+            try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+            try session.setActive(true)
+        } catch {
+            print("Audio session activation failed: \(error)")
+        }
+    }
+
+    private func deactivateAudioSession() {
+        do {
+            // .notifyOthersOnDeactivation tells Music/Spotify "you can resume now"
+            try AVAudioSession.sharedInstance().setActive(
+                false,
+                options: [.notifyOthersOnDeactivation]
+            )
+        } catch {
+            // Safe to ignore — happens if session was never active
+        }
     }
 }
 
