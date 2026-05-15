@@ -108,7 +108,6 @@ struct FourthBirthdayView: View {
 
                         Text("Que tal pingar um capilé pro app?")
                             .font(.body)
-                            //.foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
 
                         GlassButton(
@@ -137,28 +136,6 @@ struct FourthBirthdayView: View {
                                 }
                             }
                         )
-
-//                        VStack(spacing: .spacing(.small)) {
-//                            GlassButton(
-//                                symbol: "app.gift",
-//                                title: "Ativar Ícone Comemorativo",
-//                                color: accentGreen,
-//                                fullWidth: true,
-//                                action: {
-//                                    AppIcon().setAlternateAppIcon(icon: .birthday)
-//                                    withAnimation {
-//                                        didChangeIcon = true
-//                                    }
-//                                }
-//                            )
-//
-//                            if didChangeIcon {
-//                                Label("Ícone ativado!", systemImage: "checkmark.circle.fill")
-//                                    .font(.subheadline)
-//                                    .foregroundStyle(.green)
-//                                    .transition(.opacity.combined(with: .move(edge: .top)))
-//                            }
-//                        }
 
                         HStack {
                             Spacer()

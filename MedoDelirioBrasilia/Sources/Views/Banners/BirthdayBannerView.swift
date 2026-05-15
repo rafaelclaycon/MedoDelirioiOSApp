@@ -24,10 +24,6 @@ struct BirthdayBannerView: View {
                     .multilineTextAlignment(.leading)
 
                 Spacer()
-
-//                Image(systemName: "hand.tap")
-//                    .font(.title)
-//                    .foregroundStyle(.white)
             }
             .padding(.horizontal, .spacing(.medium))
             .padding(.vertical, .spacing(.medium))
