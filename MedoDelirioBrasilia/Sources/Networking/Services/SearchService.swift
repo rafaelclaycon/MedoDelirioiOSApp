@@ -89,46 +89,34 @@ final class SearchService: SearchServiceProtocol {
         switch mode {
         case .virgulas:
             let allowSensitive = userSettings.getShowExplicitContent()
-            if FeatureFlag.isEnabled(.projectGravity) {
-                let scoredSoundsTitle = contentRepository.sounds(fuzzyMatchingTitle: searchString, allowSensitive)
-                let scoredSoundsDesc = contentRepository.sounds(fuzzyMatchingDescription: searchString, allowSensitive)
-                let scoredSongsTitle = contentRepository.songs(fuzzyMatchingTitle: searchString, allowSensitive)
-                let scoredSongsDesc = contentRepository.songs(fuzzyMatchingDescription: searchString, allowSensitive)
-                let scoredAuthors = authorService.authors(fuzzyMatchingName: searchString)
-                let scoredFolders = userFolderRepository.folders(fuzzyMatchingName: searchString)
-                let scoredReactions = scoredReactions(fuzzyMatchingTitle: searchString)
+            let scoredSoundsTitle = contentRepository.sounds(fuzzyMatchingTitle: searchString, allowSensitive)
+            let scoredSoundsDesc = contentRepository.sounds(fuzzyMatchingDescription: searchString, allowSensitive)
+            let scoredSongsTitle = contentRepository.songs(fuzzyMatchingTitle: searchString, allowSensitive)
+            let scoredSongsDesc = contentRepository.songs(fuzzyMatchingDescription: searchString, allowSensitive)
+            let scoredAuthors = authorService.authors(fuzzyMatchingName: searchString)
+            let scoredFolders = userFolderRepository.folders(fuzzyMatchingName: searchString)
+            let scoredReactions = scoredReactions(fuzzyMatchingTitle: searchString)
 
-                let topHits = buildTopHits(
-                    soundsTitle: scoredSoundsTitle,
-                    soundsDesc: scoredSoundsDesc,
-                    songsTitle: scoredSongsTitle,
-                    songsDesc: scoredSongsDesc,
-                    authors: scoredAuthors,
-                    folders: scoredFolders,
-                    reactions: scoredReactions
-                )
+            let topHits = buildTopHits(
+                soundsTitle: scoredSoundsTitle,
+                soundsDesc: scoredSoundsDesc,
+                songsTitle: scoredSongsTitle,
+                songsDesc: scoredSongsDesc,
+                authors: scoredAuthors,
+                folders: scoredFolders,
+                reactions: scoredReactions
+            )
 
-                return SearchResults(
-                    topHits: topHits,
-                    soundsMatchingTitle: scoredSoundsTitle.map(\.item),
-                    soundsMatchingContent: scoredSoundsDesc.map(\.item),
-                    songsMatchingTitle: scoredSongsTitle.map(\.item),
-                    songsMatchingContent: scoredSongsDesc.map(\.item),
-                    authors: scoredAuthors?.map(\.item),
-                    folders: scoredFolders?.map(\.item),
-                    reactionsMatchingTitle: scoredReactions?.map(\.item)
-                )
-            } else {
-                return SearchResults(
-                    soundsMatchingTitle: contentRepository.sounds(matchingTitle: searchString, allowSensitive),
-                    soundsMatchingContent: contentRepository.sounds(matchingDescription: searchString, allowSensitive),
-                    songsMatchingTitle: contentRepository.songs(matchingTitle: searchString, allowSensitive),
-                    songsMatchingContent: contentRepository.songs(matchingDescription: searchString, allowSensitive),
-                    authors: authorService.authors(matchingName: searchString),
-                    folders: userFolderRepository.folders(matchingName: searchString),
-                    reactionsMatchingTitle: reactions(matchingTitle: searchString)
-                )
-            }
+            return SearchResults(
+                topHits: topHits,
+                soundsMatchingTitle: scoredSoundsTitle.map(\.item),
+                soundsMatchingContent: scoredSoundsDesc.map(\.item),
+                songsMatchingTitle: scoredSongsTitle.map(\.item),
+                songsMatchingContent: scoredSongsDesc.map(\.item),
+                authors: scoredAuthors?.map(\.item),
+                folders: scoredFolders?.map(\.item),
+                reactionsMatchingTitle: scoredReactions?.map(\.item)
+            )
 
         case .episodios:
             let titleMatched = episodes(matchingTitle: searchString)

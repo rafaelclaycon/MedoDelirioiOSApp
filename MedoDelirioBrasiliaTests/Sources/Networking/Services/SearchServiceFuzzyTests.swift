@@ -28,38 +28,10 @@ struct SearchServiceFuzzyTests {
         )
     }
 
-    // MARK: - Feature Flag Gating
+    // MARK: - Mode Isolation
 
-    @Test("With projectGravity disabled, results use exact matching path")
-    func test_flagDisabled_usesExactPath() async throws {
-        FeatureFlag.setEnabled(.projectGravity, to: false)
-        defer { FeatureFlag.setEnabled(.projectGravity, to: false) }
-
-        let service = makeService()
-        await service.loadReactions()
-        let results = service.results(matching: "test", mode: .virgulas)
-
-        let reactions = results.reactionsMatchingTitle
-        #expect(reactions == nil || reactions?.isEmpty == true)
-    }
-
-    @Test("With projectGravity enabled, results use fuzzy matching path")
-    func test_flagEnabled_usesFuzzyPath() async throws {
-        FeatureFlag.setEnabled(.projectGravity, to: true)
-        defer { FeatureFlag.setEnabled(.projectGravity, to: false) }
-
-        let service = makeService()
-        await service.loadReactions()
-        let results = service.results(matching: "test", mode: .virgulas)
-
-        #expect(results.reactionsMatchingTitle?.isEmpty == true)
-    }
-
-    @Test("Feature flag does not affect episodios mode")
-    func test_flagDoesNotAffectEpisodes() async throws {
-        FeatureFlag.setEnabled(.projectGravity, to: true)
-        defer { FeatureFlag.setEnabled(.projectGravity, to: false) }
-
+    @Test("Episodios mode does not return sounds or songs")
+    func test_episodiosMode_noSoundOrSongResults() async throws {
         let service = makeService()
         let results = service.results(matching: "test", mode: .episodios)
 
@@ -71,9 +43,6 @@ struct SearchServiceFuzzyTests {
 
     @Test("Fuzzy reaction match finds exact title match")
     func test_fuzzyReaction_exactMatch() async throws {
-        FeatureFlag.setEnabled(.projectGravity, to: true)
-        defer { FeatureFlag.setEnabled(.projectGravity, to: false) }
-
         let repo = ReactionsWithDataFake()
         let service = makeService(reactionRepository: repo)
         await service.loadReactions()
@@ -86,9 +55,6 @@ struct SearchServiceFuzzyTests {
 
     @Test("Fuzzy reaction match finds prefix match")
     func test_fuzzyReaction_prefixMatch() async throws {
-        FeatureFlag.setEnabled(.projectGravity, to: true)
-        defer { FeatureFlag.setEnabled(.projectGravity, to: false) }
-
         let repo = ReactionsWithDataFake()
         let service = makeService(reactionRepository: repo)
         await service.loadReactions()
@@ -101,9 +67,6 @@ struct SearchServiceFuzzyTests {
 
     @Test("Fuzzy reaction match returns empty when no match")
     func test_fuzzyReaction_noMatch() async throws {
-        FeatureFlag.setEnabled(.projectGravity, to: true)
-        defer { FeatureFlag.setEnabled(.projectGravity, to: false) }
-
         let repo = ReactionsWithDataFake()
         let service = makeService(reactionRepository: repo)
         await service.loadReactions()
@@ -115,9 +78,6 @@ struct SearchServiceFuzzyTests {
 
     @Test("Fuzzy reaction match returns nil when reactions not loaded")
     func test_fuzzyReaction_notLoaded() async throws {
-        FeatureFlag.setEnabled(.projectGravity, to: true)
-        defer { FeatureFlag.setEnabled(.projectGravity, to: false) }
-
         let service = makeService()
 
         let results = service.results(matching: "choque", mode: .virgulas)
@@ -127,23 +87,8 @@ struct SearchServiceFuzzyTests {
 
     // MARK: - Top Hits
 
-    @Test("topHits is nil when flag is off")
-    func test_topHits_nilWhenFlagOff() async throws {
-        FeatureFlag.setEnabled(.projectGravity, to: false)
-        defer { FeatureFlag.setEnabled(.projectGravity, to: false) }
-
-        let service = makeService(reactionRepository: ReactionsWithDataFake())
-        await service.loadReactions()
-        let results = service.results(matching: "choque", mode: .virgulas)
-
-        #expect(results.topHits == nil)
-    }
-
-    @Test("topHits is nil when flag is on but no results match")
+    @Test("topHits is nil when no results match")
     func test_topHits_nilWhenNoResults() async throws {
-        FeatureFlag.setEnabled(.projectGravity, to: true)
-        defer { FeatureFlag.setEnabled(.projectGravity, to: false) }
-
         let service = makeService(reactionRepository: ReactionsWithDataFake())
         await service.loadReactions()
         let results = service.results(matching: "xyzxyzxyz", mode: .virgulas)
@@ -151,11 +96,8 @@ struct SearchServiceFuzzyTests {
         #expect(results.topHits == nil)
     }
 
-    @Test("topHits contains at most 3 items when flag is on")
+    @Test("topHits contains at most 3 items")
     func test_topHits_atMostThreeItems() async throws {
-        FeatureFlag.setEnabled(.projectGravity, to: true)
-        defer { FeatureFlag.setEnabled(.projectGravity, to: false) }
-
         let service = makeService(reactionRepository: ReactionsWithDataFake())
         await service.loadReactions()
         let results = service.results(matching: "choque", mode: .virgulas)
