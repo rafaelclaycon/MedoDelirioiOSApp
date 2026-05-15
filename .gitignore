@@ -93,3 +93,6 @@ iOSInjectionProject/
 
 # Auto-transcribe secrets
 scripts/.env
+
+# AI, of course
+.claude
