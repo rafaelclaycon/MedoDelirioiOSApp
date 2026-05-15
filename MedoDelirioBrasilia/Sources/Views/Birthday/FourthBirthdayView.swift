@@ -17,7 +17,7 @@ struct FourthBirthdayView: View {
     @State private var confettiIsFalling = false
     @State private var presentAlert = false
     @State private var confettiTrigger = 0
-    @State private var mostSharedSound: Sound = .sampleBolsoA
+    @State private var mostSharedSound: AnyEquatableMedoContent?
 
     private var hasHomeIndicator: Bool {
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
@@ -97,36 +97,38 @@ struct FourthBirthdayView: View {
                             subtitle: "usuários mensais (média dos últimos 3 meses)"
                         )
 
-                        VStack(spacing: .spacing(.xxSmall)) {
-                            PlayableContentView(
-                                content: mostSharedSound,
-                                showNewTag: false,
-                                favorites: Set<String>(),
-                                highlighted: Set<String>(),
-                                nowPlaying: Set<String>(), // TODO: This will need to change
-                                selectedItems: Set<String>(),
-                                currentContentListMode: .constant(.regular)
-                            )
-                            .contentShape(
-                                .contextMenuPreview,
-                                RoundedRectangle(cornerRadius: .spacing(.large), style: .continuous)
-                            )
-                            .onTapGesture {
-                                //viewModel.onContentSelected(content, loadedContent: loadedContent)
-                            }
-//                            .contextMenu {
-//                                contextMenuOptionsView(
-//                                    content: mostSharedSound,
-//                                    menuOptions: [.sharingOptions()],
-//                                    favorites: viewModel.favoritesKeeper,
-//                                    loadedContent: loadedContent
-//                                )
-//                            }
-                            .frame(width: 180)
+                        if let mostSharedSound {
+                            VStack(spacing: .spacing(.xSmall)) {
+                                PlayableContentView(
+                                    content: mostSharedSound,
+                                    showNewTag: false,
+                                    favorites: Set<String>(),
+                                    highlighted: Set<String>(),
+                                    nowPlaying: Set<String>(), // TODO: This will need to change
+                                    selectedItems: Set<String>(),
+                                    currentContentListMode: .constant(.regular)
+                                )
+                                .contentShape(
+                                    .contextMenuPreview,
+                                    RoundedRectangle(cornerRadius: .spacing(.large), style: .continuous)
+                                )
+                                .onTapGesture {
+                                    //viewModel.onContentSelected(content, loadedContent: loadedContent)
+                                }
+                                //                            .contextMenu {
+                                //                                contextMenuOptionsView(
+                                //                                    content: mostSharedSound,
+                                //                                    menuOptions: [.sharingOptions()],
+                                //                                    favorites: viewModel.favoritesKeeper,
+                                //                                    loadedContent: loadedContent
+                                //                                )
+                                //                            }
+                                .frame(width: 180)
 
-                            Text("vírgula mais compartilhada (7.186 compartilhamentos e contando)")
+                                Text("vírgula mais compartilhada")
+                                    .multilineTextAlignment(.center)
+                            }
                         }
-                        .multilineTextAlignment(.center)
 
                         Text("Nada disso existiria sem vocês. Esse app é desenvolvido de forma independente, por amor ao podcast. Obrigado por cada compartilhamento, cada sugestão e cada risada.\n\nUma mensagem especial do Cristiano para vocês:")
 
@@ -198,6 +200,7 @@ struct FourthBirthdayView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 confettiIsFalling = true
             }
+            loadMostSharedSound()
         }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
@@ -215,6 +218,8 @@ struct FourthBirthdayView: View {
             Text("Cole no app do seu banco para enviar.\n\nObrigado! 💚")
         }
     }
+
+    // MARK: - Most Shared Enablers
 
     @MainActor @ViewBuilder
     private func contextMenuOptionsView(
@@ -372,6 +377,19 @@ struct FourthBirthdayView: View {
     }
 
     // MARK: - Helper Functions
+
+    private func loadMostSharedSound() {
+        do {
+            let contentRepo = ContentRepository(database: LocalDatabase.shared)
+            let sound = try contentRepo.content(withIds: ["87EFA0B2-CC38-4B9F-B441-A832300CD483"]).first
+            self.mostSharedSound = sound
+        } catch {
+            debugPrint("Problema carregando som mais popular: \(error.localizedDescription)")
+            Task {
+                await Self.sendAnalytics(for: "issueLoadingMostSharedSound")
+            }
+        }
+    }
 
     private static func sendAnalytics(for action: String) async {
         await AnalyticsService().send(
