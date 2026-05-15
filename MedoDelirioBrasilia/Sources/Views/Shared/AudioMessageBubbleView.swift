@@ -63,6 +63,7 @@ struct AudioMessageBubbleView: View {
                 .buttonStyle(.plain)
 
                 waveformSection
+                    .padding(.trailing, .spacing(.xSmall))
 
                 avatarView
                     .frame(width: 48, height: 48)
@@ -152,13 +153,21 @@ struct AudioMessageBubbleView: View {
     // MARK: - Waveform
 
     private func waveformBars(width: CGFloat, played: Bool) -> some View {
-        HStack(alignment: .center, spacing: 2) {
-            ForEach(0..<barCount(for: width), id: \.self) { index in
+        let count = barCount(for: width)
+        let barWidth: CGFloat = 2.5
+        let totalBarsWidth = CGFloat(count) * barWidth
+        let spacing: CGFloat = count > 1
+        ? max(0, (width - totalBarsWidth) / CGFloat(count - 1))
+        : 0
+
+        return HStack(alignment: .center, spacing: spacing) {
+            ForEach(0..<count, id: \.self) { index in
                 RoundedRectangle(cornerRadius: 1.5)
                     .fill(played ? thumbColor : Color(.systemGray3))
-                    .frame(width: 2.5, height: barHeight(for: index))
+                    .frame(width: barWidth, height: barHeight(for: index))
             }
         }
+        .frame(width: width, alignment: .leading)
     }
 
     private func barCount(for width: CGFloat) -> Int {
