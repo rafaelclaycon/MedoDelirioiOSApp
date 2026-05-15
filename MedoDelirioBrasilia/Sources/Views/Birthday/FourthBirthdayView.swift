@@ -19,9 +19,9 @@ struct FourthBirthdayView: View {
 
     @State private var mostSharedSound: AnyEquatableMedoContent?
     @State private var playable: PlayableContentState?
-    @State private var toast: Toast? = nil
     private var contentRepository: ContentRepositoryProtocol
     @State private var viewModel: ContentGridViewModel
+    @State private var shareSheetURL: URLWrapper?
 
     // MARK: - Computed Properties
 
@@ -60,11 +60,8 @@ struct FourthBirthdayView: View {
     private let accentGreen: Color = .darkerGreen
 
     init() {
-        let toastState = State<Toast?>(initialValue: nil) // use whatever your Toast type is
-        self._toast = toastState
 
         self.contentRepository = ContentRepository(database: LocalDatabase.shared)
-
         self.viewModel = ContentGridViewModel(
             contentRepository: contentRepository,
             userFolderRepository: UserFolderRepository(database: LocalDatabase.shared),
@@ -72,7 +69,7 @@ struct FourthBirthdayView: View {
             screen: .mainContentView,
             menuOptions: [.sharingOptions(), .organizingOptions(), .detailsOptions()],
             currentListMode: .constant(.regular),
-            toast: toastState.projectedValue,
+            toast: .constant(nil),
             floatingOptions: .constant(nil),
             analyticsService: AnalyticsService()
         )
@@ -228,7 +225,6 @@ struct FourthBirthdayView: View {
                 }
             }
         }
-        .toast($toast)
         .alert(
             "Chave Pix Copiada!",
             isPresented: $presentAlert
@@ -239,8 +235,11 @@ struct FourthBirthdayView: View {
         }
         .playableContentUI(
             state: viewModel.playable,
-            toast: $toast
+            toast: .constant(nil)
         )
+        .sheet(item: $shareSheetURL) { wrapper in
+            ActivityView(activityItems: [wrapper.url])
+        }
     }
 
     // MARK: - Most Shared Enablers
@@ -279,6 +278,17 @@ struct FourthBirthdayView: View {
         let optionTitle = option.title(isFavorite)
 
         Button {
+            guard optionTitle != Shared.shareSoundButtonText else {
+                do {
+                    let url = try content.fileURL()
+                    print(url.absoluteString)
+                    shareSheetURL = URLWrapper(url: url)
+                } catch {
+                    debugPrint("Erro ao tentar obter URL para o som mais compartilhado")
+                }
+                return
+            }
+
             option.action(
                 viewModel,
                 ContextMenuPassthroughData(
@@ -408,7 +418,7 @@ struct FourthBirthdayView: View {
                 contentFileManager: ContentFileManager(),
                 analyticsService: AnalyticsService(),
                 screen: .anniversaryView,
-                toast: $toast
+                toast: .constant(nil)
             )
         }
 
@@ -581,6 +591,26 @@ private struct BirthdayConfettiShapeView: Shape {
                 .path(in: rect)
         }
     }
+}
+
+struct URLWrapper: Identifiable {
+
+    let url: URL
+
+    var id: String {
+        url.absoluteString
+    }
+}
+
+struct ActivityView: UIViewControllerRepresentable {
+
+    let activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
 }
 
 // MARK: - Preview
