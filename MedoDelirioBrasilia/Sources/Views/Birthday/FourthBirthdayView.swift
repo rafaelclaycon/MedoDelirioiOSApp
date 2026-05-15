@@ -16,6 +16,7 @@ struct FourthBirthdayView: View {
     @State private var didChangeIcon = false
     @State private var confettiIsFalling = false
     @State private var presentAlert = false
+    @State private var confettiTrigger = 0
 
     private var hasHomeIndicator: Bool {
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
@@ -66,7 +67,11 @@ struct FourthBirthdayView: View {
                     heroHeader
 
                     Button {
-                        //
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        confettiTrigger += 1
+                        Task {
+                            await Self.sendAnalytics(for: "didTapShootConfettiAgain")
+                        }
                     } label: {
                         Label("Lançar de novo", systemImage: "party.popper")
                     }
@@ -172,7 +177,7 @@ struct FourthBirthdayView: View {
                 }
             }
 
-            BirthdayConfettiView(isFalling: confettiIsFalling)
+            BirthdayConfettiView(isFalling: confettiIsFalling, trigger: confettiTrigger)
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
@@ -346,6 +351,7 @@ private struct BirthdayConfettiView: View {
     let isFalling: Bool
     /// Y coordinate where the cannon fires from. Defaults to bottom of the 300pt header.
     var originY: CGFloat = 300
+    var trigger: Int = 0
 
     @State private var startDate: Date = .distantFuture
 
@@ -390,6 +396,12 @@ private struct BirthdayConfettiView: View {
         }
         .onChange(of: isFalling) { _, newValue in
             startDate = newValue ? Date() : .distantFuture
+        }
+        .onChange(of: trigger) { _, _ in
+            // Re-fire whenever the trigger changes (only if we're "armed")
+            if isFalling {
+                startDate = Date()
+            }
         }
     }
 }
