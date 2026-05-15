@@ -36,10 +36,20 @@ struct AudioMessageBubbleView: View {
         return String(format: "%d:%02d", minutes, seconds)
     }
 
-    private let thumbColor = Color.accentColor
+    private let thumbColor = Color.gray
 
     var body: some View {
-        VStack(alignment: .leading, spacing: .spacing(.xxxSmall)) {
+        VStack(spacing: .spacing(.xxSmall)) {
+            HStack {
+                Text(senderName)
+                    .font(.callout)
+                    .bold()
+                    .foregroundStyle(.pink)
+                    .padding(.leading, .spacing(.xxxSmall))
+
+                Spacer()
+            }
+
             HStack(spacing: .spacing(.small)) {
                 Button {
                     togglePlayback()
@@ -57,26 +67,22 @@ struct AudioMessageBubbleView: View {
                 avatarView
                     .frame(width: 48, height: 48)
                     .clipShape(Circle())
-                    .overlay(alignment: .bottomTrailing) {
+                    .overlay(alignment: .bottomLeading) {
                         Image(systemName: "mic.fill")
-                            .font(.system(size: 10))
+                            .font(.system(size: 22))
                             .foregroundStyle(thumbColor)
-                            .offset(x: 2, y: 2)
+                            .offset(x: -11, y: 0)
                     }
             }
-            .padding(.leading, .spacing(.small))
-            .padding(.trailing, .spacing(.xSmall))
-            .padding(.vertical, .spacing(.xSmall))
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(bubbleColor)
-            )
-
-            Text(senderName)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding(.leading, .spacing(.xxxSmall))
         }
+        .padding(.leading, .spacing(.small))
+        .padding(.trailing, .spacing(.xSmall))
+        .padding(.top, .spacing(.xSmall))
+        .padding(.bottom, .spacing(.small))
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(bubbleColor)
+        )
         .onAppear {
             preparePlayer()
         }
@@ -116,11 +122,13 @@ struct AudioMessageBubbleView: View {
                 .gesture(scrubGesture(width: geometry.size.width))
             }
             .frame(height: 24)
-
+        }
+        .overlay(alignment: .bottomLeading) {
             Text(displayTime)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
+                .offset(y: 14)
         }
     }
 
@@ -253,7 +261,8 @@ struct AudioMessageBubbleView: View {
     AudioMessageBubbleView(
         audioURL: Bundle.main.url(forResource: "cristiano-4-anos", withExtension: "mp3")
             ?? URL(fileURLWithPath: "/dev/null"),
-        senderName: "Cristiano"
+        senderName: "Cristiano Botafogo",
+        senderImage: Image("cristiano")
     )
     .padding()
 }

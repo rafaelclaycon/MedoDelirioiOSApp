@@ -65,13 +65,13 @@ struct FourthBirthdayView: View {
                 VStack(spacing: 0) {
                     heroHeader
 
-                    VStack(alignment: .leading, spacing: .spacing(.large)) {
+                    VStack(spacing: .spacing(.large)) {
                         Text("Um obrigado gigante do Rafael (criador do app iOS) e dos criadores do podcast.")
                             .font(.body)
                             .bold()
                             .foregroundStyle(.primary)
 
-                        Text("Há 4 anos, no dia 20 de maio de 2022, esse app foi lançado pela primeira vez na App Store. O que começou como uma brincadeira virou algo que centenas de pessoas usam todos os dias para rir, reagir e compartilhar as partes mais marcantes do podcast.\n\nNada disso existiria sem vocês. Obrigado por cada compartilhamento, cada sugestão e cada risada. Que venham muitos mais anos juntos!")
+                        Text("Há 4 anos, no dia 20 de maio de 2022, esse app foi lançado pela primeira vez na App Store. O que começou como uma brincadeira virou algo que centenas de pessoas usam todos os dias para rir, reagir e compartilhar as partes mais marcantes do podcast.\n\nNada disso existiria sem vocês. Obrigado por cada compartilhamento, cada sugestão e cada risada.")
                             .font(.body)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -79,11 +79,12 @@ struct FourthBirthdayView: View {
                         if let audioURL = Bundle.main.url(forResource: "cristiano-4-anos", withExtension: "mp3") {
                             AudioMessageBubbleView(
                                 audioURL: audioURL,
-                                senderName: "Cristiano"
+                                senderName: "Cristiano Botafogo",
+                                senderImage: Image("cristiano")
                             )
                         }
 
-                        Text("Quer apoiar o app?")
+                        Text("Que tal pingar um capilé pro app?")
                             .font(.body)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
