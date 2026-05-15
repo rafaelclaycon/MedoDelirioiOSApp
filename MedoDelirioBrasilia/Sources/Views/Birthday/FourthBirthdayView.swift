@@ -66,15 +66,31 @@ struct FourthBirthdayView: View {
                     heroHeader
 
                     VStack(spacing: .spacing(.large)) {
+                        Text("Há 4 anos, no dia 20 de maio de 2022, esse app foi lançado pela primeira vez na App Store. O que começou como uma brincadeira virou algo que centenas de pessoas usam todos os dias para rir, reagir e compartilhar as partes mais marcantes do podcast.")
+                            .font(.body)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        StatView(
+                            title: "29.749",
+                            subtitle: "usuários únicos"
+                        )
+
+                        StatView(
+                            title: "720.763",
+                            subtitle: "compartilhamentos totais"
+                        )
+
+                        StatView(
+                            title: "4.080",
+                            subtitle: "média de usuários mensais"
+                        )
+
+                        Text("Nada disso existiria sem vocês. Obrigado por cada compartilhamento, cada sugestão e cada risada.")
+
                         Text("Um obrigado gigante do Rafael (criador do app iOS) e dos criadores do podcast.")
                             .font(.body)
                             .bold()
                             .foregroundStyle(.primary)
-
-                        Text("Há 4 anos, no dia 20 de maio de 2022, esse app foi lançado pela primeira vez na App Store. O que começou como uma brincadeira virou algo que centenas de pessoas usam todos os dias para rir, reagir e compartilhar as partes mais marcantes do podcast.\n\nNada disso existiria sem vocês. Obrigado por cada compartilhamento, cada sugestão e cada risada.")
-                            .font(.body)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
 
                         if let audioURL = Bundle.main.url(forResource: "cristiano-4-anos", withExtension: "mp3") {
                             AudioMessageBubbleView(
@@ -297,6 +313,28 @@ struct FourthBirthdayView: View {
             originatingScreen: "FourthBirthdayView",
             action: action
         )
+    }
+}
+
+// MARK: - Subviews
+
+extension FourthBirthdayView {
+
+    struct StatView: View {
+
+        let title: String
+        let subtitle: String
+
+        var body: some View {
+            VStack(spacing: .spacing(.xxxSmall)) {
+                Text(title)
+                    .font(.largeTitle)
+                    .bold()
+
+                Text(subtitle)
+            }
+            .multilineTextAlignment(.center)
+        }
     }
 }
 
