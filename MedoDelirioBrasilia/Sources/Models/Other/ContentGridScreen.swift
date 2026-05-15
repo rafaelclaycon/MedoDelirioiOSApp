@@ -15,4 +15,5 @@ enum ContentGridScreen: String {
     case reactionDetailView = "ReactionDetailView"
     case standaloneFavoritesView = "StandaloneFavoritesView"
     case searchResultsView = "SearchResultsView"
+    case anniversaryView = "AnniversaryView"
 }

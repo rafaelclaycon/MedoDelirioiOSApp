@@ -13,19 +13,17 @@ struct FourthBirthdayView: View {
     @State private var glowAnimation = false
     @State private var pulseAnimation = false
     @State private var ringAnimation = false
-    @State private var didChangeIcon = false
     @State private var confettiIsFalling = false
     @State private var presentAlert = false
     @State private var confettiTrigger = 0
-    @State private var mostSharedSound: AnyEquatableMedoContent?
 
-    private var hasHomeIndicator: Bool {
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let window = windowScene.windows.first else {
-            return false
-        }
-        return window.safeAreaInsets.bottom > 0
-    }
+    @State private var mostSharedSound: AnyEquatableMedoContent?
+    @State private var playable: PlayableContentState?
+    @State private var toast: Toast? = nil
+    private var contentRepository: ContentRepositoryProtocol
+    @State private var viewModel: ContentGridViewModel
+
+    // MARK: - Computed Properties
 
     private var gradientColors: [Color] {
         if colorScheme == .dark {
@@ -60,6 +58,27 @@ struct FourthBirthdayView: View {
     ]
 
     private let accentGreen: Color = .darkerGreen
+
+    init() {
+        let toastState = State<Toast?>(initialValue: nil) // use whatever your Toast type is
+        self._toast = toastState
+
+        self.contentRepository = ContentRepository(database: LocalDatabase.shared)
+
+        self.viewModel = ContentGridViewModel(
+            contentRepository: contentRepository,
+            userFolderRepository: UserFolderRepository(database: LocalDatabase.shared),
+            contentFileManager: ContentFileManager(),
+            screen: .mainContentView,
+            menuOptions: [.sharingOptions(), .organizingOptions(), .detailsOptions()],
+            currentListMode: .constant(.regular),
+            toast: toastState.projectedValue,
+            floatingOptions: .constant(nil),
+            analyticsService: AnalyticsService()
+        )
+    }
+
+    // MARK: - View Body
 
     var body: some View {
         ZStack {
@@ -104,7 +123,7 @@ struct FourthBirthdayView: View {
                                     showNewTag: false,
                                     favorites: Set<String>(),
                                     highlighted: Set<String>(),
-                                    nowPlaying: Set<String>(), // TODO: This will need to change
+                                    nowPlaying: viewModel.nowPlayingKeeper,
                                     selectedItems: Set<String>(),
                                     currentContentListMode: .constant(.regular)
                                 )
@@ -113,16 +132,16 @@ struct FourthBirthdayView: View {
                                     RoundedRectangle(cornerRadius: .spacing(.large), style: .continuous)
                                 )
                                 .onTapGesture {
-                                    //viewModel.onContentSelected(content, loadedContent: loadedContent)
+                                    viewModel.onContentSelected(mostSharedSound, loadedContent: [mostSharedSound])
                                 }
-                                //                            .contextMenu {
-                                //                                contextMenuOptionsView(
-                                //                                    content: mostSharedSound,
-                                //                                    menuOptions: [.sharingOptions()],
-                                //                                    favorites: viewModel.favoritesKeeper,
-                                //                                    loadedContent: loadedContent
-                                //                                )
-                                //                            }
+                                .contextMenu {
+                                    contextMenuOptionsView(
+                                        content: mostSharedSound,
+                                        menuOptions: [.sharingOptions()],
+                                        favorites: viewModel.favoritesKeeper,
+                                        loadedContent: [mostSharedSound]
+                                    )
+                                }
                                 .frame(width: 180)
 
                                 Text("vírgula mais compartilhada")
@@ -209,6 +228,7 @@ struct FourthBirthdayView: View {
                 }
             }
         }
+        .toast($toast)
         .alert(
             "Chave Pix Copiada!",
             isPresented: $presentAlert
@@ -217,6 +237,10 @@ struct FourthBirthdayView: View {
         } message: {
             Text("Cole no app do seu banco para enviar.\n\nObrigado! 💚")
         }
+        .playableContentUI(
+            state: viewModel.playable,
+            toast: $toast
+        )
     }
 
     // MARK: - Most Shared Enablers
@@ -255,15 +279,14 @@ struct FourthBirthdayView: View {
         let optionTitle = option.title(isFavorite)
 
         Button {
-//            option.action(
-//                viewModel,
-//                ContextMenuPassthroughData(
-//                    selectedContent: content,
-//                    loadedContent: loadedContent,
-//                    isFavoritesOnlyView: isFavoritesOnlyView
-//                )
-//            )
-            print("Tapped")
+            option.action(
+                viewModel,
+                ContextMenuPassthroughData(
+                    selectedContent: content,
+                    loadedContent: loadedContent,
+                    isFavoritesOnlyView: false
+                )
+            )
         } label: {
             Label(optionTitle, systemImage: option.symbol(isFavorite))
         }
@@ -379,9 +402,18 @@ struct FourthBirthdayView: View {
     // MARK: - Helper Functions
 
     private func loadMostSharedSound() {
+        if playable == nil {
+            playable = PlayableContentState(
+                contentRepository: contentRepository,
+                contentFileManager: ContentFileManager(),
+                analyticsService: AnalyticsService(),
+                screen: .anniversaryView,
+                toast: $toast
+            )
+        }
+
         do {
-            let contentRepo = ContentRepository(database: LocalDatabase.shared)
-            let sound = try contentRepo.content(withIds: ["87EFA0B2-CC38-4B9F-B441-A832300CD483"]).first
+            let sound = try contentRepository.content(withIds: ["87EFA0B2-CC38-4B9F-B441-A832300CD483"]).first
             self.mostSharedSound = sound
         } catch {
             debugPrint("Problema carregando som mais popular: \(error.localizedDescription)")
