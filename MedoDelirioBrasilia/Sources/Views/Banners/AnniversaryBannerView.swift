@@ -1,11 +1,11 @@
 //
-//  BirthdayBannerView.swift
+//  AnniversaryBannerView.swift
 //  MedoDelirioBrasilia
 //
 
 import SwiftUI
 
-struct BirthdayBannerView: View {
+struct AnniversaryBannerView: View {
 
     @State private var showBirthdayView = false
 
@@ -40,12 +40,12 @@ struct BirthdayBannerView: View {
         }
         .buttonStyle(.plain)
         .sheet(isPresented: $showBirthdayView) {
-            FourthBirthdayView()
+            FourthAnniversaryView()
         }
     }
 }
 
 #Preview {
-    BirthdayBannerView()
+    AnniversaryBannerView()
         .padding()
 }

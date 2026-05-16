@@ -1,11 +1,11 @@
 //
-//  FourthBirthdayView.swift
+//  FourthAnniversaryView.swift
 //  MedoDelirioBrasilia
 //
 
 import SwiftUI
 
-struct FourthBirthdayView: View {
+struct FourthAnniversaryView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
@@ -443,7 +443,7 @@ struct FourthBirthdayView: View {
 
 // MARK: - Subviews
 
-extension FourthBirthdayView {
+extension FourthAnniversaryView {
 
     struct StatView: View {
 
@@ -620,6 +620,6 @@ struct ActivityView: UIViewControllerRepresentable {
         Text("Background View")
     }
     .sheet(isPresented: .constant(true)) {
-        FourthBirthdayView()
+        FourthAnniversaryView()
     }
 }
