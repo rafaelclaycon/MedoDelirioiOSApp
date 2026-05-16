@@ -43,17 +43,17 @@ struct FourthAnniversaryView: View {
 
     private let flyingSymbols: [(symbol: String, angle: Double, delay: Double)] = [
         ("gift", 0, 0.0),
-        ("sparkles", 45, 1.1),
+        ("radio", 45, 1.1),
         ("star.fill", 90, 2.2),
         ("heart.fill", 135, 3.3),
         ("party.popper", 180, 4.4),
         ("gift", 225, 5.5),
-        ("sparkles", 270, 6.6),
+        ("radio", 270, 6.6),
         ("star.fill", 315, 7.7),
         ("heart.fill", 22, 8.8),
         ("party.popper", 67, 9.9),
         ("gift", 112, 11.0),
-        ("sparkles", 157, 12.1),
+        ("quote.bubble.fill", 157, 12.1),
         ("star.fill", 202, 13.2),
     ]
 
@@ -78,7 +78,7 @@ struct FourthAnniversaryView: View {
     // MARK: - View Body
 
     var body: some View {
-        ZStack {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: 0) {
                     heroHeader
@@ -146,7 +146,7 @@ struct FourthAnniversaryView: View {
                             }
                         }
 
-                        Text("Nada disso existiria sem vocês. Esse app é desenvolvido de forma independente, por amor ao podcast. Obrigado por cada compartilhamento, cada sugestão e cada risada.\n\nUma mensagem especial do Cristiano para vocês:")
+                        Text("Nada disso existiria sem vocês. Esse app é desenvolvido de forma independente, por amor ao podcast.\n\n**Obrigado por cada compartilhamento, cada sugestão e cada risada.**\n\nUma mensagem especial do Cristiano para vocês:")
 
                         if let audioURL = Bundle.main.url(forResource: "cristiano-4-anos", withExtension: "mp3") {
                             AudioMessageBubbleView(
@@ -203,13 +203,16 @@ struct FourthAnniversaryView: View {
                     .padding(.horizontal, 24)
                 }
             }
-
-            BirthdayConfettiView(isFalling: confettiIsFalling, trigger: confettiTrigger)
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
+            .ignoresSafeArea(edges: .top)
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    CloseButton {
+                        dismiss()
+                    }
+                }
+            }
         }
-        .ignoresSafeArea(edges: .top)
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .onAppear {
             confettiIsFalling = false
@@ -218,12 +221,11 @@ struct FourthAnniversaryView: View {
             }
             loadMostSharedSound()
         }
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                CloseButton {
-                    dismiss()
-                }
-            }
+        .overlay {
+            BirthdayConfettiView(isFalling: confettiIsFalling, trigger: confettiTrigger)
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
         }
         .alert(
             "Chave Pix Copiada!",
@@ -239,6 +241,7 @@ struct FourthAnniversaryView: View {
         )
         .sheet(item: $shareSheetURL) { wrapper in
             ActivityView(activityItems: [wrapper.url])
+                .presentationDetents([.medium, .large])
         }
     }
 
