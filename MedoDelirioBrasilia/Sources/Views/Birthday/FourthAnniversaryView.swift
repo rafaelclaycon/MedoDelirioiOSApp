@@ -16,6 +16,7 @@ struct FourthAnniversaryView: View {
     @State private var confettiIsFalling = false
     @State private var presentAlert = false
     @State private var confettiTrigger = 0
+    @State private var confettiOriginY: CGFloat = 300
 
     @State private var mostSharedSound: AnyEquatableMedoContent?
     @State private var playable: PlayableContentState?
@@ -91,6 +92,11 @@ struct FourthAnniversaryView: View {
                         }
                     } label: {
                         Label("Lançar de novo", systemImage: "party.popper")
+                    }
+                    .onGeometryChange(for: CGFloat.self) { proxy in
+                        proxy.frame(in: .global).minY
+                    } action: { minY in
+                        confettiOriginY = minY - 48
                     }
 
                     VStack(spacing: .spacing(.large)) {
@@ -222,7 +228,7 @@ struct FourthAnniversaryView: View {
             loadMostSharedSound()
         }
         .overlay {
-            BirthdayConfettiView(isFalling: confettiIsFalling, trigger: confettiTrigger)
+            BirthdayConfettiView(isFalling: confettiIsFalling, originY: confettiOriginY, trigger: confettiTrigger)
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
