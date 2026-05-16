@@ -18,6 +18,24 @@ struct FourthAnniversaryView: View {
     @State private var confettiTrigger = 0
     @State private var confettiOriginY: CGFloat = 300
 
+    // Easter eggs
+    @State private var iconTapCount = 0
+    @State private var iconTapResetWork: DispatchWorkItem? = nil
+    @State private var showEasterEggMessage = false
+    @State private var easterEggFactIndex = 0
+    @State private var showDays = false
+
+    private static let easterEggFacts = [
+        "A primeira versão do app tinha apenas 20 sons. Hoje são mais de 1.420.",
+        "O primeiro som adicionado foi \"Mas que FDP\".",
+        "O app foi rejeitado pela Apple algumas versões depois da primeira por estar usando a marca do podcast.\n\nTivemos que fazer um documento provando que eu estava autorizado a publicar o app.",
+        "A vírgula mais compartilhada foi compartilhada 7.195 vezes. Isso são quase 7 vezes por dia, todos os dias, desde o lançamento dela no app.",
+        "O app nunca teve um funcionário pago, todas as linhas de código são escritas nos fins de semana ou à noite.",
+        "Para lançar as Reações eu precisei reformular o código de exibição de maneira considerável. Esse recurso levou 6 meses para ficar pronto (com uma enchente no meio).",
+        "O dia com mais usuários ativos foi 22/11/2025. 2.119 pessoas acessaram o app só naquele dia. O que será que aconteceu nesse dia?\n\n🔊 BOLSONARO PRESO! 🔊",
+        "O aparelho mais popular nesses 4 anos foi o iPhone 11, seguido de perto pelo iPhone 13."
+    ]
+
     @State private var mostSharedSound: AnyEquatableMedoContent?
     @State private var playable: PlayableContentState?
     private var contentRepository: ContentRepositoryProtocol
@@ -25,6 +43,12 @@ struct FourthAnniversaryView: View {
     @State private var shareSheetURL: URLWrapper?
 
     // MARK: - Computed Properties
+
+    private var daysSinceLaunch: String {
+        let launch = Calendar.current.date(from: DateComponents(year: 2022, month: 5, day: 20))!
+        let days = Calendar.current.dateComponents([.day], from: launch, to: Date()).day ?? 0
+        return days.formatted(.number.grouping(.automatic))
+    }
 
     private var gradientColors: [Color] {
         if colorScheme == .dark {
@@ -87,9 +111,7 @@ struct FourthAnniversaryView: View {
                     Button {
                         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                         confettiTrigger += 1
-                        Task {
-                            await Self.sendAnalytics(for: "didTapShootConfettiAgain")
-                        }
+                        Task { await Self.sendAnalytics(for: "didTapShootConfettiAgain") }
                     } label: {
                         Label("Lançar de novo", systemImage: "party.popper")
                     }
@@ -224,9 +246,14 @@ struct FourthAnniversaryView: View {
             confettiIsFalling = false
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 confettiIsFalling = true
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             }
             loadMostSharedSound()
         }
+        .background(ShakeDetectorView {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            confettiTrigger += 1
+        })
         .overlay {
             BirthdayConfettiView(isFalling: confettiIsFalling, originY: confettiOriginY, trigger: confettiTrigger)
                 .ignoresSafeArea()
@@ -240,6 +267,13 @@ struct FourthAnniversaryView: View {
             Button("OK") { presentAlert.toggle() }
         } message: {
             Text("Cole no app do seu banco para enviar.\n\nObrigado! 💚")
+        }
+        .alert("🎉 Segredinho \(easterEggFactIndex + 1)/\(Self.easterEggFacts.count)", isPresented: $showEasterEggMessage) {
+            Button("Uau!") {
+                easterEggFactIndex = (easterEggFactIndex + 1) % Self.easterEggFacts.count
+            }
+        } message: {
+            Text(Self.easterEggFacts[easterEggFactIndex])
         }
         .playableContentUI(
             state: viewModel.playable,
@@ -401,6 +435,11 @@ struct FourthAnniversaryView: View {
                             .shadow(color: .white.opacity(0.6 + pulse * 4.0), radius: glowRadius)
                             .scaleEffect(scale)
                     }
+
+                    Color.clear
+                        .frame(width: 80, height: 80)
+                        .contentShape(Rectangle())
+                        .onTapGesture { handleIconTap() }
                 }
                 .onAppear {
                     glowAnimation = true
@@ -408,10 +447,16 @@ struct FourthAnniversaryView: View {
                     ringAnimation = true
                 }
 
-                Text("4 Anos do App iOS!")
+                Text(showDays ? "\(daysSinceLaunch) dias!" : "4 Anos do App iOS!")
                     .font(.system(size: 34, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                     .shadow(color: .black.opacity(0.6), radius: 12, x: 0, y: 2)
+                    .contentTransition(.opacity)
+                    .animation(.easeInOut(duration: 0.35), value: showDays)
+                    .onLongPressGesture {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        withAnimation { showDays.toggle() }
+                    }
             }
             .padding(.vertical, 40)
         }
@@ -439,6 +484,22 @@ struct FourthAnniversaryView: View {
             Task {
                 await Self.sendAnalytics(for: "issueLoadingMostSharedSound")
             }
+        }
+    }
+
+    private func handleIconTap() {
+        iconTapResetWork?.cancel()
+        iconTapCount += 1
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+
+        if iconTapCount >= 4 {
+            iconTapCount = 0
+            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+            showEasterEggMessage = true
+        } else {
+            let work = DispatchWorkItem { iconTapCount = 0 }
+            iconTapResetWork = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: work)
         }
     }
 
@@ -477,7 +538,6 @@ extension FourthAnniversaryView {
 private struct BirthdayConfettiView: View {
 
     let isFalling: Bool
-    /// Y coordinate where the cannon fires from. Defaults to bottom of the 300pt header.
     var originY: CGFloat = 300
     var trigger: Int = 0
 
@@ -620,6 +680,44 @@ struct ActivityView: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
+}
+
+// MARK: - Shake Detection
+
+private struct ShakeDetectorView: UIViewControllerRepresentable {
+
+    let onShake: () -> Void
+
+    func makeUIViewController(context: Context) -> ShakeViewController {
+        ShakeViewController(onShake: onShake)
+    }
+
+    func updateUIViewController(_ vc: ShakeViewController, context: Context) {
+        vc.onShake = onShake
+    }
+}
+
+private class ShakeViewController: UIViewController {
+
+    var onShake: () -> Void
+
+    init(onShake: @escaping () -> Void) {
+        self.onShake = onShake
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    override var canBecomeFirstResponder: Bool { true }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        becomeFirstResponder()
+    }
+
+    override func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
+        if motion == .motionShake { onShake() }
+    }
 }
 
 // MARK: - Preview
