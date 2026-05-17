@@ -24,7 +24,7 @@ struct SidecastVideoLayout {
     var artworkSize: CGFloat {
         if isPortrait { return videoSize.width * 0.55 }
         if isLandscape { return min(videoSize.height * 0.45, videoSize.width * 0.28) }
-        return videoSize.width * 0.45
+        return videoSize.width * 0.50
     }
 
     var artworkCornerRadius: CGFloat { artworkSize * 0.06 }
@@ -32,7 +32,7 @@ struct SidecastVideoLayout {
     var artworkTopPadding: CGFloat {
         if isPortrait { return videoSize.height * 0.15 }
         if isLandscape { return videoSize.height * 0.08 }
-        return videoSize.height * 0.1
+        return videoSize.height * 0.08
     }
 
     var titleSpacing: CGFloat { videoSize.height * 0.035 }
@@ -56,14 +56,14 @@ struct SidecastVideoLayout {
         let y: CGFloat
         if isPortrait { y = videoSize.height * 0.65 }
         else if isLandscape { y = videoSize.height * 0.78 }
-        else { y = videoSize.height * 0.72 }
+        else { y = videoSize.height * 0.82 }
         return CGRect(x: padding, y: y, width: width, height: height)
     }
 
     var brandingY: CGFloat {
         if isPortrait { return videoSize.height * 0.72 }
         if isLandscape { return videoSize.height * 0.88 }
-        return videoSize.height * 0.82
+        return videoSize.height * 0.90
     }
 }
 
@@ -78,9 +78,7 @@ struct SidecastVideoFrameView: View {
     let artwork: UIImage
     let episodeTitle: String
     let episodeDate: Date
-    let branding: SidecastClipBranding
     let videoSize: CGSize
-    let isDarkMode: Bool
 
     private var layout: SidecastVideoLayout { .init(videoSize: videoSize) }
 
@@ -121,9 +119,7 @@ struct SidecastVideoFrameView: View {
 
             trackBackground
 
-            if branding == .appBadge {
-                brandingLabel
-            }
+            brandingLabel
         }
         .frame(width: videoSize.width, height: videoSize.height)
     }
@@ -132,7 +128,7 @@ struct SidecastVideoFrameView: View {
 
     private var trackBackground: some View {
         RoundedRectangle(cornerRadius: layout.trackCornerRadius)
-            .fill(isDarkMode ? Color.white.opacity(0.15) : Color.black.opacity(0.1))
+            .fill(Color.black.opacity(0.1))
             .frame(width: layout.trackFrame.width, height: layout.trackFrame.height)
             .offset(
                 x: layout.trackFrame.origin.x,
@@ -150,11 +146,39 @@ struct SidecastVideoFrameView: View {
 
     // MARK: - Colors
 
-    private var backgroundColor: Color {
-        isDarkMode ? .black : .white
-    }
+    private let backgroundColor = Color(red: 0.06, green: 0.24, blue: 0.14)
+    private let textColor = Color.white
+}
 
-    private var textColor: Color {
-        isDarkMode ? .white : .black
-    }
+// MARK: - Preview
+
+private let previewArtwork: UIImage = UIGraphicsImageRenderer(size: .init(width: 300, height: 300)).image { ctx in
+    UIColor.systemOrange.setFill()
+    ctx.fill(CGRect(x: 0, y: 0, width: 300, height: 300))
+    UIColor.white.withAlphaComponent(0.25).setFill()
+    ctx.fill(CGRect(x: 0, y: 120, width: 300, height: 60))
+}
+
+#Preview("Square") {
+    SidecastVideoFrameView(
+        artwork: previewArtwork,
+        episodeTitle: "O Fim do Mandato e as Perspectivas para 2026",
+        episodeDate: .now,
+        videoSize: .init(width: 1080, height: 1080)
+    )
+    .frame(width: 1080, height: 1080)
+    .scaleEffect(0.35)
+    .frame(width: 378, height: 378)
+}
+
+#Preview("Square – long title") {
+    SidecastVideoFrameView(
+        artwork: previewArtwork,
+        episodeTitle: "Eleições 2026: Candidatos, Alianças e o Futuro da Democracia Brasileira",
+        episodeDate: .now,
+        videoSize: .init(width: 1080, height: 1080)
+    )
+    .frame(width: 1080, height: 1080)
+    .scaleEffect(0.35)
+    .frame(width: 378, height: 378)
 }

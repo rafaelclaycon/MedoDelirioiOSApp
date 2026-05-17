@@ -14,13 +14,10 @@ struct SidecastClipView: View {
 
     @Environment(EpisodePlayer.self) private var player
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.colorScheme) private var colorScheme
 
     @State private var samples: [Float]?
     @State private var clipStart: TimeInterval = 0
     @State private var clipEnd: TimeInterval = 0
-    @State private var selectedShareMode: SidecastClipShareMode = .portraitVideo
-    @State private var selectedBranding: SidecastClipBranding = .none
     @State private var loadError: String?
     @State private var previewPlayer: AVAudioPlayer?
     @State private var isPreviewPlaying: Bool = false
@@ -35,10 +32,6 @@ struct SidecastClipView: View {
                     waveformSection
 
                     previewControls
-
-                    shareModeSection
-
-                    brandingSection
                 }
                 .padding(.horizontal, .spacing(.xLarge))
                 .padding(.vertical, .spacing(.large))
@@ -61,7 +54,7 @@ struct SidecastClipView: View {
                 }
             }
             .navigationDestination(isPresented: $showPreview) {
-                SidecastClipPreviewView(config: clipConfiguration)
+                SidecastClipConfirmView(config: clipConfiguration)
             }
         }
         .task {
@@ -88,9 +81,7 @@ struct SidecastClipView: View {
             audioFileURL: EpisodePlayer.localFileURL(for: episode),
             clipStart: clipStart,
             clipEnd: clipEnd,
-            shareMode: selectedShareMode,
-            branding: selectedBranding,
-            isDarkMode: colorScheme == .dark
+            shareMode: .square
         )
     }
 
@@ -199,102 +190,6 @@ struct SidecastClipView: View {
                 }
                 try? await Task.sleep(for: .milliseconds(50))
             }
-        }
-    }
-
-    // MARK: - Share Mode
-
-    private var shareModeSection: some View {
-        VStack(spacing: .spacing(.small)) {
-            Text("Formato")
-                .font(.headline)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            if #available(iOS 26, *) {
-                GlassEffectContainer {
-                    HStack(spacing: .spacing(.small)) {
-                        ForEach(SidecastClipShareMode.videoCases) { mode in
-                            ShareModeButton(
-                                mode: mode,
-                                isSelected: selectedShareMode == mode
-                            ) {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    selectedShareMode = mode
-                                }
-                            }
-                            .sensoryFeedback(.impact(weight: .light, intensity: 0.4), trigger: selectedShareMode)
-                        }
-                    }
-                }
-            } else {
-                HStack(spacing: .spacing(.small)) {
-                    ForEach(SidecastClipShareMode.videoCases) { mode in
-                        ShareModeButton(
-                            mode: mode,
-                            isSelected: selectedShareMode == mode
-                        ) {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                selectedShareMode = mode
-                            }
-                        }
-                        .sensoryFeedback(.impact(weight: .light, intensity: 0.4), trigger: selectedShareMode)
-                    }
-                }
-            }
-
-            Text(selectedShareMode.displayName)
-                .font(.subheadline)
-                .foregroundStyle(.orange)
-                .contentTransition(.numericText())
-                .animation(.easeInOut(duration: 0.2), value: selectedShareMode)
-        }
-    }
-
-    // MARK: - Branding
-
-    private var brandingSection: some View {
-        VStack(spacing: .spacing(.small)) {
-            Text("Selo")
-                .font(.headline)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            if #available(iOS 26, *) {
-                GlassEffectContainer {
-                    HStack(spacing: .spacing(.small)) {
-                        ForEach(SidecastClipBranding.allCases) { branding in
-                            BrandingButton(
-                                branding: branding,
-                                isSelected: selectedBranding == branding
-                            ) {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    selectedBranding = branding
-                                }
-                            }
-                            .sensoryFeedback(.impact(weight: .light, intensity: 0.4), trigger: selectedBranding)
-                        }
-                    }
-                }
-            } else {
-                HStack(spacing: .spacing(.small)) {
-                    ForEach(SidecastClipBranding.allCases) { branding in
-                        BrandingButton(
-                            branding: branding,
-                            isSelected: selectedBranding == branding
-                        ) {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                selectedBranding = branding
-                            }
-                        }
-                        .sensoryFeedback(.impact(weight: .light, intensity: 0.4), trigger: selectedBranding)
-                    }
-                }
-            }
-
-            Text(selectedBranding.displayName)
-                .font(.subheadline)
-                .foregroundStyle(.orange)
-                .contentTransition(.numericText())
-                .animation(.easeInOut(duration: 0.2), value: selectedBranding)
         }
     }
 

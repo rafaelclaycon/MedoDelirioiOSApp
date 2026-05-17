@@ -17,8 +17,6 @@ enum SidecastClipGenerator {
         let clipStart: TimeInterval
         let clipEnd: TimeInterval
         let shareMode: SidecastClipShareMode
-        let branding: SidecastClipBranding
-        let isDarkMode: Bool
     }
 
     enum GenerationPhase: String, Sendable {
@@ -51,9 +49,7 @@ enum SidecastClipGenerator {
         let frameImage = try await renderStaticFrame(
             episode: config.episode,
             artwork: artwork,
-            branding: config.branding,
-            videoSize: videoSize,
-            isDarkMode: config.isDarkMode
+            videoSize: videoSize
         )
 
         onPhaseChange?(.writingVideo)
@@ -132,17 +128,13 @@ enum SidecastClipGenerator {
     private static func renderStaticFrame(
         episode: PodcastEpisode,
         artwork: UIImage,
-        branding: SidecastClipBranding,
-        videoSize: CGSize,
-        isDarkMode: Bool
+        videoSize: CGSize
     ) throws -> UIImage {
         let view = SidecastVideoFrameView(
             artwork: artwork,
             episodeTitle: episode.title,
             episodeDate: episode.pubDate,
-            branding: branding,
-            videoSize: videoSize,
-            isDarkMode: isDarkMode
+            videoSize: videoSize
         )
         let renderer = ImageRenderer(content: view)
         renderer.scale = 1.0
@@ -163,27 +155,6 @@ enum SidecastClipGenerator {
             throw SidecastClipError.frameRenderFailed
         }
 
-        var pixelBuffer: CVPixelBuffer?
-        let attrs = [
-            kCVPixelBufferCGImageCompatibilityKey: kCFBooleanTrue!,
-            kCVPixelBufferCGBitmapContextCompatibilityKey: kCFBooleanTrue!
-        ] as CFDictionary
-
-        CVPixelBufferCreate(
-            kCFAllocatorDefault,
-            Int(size.width),
-            Int(size.height),
-            kCVPixelFormatType_32BGRA,
-            attrs,
-            &pixelBuffer
-        )
-
-        guard let buffer = pixelBuffer else {
-            throw SidecastClipError.frameRenderFailed
-        }
-
-        CIContext().render(ciImage, to: buffer)
-
         let outputURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("sidecast_static_\(UUID().uuidString).mov")
 
@@ -194,14 +165,31 @@ enum SidecastClipGenerator {
             AVVideoHeightKey: Int(size.height)
         ]
         let input = AVAssetWriterInput(mediaType: .video, outputSettings: settings)
+        // Source attributes must declare IOSurface-backed BGRA — otherwise VideoToolbox rejects the frames during downstream export with err=-12900.
+        let sourceAttributes: [String: Any] = [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+            kCVPixelBufferWidthKey as String: Int(size.width),
+            kCVPixelBufferHeightKey as String: Int(size.height),
+            kCVPixelBufferIOSurfacePropertiesKey as String: [:] as [String: Any]
+        ]
         let adaptor = AVAssetWriterInputPixelBufferAdaptor(
             assetWriterInput: input,
-            sourcePixelBufferAttributes: nil
+            sourcePixelBufferAttributes: sourceAttributes
         )
 
         writer.add(input)
         writer.startWriting()
         writer.startSession(atSourceTime: .zero)
+
+        guard let pool = adaptor.pixelBufferPool else {
+            throw SidecastClipError.videoWriteFailed
+        }
+        var pixelBuffer: CVPixelBuffer?
+        CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &pixelBuffer)
+        guard let buffer = pixelBuffer else {
+            throw SidecastClipError.frameRenderFailed
+        }
+        CIContext().render(ciImage, to: buffer)
 
         let fps: Int32 = 30
         let totalFrames = Int(ceil(duration * Double(fps)))
@@ -254,25 +242,13 @@ enum SidecastClipGenerator {
         let audioAsset = AVAsset(url: trimmedAudioURL)
 
         let videoTracks = try await videoAsset.loadTracks(withMediaType: .video)
+        let audioTracks = try await audioAsset.loadTracks(withMediaType: .audio)
         guard
             let compVideoTrack = composition.addMutableTrack(
                 withMediaType: .video,
                 preferredTrackID: kCMPersistentTrackID_Invalid
             ),
-            let srcVideoTrack = videoTracks.first
-        else {
-            throw SidecastClipError.compositionFailed
-        }
-
-        let videoDuration = try await videoAsset.load(.duration)
-        try compVideoTrack.insertTimeRange(
-            CMTimeRange(start: .zero, duration: videoDuration),
-            of: srcVideoTrack,
-            at: .zero
-        )
-
-        let audioTracks = try await audioAsset.loadTracks(withMediaType: .audio)
-        guard
+            let srcVideoTrack = videoTracks.first,
             let compAudioTrack = composition.addMutableTrack(
                 withMediaType: .audio,
                 preferredTrackID: kCMPersistentTrackID_Invalid
@@ -282,16 +258,63 @@ enum SidecastClipGenerator {
             throw SidecastClipError.compositionFailed
         }
 
+        let videoDuration = try await videoAsset.load(.duration)
         let audioDuration = try await audioAsset.load(.duration)
         let safeDuration = CMTimeMinimum(videoDuration, audioDuration)
 
+        // Both tracks must equal safeDuration so the composition's duration matches the instruction's timeRange — otherwise export aborts as interrupted.
+        try compVideoTrack.insertTimeRange(
+            CMTimeRange(start: .zero, duration: safeDuration),
+            of: srcVideoTrack,
+            at: .zero
+        )
         try compAudioTrack.insertTimeRange(
             CMTimeRange(start: .zero, duration: safeDuration),
             of: srcAudioTrack,
             at: .zero
         )
 
-        // -- Animation layers --
+        // Layer tree must be built on main — AVVideoCompositionCoreAnimationTool aborts via XPC misuse if its layers were created off-main.
+        let videoComposition = await MainActor.run { () -> AVMutableVideoComposition in
+            buildVideoComposition(
+                videoSize: videoSize,
+                safeDuration: safeDuration,
+                compVideoTrack: compVideoTrack
+            )
+        }
+
+        // -- Export --
+        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+        let outputURL = outputDirectory.appendingPathComponent("sidecast_clip.mp4")
+        removeIfExists(at: outputURL)
+
+        guard let session = AVAssetExportSession(
+            asset: composition,
+            presetName: AVAssetExportPresetHighestQuality
+        ) else {
+            throw SidecastClipError.exportFailed
+        }
+
+        session.outputURL = outputURL
+        session.outputFileType = .mp4
+        session.videoComposition = videoComposition
+        session.shouldOptimizeForNetworkUse = true
+
+        await session.export()
+
+        guard session.status == .completed else {
+            if let error = session.error { throw error }
+            throw SidecastClipError.exportFailed
+        }
+        return outputURL
+    }
+
+    @MainActor
+    private static func buildVideoComposition(
+        videoSize: CGSize,
+        safeDuration: CMTime,
+        compVideoTrack: AVMutableCompositionTrack
+    ) -> AVMutableVideoComposition {
         let layout = SidecastVideoLayout(videoSize: videoSize)
         let track = layout.trackFrame
 
@@ -323,7 +346,6 @@ enum SidecastClipGenerator {
 
         parentLayer.addSublayer(fillLayer)
 
-        // -- Video composition --
         let videoComposition = AVMutableVideoComposition()
         videoComposition.renderSize = videoSize
         videoComposition.frameDuration = CMTimeMake(value: 1, timescale: 30)
@@ -338,30 +360,7 @@ enum SidecastClipGenerator {
         instruction.layerInstructions = [layerInstruction]
         videoComposition.instructions = [instruction]
 
-        // -- Export --
-        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
-        let outputURL = outputDirectory.appendingPathComponent("sidecast_clip.mp4")
-        removeIfExists(at: outputURL)
-
-        guard let session = AVAssetExportSession(
-            asset: composition,
-            presetName: AVAssetExportPresetHighestQuality
-        ) else {
-            throw SidecastClipError.exportFailed
-        }
-
-        session.outputURL = outputURL
-        session.outputFileType = .mp4
-        session.videoComposition = videoComposition
-        session.shouldOptimizeForNetworkUse = true
-
-        await session.export()
-
-        guard session.status == .completed else {
-            if let error = session.error { throw error }
-            throw SidecastClipError.exportFailed
-        }
-        return outputURL
+        return videoComposition
     }
 
     // MARK: - Helpers
