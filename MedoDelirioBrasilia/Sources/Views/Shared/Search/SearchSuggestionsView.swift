@@ -65,6 +65,11 @@ struct SearchSuggestionsView: View {
                     recentSearchesSection
                 }
 
+                // Popular Episode
+                if FeatureFlag.isEnabled(.snowLeopard) {
+                    popularEpisodeSection
+                }
+
                 // Popular Content
                 popularContentSection
 
@@ -128,6 +133,33 @@ struct SearchSuggestionsView: View {
                 }
             }
             .padding(.leading, .spacing(.small))
+        }
+    }
+
+    private var popularEpisodeSection: some View {
+        VStack(alignment: .leading, spacing: .spacing(.medium)) {
+            HStack {
+                Text("Popular Essa Semana")
+                    .font(.headline)
+
+                Spacer()
+
+                Button {
+                    NotificationCenter.default.post(
+                        name: .navigateToTab,
+                        object: nil,
+                        userInfo: [NavigateToTabKey.phoneTab: PhoneTab.episodes]
+                    )
+                } label: {
+                    HStack(spacing: 4) {
+                        Text("Ver Episódios")
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                    }
+                }
+            }
+
+            MockEpisodeCard()
         }
     }
 
@@ -414,6 +446,43 @@ extension SearchSuggestionsView {
                         }
                 }
             }
+        }
+    }
+
+    struct MockEpisodeCard: View {
+
+        var body: some View {
+            HStack(spacing: .spacing(.xSmall)) {
+                VStack(alignment: .leading, spacing: .spacing(.xSmall)) {
+                    Text("8 DE MAIO DE 2026")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textCase(.uppercase)
+
+                    Text("II - 2026.31 - Donald Loves Lula")
+                        .font(.title3)
+                        .fontDesign(.serif)
+                        .lineLimit(2)
+
+                    Text("8 reproduções")
+                        .font(.caption)
+                }
+
+                Spacer(minLength: 0)
+
+                VStack(spacing: .spacing(.small)) {
+                    Image(systemName: "play.circle")
+                        .font(.largeTitle)
+                        .foregroundStyle(.blue)
+
+                    Text("1:23:45")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(width: 60)
+            }
+            .padding(.vertical, .spacing(.small))
         }
     }
 
