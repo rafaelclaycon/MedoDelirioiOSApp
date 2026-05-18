@@ -213,7 +213,7 @@ struct EpisodesView: View {
                         .foregroundStyle(Color.rubyRed)
                 }
             } description: {
-                Text("Use o botão de marcador na tela Reproduzindo para salvar momentos importantes.")
+                Text("Use o botão de marcador na tela Reproduzindo para guardar momentos importantes.")
                     .padding(.top, .spacing(.nano))
             }
         }

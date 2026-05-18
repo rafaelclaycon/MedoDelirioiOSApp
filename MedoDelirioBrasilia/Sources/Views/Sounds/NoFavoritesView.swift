@@ -20,7 +20,7 @@ struct NoFavoritesView: View {
                 .bold()
                 .multilineTextAlignment(.center)
             
-            Text("Para adicionar um conteúdo aos Favoritos, volte para a aba Vírgulas, segure em um conteúdo e escolha **Adicionar aos Favoritos**.")
+            Text("Para adicionar um conteúdo aos Favoritos, segure-o e escolha **Adicionar aos Favoritos**.")
                 .foregroundColor(.gray)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
