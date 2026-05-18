@@ -20,7 +20,6 @@ struct StandaloneSearchView: View {
     @State private var toast: Toast? = nil
     @State private var playable: PlayableContentState?
     @State private var reactionsState: LoadingState<[Reaction]> = .loading
-    @State private var showFeedbackAlert: Bool = false
     @State private var searchMode: SearchMode = .virgulas
     @State private var searchTask: Task<Void, Never>?
     @State private var transcriptSearchTask: Task<Void, Never>?
@@ -80,31 +79,6 @@ struct StandaloneSearchView: View {
                 .navigationTitle(Text("Buscar"))
                 .searchable(text: $searchText, placement: .navigationBarDrawer, prompt: searchPrompt)
                 .autocorrectionDisabled()
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button {
-                            showFeedbackAlert = true
-                        } label: {
-                            Image(systemName: "bubble.left.and.text.bubble.right")
-                        }
-                    }
-                }
-                .alert(
-                    Shared.Search.Feedback.alertTitle,
-                    isPresented: $showFeedbackAlert
-                ) {
-                    Button("Cancelar", role: .cancel) { }
-                    Button("Continuar") {
-                        Task {
-                            await Mailman.openDefaultEmailApp(
-                                subject: Shared.Search.Feedback.emailSubject,
-                                body: Shared.Search.Feedback.emailBody
-                            )
-                        }
-                    }
-                } message: {
-                    Text(Shared.Search.Feedback.alertMessage)
-                }
                 .onChange(of: searchText) {
                     onSearchStringChanged(newString: searchText)
                 }
