@@ -11,6 +11,7 @@ enum FeatureFlag: String, CaseIterable {
 
     case projectSidecast = "featureFlag_projectSidecast"
     case snowLeopard = "featureFlag_snowLeopard"
+    case episodePillControls = "featureFlag_episodePillControls"
 
     var displayName: String {
         switch self {
@@ -18,6 +19,8 @@ enum FeatureFlag: String, CaseIterable {
             return "Project Sidecast"
         case .snowLeopard:
             return "Snow Leopard"
+        case .episodePillControls:
+            return "Episode Pill Controls"
         }
     }
 
@@ -27,6 +30,8 @@ enum FeatureFlag: String, CaseIterable {
             return "Gere clipes compartilháveis a partir de episódios do podcast."
         case .snowLeopard:
             return "Destaque de episódio popular na tela de sugestões de busca."
+        case .episodePillControls:
+            return "Exibe os controles de reprodução como uma pílula horizontal abaixo da descrição do episódio."
         }
     }
 

@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum EpisodePlaybackStateFilter: CaseIterable {
+enum EpisodePlaybackStateFilter: String, CaseIterable {
 
     case notStarted, started, finished
 

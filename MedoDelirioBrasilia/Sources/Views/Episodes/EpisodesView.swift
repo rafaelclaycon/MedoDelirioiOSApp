@@ -19,7 +19,7 @@ struct EpisodesView: View {
     @Environment(\.push) private var push
     @State private var viewModel = ViewModel(episodesService: EpisodesService())
     @State private var selectedFilter: EpisodeFilterOption = .all
-    @State private var activePlaybackStates: Set<EpisodePlaybackStateFilter> = EpisodePlaybackStateFilter.allSet
+    @State private var activePlaybackStates: Set<EpisodePlaybackStateFilter> = EpisodesView.loadPlaybackStates()
     @State private var sortAscending = false
     @State private var showEpisodeNotificationsBanner = true
     @State private var showNotificationSettings = false
@@ -179,6 +179,9 @@ struct EpisodesView: View {
                 )
             }
         }
+        .onChange(of: activePlaybackStates) {
+            savePlaybackStates()
+        }
         .topToast($viewModel.toast)
         .background(EpisodePlayerAlerts(player: episodePlayer))
     }
@@ -333,6 +336,23 @@ struct EpisodesView: View {
         }
     }
 
+    // MARK: - Playback State Filter Persistence
+
+    private static let playbackStatesKey = "episodesActivePlaybackStates"
+
+    private static func loadPlaybackStates() -> Set<EpisodePlaybackStateFilter> {
+        guard let raw = UserDefaults.standard.string(forKey: playbackStatesKey) else {
+            return EpisodePlaybackStateFilter.allSet
+        }
+        let decoded = raw.split(separator: ",").compactMap { EpisodePlaybackStateFilter(rawValue: String($0)) }
+        return decoded.isEmpty ? EpisodePlaybackStateFilter.allSet : Set(decoded)
+    }
+
+    private func savePlaybackStates() {
+        let raw = activePlaybackStates.map(\.rawValue).joined(separator: ",")
+        UserDefaults.standard.set(raw, forKey: Self.playbackStatesKey)
+    }
+
     private func hasProgress(_ episodeID: String) -> Bool {
         guard let progress = progressStore.progress(for: episodeID) else { return false }
         return progress.currentTime > 0 && progress.duration > 0
@@ -350,6 +370,8 @@ extension EpisodesView {
         let bookmarkCount: Int
         let progress: EpisodeProgressStore.EpisodeProgress?
         let isPlayed: Bool
+        var playCount: Int?
+        var mostPopularThisWeek: Bool?
 
         private var hasProgress: Bool {
             guard let progress else { return false }
@@ -379,28 +401,38 @@ extension EpisodesView {
                             .font(.caption2)
                             .foregroundStyle(Color.rubyRed)
                         }
+
+                        if let playCount {
+                            Text("\(playCount) reproduções")
+                                .font(.caption)
+                                .padding(.leading, 10)
+                                //.foregroundStyle(.secondary)
+                        }
                     }
 
                     Text(episode.title)
-                        .font(.title2)
+                        .font(.title3)
                         .fontDesign(.serif)
                         .lineLimit(2)
 
-                    HStack(spacing: .spacing(.xSmall)) {
-                        if let plainText = episode.plainTextDescription {
-                            Text(plainText)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        }
+                    if let plainText = episode.plainTextDescription {
+                        let compressed = plainText
+                            .components(separatedBy: .newlines)
+                            .map { $0.trimmingCharacters(in: .whitespaces) }
+                            .filter { !$0.isEmpty }
+                            .joined(separator: " ")
+                        Text(compressed)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
 
-                        if hasProgress, let progress {
-                            Spacer(minLength: 0)
-
-                            ProgressView(value: progress.currentTime, total: progress.duration)
-                                .tint(.blue)
-                                .frame(width: 100, height: 6)
-                        }
+                    if !isPlayed && FeatureFlag.isEnabled(.episodePillControls) {
+                        EpisodeRowPillPlaybackControls(episode: episode, progress: progress)
+                    } else if hasProgress, let progress, !FeatureFlag.isEnabled(.episodePillControls) {
+                        ProgressView(value: progress.currentTime, total: progress.duration)
+                            .tint(.blue)
+                            .frame(height: 6)
                     }
                 }
 
@@ -411,8 +443,8 @@ extension EpisodesView {
                         .font(.largeTitle)
                         .foregroundStyle(.secondary.opacity(0.5))
                         .frame(width: 60)
-                } else {
-                    VStack(spacing: .spacing(.xSmall)) {
+                } else if !FeatureFlag.isEnabled(.episodePillControls) {
+                    VStack(spacing: .spacing(.small)) {
                         EpisodeRowPlaybackControls(episode: episode)
 
                         if hasProgress, let progress {
@@ -420,8 +452,8 @@ extension EpisodesView {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .multilineTextAlignment(.center)
-                        } else if let formattedDuration = episode.formattedDuration {
-                            Text(formattedDuration)
+                        } else if let duration = episode.duration {
+                            Text(formatCompactDuration(duration))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .multilineTextAlignment(.center)
@@ -440,13 +472,13 @@ extension EpisodesView {
             let minutes = totalMinutes % 60
 
             if hours > 0 && minutes > 0 {
-                return "\(hours) hr \(minutes) min restantes"
+                return "\(hours)h \(minutes)min restantes"
             } else if hours > 0 {
-                return "\(hours) hr restantes"
+                return "\(hours)h restantes"
             } else if minutes > 0 {
-                return "\(minutes) min restantes"
+                return "\(minutes)min restantes"
             } else {
-                return "< 1 min restante"
+                return "< 1min restante"
             }
         }
     }
@@ -503,6 +535,115 @@ extension EpisodesView {
             .frame(minHeight: height)
         }
     }
+}
+
+private func formatCompactDuration(_ seconds: TimeInterval) -> String {
+    let totalMinutes = Int(max(seconds, 0)) / 60
+    let hours = totalMinutes / 60
+    let minutes = totalMinutes % 60
+    if hours > 0 && minutes > 0 { return "\(hours)h \(minutes)min" }
+    if hours > 0 { return "\(hours)h" }
+    if minutes > 0 { return "\(minutes)min" }
+    return "< 1min"
+}
+
+private struct EpisodeRowPillPlaybackControls: View {
+    @Environment(EpisodePlayer.self) private var episodePlayer
+
+    let episode: PodcastEpisode
+    let progress: EpisodeProgressStore.EpisodeProgress?
+
+    private var isThisEpisodePlaying: Bool {
+        episodePlayer.isCurrentEpisode(episode) && episodePlayer.isPlaying
+    }
+
+    private var hasProgress: Bool {
+        guard let progress else { return false }
+        return progress.currentTime > 0 && progress.duration > 0
+    }
+
+    private var timeText: String {
+        if hasProgress, let progress {
+            return formatCompactDuration(progress.duration - progress.currentTime)
+        } else if let duration = episode.duration {
+            return formatCompactDuration(duration)
+        }
+        return ""
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            playPauseButton
+
+            if hasProgress, let progress {
+                ProgressView(value: progress.currentTime, total: progress.duration)
+                    .tint(.accentColor)
+            } else {
+                Spacer()
+            }
+
+            if !timeText.isEmpty {
+                Text(timeText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .fixedSize()
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .background(.regularMaterial)
+        .clipShape(Capsule())
+        .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder
+    private var playPauseButton: some View {
+        if episodePlayer.isDownloading(episode) {
+            downloadProgressIndicator
+        } else if episodePlayer.isPreparing(episode) {
+            ProgressView()
+                .frame(width: 18, height: 18)
+                .scaleEffect(0.75)
+        } else if isThisEpisodePlaying {
+            Button {
+                episodePlayer.togglePlayPause()
+            } label: {
+                Image(systemName: "pause.fill")
+                    .font(.callout)
+            }
+            .buttonStyle(.borderless)
+        } else {
+            Button {
+                Task { await episodePlayer.play(episode: episode) }
+            } label: {
+                Image(systemName: "play.fill")
+                    .font(.callout)
+            }
+            .buttonStyle(.borderless)
+        }
+    }
+
+    private var downloadProgressIndicator: some View {
+        let p = episodePlayer.downloadProgress[episode.id] ?? 0
+        return ZStack {
+            Circle()
+                .stroke(Color.primary.opacity(0.2), lineWidth: 2)
+            Circle()
+                .trim(from: 0, to: p)
+                .stroke(Color.primary, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            Button {
+                episodePlayer.cancelDownload()
+            } label: {
+                Image(systemName: "stop.fill")
+                    .font(.system(size: 8))
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(width: 18, height: 18)
+    }
+
 }
 
 private struct EpisodeRowPlaybackControls: View {
@@ -689,6 +830,19 @@ private extension View {
         bookmarkCount: 0,
         progress: nil,
         isPlayed: false
+    )
+    .padding()
+    .environment(EpisodePlayer())
+}
+
+#Preview("Episode with All Bells and Whistles") {
+    EpisodesView.EpisodeRow(
+        episode: .mockLastWeek,
+        isFavorite: true,
+        bookmarkCount: 5,
+        progress: .init(currentTime: 20, duration: 80),
+        isPlayed: false,
+        playCount: 33
     )
     .padding()
     .environment(EpisodePlayer())
