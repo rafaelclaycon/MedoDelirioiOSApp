@@ -25,6 +25,7 @@ struct NowPlayingView: View {
     @AppStorage("showTranscript") private var showTranscript: Bool = false
     @State private var showBookmarks: Bool = false
     @State private var hasSentTranscriptViewedAnalytics: Bool = false
+    @State private var showFullTranscript: Bool = false
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -33,8 +34,26 @@ struct NowPlayingView: View {
     }
 
     var body: some View {
-        Group {
-            enhancedLayout
+        NavigationStack {
+            ScrollView {
+                enhancedLayout
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .navigationDestination(isPresented: $showFullTranscript) {
+                TranscriptFullView(transcriptProvider: transcriptProvider)
+                    .environment(player)
+            }
+//            .toolbar {
+//                ToolbarItem(placement: .primaryAction) {
+//                    Button {
+//                        showFullTranscript = true
+//                    } label: {
+//                        Image(systemName: "magnifyingglass")
+//                    }
+//                }
+//            }
         }
         .presentationDragIndicator(.visible)
         .topToast($toast)
@@ -88,7 +107,7 @@ struct NowPlayingView: View {
     private var enhancedLayout: some View {
         VStack(spacing: 0) {
             topContent
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: .infinity)
                 .padding(.top, .spacing(.xxxLarge))
                 //.border(.blue)
 
@@ -172,30 +191,28 @@ struct NowPlayingView: View {
         if bookmarks.isEmpty {
             emptyBookmarksView
         } else {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    HStack {
-                        Text("Meus Marcadores")
-                            .font(.headline)
+            VStack(alignment: .leading, spacing: 0) {
+                HStack {
+                    Text("Meus Marcadores")
+                        .font(.headline)
 
-                        Spacer()
+                    Spacer()
 
-                        Button {
-                            bookmarksSortAscending.toggle()
-                        } label: {
-                            Image(systemName: bookmarksSortAscending ? "arrow.up" : "arrow.down")
-                                .font(.subheadline.weight(.medium))
-                                .foregroundStyle(Color.rubyRed)
-                        }
+                    Button {
+                        bookmarksSortAscending.toggle()
+                    } label: {
+                        Image(systemName: bookmarksSortAscending ? "arrow.up" : "arrow.down")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(Color.rubyRed)
                     }
-                    .padding(.bottom, .spacing(.small))
+                }
+                .padding(.bottom, .spacing(.small))
 
-                    ForEach(Array(bookmarks.enumerated()), id: \.element.id) { index, bookmark in
-                        bookmarkRow(bookmark)
+                ForEach(Array(bookmarks.enumerated()), id: \.element.id) { index, bookmark in
+                    bookmarkRow(bookmark)
 
-                        if index < bookmarks.count - 1 {
-                            Divider()
-                        }
+                    if index < bookmarks.count - 1 {
+                        Divider()
                     }
                 }
             }
