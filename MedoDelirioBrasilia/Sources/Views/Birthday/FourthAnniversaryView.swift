@@ -14,9 +14,9 @@ struct FourthAnniversaryView: View {
     @State private var pulseAnimation = false
     @State private var ringAnimation = false
     @State private var confettiIsFalling = false
-    @State private var presentAlert = false
     @State private var confettiTrigger = 0
     @State private var confettiOriginY: CGFloat = 300
+    @State private var toast: Toast?
 
     // Easter eggs
     @State private var iconTapCount = 0
@@ -188,32 +188,7 @@ struct FourthAnniversaryView: View {
                             .font(.body)
                             .fixedSize(horizontal: false, vertical: true)
 
-                        GlassButton(
-                            symbol: "arrow.trianglehead.2.counterclockwise",
-                            title: "Apoio recorrente",
-                            color: .rubyRed,
-                            fullWidth: true,
-                            action: {
-                                OpenUtility.open(link: "https://apoia.se/app-medo-delirio-ios")
-                                Task {
-                                    await Self.sendAnalytics(for: "didTapApoiase")
-                                }
-                            }
-                        )
-
-                        GlassButton(
-                            symbol: "document.on.document",
-                            title: "Apoio pontual",
-                            color: .blue,
-                            fullWidth: true,
-                            action: {
-                                UIPasteboard.general.string = HelpTheAppView.pixKey
-                                presentAlert = true
-                                Task {
-                                    await Self.sendAnalytics(for: "didTapPix")
-                                }
-                            }
-                        )
+                        HelpTheAppView.DonateButtons(toast: $toast, showSectionDivider: true, showHeader: false)
 
                         HStack {
                             Spacer()
@@ -260,16 +235,9 @@ struct FourthAnniversaryView: View {
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
         }
-        .alert(
-            "Chave Pix Copiada!",
-            isPresented: $presentAlert
-        ) {
-            Button("OK") { presentAlert.toggle() }
-        } message: {
-            Text("Cole no app do seu banco para enviar.\n\nObrigado! 💚")
-        }
         .alert("🎉 Segredinho \(easterEggFactIndex + 1)/\(Self.easterEggFacts.count)", isPresented: $showEasterEggMessage) {
             Button("Uau!") {
+                Task { await Self.sendAnalytics(for: "didSeeEasterEggFact_\(easterEggFactIndex + 1)") }
                 easterEggFactIndex = (easterEggFactIndex + 1) % Self.easterEggFacts.count
             }
         } message: {
@@ -456,6 +424,7 @@ struct FourthAnniversaryView: View {
                     .onLongPressGesture {
                         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                         withAnimation { showDays.toggle() }
+                        Task { await Self.sendAnalytics(for: showDays ? "didRevealDayCount" : "didHideDayCount") }
                     }
             }
             .padding(.vertical, 40)
@@ -496,6 +465,7 @@ struct FourthAnniversaryView: View {
             iconTapCount = 0
             UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
             showEasterEggMessage = true
+            Task { await Self.sendAnalytics(for: "didUnlockEasterEgg") }
         } else {
             let work = DispatchWorkItem { iconTapCount = 0 }
             iconTapResetWork = work

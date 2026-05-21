@@ -145,6 +145,7 @@ extension HelpTheAppView {
 
         @Binding var toast: Toast?
         var showSectionDivider: Bool = false
+        var showHeader: Bool = true
         @State private var pixAlertAmount: Int?
 
         // MARK: - Tier Data
@@ -173,9 +174,11 @@ extension HelpTheAppView {
 
         var body: some View {
             VStack(alignment: .center, spacing: .spacing(.xLarge)) {
-                Text("💚 Junte-se aos apoiadores do app")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                if showHeader {
+                    Text("💚 Junte-se aos apoiadores do app")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
 
                 VStack(alignment: .leading, spacing: .spacing(.medium)) {
                     Text("Apoio Mensal (Apoia.se)")
