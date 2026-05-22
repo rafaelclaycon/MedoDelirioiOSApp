@@ -6,9 +6,11 @@
 # regenerates the manifest, uploads via SFTP, and verifies.
 #
 # Usage:
-#   ./auto_transcribe.sh              # normal run (respects 6 PM – 8 AM window)
-#   ./auto_transcribe.sh --dry-run    # detect new episodes without processing
-#   ./auto_transcribe.sh --force      # run immediately, ignoring the time window
+#   ./auto_transcribe.sh                        # normal run (respects 6 PM – 8 AM window)
+#   ./auto_transcribe.sh --dry-run              # detect new episodes without processing
+#   ./auto_transcribe.sh --force                # run immediately, ignoring the time window
+#   ./auto_transcribe.sh --list-recent [N]      # list IDs of the N most recent episodes (default 10)
+#   ./auto_transcribe.sh --retranscribe <id>    # re-download, re-transcribe, and re-upload a specific episode
 #
 set -euo pipefail
 
@@ -17,23 +19,29 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 DRY_RUN=false
 FORCE_RUN=false
+LIST_RECENT=false
+LIST_RECENT_N=10
+RETRANSCRIBE_ID=""
 
-for arg in "$@"; do
-    case "$arg" in
-        --dry-run) DRY_RUN=true ;;
-        --force)   FORCE_RUN=true ;;
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --dry-run)       DRY_RUN=true; shift ;;
+        --force)         FORCE_RUN=true; shift ;;
+        --list-recent)
+            LIST_RECENT=true
+            if [[ $# -gt 1 && "$2" =~ ^[0-9]+$ ]]; then
+                LIST_RECENT_N="$2"; shift
+            fi
+            shift ;;
+        --retranscribe)
+            if [[ $# -lt 2 || -z "$2" ]]; then
+                echo "ERROR: --retranscribe requires an episode ID argument"
+                exit 1
+            fi
+            RETRANSCRIBE_ID="$2"; shift 2 ;;
+        *) shift ;;
     esac
 done
-
-# ---------------------------------------------------------------------------
-# Time-window guard: exit silently outside 6 PM – 8 AM (skip with --force)
-# ---------------------------------------------------------------------------
-if [[ "$FORCE_RUN" != true ]]; then
-    hour=$(date +%H)
-    if [ "$hour" -ge 8 ] && [ "$hour" -lt 18 ]; then
-        exit 0
-    fi
-fi
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -62,9 +70,19 @@ if [[ -f "$ENV_FILE" ]]; then
     source "$ENV_FILE"
     set +a
 else
-    if [[ "$DRY_RUN" == false ]]; then
+    if [[ "$DRY_RUN" == false && -z "$RETRANSCRIBE_ID" && "$LIST_RECENT" == false ]]; then
         echo "ERROR: $ENV_FILE not found. Copy .env.example and fill in your values."
         exit 1
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# Time-window guard: exit silently outside 6 PM – 8 AM (skip with --force)
+# ---------------------------------------------------------------------------
+if [[ "$FORCE_RUN" != true && -z "$RETRANSCRIBE_ID" && "$LIST_RECENT" == false ]]; then
+    hour=$(date +%H)
+    if [ "$hour" -ge 8 ] && [ "$hour" -lt 18 ]; then
+        exit 0
     fi
 fi
 
@@ -89,6 +107,133 @@ cleanup() {
     if [[ -d "$WORK_DIR" ]]; then
         rm -rf "$WORK_DIR"
     fi
+}
+
+# ---------------------------------------------------------------------------
+# Inline Python: list recent episodes from feed
+# ---------------------------------------------------------------------------
+list_recent_episodes() {
+    local n="$1"
+    python3 << PYEOF
+import xml.etree.ElementTree as ET
+import urllib.request
+import sys
+import os
+from urllib.parse import urlparse, parse_qs
+
+FEED_URL = os.environ.get("FEED_URL", "")
+MIRROR_DIR = os.environ.get("MIRROR_DIR", "")
+N = int("$n")
+
+
+def parse_episode_id(guid: str) -> str | None:
+    if not guid:
+        return None
+    try:
+        parsed = urlparse(guid)
+        if parsed.scheme:
+            last = parsed.path.rstrip("/").rsplit("/", 1)[-1] if parsed.path else ""
+            if last and last != "/":
+                return last
+            qs = parse_qs(parsed.query)
+            p_vals = qs.get("p", [])
+            if p_vals and p_vals[0]:
+                return p_vals[0]
+            return guid
+    except Exception:
+        pass
+    return guid
+
+
+req = urllib.request.Request(FEED_URL, headers={"User-Agent": "AutoTranscribe/1.0"})
+with urllib.request.urlopen(req, timeout=30) as resp:
+    data = resp.read()
+
+root = ET.fromstring(data)
+
+existing = set()
+if os.path.isdir(MIRROR_DIR):
+    for f in os.listdir(MIRROR_DIR):
+        if f.endswith(".srt"):
+            existing.add(os.path.splitext(f)[0])
+
+count = 0
+for item in root.findall(".//item"):
+    if count >= N:
+        break
+    guid_el = item.find("guid")
+    if guid_el is None or not guid_el.text:
+        continue
+    ep_id = parse_episode_id(guid_el.text.strip())
+    if not ep_id:
+        continue
+    title_el = item.find("title")
+    title = title_el.text.strip() if title_el is not None and title_el.text else "unknown"
+    has_srt = "yes" if ep_id in existing else "no "
+    print(f"{ep_id}  srt={has_srt}  {title}")
+    count += 1
+PYEOF
+}
+
+# ---------------------------------------------------------------------------
+# Inline Python: fetch audio URL for a specific episode ID
+# ---------------------------------------------------------------------------
+fetch_audio_url_for_id() {
+    local target_id="$1"
+    python3 << PYEOF
+import xml.etree.ElementTree as ET
+import urllib.request
+import sys
+import os
+from urllib.parse import urlparse, parse_qs
+
+FEED_URL = os.environ.get("FEED_URL", "")
+TARGET = "$target_id"
+
+
+def parse_episode_id(guid: str) -> str | None:
+    if not guid:
+        return None
+    try:
+        parsed = urlparse(guid)
+        if parsed.scheme:
+            last = parsed.path.rstrip("/").rsplit("/", 1)[-1] if parsed.path else ""
+            if last and last != "/":
+                return last
+            qs = parse_qs(parsed.query)
+            p_vals = qs.get("p", [])
+            if p_vals and p_vals[0]:
+                return p_vals[0]
+            return guid
+    except Exception:
+        pass
+    return guid
+
+
+req = urllib.request.Request(FEED_URL, headers={"User-Agent": "AutoTranscribe/1.0"})
+with urllib.request.urlopen(req, timeout=30) as resp:
+    data = resp.read()
+
+root = ET.fromstring(data)
+
+for item in root.findall(".//item"):
+    guid_el = item.find("guid")
+    if guid_el is None or not guid_el.text:
+        continue
+    ep_id = parse_episode_id(guid_el.text.strip())
+    if ep_id != TARGET:
+        continue
+    title_el = item.find("title")
+    title = title_el.text.strip() if title_el is not None and title_el.text else "unknown"
+    enclosure = item.find("enclosure")
+    audio_url = enclosure.get("url", "") if enclosure is not None else ""
+    if audio_url:
+        print(f"{audio_url}\t{title}")
+    sys.exit(0)
+
+print(f"ERROR: episode '{TARGET}' not found in feed", file=sys.stderr)
+sys.exit(1)
+PYEOF
 }
 
 # ---------------------------------------------------------------------------
@@ -166,6 +311,123 @@ def main():
 sys.exit(main())
 PYEOF
 }
+
+# ---------------------------------------------------------------------------
+# --list-recent: print recent episode IDs and exit
+# ---------------------------------------------------------------------------
+if [[ "$LIST_RECENT" == true ]]; then
+    export FEED_URL MIRROR_DIR
+    list_recent_episodes "$LIST_RECENT_N"
+    exit 0
+fi
+
+# ---------------------------------------------------------------------------
+# --retranscribe: re-process a single episode by ID
+# ---------------------------------------------------------------------------
+if [[ -n "$RETRANSCRIBE_ID" ]]; then
+    mkdir -p "$MIRROR_DIR" "$LOG_DIR"
+    LOG_FILE="${LOG_DIR}/retranscribe_${RETRANSCRIBE_ID}_$(date '+%Y%m%d_%H%M%S').log"
+    exec > >(tee -a "$LOG_FILE") 2>&1
+
+    log "=== Retranscribe started for episode: $RETRANSCRIBE_ID ==="
+
+    export FEED_URL MIRROR_DIR
+    LOOKUP=$(fetch_audio_url_for_id "$RETRANSCRIBE_ID") || {
+        notify_error "Episode $RETRANSCRIBE_ID not found in feed"
+        exit 1
+    }
+    AUDIO_URL=$(echo "$LOOKUP" | cut -f1)
+    TITLE=$(echo "$LOOKUP" | cut -f2-)
+
+    log "Found: $TITLE"
+    log "Audio: $AUDIO_URL"
+
+    trap cleanup EXIT
+    mkdir -p "${WORK_DIR}/audio" "${WORK_DIR}/srt" "${WORK_DIR}/fixed"
+
+    SAFE_TITLE=$(echo "$TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/\./-/g' | tr -cs 'a-z0-9 -' ' ' | tr ' ' '-' | sed 's/--*/-/g; s/^-//; s/-$//' | awk '{n=split($0,a,"-"); s=""; for(i=1;i<=n && i<=10;i++) s=s (i>1?"-":"") a[i]; print s}')
+    MP3_FILE="${WORK_DIR}/audio/${RETRANSCRIBE_ID}-${SAFE_TITLE}.mp3"
+
+    log "Downloading audio..."
+    if ! curl -fSL --retry 3 --retry-delay 5 -o "$MP3_FILE" "$AUDIO_URL"; then
+        notify_error "Failed to download episode $RETRANSCRIBE_ID"
+        exit 1
+    fi
+
+    SRT_OUTPUT="${WORK_DIR}/srt/${RETRANSCRIBE_ID}"
+    log "Transcribing with whisper.cpp..."
+    if ! caffeinate -i "$WHISPER_CLI" \
+        -m "$WHISPER_MODEL" \
+        -l pt \
+        -f "$MP3_FILE" \
+        -osrt -otxt \
+        -of "$SRT_OUTPUT" 2>&1; then
+        notify_error "Whisper failed for episode $RETRANSCRIBE_ID"
+        exit 1
+    fi
+
+    rm -f "$MP3_FILE"
+
+    if [[ ! -f "${SRT_OUTPUT}.srt" ]]; then
+        notify_error "Whisper produced no SRT for episode $RETRANSCRIBE_ID"
+        exit 1
+    fi
+
+    FIX_ARGS=()
+    for pair in "${NAME_FIX_PAIRS[@]}"; do
+        FIX_ARGS+=(--fix "$pair")
+    done
+
+    log "Applying name fixes..."
+    python3 "${PROJECT_DIR}/scripts/fix_srt_names.py" \
+        "${WORK_DIR}/srt" \
+        -o "${WORK_DIR}/fixed" \
+        "${FIX_ARGS[@]}" 2>&1 || {
+        log "Warning: name fix script had issues, using original SRT"
+        cp "${SRT_OUTPUT}.srt" "${WORK_DIR}/fixed/${RETRANSCRIBE_ID}.srt"
+    }
+
+    FIXED_SRT="${WORK_DIR}/fixed/${RETRANSCRIBE_ID}.srt"
+    if [[ ! -f "$FIXED_SRT" ]]; then
+        log "Warning: fixed SRT not found at expected path, copying original"
+        cp "${SRT_OUTPUT}.srt" "$FIXED_SRT"
+    fi
+
+    cp "$FIXED_SRT" "${MIRROR_DIR}/${RETRANSCRIBE_ID}.srt"
+    log "SRT written to mirror."
+
+    log "Regenerating manifest.json..."
+    python3 "${PROJECT_DIR}/scripts/generate_manifest.py" "$MIRROR_DIR" || {
+        notify_error "Failed to generate manifest"
+        exit 1
+    }
+
+    log "Uploading SRT + manifest.json via SFTP..."
+    SFTP_BATCH=$(mktemp)
+    echo "cd ${SFTP_REMOTE_DIR}" >> "$SFTP_BATCH"
+    echo "put ${MIRROR_DIR}/${RETRANSCRIBE_ID}.srt" >> "$SFTP_BATCH"
+    echo "put ${MIRROR_DIR}/manifest.json" >> "$SFTP_BATCH"
+    echo "bye" >> "$SFTP_BATCH"
+
+    if ! sftp -b "$SFTP_BATCH" -i "${SFTP_KEY}" -P "${SFTP_PORT}" "${SFTP_USER}@${SFTP_HOST}"; then
+        rm -f "$SFTP_BATCH"
+        notify_error "SFTP upload failed"
+        exit 1
+    fi
+    rm -f "$SFTP_BATCH"
+
+    log "Verifying manifest on server..."
+    sleep 3
+    if curl -sf "$MANIFEST_URL" | python3 -c "import json,sys; m=json.load(sys.stdin); print(f'Manifest OK: {len(m[\"files\"])} file(s), version {m[\"version\"]}')" 2>/dev/null; then
+        log "Verification passed."
+    else
+        log "Warning: could not verify manifest. Check manually."
+    fi
+
+    log "=== Retranscribe complete: $RETRANSCRIBE_ID ==="
+    notify_success "Retranscribed episode $RETRANSCRIBE_ID"
+    exit 0
+fi
 
 # ---------------------------------------------------------------------------
 # Main
