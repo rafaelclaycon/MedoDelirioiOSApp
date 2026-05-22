@@ -45,15 +45,17 @@ struct NowPlayingView: View {
                 TranscriptFullView(transcriptProvider: transcriptProvider)
                     .environment(player)
             }
-//            .toolbar {
-//                ToolbarItem(placement: .primaryAction) {
-//                    Button {
-//                        showFullTranscript = true
-//                    } label: {
-//                        Image(systemName: "magnifyingglass")
-//                    }
-//                }
-//            }
+            .toolbar {
+                if FeatureFlag.isEnabled(.transcriptFullView) {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button {
+                            showFullTranscript = true
+                        } label: {
+                            Image(systemName: "magnifyingglass")
+                        }
+                    }
+                }
+            }
         }
         .presentationDragIndicator(.visible)
         .topToast($toast)
