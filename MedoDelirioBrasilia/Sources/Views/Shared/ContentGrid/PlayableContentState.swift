@@ -71,7 +71,7 @@ final class PlayableContentState {
 extension PlayableContentState {
 
     public func onViewAppeared() {
-        loadFavorites()
+        Task { loadFavorites() }
     }
 
     public func play(

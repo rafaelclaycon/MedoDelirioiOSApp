@@ -12,6 +12,10 @@ struct SearchSuggestionsView: View {
     /// Tracks whether the entrance animations have been shown this session (static to persist across view recreations)
     private static var hasShownEntranceAnimations = false
 
+    /// Locked in once per session; persists across view recreations via the static flag.
+    private static var sessionModeDecided = false
+    private static var sessionMode: FeaturedSectionMode = .episode
+
     @State var recent: [String]
     @Bindable var playable: PlayableContentState
     let trendsService: TrendsServiceProtocol
@@ -24,6 +28,7 @@ struct SearchSuggestionsView: View {
     @State private var popularContent: LoadingState<[AnyEquatableMedoContent]> = .loading
     @State private var popularReactions: LoadingState<[Reaction]> = .loading
     @State private var shouldAnimateEntrance: Bool = false
+    @State private var featuredMode: FeaturedSectionMode = .episode
 
     @State private var columns: [GridItem] = []
 
@@ -65,9 +70,12 @@ struct SearchSuggestionsView: View {
                     recentSearchesSection
                 }
 
-                // Popular Episode
+                // Featured (episode or donation)
                 if FeatureFlag.isEnabled(.snowLeopard) {
-                    popularEpisodeSection
+                    switch featuredMode {
+                    case .episode: featuredSection
+                    case .donation: featuredDonationSection
+                    }
                 }
 
                 // Popular Content
@@ -93,6 +101,13 @@ struct SearchSuggestionsView: View {
             if shouldAnimateEntrance {
                 Self.hasShownEntranceAnimations = true
             }
+
+            // Decide featured mode once per session
+            if !Self.sessionModeDecided {
+                Self.sessionMode = Self.decideFeaturedMode()
+                Self.sessionModeDecided = true
+            }
+            featuredMode = Self.sessionMode
 
             playable.onViewAppeared()
             Task {
@@ -136,10 +151,40 @@ struct SearchSuggestionsView: View {
         }
     }
 
-    private var popularEpisodeSection: some View {
+    // MARK: - Featured Section
+
+    enum FeaturedSectionMode {
+        case episode, donation
+    }
+
+    private enum FeaturedSectionKeys {
+        static let episodeShownCount = "featured_episode_shown_count"
+        static let donationShownCount = "featured_donation_shown_count"
+    }
+
+    /// Picks the mode that has been shown fewer times this far, increments its counter,
+    /// and returns it. Ties go to `.episode` since that's the primary content.
+    /// Only call this once per session — the result is frozen in `sessionMode`.
+    private static func decideFeaturedMode() -> FeaturedSectionMode {
+        let episodeCount = UserDefaults.standard.integer(forKey: FeaturedSectionKeys.episodeShownCount)
+        let donationCount = UserDefaults.standard.integer(forKey: FeaturedSectionKeys.donationShownCount)
+
+        let mode: FeaturedSectionMode = donationCount < episodeCount ? .donation : .episode
+
+        switch mode {
+        case .episode:
+            UserDefaults.standard.set(episodeCount + 1, forKey: FeaturedSectionKeys.episodeShownCount)
+        case .donation:
+            UserDefaults.standard.set(donationCount + 1, forKey: FeaturedSectionKeys.donationShownCount)
+        }
+
+        return mode
+    }
+
+    private var featuredSection: some View {
         VStack(alignment: .leading, spacing: .spacing(.medium)) {
             HStack {
-                Text("Popular Essa Semana")
+                Text("Em Destaque")
                     .font(.headline)
 
                 Spacer()
@@ -159,7 +204,20 @@ struct SearchSuggestionsView: View {
                 }
             }
 
-            MockEpisodeCard()
+            FeaturedEpisodeCard()
+        }
+    }
+
+    private var featuredDonationSection: some View {
+        VStack(alignment: .leading, spacing: .spacing(.medium)) {
+            HStack {
+                Text("Em Destaque")
+                    .font(.headline)
+
+                Spacer()
+            }
+
+            FeaturedDonationView()
         }
     }
 
@@ -449,31 +507,34 @@ extension SearchSuggestionsView {
         }
     }
 
-    struct MockEpisodeCard: View {
+    struct FeaturedEpisodeCard: View {
 
         var body: some View {
             HStack(spacing: .spacing(.xSmall)) {
                 VStack(alignment: .leading, spacing: .spacing(.xSmall)) {
-                    Text("8 DE MAIO DE 2026")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .textCase(.uppercase)
-
                     Text("II - 2026.31 - Donald Loves Lula")
                         .font(.title3)
                         .fontDesign(.serif)
                         .lineLimit(2)
 
-                    Text("8 reproduções")
+                    Text("8 DE MAIO DE 2026")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textCase(.uppercase)
+
+                    Text("8 reproduções na última semana")
                         .font(.caption)
                 }
 
                 Spacer(minLength: 0)
 
                 VStack(spacing: .spacing(.small)) {
-                    Image(systemName: "play.circle")
-                        .font(.largeTitle)
-                        .foregroundStyle(.blue)
+                    Button {} label: {
+                        Image(systemName: "play.fill")
+                            .font(.title2)
+                            .padding(.vertical, .spacing(.xxxSmall))
+                    }
+                    .capsule(colored: .accentColor)
 
                     Text("1:23:45")
                         .font(.caption)
@@ -483,6 +544,63 @@ extension SearchSuggestionsView {
                 .frame(width: 60)
             }
             .padding(.vertical, .spacing(.small))
+        }
+    }
+
+    struct FeaturedDonationView: View {
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: .spacing(.small)) {
+                Text("Gosta do app? Ajude a mantê-lo vivo com uma contribuição.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                HStack(spacing: .spacing(.medium)) {
+                    DonationTierCard(
+                        emoji: "☕",
+                        title: "Café",
+                        price: "R$ 9,90"
+                    )
+
+                    DonationTierCard(
+                        emoji: "❤️",
+                        title: "Mensal",
+                        price: "R$ 19,90"
+                    )
+                }
+            }
+        }
+
+        struct DonationTierCard: View {
+
+            let emoji: String
+            let title: String
+            let price: String
+
+            var body: some View {
+                HStack(spacing: .spacing(.small)) {
+                    Text(emoji)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(title)
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+
+                        Text(price)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer(minLength: 0)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, .spacing(.medium))
+                .padding(.vertical, .spacing(.small))
+                .background(
+                    RoundedRectangle(cornerRadius: .spacing(.medium), style: .continuous)
+                        .fill(Color.gray.opacity(0.15))
+                )
+            }
         }
     }
 
