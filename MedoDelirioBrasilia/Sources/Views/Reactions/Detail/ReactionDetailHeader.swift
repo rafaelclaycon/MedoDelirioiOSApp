@@ -18,49 +18,40 @@ struct ReactionDetailHeader: View {
 
     @ScaledMetric(relativeTo: .caption) private var attURLSymbolWidth: CGFloat = 12
 
+    @State private var showImageCredits = false
+
     var body: some View {
         VStack(alignment: .leading) {
             Spacer()
 
             HStack {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(title)
-                        .font(.largeTitle)
-                        .bold()
-                        .foregroundStyle(.white)
-                        .shadow(color: .black, radius: 4, x: 2, y: 2)
-
-                    Text(subtitle)
-                        .foregroundStyle(.white)
-                        .shadow(color: .black, radius: 6, x: 1, y: 2)
-
-                    if let attributionText, let attributionURL {
-                        Button {
-                            OpenUtility.open(attributionURL)
-                        } label: {
-                            HStack(spacing: .spacing(.xSmall)) {
-                                Text("📸  " + attributionText)
-                                    .font(.caption)
-                                    .bold()
-
-                                Image(systemName: "rectangle.portrait.and.arrow.forward")
-                                    .resizable()
-                                    .scaledToFit()
-                                    .bold()
-                                    .frame(width: attURLSymbolWidth)
-                            }
-                            .foregroundStyle(.white)
-                            .shadow(color: .black, radius: 6, x: 1, y: 2)
-
-                        }
-                        .padding(.top, .spacing(.small))
-                    }
-                }
+                Text(subtitle)
+                    .font(.footnote)
+                    .foregroundStyle(.white)
+                    .shadow(color: .black, radius: 6, x: 1, y: 2)
 
                 Spacer()
+
+                if attributionText != nil, attributionURL != nil {
+                    Button {
+                        showImageCredits.toggle()
+                    } label: {
+                        Text("📸 ")
+                            .font(.body)
+                            .bold()
+                            .shadow(color: .black, radius: 6, x: 1, y: 2)
+                    }
+                }
             }
-            .padding([.top,.leading,.trailing], 22)
+            .padding([.top, .leading, .trailing], 22)
             .padding(.bottom, attributionText != nil ? 12 : 22)
+        }
+        .overlay {
+            Text(title)
+                .font(.largeTitle)
+                .bold()
+                .foregroundStyle(.white)
+                .shadow(color: .black, radius: 4, x: 2, y: 2)
         }
         .background {
             if #available(iOS 26.0, *) {
@@ -71,6 +62,22 @@ struct ReactionDetailHeader: View {
             }
         }
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+        .alert(
+            "Créditos da Imagem",
+            isPresented: $showImageCredits,
+            actions: {
+                Button("Visitar Fonte") {
+                    OpenUtility.open(attributionURL!)
+                }
+
+                Button("Fechar", role: .cancel) {
+                    showImageCredits.toggle()
+                }
+            },
+            message: {
+                Text(attributionText ?? "")
+            }
+        )
     }
 
     var image: some View {
@@ -97,8 +104,8 @@ struct ReactionDetailHeader: View {
 #Preview {
     VStack {
         ReactionDetailHeader(
-            title: Reaction.acidMock.title,
-            subtitle: "28 sons. Atualizada há 14 horas.",
+            title: "deboche",
+            subtitle: "20 itens. Atualizada há 1 ano.",
             imageUrl: Reaction.acidMock.image,
             attributionText: "GABRIELA BILÓ EM INSTAGRAM.",
             attributionURL: URL(string: "https://www.instagram.com/gabriela.bilo")!
