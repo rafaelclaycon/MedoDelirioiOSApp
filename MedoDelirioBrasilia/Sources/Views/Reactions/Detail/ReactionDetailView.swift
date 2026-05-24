@@ -61,14 +61,21 @@ struct ReactionDetailView: View {
         GeometryReader { geometry in
             ScrollView {
                 VStack(spacing: .spacing(.medium)) {
-                    ReactionDetailHeader(
-                        title: viewModel.reaction.title,
-                        subtitle: viewModel.subtitle,
-                        imageUrl: viewModel.reaction.image,
-                        attributionText: viewModel.reaction.attributionText,
-                        attributionURL: viewModel.reaction.attributionURL
-                    )
+                    GeometryReader { headerProxy in
+                        let offset = headerProxy.frame(in: .global).minY
+                        let extraHeight = max(0, offset)
+                        ReactionDetailHeader(
+                            title: viewModel.reaction.title,
+                            subtitle: viewModel.subtitle,
+                            imageUrl: viewModel.reaction.image,
+                            attributionText: viewModel.reaction.attributionText,
+                            attributionURL: viewModel.reaction.attributionURL
+                        )
+                        .frame(height: 260 + extraHeight)
+                        .offset(y: -extraHeight)
+                    }
                     .frame(height: 260)
+                    .clipShape(TopOpenRectangle())
                     .padding(.bottom, 6)
 
                     ContentGrid(
@@ -146,6 +153,23 @@ struct ReactionDetailView: View {
 // MARK: - Subviews
 
 extension ReactionDetailView {
+
+    /// A rectangle clip shape that is open at the top — content can render far
+    /// above the view's bounds (so the stretchy header image fills the
+    /// overscroll gap), while still clipping anything below the bottom edge.
+    struct TopOpenRectangle: Shape {
+
+        func path(in rect: CGRect) -> Path {
+            Path(
+                CGRect(
+                    x: rect.minX,
+                    y: rect.minY - 10_000,
+                    width: rect.width,
+                    height: rect.height + 10_000
+                )
+            )
+        }
+    }
 
     struct ToolbarControls: ToolbarContent {
 

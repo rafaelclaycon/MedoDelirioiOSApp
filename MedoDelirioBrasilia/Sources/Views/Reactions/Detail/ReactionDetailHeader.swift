@@ -52,6 +52,7 @@ struct ReactionDetailHeader: View {
                 .bold()
                 .foregroundStyle(.white)
                 .shadow(color: .black, radius: 4, x: 2, y: 2)
+                .offset(y: 30)
         }
         .background {
             if #available(iOS 26.0, *) {
@@ -95,8 +96,7 @@ struct ReactionDetailHeader: View {
             .overlay(Color.black.opacity(0.3))
             .blur(radius: 1)
             .scaleEffect(1.05)
-            .frame(height: 260)
-            //.frame(width: headerPhotoGeometry.size.width, height: self.getHeightForHeaderImage(headerPhotoGeometry))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipped()
     }
 }
