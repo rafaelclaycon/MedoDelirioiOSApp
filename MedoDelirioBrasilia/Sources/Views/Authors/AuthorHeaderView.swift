@@ -67,46 +67,38 @@ extension AuthorHeaderView {
         let height: CGFloat
         var blurAndDarken: Bool = false
 
-        // MARK: - Computed Properties
-
-        private func getScrollOffset(_ geometry: GeometryProxy) -> CGFloat {
-            geometry.frame(in: .global).minY
-        }
-
-        private func getOffsetForHeaderImage(_ geometry: GeometryProxy) -> CGFloat {
-            let offset = getScrollOffset(geometry)
-            // Image was pulled down
-            if offset > 0 {
-                return -offset
-            }
-            return 0
-        }
-
-        private func getHeightForHeaderImage(_ geometry: GeometryProxy) -> CGFloat {
-            let offset = getScrollOffset(geometry)
-            let imageHeight = geometry.size.height
-            if offset > 0 {
-                return imageHeight + offset
-            }
-            return imageHeight
-        }
-
         // MARK: - View Body
 
         var body: some View {
-            GeometryReader { headerPhotoGeometry in
-                if #available(iOS 26.0, *) {
-                    image(proxy: headerPhotoGeometry)
-                        .backgroundExtensionEffect()
-                } else {
-                    image(proxy: headerPhotoGeometry)
-                }
+            GeometryReader { proxy in
+                let offset = proxy.frame(in: .global).minY
+                // Only stretch when the scroll view is pulled down past the top.
+                let extraHeight = max(0, offset)
+
+                Color.clear
+                    .frame(width: proxy.size.width, height: height + extraHeight)
+                    .background {
+                        // The background-extension effect must wrap the *image*,
+                        // not the grow/offset transform. On iOS 26 applying it
+                        // after the offset pins the image and kills the stretch.
+                        if #available(iOS 26.0, *) {
+                            image
+                                .backgroundExtensionEffect()
+                        } else {
+                            image
+                        }
+                    }
+                    .clipped()
+                    .offset(y: -extraHeight)
             }
             .frame(height: height)
+            // Clip the bottom (so the image / background-extension effect can't
+            // leak into the content below) while leaving the top open, so the
+            // photo can still stretch upward to fill the overscroll gap on pull.
+            .clipShape(TopOpenRectangle())
         }
 
-        @ViewBuilder
-        func image(proxy: GeometryProxy) -> some View {
+        private var image: some View {
             KFImage(photoUrl)
                 .placeholder {
                     Image(systemName: "photo.on.rectangle")
@@ -121,12 +113,8 @@ extension AuthorHeaderView {
                 .overlay(blurAndDarken ? Color.black.opacity(0.3) : Color.clear)
                 .blur(radius: blurAndDarken ? 5 : 0)
                 .scaleEffect(blurAndDarken ? 1.05 : 1)
-                .frame(
-                    width: proxy.size.width,
-                    height: self.getHeightForHeaderImage(proxy)
-                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipped()
-                .offset(x: 0, y: self.getOffsetForHeaderImage(proxy))
         }
     }
 

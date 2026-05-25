@@ -154,23 +154,6 @@ struct ReactionDetailView: View {
 
 extension ReactionDetailView {
 
-    /// A rectangle clip shape that is open at the top — content can render far
-    /// above the view's bounds (so the stretchy header image fills the
-    /// overscroll gap), while still clipping anything below the bottom edge.
-    struct TopOpenRectangle: Shape {
-
-        func path(in rect: CGRect) -> Path {
-            Path(
-                CGRect(
-                    x: rect.minX,
-                    y: rect.minY - 10_000,
-                    width: rect.width,
-                    height: rect.height + 10_000
-                )
-            )
-        }
-    }
-
     struct ToolbarControls: ToolbarContent {
 
         @Binding var contentSortOption: Int
