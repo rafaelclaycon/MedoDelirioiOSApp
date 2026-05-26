@@ -4,6 +4,13 @@
 <dict>
 	<key>aps-environment</key>
 	<string>development</string>
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<!-- Beta / dev server -->
+		<string>applinks:api.medodelirioios.club</string>
+		<!-- Production server -->
+		<string>applinks:medodelirioios.com</string>
+	</array>
 	<key>com.apple.security.application-groups</key>
 	<array>
 		<string>group.com.rafaelschmitt.MedoDelirioBrasilia</string>

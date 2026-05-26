@@ -72,6 +72,17 @@ struct EpisodeDetailView: View {
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
+                ShareLink(
+                    item: URL(string: APIConfig.baseLinkURL + "episodio/\(episode.id)")!,
+                    subject: Text(episode.title),
+                    message: Text(episode.title)
+                ) {
+                    Image(systemName: "square.and.arrow.up")
+                }
+                .accessibilityLabel("Compartilhar episódio")
+            }
+
+            ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     favoritesStore.toggle(episode.id)
                 } label: {

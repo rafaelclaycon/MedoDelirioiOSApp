@@ -14,6 +14,7 @@ struct MainView: View {
 
     @Environment(\.scenePhase) private var scenePhase
     @Environment(TranscriptDownloadService.self) private var transcriptDownloadService
+    @Environment(DeepLinkHandler.self) private var deepLinkHandler
 
     private var tabSelection: Binding<PhoneTab>
     private var padSelection: Binding<PadScreen?>
@@ -50,6 +51,11 @@ struct MainView: View {
 
     // Content Update
     @State private var syncValues = SyncValues()
+
+    // Deep link error
+    @State private var showDeepLinkError: Bool = false
+    @State private var deepLinkErrorTitle: String = ""
+    @State private var deepLinkErrorMessage: String = ""
 
     // Episodes
     @State private var episodePlayer = EpisodePlayer()
@@ -552,6 +558,15 @@ struct MainView: View {
             showNowPlaying = false
             episodePlayer.dismissNowPlaying = false
         }
+        .onChange(of: deepLinkHandler.pendingDeepLink) { _, deepLink in
+            guard let deepLink else { return }
+            handleDeepLink(deepLink)
+        }
+        .alert(deepLinkErrorTitle, isPresented: $showDeepLinkError) {
+            Button("OK") { }
+        } message: {
+            Text(deepLinkErrorMessage)
+        }
         .onAppear {
             episodePlayer.setSceneActive(scenePhase == .active)
             episodePlayer.progressStore = episodeProgressStore
@@ -696,6 +711,41 @@ struct MainView: View {
     }
 
     // MARK: - Functions
+
+    private func handleDeepLink(_ deepLink: DeepLink) {
+        deepLinkHandler.pendingDeepLink = nil
+
+        switch deepLink {
+        case .reaction(let id):
+            tabSelection.wrappedValue = .reactions
+            Task {
+                do {
+                    let reaction = try await reactionRepository.reaction(id)
+                    reactionsPath.append(GeneralNavigationDestination.reactionDetail(reaction))
+                } catch {
+                    deepLinkErrorTitle = "Opa! 😅"
+                    deepLinkErrorMessage = "Essa reação sumiu! Deve ter ido pra alguma CPI sem avisar. Tente novamente mais tarde."
+                    showDeepLinkError = true
+                }
+            }
+
+        case .episode(let id):
+            tabSelection.wrappedValue = .episodes
+            do {
+                guard let episode = try LocalDatabase.shared.podcastEpisode(id: id) else {
+                    deepLinkErrorTitle = "Opa! 😅"
+                    deepLinkErrorMessage = "Esse episódio saiu correndo e não conseguimos encontrá-lo. Tente novamente mais tarde."
+                    showDeepLinkError = true
+                    return
+                }
+                episodesPath.append(episode)
+            } catch {
+                deepLinkErrorTitle = "Opa! 😅"
+                deepLinkErrorMessage = "Esse episódio saiu correndo e não conseguimos encontrá-lo. Tente novamente mais tarde."
+                showDeepLinkError = true
+            }
+        }
+    }
 
     private func sendUserPersonalTrendsToServerIfEnabled() {
         Task {

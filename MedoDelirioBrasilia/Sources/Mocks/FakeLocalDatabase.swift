@@ -358,6 +358,7 @@ class FakeLocalDatabase: LocalDatabaseProtocol {
     // Podcast Episode Cache
 
     func allPodcastEpisodes() throws -> [PodcastEpisode] { [] }
+    func podcastEpisode(id: String) throws -> PodcastEpisode? { nil }
     func upsertPodcastEpisodes(_ episodes: [PodcastEpisode]) throws {}
 
     // Episode Bookmark

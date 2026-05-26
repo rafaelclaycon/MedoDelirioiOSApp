@@ -13,6 +13,7 @@ struct ReactionDetailView: View {
     @State private var contentGridViewModel: ContentGridViewModel
 
     @State private var columns: [GridItem] = [GridItem(.flexible()), GridItem(.flexible())]
+    @State private var showShareSheet = false
 
     private var contentGridMode: Binding<ContentGridMode>
 
@@ -113,6 +114,7 @@ struct ReactionDetailView: View {
                     ToolbarControls(
                         contentSortOption: $viewModel.contentSortOption,
                         playStopAction: { contentGridViewModel.onPlayStopPlaylistSelected(loadedContent: loadedContent) },
+                        shareAction: { showShareSheet = true },
                         startSelectingAction: {
                             contentGridViewModel.onEnterMultiSelectModeSelected(
                                 loadedContent: loadedContent,
@@ -123,6 +125,12 @@ struct ReactionDetailView: View {
                         soundArrayIsEmpty: soundArrayIsEmpty,
                         isSelecting: contentGridMode.wrappedValue == .selection
                     )
+                }
+                .sheet(isPresented: $showShareSheet) {
+                    if let url = URL(string: "\(APIConfig.baseLinkURL)/reacao/\(viewModel.reaction.id)") {
+                        ActivityViewController(activityItems: [url])
+                            .presentationDetents([.medium, .large])
+                    }
                 }
                 .oneTimeTask {
                     await viewModel.onViewLoaded()
@@ -158,6 +166,7 @@ extension ReactionDetailView {
 
         @Binding var contentSortOption: Int
         let playStopAction: () -> Void
+        let shareAction: () -> Void
         let startSelectingAction: () -> Void
         let isPlayingPlaylist: Bool
         let soundArrayIsEmpty: Bool
@@ -176,6 +185,19 @@ extension ReactionDetailView {
                         Image(systemName: isPlayingPlaylist ? "stop.fill" : "play.fill")
                     }
                     .disabled(playStopIsDisabled)
+                }
+
+                if FeatureFlag.isEnabled(.reactionShareButton) {
+                    ToolbarSpacer(.fixed)
+
+                    ToolbarItem {
+                        Button {
+                            shareAction()
+                        } label: {
+                            Image(systemName: "square.and.arrow.up")
+                        }
+                        .disabled(isSelecting)
+                    }
                 }
 
                 ToolbarSpacer(.fixed)
@@ -213,6 +235,17 @@ extension ReactionDetailView {
                             .opacity(playStopIsDisabled ? 0.5 : 1.0)
                     }
                     .disabled(playStopIsDisabled)
+                }
+
+                if FeatureFlag.isEnabled(.reactionShareButton) {
+                    ToolbarItem {
+                        Button {
+                            shareAction()
+                        } label: {
+                            Image(systemName: "square.and.arrow.up")
+                        }
+                        .disabled(isSelecting)
+                    }
                 }
 
                 ToolbarItem {

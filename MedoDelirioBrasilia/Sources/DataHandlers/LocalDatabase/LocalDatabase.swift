@@ -112,6 +112,7 @@ internal protocol LocalDatabaseProtocol {
 
     // Podcast Episode Cache
     func allPodcastEpisodes() throws -> [PodcastEpisode]
+    func podcastEpisode(id: String) throws -> PodcastEpisode?
     func upsertPodcastEpisodes(_ episodes: [PodcastEpisode]) throws
 
     // Episode Listen Log

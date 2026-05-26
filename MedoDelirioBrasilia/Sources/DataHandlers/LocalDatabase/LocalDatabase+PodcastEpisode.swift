@@ -40,6 +40,23 @@ extension LocalDatabase {
         }
     }
 
+    func podcastEpisode(id: String) throws -> PodcastEpisode? {
+        let query = podcastEpisodeTable.filter(Columns.id == id).limit(1)
+        return try db.prepare(query).compactMap { row -> PodcastEpisode? in
+            guard let audioURL = URL(string: row[Columns.audioURL]) else { return nil }
+            return PodcastEpisode(
+                id: row[Columns.id],
+                title: row[Columns.title],
+                pubDate: row[Columns.pubDate],
+                audioURL: audioURL,
+                description: row[Columns.description],
+                imageURL: row[Columns.imageURL].flatMap { URL(string: $0) },
+                duration: row[Columns.duration],
+                explicit: row[Columns.isExplicit]
+            )
+        }.first
+    }
+
     func upsertPodcastEpisodes(_ episodes: [PodcastEpisode]) throws {
         try db.transaction {
             for episode in episodes {

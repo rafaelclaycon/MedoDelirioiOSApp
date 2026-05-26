@@ -21,6 +21,7 @@ struct MedoDelirioBrasiliaApp: App {
 
     @State private var helper = PlayRandomSoundHelper()
     @State private var transcriptDownloadService = TranscriptDownloadService()
+    @State private var deepLinkHandler = DeepLinkHandler()
 
     private let contentRepository = ContentRepository(database: LocalDatabase.shared)
 
@@ -43,30 +44,48 @@ struct MedoDelirioBrasiliaApp: App {
             }
             .environment(helper)
             .environment(transcriptDownloadService)
+            .environment(deepLinkHandler)
         }
     }
 
     private func handleURL(_ url: URL) {
-        guard url.scheme == "medodelirio" else { return }
-        if url.host == "playrandomsound" {
-            tabSelection = .sounds
+        // Custom URL scheme: medodelirio://
+        if url.scheme == "medodelirio" {
+            if url.host == "playrandomsound" {
+                tabSelection = .sounds
 
-            let includeOffensive = UserSettings().getShowExplicitContent()
+                let includeOffensive = UserSettings().getShowExplicitContent()
 
-            do {
-                guard
-                    let randomSound = try LocalDatabase.shared.randomSound(includeOffensive: includeOffensive)
-                else { return }
-                helper.soundIdToPlay = randomSound.id
-                Task {
-                    await AnalyticsService().send(action: "didPlayRandomSound(\(randomSound.title))")
-                }
-            } catch {
-                print("Erro obtendo som aleatório: \(error.localizedDescription)")
-                Task {
-                    await AnalyticsService().send(action: "hadErrorPlayingRandomSound(\(error.localizedDescription))")
+                do {
+                    guard
+                        let randomSound = try LocalDatabase.shared.randomSound(includeOffensive: includeOffensive)
+                    else { return }
+                    helper.soundIdToPlay = randomSound.id
+                    Task {
+                        await AnalyticsService().send(action: "didPlayRandomSound(\(randomSound.title))")
+                    }
+                } catch {
+                    print("Erro obtendo som aleatório: \(error.localizedDescription)")
+                    Task {
+                        await AnalyticsService().send(action: "hadErrorPlayingRandomSound(\(error.localizedDescription))")
+                    }
                 }
             }
+            return
+        }
+
+        // Universal links: https://api.medodelirioios.club/{path} or https://medodelirioios.com/{path}
+        guard url.scheme == "https" else { return }
+        let parts = url.pathComponents.filter { $0 != "/" }
+        guard parts.count >= 2 else { return }
+
+        switch parts[0] {
+        case "reacao":
+            deepLinkHandler.pendingDeepLink = .reaction(id: parts[1])
+        case "episodio":
+            deepLinkHandler.pendingDeepLink = .episode(id: parts[1])
+        default:
+            break
         }
     }
 }

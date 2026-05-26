@@ -23,4 +23,13 @@ final class APIConfig {
     static var apiURL: String {
         self.baseServerURL + "api/"
     }
+
+    static var baseLinkURL: String {
+        switch ProcessInfo.processInfo.environment["api_environment"] {
+        case "dev":
+            return "https://api.medodelirioios.club/"
+        default:
+            return "https://medodelirioios.com/"
+        }
+    }
 }
