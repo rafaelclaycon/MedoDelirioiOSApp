@@ -614,6 +614,7 @@ struct NowPlayingView: View {
         guard !isPreparingShare, let episode = player.currentEpisode else { return }
         guard let shareURL = URL(string: APIConfig.baseLinkURL + "episodio/\(episode.id)") else { return }
         isPreparingShare = true
+        Task { await AnalyticsService().send(originatingScreen: "NowPlaying", action: "didTapShare(\(episode.id))") }
 
         Task {
             let meta = LPLinkMetadata()

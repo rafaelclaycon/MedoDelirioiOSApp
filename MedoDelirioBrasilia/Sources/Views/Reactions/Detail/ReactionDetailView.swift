@@ -172,6 +172,7 @@ extension ReactionDetailView {
             return
         }
         isPreparingShare = true
+        Task { await AnalyticsService().send(originatingScreen: "ReactionDetail", action: "didTapShare(\(viewModel.reaction.id))") }
 
         Task {
             let meta = LPLinkMetadata()

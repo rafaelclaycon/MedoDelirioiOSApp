@@ -127,6 +127,7 @@ struct EpisodeDetailView: View {
             return
         }
         isPreparingShare = true
+        Task { await AnalyticsService().send(originatingScreen: "EpisodeDetail", action: "didTapShare(\(episode.id))") }
 
         Task {
             let meta = LPLinkMetadata()
