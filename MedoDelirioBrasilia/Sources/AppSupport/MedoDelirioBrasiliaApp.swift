@@ -76,6 +76,14 @@ struct MedoDelirioBrasiliaApp: App {
                         await AnalyticsService().send(action: "hadErrorPlayingRandomSound(\(error.localizedDescription))")
                     }
                 }
+            } else if url.host == "sound",
+                      let soundId = url.pathComponents.dropFirst().first,
+                      !soundId.isEmpty {
+                tabSelection = .sounds
+                helper.soundIdToPlay = soundId
+                Task {
+                    await AnalyticsService().send(action: "widgetDidPlaySound(\(soundId))")
+                }
             }
             return
         }

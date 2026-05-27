@@ -325,6 +325,11 @@ extension ContentRepository {
             ).map { AnyEquatableMedoContent($0) }
 
             allContent = sounds + songs
+
+            let cacheEntries = sounds
+                .filter { !$0.isOffensive }
+                .map { WidgetSoundCacheEntry(id: $0.id, title: $0.title, authorName: $0.subtitle, description: $0.description) }
+            WidgetSoundCache.write(cacheEntries)
         } catch {
             debugPrint(error)
         }
