@@ -11,11 +11,10 @@ import SwiftUI
 @main
 struct MedoDelirioWidgetBundle: WidgetBundle {
 
-    @WidgetBundleBuilder
     var body: some Widget {
         PlayRandomSoundControl()
-        if FeatureFlags.dailySoundWidgetEnabled {
-            DailySoundWidget()
-        }
+#if DAILY_SOUND_WIDGET_ENABLED
+        DailySoundWidget()
+#endif
     }
 }
