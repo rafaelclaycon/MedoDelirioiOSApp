@@ -5,6 +5,7 @@
 //  Created by Rafael Claycon Schmitt on 17/02/26.
 //
 
+import LinkPresentation
 import SwiftUI
 import Kingfisher
 
@@ -21,6 +22,9 @@ struct NowPlayingView: View {
     @State private var editingBookmark: EpisodeBookmark?
     @State private var bookmarksSortAscending: Bool = true
     @State private var showSidecastClip: Bool = false
+    @State private var isPreparingShare: Bool = false
+    @State private var shareLinkMetadata: LPLinkMetadata?
+    @State private var showShareSheet: Bool = false
     @State private var transcriptProvider: TranscriptProvider
     @AppStorage("showTranscript") private var showTranscript: Bool = false
     @State private var showBookmarks: Bool = false
@@ -62,6 +66,12 @@ struct NowPlayingView: View {
         .sheet(item: $editingBookmark) { bookmark in
             BookmarkEditView(bookmark: bookmark)
                 .environment(bookmarkStore)
+        }
+        .sheet(isPresented: $showShareSheet) {
+            if let metadata = shareLinkMetadata {
+                LinkMetadataShareSheet(metadata: metadata)
+                    .presentationDetents([.medium, .large])
+            }
         }
         .sheet(isPresented: $showSidecastClip) {
             if let episode = player.currentEpisode {
@@ -278,6 +288,17 @@ struct NowPlayingView: View {
                     toast = Toast(message: "Marcador Adicionado", type: .success)
                 }
             )
+
+            if FeatureFlag.isEnabled(.shareButton) {
+                GlassButton(
+                    symbol: isPreparingShare ? nil : "square.and.arrow.up",
+                    title: "Compartilhar",
+                    color: .clear,
+                    lightModeLabelColor: .clear,
+                    action: { prepareShare() }
+                )
+                .disabled(isPreparingShare)
+            }
 
             if FeatureFlag.isEnabled(.projectSidecast) {
                 GlassButton(
@@ -584,6 +605,30 @@ struct NowPlayingView: View {
             } label: {
                 Label("Excluir", systemImage: "trash")
             }
+        }
+    }
+
+    // MARK: - Share
+
+    private func prepareShare() {
+        guard !isPreparingShare, let episode = player.currentEpisode else { return }
+        guard let shareURL = URL(string: APIConfig.baseLinkURL + "episodio/\(episode.id)") else { return }
+        isPreparingShare = true
+
+        Task {
+            let meta = LPLinkMetadata()
+            meta.url = shareURL
+            meta.title = episode.title
+
+            if let imageURL = episode.imageURL,
+               let (data, _) = try? await URLSession.shared.data(from: imageURL),
+               let image = UIImage(data: data) {
+                meta.imageProvider = NSItemProvider(object: image)
+            }
+
+            shareLinkMetadata = meta
+            isPreparingShare = false
+            showShareSheet = true
         }
     }
 

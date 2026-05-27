@@ -5,6 +5,7 @@
 //  Created by Rafael Claycon Schmitt on 17/02/26.
 //
 
+import LinkPresentation
 import SwiftUI
 import Kingfisher
 
@@ -22,6 +23,11 @@ struct EpisodeDetailView: View {
     @State private var editingBookmark: EpisodeBookmark?
     @State private var bookmarksSortAscending: Bool = true
     @State private var showDeleteConfirmation: Bool = false
+
+    // Share
+    @State private var isPreparingShare: Bool = false
+    @State private var shareLinkMetadata: LPLinkMetadata?
+    @State private var showShareSheet: Bool = false
 
     private var isPlayed: Bool {
         playedStore.isPlayed(episode.id)
@@ -71,15 +77,19 @@ struct EpisodeDetailView: View {
             BookmarkEditView(bookmark: bookmark)
         }
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                ShareLink(
-                    item: URL(string: APIConfig.baseLinkURL + "episodio/\(episode.id)")!,
-                    subject: Text(episode.title),
-                    message: Text(episode.title)
-                ) {
-                    Image(systemName: "square.and.arrow.up")
+            if FeatureFlag.isEnabled(.shareButton) {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(action: prepareShare) {
+                        if isPreparingShare {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Image(systemName: "square.and.arrow.up")
+                        }
+                    }
+                    .disabled(isPreparingShare)
+                    .accessibilityLabel("Compartilhar episódio")
                 }
-                .accessibilityLabel("Compartilhar episódio")
             }
 
             ToolbarItem(placement: .topBarTrailing) {
@@ -92,6 +102,12 @@ struct EpisodeDetailView: View {
                 .accessibilityLabel(favoritesStore.isFavorite(episode.id) ? "Remover dos favoritos" : "Adicionar aos favoritos")
             }
         }
+        .sheet(isPresented: $showShareSheet) {
+            if let metadata = shareLinkMetadata {
+                LinkMetadataShareSheet(metadata: metadata)
+                    .presentationDetents([.medium, .large])
+            }
+        }
         .alert("Apagar Download", isPresented: $showDeleteConfirmation) {
             Button("Apagar", role: .destructive) {
                 try? FileManager.default.removeItem(at: EpisodePlayer.localFileURL(for: episode))
@@ -101,6 +117,34 @@ struct EpisodeDetailView: View {
             Text("O arquivo local deste episódio será removido. Você poderá baixá-lo novamente.")
         }
         .background(EpisodeDetailPlayerAlerts(player: episodePlayer))
+    }
+
+    // MARK: - Share
+
+    private func prepareShare() {
+        guard !isPreparingShare else { return }
+        guard let shareURL = URL(string: APIConfig.baseLinkURL + "episodio/\(episode.id)") else {
+            return
+        }
+        isPreparingShare = true
+
+        Task {
+            let meta = LPLinkMetadata()
+            meta.url = shareURL
+            meta.title = episode.title
+
+            // Download the episode thumbnail ourselves so iOS never falls back
+            // to the server's apple-touch-icon.
+            if let imageURL = episode.imageURL,
+               let (data, _) = try? await URLSession.shared.data(from: imageURL),
+               let image = UIImage(data: data) {
+                meta.imageProvider = NSItemProvider(object: image)
+            }
+
+            shareLinkMetadata = meta
+            isPreparingShare = false
+            showShareSheet = true
+        }
     }
 
     // MARK: - Header

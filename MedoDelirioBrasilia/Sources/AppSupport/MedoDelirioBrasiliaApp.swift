@@ -37,6 +37,10 @@ struct MedoDelirioBrasiliaApp: App {
                 userFolderRepository: userFolderRepository
             )
             .onOpenURL(perform: handleURL)
+            .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
+                guard let url = userActivity.webpageURL else { return }
+                handleURL(url)
+            }
             .onReceive(NotificationCenter.default.publisher(for: .navigateToTab)) { notification in
                 if let tab = notification.userInfo?[NavigateToTabKey.phoneTab] as? PhoneTab {
                     tabSelection = tab
@@ -48,8 +52,10 @@ struct MedoDelirioBrasiliaApp: App {
         }
     }
 
+    /// Single entry point for all incoming URLs.
+    /// Called by both `onOpenURL` (custom scheme + universal links when app is running)
+    /// and `onContinueUserActivity` (universal links on cold launch).
     private func handleURL(_ url: URL) {
-        // Custom URL scheme: medodelirio://
         if url.scheme == "medodelirio" {
             if url.host == "playrandomsound" {
                 tabSelection = .sounds
@@ -74,7 +80,6 @@ struct MedoDelirioBrasiliaApp: App {
             return
         }
 
-        // Universal links: https://api.medodelirioios.club/{path} or https://medodelirioios.com/{path}
         guard url.scheme == "https" else { return }
         let parts = url.pathComponents.filter { $0 != "/" }
         guard parts.count >= 2 else { return }

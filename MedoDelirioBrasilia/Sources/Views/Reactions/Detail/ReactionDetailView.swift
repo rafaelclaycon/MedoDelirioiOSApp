@@ -5,6 +5,7 @@
 //  Created by Rafael Claycon Schmitt on 28/06/22.
 //
 
+import LinkPresentation
 import SwiftUI
 
 struct ReactionDetailView: View {
@@ -13,6 +14,8 @@ struct ReactionDetailView: View {
     @State private var contentGridViewModel: ContentGridViewModel
 
     @State private var columns: [GridItem] = [GridItem(.flexible()), GridItem(.flexible())]
+    @State private var isPreparingShare: Bool = false
+    @State private var shareLinkMetadata: LPLinkMetadata?
     @State private var showShareSheet = false
 
     private var contentGridMode: Binding<ContentGridMode>
@@ -114,7 +117,7 @@ struct ReactionDetailView: View {
                     ToolbarControls(
                         contentSortOption: $viewModel.contentSortOption,
                         playStopAction: { contentGridViewModel.onPlayStopPlaylistSelected(loadedContent: loadedContent) },
-                        shareAction: { showShareSheet = true },
+                        shareAction: prepareShare,
                         startSelectingAction: {
                             contentGridViewModel.onEnterMultiSelectModeSelected(
                                 loadedContent: loadedContent,
@@ -123,12 +126,13 @@ struct ReactionDetailView: View {
                         },
                         isPlayingPlaylist: contentGridViewModel.isPlayingPlaylist,
                         soundArrayIsEmpty: soundArrayIsEmpty,
-                        isSelecting: contentGridMode.wrappedValue == .selection
+                        isSelecting: contentGridMode.wrappedValue == .selection,
+                        isPreparingShare: isPreparingShare
                     )
                 }
                 .sheet(isPresented: $showShareSheet) {
-                    if let url = URL(string: "\(APIConfig.baseLinkURL)/reacao/\(viewModel.reaction.id)") {
-                        ActivityViewController(activityItems: [url])
+                    if let metadata = shareLinkMetadata {
+                        LinkMetadataShareSheet(metadata: metadata)
                             .presentationDetents([.medium, .large])
                     }
                 }
@@ -158,6 +162,35 @@ struct ReactionDetailView: View {
     }
 }
 
+// MARK: - Share
+
+extension ReactionDetailView {
+
+    private func prepareShare() {
+        guard !isPreparingShare else { return }
+        guard let shareURL = URL(string: APIConfig.baseLinkURL + "reacao/\(viewModel.reaction.id)") else {
+            return
+        }
+        isPreparingShare = true
+
+        Task {
+            let meta = LPLinkMetadata()
+            meta.url = shareURL
+            meta.title = "Reação \(viewModel.reaction.title.capitalized(with: Locale(identifier: "pt_BR")))"
+
+            if let imageURL = URL(string: viewModel.reaction.image),
+               let (data, _) = try? await URLSession.shared.data(from: imageURL),
+               let image = UIImage(data: data) {
+                meta.imageProvider = NSItemProvider(object: image)
+            }
+
+            shareLinkMetadata = meta
+            isPreparingShare = false
+            showShareSheet = true
+        }
+    }
+}
+
 // MARK: - Subviews
 
 extension ReactionDetailView {
@@ -171,6 +204,7 @@ extension ReactionDetailView {
         let isPlayingPlaylist: Bool
         let soundArrayIsEmpty: Bool
         let isSelecting: Bool
+        var isPreparingShare: Bool = false
 
         private var playStopIsDisabled: Bool {
             soundArrayIsEmpty || isSelecting
@@ -187,16 +221,18 @@ extension ReactionDetailView {
                     .disabled(playStopIsDisabled)
                 }
 
-                if FeatureFlag.isEnabled(.reactionShareButton) {
+                if FeatureFlag.isEnabled(.shareButton) {
                     ToolbarSpacer(.fixed)
 
                     ToolbarItem {
-                        Button {
-                            shareAction()
-                        } label: {
-                            Image(systemName: "square.and.arrow.up")
+                        Button(action: shareAction) {
+                            if isPreparingShare {
+                                ProgressView().controlSize(.small)
+                            } else {
+                                Image(systemName: "square.and.arrow.up")
+                            }
                         }
-                        .disabled(isSelecting)
+                        .disabled(isSelecting || isPreparingShare)
                     }
                 }
 
@@ -237,14 +273,16 @@ extension ReactionDetailView {
                     .disabled(playStopIsDisabled)
                 }
 
-                if FeatureFlag.isEnabled(.reactionShareButton) {
+                if FeatureFlag.isEnabled(.shareButton) {
                     ToolbarItem {
-                        Button {
-                            shareAction()
-                        } label: {
-                            Image(systemName: "square.and.arrow.up")
+                        Button(action: shareAction) {
+                            if isPreparingShare {
+                                ProgressView().controlSize(.small)
+                            } else {
+                                Image(systemName: "square.and.arrow.up")
+                            }
                         }
-                        .disabled(isSelecting)
+                        .disabled(isSelecting || isPreparingShare)
                     }
                 }
 
