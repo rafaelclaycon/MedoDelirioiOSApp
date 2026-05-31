@@ -72,10 +72,12 @@ struct SearchSuggestionsView: View {
 
                 // Featured (episode or donation)
                 if FeatureFlag.isEnabled(.snowLeopard) {
-                    switch featuredMode {
-                    case .episode: featuredSection
-                    case .donation: featuredDonationSection
-                    }
+//                    switch featuredMode {
+//                    case .episode: featuredSection
+//                    case .donation: featuredDonationSection
+//                    }
+
+                    featuredDonationSection
                 }
 
                 // Popular Content
@@ -550,24 +552,43 @@ extension SearchSuggestionsView {
     struct FeaturedDonationView: View {
 
         var body: some View {
-            VStack(alignment: .leading, spacing: .spacing(.small)) {
-                Text("Gosta do app? Ajude a mantê-lo vivo com uma contribuição.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+            HStack(alignment: .center, spacing: .spacing(.medium)) {
+                Image("puss-in-boots-donation")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 90, height: 90)
+                    .clipShape(RoundedRectangle(cornerRadius: .spacing(.medium), style: .continuous))
 
-                HStack(spacing: .spacing(.medium)) {
+                VStack(spacing: .spacing(.small)) {
                     DonationTierCard(
                         emoji: "☕",
                         title: "Café",
-                        price: "R$ 9,90"
+                        price: "R$ 9,90",
+                        gradient: LinearGradient(
+                            colors: [
+                                Color(red: 1.0, green: 0.72, blue: 0.25),
+                                Color(red: 0.82, green: 0.38, blue: 0.08)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     )
 
                     DonationTierCard(
                         emoji: "❤️",
                         title: "Mensal",
-                        price: "R$ 19,90"
+                        price: "R$ 19,90",
+                        gradient: LinearGradient(
+                            colors: [
+                                Color(red: 0.96, green: 0.30, blue: 0.54),
+                                Color(red: 0.50, green: 0.18, blue: 0.88)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     )
                 }
+                .frame(maxWidth: .infinity)
             }
         }
 
@@ -576,30 +597,38 @@ extension SearchSuggestionsView {
             let emoji: String
             let title: String
             let price: String
+            let gradient: LinearGradient
 
             var body: some View {
-                HStack(spacing: .spacing(.small)) {
-                    Text(emoji)
+                Button {} label: {
+                    HStack(spacing: .spacing(.small)) {
+                        Text(emoji)
+                            .font(.title3)
 
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(title)
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(title)
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.white)
 
-                        Text(price)
+                            Text(price)
+                                .font(.caption)
+                                .foregroundStyle(.white.opacity(0.85))
+                        }
+
+                        Spacer(minLength: 0)
+
+                        Image(systemName: "chevron.right")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.white.opacity(0.7))
                     }
-
-                    Spacer(minLength: 0)
+                    .padding(.horizontal, .spacing(.medium))
+                    .padding(.vertical, .spacing(.small))
+                    .background(gradient)
+                    .clipShape(RoundedRectangle(cornerRadius: .spacing(.medium), style: .continuous))
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, .spacing(.medium))
-                .padding(.vertical, .spacing(.small))
-                .background(
-                    RoundedRectangle(cornerRadius: .spacing(.medium), style: .continuous)
-                        .fill(Color.gray.opacity(0.15))
-                )
+                .buttonStyle(.plain)
             }
         }
     }
@@ -730,6 +759,18 @@ extension SearchSuggestionsView {
 }
 
 // MARK: - Preview
+
+#Preview("Featured Donation Section") {
+    VStack(alignment: .leading, spacing: .spacing(.medium)) {
+        HStack {
+            Text("Em Destaque")
+                .font(.headline)
+            Spacer()
+        }
+        SearchSuggestionsView.FeaturedDonationView()
+    }
+    .padding(.spacing(.medium))
+}
 
 #Preview {
     GeometryReader { geometry in
