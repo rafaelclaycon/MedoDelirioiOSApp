@@ -5,6 +5,7 @@
 //  Created by Rafael Schmitt on 10/11/24.
 //
 
+import LinkPresentation
 import SwiftUI
 
 extension ReactionsView {
@@ -21,6 +22,10 @@ extension ReactionsView {
         @State private var removedReaction: Reaction?
         @State private var showReactionRemovedAlert = false
         @State private var shouldDisplayPinBanner: Bool = false
+
+        @State private var isPreparingShare: Bool = false
+        @State private var shareLinkMetadata: LPLinkMetadata?
+        @State private var showShareSheet = false
 
         var body: some View {
             ScrollView {
@@ -42,12 +47,13 @@ extension ReactionsView {
                                 InteractibleReactionItem(
                                     reaction: reaction,
                                     isPinned: true,
-                                    button:
+                                    options: {
                                         Button {
                                             unpinAction(reaction)
                                         } label: {
                                             Label("Desafixar", systemImage: "pin.slash")
-                                        },
+                                        }
+                                    },
                                     reactionRemovedAction: {
                                         print("Reaction removed: \($0.title)")
                                         removedReaction = $0
@@ -69,12 +75,16 @@ extension ReactionsView {
                             InteractibleReactionItem(
                                 reaction: reaction,
                                 isPinned: false,
-                                button:
+                                options: {
                                     Button {
                                         pinAction(reaction)
                                     } label: {
                                         Label("Fixar no Topo", systemImage: "pin")
-                                    },
+                                    }
+                                    Button { shareAction(reaction) } label: {
+                                        Label("Compartilhar", systemImage: "square.and.arrow.up")
+                                    }
+                                },
                                 reactionRemovedAction: { _ in }
                             )
                         }
@@ -89,6 +99,12 @@ extension ReactionsView {
             .onAppear {
                 shouldDisplayPinBanner = !AppPersistentMemory.shared.hasSeenPinReactionsBanner()
             }
+            .sheet(isPresented: $showShareSheet) {
+                if let metadata = shareLinkMetadata {
+                    LinkMetadataShareSheet(metadata: metadata)
+                        .presentationDetents([.medium, .large])
+                }
+            }
             .alert(
                 "A Reação \"\(removedReaction?.title ?? "")\" Foi Removida",
                 isPresented: $showReactionRemovedAlert,
@@ -101,14 +117,50 @@ extension ReactionsView {
                 message: { Text("Essa reação foi removida do servidor durante uma revisão. Pedimos desculpas pelo inconveniente.") }
             )
         }
+
+        // MARK: - Share
+
+        func shareAction(_ reaction: Reaction) {
+            guard !isPreparingShare else { return }
+            guard let shareURL = URL(string: APIConfig.baseLinkURL + "reacao/\(reaction.id)") else { return }
+            isPreparingShare = true
+
+            Task {
+                let meta = LPLinkMetadata()
+                meta.url = shareURL
+                meta.title = "Reação \(reaction.title.capitalized(with: Locale(identifier: "pt_BR")))"
+
+                if let imageURL = URL(string: reaction.image),
+                   let (data, _) = try? await URLSession.shared.data(from: imageURL),
+                   let image = UIImage(data: data) {
+                    meta.imageProvider = NSItemProvider(object: image)
+                }
+
+                shareLinkMetadata = meta
+                isPreparingShare = false
+                showShareSheet = true
+            }
+        }
     }
 
-    struct InteractibleReactionItem<Button: View>: View {
+    struct InteractibleReactionItem<Options: View>: View {
 
         let reaction: Reaction
         let isPinned: Bool
-        let button: Button
+        let options: Options
         let reactionRemovedAction: (Reaction) -> Void
+
+        init(
+            reaction: Reaction,
+            isPinned: Bool,
+            @ViewBuilder options: () -> Options,
+            reactionRemovedAction: @escaping (Reaction) -> Void
+        ) {
+            self.reaction = reaction
+            self.isPinned = isPinned
+            self.options = options()
+            self.reactionRemovedAction = reactionRemovedAction
+        }
 
         @Environment(\.push) var push
 
@@ -122,7 +174,7 @@ extension ReactionsView {
                     }
                 }
                 .contextMenu {
-                    button
+                    options
                 }
                 .contentShape(
                     .contextMenuPreview,
@@ -139,12 +191,13 @@ extension ReactionsView {
     ReactionsView.InteractibleReactionItem(
         reaction: Reaction.enthusiasmMock,
         isPinned: true,
-        button:
+        options: {
             Button {
                 print("Tapped")
             } label: {
                 Label("Desafixar", systemImage: "pin.slash")
-            },
+            }
+        },
         reactionRemovedAction: { _ in }
     )
     .padding()
