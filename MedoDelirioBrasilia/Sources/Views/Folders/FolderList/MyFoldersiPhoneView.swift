@@ -38,7 +38,6 @@ struct MyFoldersiPhoneView: View {
                     containerSize: containerSize
                 )
             }
-            .padding(.horizontal)
             .padding(.top, 7)
             .padding(.bottom, 18)
         }
