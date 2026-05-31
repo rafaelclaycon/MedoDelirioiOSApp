@@ -25,7 +25,6 @@ extension ReactionsView {
 
         @State private var isPreparingShare: Bool = false
         @State private var shareLinkMetadata: LPLinkMetadata?
-        @State private var showShareSheet = false
 
         var body: some View {
             ScrollView {
@@ -99,11 +98,9 @@ extension ReactionsView {
             .onAppear {
                 shouldDisplayPinBanner = !AppPersistentMemory.shared.hasSeenPinReactionsBanner()
             }
-            .sheet(isPresented: $showShareSheet) {
-                if let metadata = shareLinkMetadata {
-                    LinkMetadataShareSheet(metadata: metadata)
-                        .presentationDetents([.medium, .large])
-                }
+            .sheet(item: $shareLinkMetadata) { metadata in
+                LinkMetadataShareSheet(metadata: metadata)
+                    .presentationDetents([.medium, .large])
             }
             .alert(
                 "A Reação \"\(removedReaction?.title ?? "")\" Foi Removida",
@@ -138,7 +135,6 @@ extension ReactionsView {
 
                 shareLinkMetadata = meta
                 isPreparingShare = false
-                showShareSheet = true
             }
         }
     }

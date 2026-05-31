@@ -36,6 +36,10 @@ struct LinkMetadataShareSheet: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
+extension LPLinkMetadata: @retroactive Identifiable {
+    public var id: URL { url ?? URL(string: "about:blank")! }
+}
+
 final class LinkMetadataItemSource: NSObject, UIActivityItemSource {
 
     private let metadata: LPLinkMetadata
