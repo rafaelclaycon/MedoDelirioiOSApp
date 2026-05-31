@@ -95,16 +95,12 @@ struct ReactionsView: View {
         .toolbar {
             if case .loaded = viewModel.state {
                 ToolbarControls(
-                    showHowReactionsWorkAction: { viewModel.showHowReactionsWorkSheet.toggle() },
-                    showAddStuffSheetAction: { viewModel.showAddStuffSheet.toggle() }
+                    showHowReactionsWorkAction: { viewModel.showHowReactionsWorkSheet.toggle() }
                 )
             }
         }
         .sheet(isPresented: $viewModel.showHowReactionsWorkSheet) {
             HowReactionsWorkView()
-        }
-        .sheet(isPresented: $viewModel.showAddStuffSheet) {
-            AddReactionView()
         }
         .oneTimeTask {
             await viewModel.onViewLoaded()
@@ -150,7 +146,6 @@ extension ReactionsView {
     struct ToolbarControls: ToolbarContent {
 
         let showHowReactionsWorkAction: () -> Void
-        let showAddStuffSheetAction: () -> Void
 
         var body: some ToolbarContent {
             ToolbarItem {
@@ -158,14 +153,6 @@ extension ReactionsView {
                     showHowReactionsWorkAction()
                 } label: {
                     Image(systemName: "questionmark")
-                }
-            }
-
-            ToolbarItem {
-                Button {
-                    showAddStuffSheetAction()
-                } label: {
-                    Image(systemName: "plus")
                 }
             }
         }

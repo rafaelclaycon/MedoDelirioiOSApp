@@ -11,17 +11,19 @@ struct HowReactionsWorkView: View {
 
     @Environment(\.dismiss) var dismiss
 
+    private var exampleReaction: Reaction {
+        var choque = Reaction.choqueMock
+        choque.type = .pinnedExisting
+        return choque
+    }
+
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(alignment: .center, spacing: 30) {
-                    VStack(spacing: 0) {
-                        Text("Sobre as ")
-                            .font(.largeTitle)
-                            .bold()
-                            .foregroundColor(.primary)
-
-                        Text("Reações")
+                VStack(alignment: .leading, spacing: .spacing(.xxLarge)) {
+                    HStack {
+                        Spacer()
+                        Text("Reações?")
                             .font(.largeTitle)
                             .bold()
                             .foregroundColor(.clear)
@@ -37,11 +39,48 @@ struct HowReactionsWorkView: View {
                                         .bold()
                                 )
                             )
+                        Spacer()
                     }
-                    .multilineTextAlignment(.center)
 
-                    Text("A aba Reações é um jeito diferente de descubrir as vírgulas sonoras.\n\nEm 3 anos, chegamos a mais de 1.400 vírgulas, mas muitas acabam escondidas. Para facilitar a descoberta, criamos as Reações: escolha uma categoria e responda rápido com o som perfeito.\n\nUm “Tadinha! Que barra!” ou “Mas isso é… É enganar!” na hora certa muda tudo.")
-                        .multilineTextAlignment(.center)
+                    Text("O que são?")
+                        .font(.title3)
+                        .bold()
+                        .foregroundColor(.primary)
+
+                    Text("As Reações são um jeito diferente de descubrir as vírgulas sonoras.\n\nDesde o começo do app, a quantidade de sons e músicas disponíveis aumentou consideravelmente. Com o aumento da quantidade, muitos conteúdos acabam escondidos. As Reações facilitam a descoberta: escolha uma categoria e responda rápido com a vírgula perfeita.\n\nUm “Tadinha! Que barra!” ou “Mas isso é… É enganar!” na hora certa muda tudo.")
+                        .multilineTextAlignment(.leading)
+
+                    Text("Como adicionar?")
+                        .font(.title3)
+                        .bold()
+                        .foregroundColor(.primary)
+
+                    Text("Esse é um recurso colaborativo e online, as categorias são as mesmas para todos os usuários.\n\nPensou numa categoria nova diferente? Acha que uma vírgula não está na categoria certa ou que faltam vírgulas? Envie um e-mail.")
+                        .multilineTextAlignment(.leading)
+
+                    GlassButton(title: "Entrar em contato", color: .accentColor, fullWidth: true) {
+                        Task {
+                            await Mailman.openDefaultEmailApp(
+                                subject: Shared.Email.Reactions.suggestChangesSubject,
+                                body: Shared.Email.Reactions.suggestChangesBody
+                            )
+                        }
+                    }
+
+                    Text("Fixe as suas favoritas")
+                        .font(.title3)
+                        .bold()
+                        .foregroundColor(.primary)
+
+                    HStack {
+                        Spacer()
+                        ReactionItem(reaction: exampleReaction)
+                            .frame(width: 180)
+                        Spacer()
+                    }
+
+                    Text("Segure nas Reações que você usa bastante e escolha \"Fixar no Topo\" para acessá-las facilmente.")
+                        .multilineTextAlignment(.leading)
                 }
                 .padding(.horizontal, 30)
                 .padding(.vertical)
