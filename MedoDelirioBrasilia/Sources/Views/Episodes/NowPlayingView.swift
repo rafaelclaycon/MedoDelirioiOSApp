@@ -289,16 +289,14 @@ struct NowPlayingView: View {
                 }
             )
 
-            if FeatureFlag.isEnabled(.shareButton) {
-                GlassButton(
-                    symbol: isPreparingShare ? nil : "square.and.arrow.up",
-                    title: "Compartilhar",
-                    color: .clear,
-                    lightModeLabelColor: .clear,
-                    action: { prepareShare() }
-                )
-                .disabled(isPreparingShare)
-            }
+            GlassButton(
+                symbol: isPreparingShare ? nil : "square.and.arrow.up",
+                title: "Compartilhar",
+                color: .clear,
+                lightModeLabelColor: .clear,
+                action: { prepareShare() }
+            )
+            .disabled(isPreparingShare)
 
             if FeatureFlag.isEnabled(.projectSidecast) {
                 GlassButton(

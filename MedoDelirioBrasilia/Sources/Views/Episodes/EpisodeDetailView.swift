@@ -77,19 +77,17 @@ struct EpisodeDetailView: View {
             BookmarkEditView(bookmark: bookmark)
         }
         .toolbar {
-            if FeatureFlag.isEnabled(.shareButton) {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(action: prepareShare) {
-                        if isPreparingShare {
-                            ProgressView()
-                                .controlSize(.small)
-                        } else {
-                            Image(systemName: "square.and.arrow.up")
-                        }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(action: prepareShare) {
+                    if isPreparingShare {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: "square.and.arrow.up")
                     }
-                    .disabled(isPreparingShare)
-                    .accessibilityLabel("Compartilhar episódio")
                 }
+                .disabled(isPreparingShare)
+                .accessibilityLabel("Compartilhar episódio")
             }
 
             ToolbarItem(placement: .topBarTrailing) {

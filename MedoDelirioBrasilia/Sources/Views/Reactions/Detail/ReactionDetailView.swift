@@ -222,19 +222,17 @@ extension ReactionDetailView {
                     .disabled(playStopIsDisabled)
                 }
 
-                if FeatureFlag.isEnabled(.shareButton) {
-                    ToolbarSpacer(.fixed)
+                ToolbarSpacer(.fixed)
 
-                    ToolbarItem {
-                        Button(action: shareAction) {
-                            if isPreparingShare {
-                                ProgressView().controlSize(.small)
-                            } else {
-                                Image(systemName: "square.and.arrow.up")
-                            }
+                ToolbarItem {
+                    Button(action: shareAction) {
+                        if isPreparingShare {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Image(systemName: "square.and.arrow.up")
                         }
-                        .disabled(isSelecting || isPreparingShare)
                     }
+                    .disabled(isSelecting || isPreparingShare)
                 }
 
                 ToolbarSpacer(.fixed)
@@ -274,17 +272,15 @@ extension ReactionDetailView {
                     .disabled(playStopIsDisabled)
                 }
 
-                if FeatureFlag.isEnabled(.shareButton) {
-                    ToolbarItem {
-                        Button(action: shareAction) {
-                            if isPreparingShare {
-                                ProgressView().controlSize(.small)
-                            } else {
-                                Image(systemName: "square.and.arrow.up")
-                            }
+                ToolbarItem {
+                    Button(action: shareAction) {
+                        if isPreparingShare {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Image(systemName: "square.and.arrow.up")
                         }
-                        .disabled(isSelecting || isPreparingShare)
                     }
+                    .disabled(isSelecting || isPreparingShare)
                 }
 
                 ToolbarItem {
