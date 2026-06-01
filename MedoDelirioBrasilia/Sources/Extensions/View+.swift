@@ -33,8 +33,15 @@ extension View {
                 content()
             }
         } else {
-            self.if(isEnabled()) { view in
-                view.tabViewBottomAccessory {
+            // iOS 26.0 has no `isEnabled:` parameter. Adding/removing the
+            // `.tabViewBottomAccessory` modifier with `.if` changes the
+            // TabView's structural identity, which resets the selected tab
+            // whenever the accessory appears (e.g. the first time an episode
+            // starts playing). Keep the modifier attached and toggle its
+            // content instead so identity stays stable.
+            let enabled = isEnabled()
+            self.tabViewBottomAccessory {
+                if enabled {
                     content()
                 }
             }
