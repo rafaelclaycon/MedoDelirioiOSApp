@@ -651,6 +651,7 @@ struct MainView: View {
                 .environment(episodePlayer)
                 .environment(episodeBookmarkStore)
                 .environment(transcriptDownloadService)
+                .environment(episodeFavoritesStore)
         }
         .sheet(isPresented: $episodePlayer.showSupportPrompt, onDismiss: {
             let memory = AppPersistentMemory.shared

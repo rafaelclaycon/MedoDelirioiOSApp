@@ -15,6 +15,7 @@ struct NowPlayingView: View {
     @Environment(EpisodePlayer.self) private var player
     @Environment(EpisodeBookmarkStore.self) private var bookmarkStore
     @Environment(TranscriptDownloadService.self) private var transcriptDownloadService
+    @Environment(EpisodeFavoritesStore.self) private var favoritesStore
 
     @State private var isScrubbing: Bool = false
     @State private var scrubValue: TimeInterval = 0
@@ -50,15 +51,7 @@ struct NowPlayingView: View {
                     .environment(player)
             }
             .toolbar {
-                if FeatureFlag.isEnabled(.transcriptFullView) {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button {
-                            showFullTranscript = true
-                        } label: {
-                            Image(systemName: "magnifyingglass")
-                        }
-                    }
-                }
+                toolbarControls
             }
         }
         .presentationDragIndicator(.visible)
@@ -120,8 +113,6 @@ struct NowPlayingView: View {
         VStack(spacing: 0) {
             topContent
                 .frame(maxWidth: .infinity)
-                .padding(.top, .spacing(.xxxLarge))
-                //.border(.blue)
 
             toggleRow
                 .padding(.vertical, .spacing(.xLarge))
@@ -137,7 +128,6 @@ struct NowPlayingView: View {
                 .frame(height: .spacing(.small))
 
             playbackControls
-                //.border(.red)
 
             Spacer()
                 .frame(height: .spacing(.xxLarge))
@@ -275,6 +265,75 @@ struct NowPlayingView: View {
         }
     }
 
+    @ToolbarContentBuilder
+    private var toolbarControls: some ToolbarContent {
+        if #available(iOS 26.0, *) {
+            ToolbarItem(placement: .primaryAction) {
+                let isFav = player.currentEpisode.map { favoritesStore.isFavorite($0.id) } ?? false
+                Button {
+                    guard let episodeId = player.currentEpisode?.id else { return }
+                    favoritesStore.toggle(episodeId)
+                } label: {
+                    Image(systemName: isFav ? "star.fill" : "star")
+                        .foregroundStyle(isFav ? .yellow : .primary)
+                }
+            }
+
+            ToolbarSpacer(.fixed)
+
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    prepareShare()
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
+                }
+                .disabled(isPreparingShare)
+            }
+
+            if FeatureFlag.isEnabled(.transcriptFullView) {
+                ToolbarSpacer(.fixed)
+
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        showFullTranscript = true
+                    } label: {
+                        Image(systemName: "magnifyingglass")
+                    }
+                }
+            }
+        } else {
+            ToolbarItem(placement: .primaryAction) {
+                let isFav = player.currentEpisode.map { favoritesStore.isFavorite($0.id) } ?? false
+                Button {
+                    guard let episodeId = player.currentEpisode?.id else { return }
+                    favoritesStore.toggle(episodeId)
+                } label: {
+                    Image(systemName: isFav ? "star.fill" : "star")
+                        .foregroundStyle(isFav ? .yellow : .primary)
+                }
+            }
+
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    prepareShare()
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
+                }
+                .disabled(isPreparingShare)
+            }
+
+            if FeatureFlag.isEnabled(.transcriptFullView) {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        showFullTranscript = true
+                    } label: {
+                        Image(systemName: "magnifyingglass")
+                    }
+                }
+            }
+        }
+    }
+
     private var actionButtons: some View {
         HStack(spacing: .spacing(.medium)) {
             GlassButton(
@@ -288,15 +347,6 @@ struct NowPlayingView: View {
                     toast = Toast(message: "Marcador Adicionado", type: .success)
                 }
             )
-
-            GlassButton(
-                symbol: isPreparingShare ? nil : "square.and.arrow.up",
-                title: "Compartilhar",
-                color: .clear,
-                lightModeLabelColor: .clear,
-                action: { prepareShare() }
-            )
-            .disabled(isPreparingShare)
 
             if FeatureFlag.isEnabled(.projectSidecast) {
                 GlassButton(
@@ -647,8 +697,6 @@ struct NowPlayingView: View {
         }
     }
 }
-
-// MARK: - Subviews
 
 // MARK: - Liquid Glass Helper
 
