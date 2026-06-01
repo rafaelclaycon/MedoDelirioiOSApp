@@ -7,6 +7,7 @@
 
 import LinkPresentation
 import SwiftUI
+import TipKit
 
 struct ReactionDetailView: View {
 
@@ -207,6 +208,8 @@ extension ReactionDetailView {
         let isSelecting: Bool
         var isPreparingShare: Bool = false
 
+        private let shareTip = ReactionShareButtonTip()
+
         private var playStopIsDisabled: Bool {
             soundArrayIsEmpty || isSelecting
         }
@@ -233,6 +236,8 @@ extension ReactionDetailView {
                         }
                     }
                     .disabled(isSelecting || isPreparingShare)
+                    .popoverTip(shareTip)
+                    .tipViewStyle(PrimaryImageTipViewStyle(tip: shareTip))
                 }
 
                 ToolbarSpacer(.fixed)
@@ -281,6 +286,8 @@ extension ReactionDetailView {
                         }
                     }
                     .disabled(isSelecting || isPreparingShare)
+                    .popoverTip(shareTip)
+                    .tipViewStyle(PrimaryImageTipViewStyle(tip: shareTip))
                 }
 
                 ToolbarItem {

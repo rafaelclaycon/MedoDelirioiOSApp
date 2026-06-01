@@ -7,6 +7,7 @@
 
 import FirebaseCore
 import SwiftUI
+import TipKit
 import UserNotifications
 
 var moveDatabaseIssue: String = ""
@@ -115,6 +116,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil
     ) -> Bool {
         configureFirebase()
+        try? Tips.configure()
 
         print("APP - APP DELEGATE")
         UNUserNotificationCenter.current().delegate = self
