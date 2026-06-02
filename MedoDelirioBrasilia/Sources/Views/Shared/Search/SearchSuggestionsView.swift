@@ -132,6 +132,12 @@ struct SearchSuggestionsView: View {
 
                 Spacer()
 
+                // TODO: Glass look for Clear button.
+//                GlassButton(title: "Limpar", color: .accentColor, compact: true) {
+//                    recent.removeAll()
+//                    onClearSearchesAction()
+//                }
+
                 Button {
                     recent.removeAll()
                     onClearSearchesAction()
@@ -229,6 +235,11 @@ struct SearchSuggestionsView: View {
                 .font(.headline)
 
             Spacer()
+
+            // TODO: Glass look for See More button.
+//            GlassButton(symbol: "chevron.right", title: "Ver Mais", color: .accentColor, compact: true) {
+//                push(SearchNavigationDestination.trends)
+//            }
 
             Button {
                 push(SearchNavigationDestination.trends)

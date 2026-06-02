@@ -101,6 +101,19 @@ struct TrendsView: View {
             }
         }
         .toast($toast)
+        // TODO: Floating selector for Period (Last X Days, etc) and Data Type (Sounds, Songs, Reactions, Episodes).
+//        .safeAreaInset(edge: .bottom) {
+//            HStack {
+//                GlassButton(title: "Tipo", color: .green, fullWidth: true) {
+//                    print("Tapped")
+//                }
+//
+//                GlassButton(title: "Data", color: .green) {
+//                    print("Tapped")
+//                }
+//            }
+//            .padding(.all, .spacing(.xSmall))
+//        }
     }
 }
 
