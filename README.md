@@ -33,10 +33,10 @@ Prefer to do it in Reais? [Here you go](https://apoia.se/app-medo-delirio-ios).
 
 1. **Play and Share Sounds:** Enjoy snippets from the podcast and share them instantly with friends.
 1. **Listen to Episodes:** Educate yourself and keep tabs with Brasil through the integrated audio player, episode feed, episode favoriting and moment bookmarking.
+1. **Find the Quote:** Search the full transcripts of all episodes to revisit arguments, verify claims, or check if a topic was ever covered.
 1. **React with Ease:** Find perfect responses for group chats in the **Reactions** tab, featuring sounds categorized by emotions, famous characters, and current events.
 1. **Discover Trends:** Explore the audience's top 10 most-shared sounds and songs across various timeframes in the **Trends** screen.
 1. **Favorites Made Easy:** Save and access your favorite sounds quickly.
-1. **Organized by Author:** Browse sounds conveniently grouped by their creators.
 1. **Multi-Sound Actions:** Select multiple sounds at once to add them to Favorites or organize into Folders.
 1. **Folders for Organization:** Group sounds into folders for easy access—just like tagging!
 1. **Social Media Sharing:** Create and share videos for your socials, perfect for meme-worthy replies.
@@ -44,7 +44,7 @@ Prefer to do it in Reais? [Here you go](https://apoia.se/app-medo-delirio-ios).
 
 ## History
 
-Curious about the story behind the app and how some of its features came to life? Check out the [two-part series on my blog](https://from-rafael-with-code.ghost.io/thank-you-bolsonaro-part-1/).
+Curious about the story behind the app and how some of its features came to life? Check out the [two-part series on my blog](https://www.fromrafaelwithco.de/thank-you-bolsonaro-part-1/).
 
 ## Getting Started
 
