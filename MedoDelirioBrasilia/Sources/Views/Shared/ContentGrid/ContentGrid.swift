@@ -126,15 +126,29 @@ struct ContentGrid<
                         NoSearchResultsView(searchText: viewModel.searchText)
                     } else {
                         ForEach(searchResults) { content in
-                            PlayableContentView(
-                                content: content,
-                                showNewTag: showNewTag,
-                                favorites: viewModel.favoritesKeeper,
-                                highlighted: viewModel.highlightKeeper,
-                                nowPlaying: viewModel.nowPlayingKeeper,
-                                selectedItems: viewModel.selectionKeeper,
-                                currentContentListMode: viewModel.currentListMode
-                            )
+                            Group {
+                                if FeatureFlag.isEnabled(.novoVisualGradeConteudos) {
+                                    ModernContentButton(
+                                        content: content,
+                                        showNewTag: showNewTag,
+                                        favorites: viewModel.favoritesKeeper,
+                                        highlighted: viewModel.highlightKeeper,
+                                        nowPlaying: viewModel.nowPlayingKeeper,
+                                        selectedItems: viewModel.selectionKeeper,
+                                        currentContentListMode: viewModel.currentListMode
+                                    )
+                                } else {
+                                    PlayableContentView(
+                                        content: content,
+                                        showNewTag: showNewTag,
+                                        favorites: viewModel.favoritesKeeper,
+                                        highlighted: viewModel.highlightKeeper,
+                                        nowPlaying: viewModel.nowPlayingKeeper,
+                                        selectedItems: viewModel.selectionKeeper,
+                                        currentContentListMode: viewModel.currentListMode
+                                    )
+                                }
+                            }
                             .contentShape(
                                 .contextMenuPreview,
                                 RoundedRectangle(cornerRadius: .spacing(.large), style: .continuous)

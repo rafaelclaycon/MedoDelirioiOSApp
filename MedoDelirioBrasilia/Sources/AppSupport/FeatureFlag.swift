@@ -13,6 +13,7 @@ enum FeatureFlag: String, CaseIterable {
     case snowLeopard = "featureFlag_snowLeopard"
     case episodePillControls = "featureFlag_episodePillControls"
     case transcriptFullView = "featureFlag_transcriptFullView"
+    case novoVisualGradeConteudos = "featureFlag_novoVisualGradeConteudos"
 
     var displayName: String {
         switch self {
@@ -24,6 +25,8 @@ enum FeatureFlag: String, CaseIterable {
             return "Episode Pill Controls"
         case .transcriptFullView:
             return "Transcript Full View"
+        case .novoVisualGradeConteudos:
+            return "Novo Visual da Grade de Conteúdos"
         }
     }
 
@@ -37,6 +40,8 @@ enum FeatureFlag: String, CaseIterable {
             return "Exibe os controles de reprodução como uma pílula horizontal abaixo da descrição do episódio."
         case .transcriptFullView:
             return "Abre a transcrição completa e pesquisável a partir da tela do player."
+        case .novoVisualGradeConteudos:
+            return "Habilita o novo visual da grade de conteúdos."
         }
     }
 

@@ -68,4 +68,10 @@ extension Color {
             opacity: Double(a) / 255
         )
     }
+
+    func darkened(by amount: Double = 0.2) -> Color {
+        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        UIColor(self).getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+        return Color(hue: h, saturation: s, brightness: max(0, b - amount))
+    }
 }
