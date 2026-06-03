@@ -151,6 +151,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         updateExternalLinks()
         updateFolderChangeHashes()
         registerForPushNotificationsIfAuthorized()
+        subscribeToWeeklyHighlightsIfNeeded()
 
         return true
     }
@@ -275,6 +276,13 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         PushRegistrationStatus.shared.markFailed("Falha ao registrar para notificações remotas.")
     }
 
+    private func subscribeToWeeklyHighlightsIfNeeded() {
+        guard !UserSettings().getWeeklyHighlightsOptedOut() else { return }
+        Task {
+            _ = await WeeklyHighlightsSubscriber.subscribe()
+        }
+    }
+
     private func registerForPushNotificationsIfAuthorized() {
         Task {
             let center = UNUserNotificationCenter.current()
@@ -313,6 +321,16 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
                     name: .navigateToTab,
                     object: nil,
                     userInfo: [NavigateToTabKey.phoneTab: PhoneTab.episodes]
+                )
+            case .weeklyTopSounds:
+                Task { await AnalyticsService().send(originatingScreen: "PushNotification", action: "weekly_top_sounds_notification_opened") }
+                NotificationCenter.default.post(name: .navigateToTrends, object: nil)
+            case .weeklyTopReactions:
+                Task { await AnalyticsService().send(originatingScreen: "PushNotification", action: "weekly_top_reactions_notification_opened") }
+                NotificationCenter.default.post(
+                    name: .navigateToTab,
+                    object: nil,
+                    userInfo: [NavigateToTabKey.phoneTab: PhoneTab.reactions]
                 )
             }
         }

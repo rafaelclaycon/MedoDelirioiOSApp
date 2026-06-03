@@ -7,6 +7,7 @@ struct NotificationsSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var enableNotifications = false
     @State private var episodeNotifications = false
+    @State private var weeklyHighlights = false
     @State private var showSubscriptionError = false
     @State private var toast: Toast?
 
@@ -62,6 +63,30 @@ struct NotificationsSettingsView: View {
         )
     }
 
+    private var weeklyHighlightsBinding: Binding<Bool> {
+        Binding(
+            get: { weeklyHighlights },
+            set: { newValue in
+                weeklyHighlights = newValue
+                Task {
+                    let result = if newValue {
+                        await WeeklyHighlightsSubscriber.subscribe()
+                    } else {
+                        await WeeklyHighlightsSubscriber.unsubscribe()
+                    }
+
+                    switch result {
+                    case .success:
+                        break
+                    case .failure:
+                        weeklyHighlights = !newValue
+                        showSubscriptionError = true
+                    }
+                }
+            }
+        )
+    }
+
     var body: some View {
         Form {
             Section {
@@ -78,10 +103,12 @@ struct NotificationsSettingsView: View {
                         .disabled(true)
 
                     Toggle("Novos Episódios", isOn: episodeNotificationsBinding)
+
+                    Toggle("Destaques da Semana", isOn: weeklyHighlightsBinding)
                 } header: {
                     Text("Escolha o que quer receber")
                 } footer: {
-                    Text("Receba uma notificação quando um novo episódio do podcast estiver disponível.")
+                    Text("Receba uma notificação quando um novo episódio do podcast estiver disponível. Os Destaques da Semana chegam toda sexta com os sons e reações mais compartilhados.")
                 }
 
                 Section {
@@ -121,6 +148,7 @@ struct NotificationsSettingsView: View {
         .onAppear {
             enableNotifications = UserSettings().getUserAllowedNotifications()
             episodeNotifications = UserSettings().getEnableEpisodeNotifications()
+            weeklyHighlights = !UserSettings().getWeeklyHighlightsOptedOut()
             pushStatus.refresh()
             if pushStatus.state == .unknown, enableNotifications {
                 retryRegistration()

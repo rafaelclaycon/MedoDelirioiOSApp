@@ -148,6 +148,13 @@ extension UserSettings {
         }
         return Bool(value as! Bool)
     }
+
+    func getWeeklyHighlightsOptedOut() -> Bool {
+        guard let value = userDefaults.object(forKey: "weeklyHighlightsOptedOut") else {
+            return false
+        }
+        return Bool(value as! Bool)
+    }
 }
 
 // MARK: - Setters
@@ -220,5 +227,9 @@ extension UserSettings {
 
     func setAutoDeletePlayedEpisodes(to newValue: Bool) {
         userDefaults.set(newValue, forKey: "autoDeletePlayedEpisodes")
+    }
+
+    func setWeeklyHighlightsOptedOut(to newValue: Bool) {
+        userDefaults.set(newValue, forKey: "weeklyHighlightsOptedOut")
     }
 }

@@ -562,6 +562,10 @@ struct MainView: View {
             guard let deepLink else { return }
             handleDeepLink(deepLink)
         }
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToTrends)) { _ in
+            tabSelection.wrappedValue = .search
+            searchTabPath.append(SearchNavigationDestination.trends)
+        }
         .alert(deepLinkErrorTitle, isPresented: $showDeepLinkError) {
             Button("OK") { }
         } message: {
