@@ -223,21 +223,6 @@ struct ModernContentButton: View {
 //                .frame(height: itemHeight)
 //            }
 
-            if currentMode == .playing {
-                VStack {
-                    Spacer()
-                    HStack {
-                        Spacer()
-                        Image(systemName: "stop.circle")
-                            .font(.largeTitle)
-                            .foregroundColor(.primary)
-                            .padding(.trailing, 10)
-                            .padding(.bottom, 10)
-                    }
-                }
-                .frame(height: itemHeight)
-            }
-
             if currentMode == .upForSelection {
                 VStack {
                     Spacer()
@@ -273,6 +258,31 @@ struct ModernContentButton: View {
                     .padding(.bottom, .spacing(.xSmall))
             }
         }
+        .overlay {
+            if currentMode == .playing {
+                // Inner shadow: dark top edge fading to clear, with a faint
+                // bottom highlight — the classic physical "pressed button" look.
+                RoundedRectangle(cornerRadius: shapeCornerRadius, style: .continuous)
+                    .fill(LinearGradient(
+                        colors: [
+                            Color.black.opacity(0.28),
+                            Color.clear,
+                            Color.white.opacity(0.07)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    ))
+                    .allowsHitTesting(false)
+            }
+        }
+        .overlay {
+            if background == .highlighted {
+                HighlightRingEffect(cornerRadius: shapeCornerRadius)
+                    .allowsHitTesting(false)
+            }
+        }
+        .scaleEffect(currentMode == .playing ? 0.96 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: currentMode == .playing)
         .onAppear {
             if currentMode != .playing {
                 timeRemaining = content.duration
@@ -287,9 +297,63 @@ struct ModernContentButton: View {
 
 }
 
+// MARK: - Highlight Ring Effect
+
+private struct HighlightRingEffect: View {
+
+    let cornerRadius: CGFloat
+
+    @State private var phase: CGFloat = 0
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .stroke(Color.yellow, lineWidth: 1.5)
+            .scaleEffect(1 + phase * 0.12)
+            .opacity(Double(1 - phase) * 0.85)
+            .onAppear {
+                withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
+                    phase = 1
+                }
+            }
+    }
+}
+
 // MARK: - Previews
 
 
+
+#Preview("Playing") {
+    VStack(spacing: .spacing(.medium)) {
+        ModernContentButton(
+            content: Sound(
+                id: "ABC",
+                title: "A gente vai cansando",
+                authorName: "F",   // teal
+                duration: 120
+            ),
+            favorites: Set<String>(),
+            highlighted: Set<String>(),
+            nowPlaying: Set<String>(["ABC"]),
+            selectedItems: Set<String>(),
+            currentContentListMode: .constant(.regular)
+        )
+        ModernContentButton(
+            content: Sound(
+                id: "DEF",
+                title: "Às vezes o ódio é a única emoção possível",
+                authorName: "K",   // indigo
+                duration: 45
+            ),
+            favorites: Set<String>(),
+            highlighted: Set<String>(),
+            nowPlaying: Set<String>(["DEF"]),
+            selectedItems: Set<String>(),
+            currentContentListMode: .constant(.regular)
+        )
+    }
+    .padding()
+    .frame(width: 220)
+}
 
 #Preview("All Colors") {
     // Each authorName is a single letter A–M, which hashes to a distinct
