@@ -54,7 +54,7 @@ extension ContextMenuOption {
     static var addToFavorites: ContextMenuOption {
         return ContextMenuOption(
             symbol: { isFavorite in
-                isFavorite ? "star.slash" : "star"
+                isFavorite ? "heart.slash" : "heart"
             },
             title: { isFavorite in
                 isFavorite ? Shared.removeFromFavorites : Shared.addToFavorites
