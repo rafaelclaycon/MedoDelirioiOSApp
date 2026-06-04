@@ -166,7 +166,7 @@ struct ContentGrid<
                                     )
                                 }
                             } preview: {
-                                ModernContent.Preview(content: content)
+                                ModernContent.MenuPreview(content: content)
                             }
                         }
                     }
