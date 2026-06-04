@@ -90,7 +90,7 @@ struct ReactionDetailView: View {
                         showNewTag: false,
                         reactionId: viewModel.reaction.id,
                         containerSize: geometry.size,
-                        loadingView: BasicLoadingView(text: "Carregando Conteúdos..."),
+                        loadingView: ContentGridSkeletonView(containerSize: geometry.size),
                         emptyStateView: EmptyStateView(
                             reloadAction: {
                                 Task {
