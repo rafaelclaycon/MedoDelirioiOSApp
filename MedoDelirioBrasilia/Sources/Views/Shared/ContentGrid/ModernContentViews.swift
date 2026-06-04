@@ -321,7 +321,7 @@ extension ModernContent {
                 color: content.primaryColor,
                 isSong: content.type == .song
             )
-            .frame(minWidth: 260, maxWidth: 320)
+            .frame(width: 300)
             .padding(.vertical, .spacing(.xLarge))
             .background {
                 SimplestBackground(
