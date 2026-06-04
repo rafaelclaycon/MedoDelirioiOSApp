@@ -507,6 +507,8 @@ extension SearchSuggestionsView {
                                 Label("Ver Detalhes", systemImage: "info.circle")
                             }
                         }
+                    } preview: {
+                        ModernContent.MenuPreview(content: item)
                     }
                 }
             }

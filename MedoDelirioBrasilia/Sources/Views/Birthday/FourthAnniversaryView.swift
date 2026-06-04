@@ -180,6 +180,8 @@ struct FourthAnniversaryView: View {
                                         favorites: viewModel.favoritesKeeper,
                                         loadedContent: [mostSharedSound]
                                     )
+                                } preview: {
+                                    ModernContent.MenuPreview(content: mostSharedSound)
                                 }
                                 .frame(width: 180)
 

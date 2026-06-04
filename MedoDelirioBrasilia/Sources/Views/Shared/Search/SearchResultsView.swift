@@ -156,6 +156,8 @@ struct SearchResultsView: View {
                                             favorites: playable.favoritesKeeper,
                                             loadedContent: soundsMatchingTitle
                                         )
+                                    } preview: {
+                                        ModernContent.MenuPreview(content: item)
                                     }
                                 }
                             )
@@ -223,6 +225,8 @@ struct SearchResultsView: View {
                                             favorites: playable.favoritesKeeper,
                                             loadedContent: songsMatchingTitle
                                         )
+                                    } preview: {
+                                        ModernContent.MenuPreview(content: item)
                                     }
                                 }
                             )
@@ -459,6 +463,8 @@ struct SearchResultsView: View {
                     favorites: playable.favoritesKeeper,
                     loadedContent: [content]
                 )
+            } preview: {
+                ModernContent.MenuPreview(content: content)
             }
 
         case .author(let author):
@@ -765,6 +771,8 @@ extension SearchResultsView {
                             Label("Ver Detalhes", systemImage: "info.circle")
                         }
                     }
+                } preview: {
+                    ModernContent.MenuPreview(content: content)
                 }
 
                 Text("\"\(text)\"")
