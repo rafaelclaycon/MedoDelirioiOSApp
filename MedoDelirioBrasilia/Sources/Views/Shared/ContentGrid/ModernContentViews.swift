@@ -7,12 +7,15 @@
 
 import SwiftUI
 
+private let shapeCornerRadius: CGFloat = 18
+
 struct ModernContent {
 
     private struct MainText: View {
 
         let title: String
         let subtitle: String
+        var duration: Double?
         let color: Color
         let isSong: Bool
 
@@ -34,15 +37,21 @@ struct ModernContent {
                     HStack(spacing: 10) {
                         if isSong {
                             Image(systemName: "music.quarternote.3")
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(lowerPartColor)
                         }
 
-                        Text(subtitle.uppercased())
-                            .fontDesign(.monospaced)
-                            .foregroundStyle(lowerPartColor)
-                            .font(.caption)
-                            .bold()
-                            .lineLimit(1)
+                        Group {
+                            Text(subtitle.uppercased())
+
+                            if let duration {
+                                Text(duration.minuteSecondFormatted)
+                            }
+                        }
+                        .fontDesign(.monospaced)
+                        .foregroundStyle(lowerPartColor)
+                        .font(.caption)
+                        .bold()
+                        .lineLimit(1)
                     }
                 }
 
@@ -79,6 +88,7 @@ struct ModernContent {
 
 extension ModernContent {
 
+    /// The main incarnation of sounds and songs in the app.
     struct Button: View {
 
         let content: any MedoContentProtocol
@@ -166,7 +176,6 @@ extension ModernContent {
         private let unselectedForegroundColor: Color = .gray
         private let favoriteGradient = LinearGradient(gradient: Gradient(colors: [.red]), startPoint: .topLeading, endPoint: .bottomTrailing)
         private let highlightGradient = LinearGradient(gradient: Gradient(colors: [.yellow]), startPoint: .topLeading, endPoint: .bottomTrailing)
-        private let shapeCornerRadius: CGFloat = 18
 
         // MARK: - View Body
 
@@ -296,6 +305,32 @@ extension ModernContent {
             }
         }
 
+    }
+
+    /// A preview shown when a user holds on a content for a couple of seconds to see more options.
+    /// It is more complete than the regular content view.
+    struct Preview: View {
+
+        let content: any MedoContentProtocol
+
+        var body: some View {
+            MainText(
+                title: content.title,
+                subtitle: content.subtitle,
+                duration: content.duration,
+                color: content.primaryColor,
+                isSong: content.type == .song
+            )
+            .frame(minWidth: 260, maxWidth: 320)
+            .padding(.vertical, .spacing(.xLarge))
+            .background {
+                SimplestBackground(
+                    color: content.primaryColor,
+                    cornerRadius: shapeCornerRadius,
+                    isFavorite: false
+                )
+            }
+        }
     }
 }
 

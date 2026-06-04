@@ -166,7 +166,7 @@ struct ContentGrid<
                                     )
                                 }
                             } preview: {
-                                ModernContentDetails(content: content)
+                                ModernContent.Preview(content: content)
                             }
                         }
                     }
