@@ -51,10 +51,16 @@ struct ContentDetailView: View {
                     HStack {
                         Spacer()
 
-                        AlbumCoverPlayView(isPlaying: $viewModel.isPlaying)
-                            .onTapGesture {
-                                viewModel.onPlaySoundSelected()
-                            }
+//                        AlbumCoverPlayView(isPlaying: $viewModel.isPlaying)
+//                            .onTapGesture {
+//                                viewModel.onPlaySoundSelected()
+//                            }
+
+                        ModernContent.ShowOff(
+                            content: viewModel.content,
+                            isPlaying: viewModel.isPlaying,
+                            playAction: viewModel.onPlaySoundSelected
+                        )
 
                         Spacer()
                     }
@@ -104,7 +110,7 @@ struct ContentDetailView: View {
                     Spacer()
                 }
                 .padding(.vertical, .spacing(.small))
-                .navigationTitle("Detalhes \(viewModel.content.type == .sound ? "do Som" : "da Música")")
+                .navigationTitle("Detalhes \(viewModel.content.type == .sound ? "da Vírgula" : "da Música")")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarLeading) {
@@ -163,13 +169,12 @@ extension ContentDetailView {
                 .disabled(!authorCanNavigate)
 
                 if type == .sound {
-                    Button {
-                        editAuthorSelectedAction()
-                    } label: {
-                        Label("Sugerir outro nome de autor", systemImage: "pencil.line")
-                    }
-                    .capsule(colored: colorScheme == .dark ? .primary : .gray)
-                    .padding(.top, 2)
+                    GlassButton(
+                        symbol: "pencil.line",
+                        title: "Sugerir outro nome de autor",
+                        color: .gray,
+                        action: editAuthorSelectedAction
+                    )
                 }
             }
         }

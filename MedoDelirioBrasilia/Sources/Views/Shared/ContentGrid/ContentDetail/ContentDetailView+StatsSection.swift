@@ -125,7 +125,7 @@ extension ContentDetailView {
 
             var body: some View {
                 VStack(spacing: 15) {
-                    Text("Ainda não existem estatísticas de compartilhamento para esse som.")
+                    Text("Ainda não existem estatísticas de compartilhamento para esse conteúdo.")
                         .multilineTextAlignment(.center)
                         .foregroundStyle(.gray)
                         .padding(.all, 20)

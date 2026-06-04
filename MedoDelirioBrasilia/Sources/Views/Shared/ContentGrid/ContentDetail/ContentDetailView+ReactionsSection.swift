@@ -32,13 +32,7 @@ extension ContentDetailView {
                     Spacer()
 
                     if showSuggestOnTop {
-                        Button {
-                            suggestAction()
-                        } label: {
-                            Text("Sugerir")
-                                .padding(.horizontal, .spacing(.xxxSmall))
-                        }
-                        .capsule(colored: .green)
+                        GlassButton(title: "Sugerir", color: .green, action: suggestAction)
                     }
                 }
                 .padding(.horizontal, .spacing(.medium))
@@ -104,13 +98,7 @@ extension ContentDetailView {
                         .multilineTextAlignment(.center)
                         .foregroundStyle(.gray)
 
-                    Button {
-                        suggestAction()
-                    } label: {
-                        Text("Sugerir Adição")
-                            .padding(.spacing(.xxxSmall))
-                    }
-                    .capsule(colored: .green)
+                    GlassButton(title: "Sugerir Adição", color: .green, action: suggestAction)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, .spacing(.xSmall))
