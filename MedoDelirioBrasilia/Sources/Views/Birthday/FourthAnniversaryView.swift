@@ -143,15 +143,29 @@ struct FourthAnniversaryView: View {
 
                         if let mostSharedSound {
                             VStack(spacing: .spacing(.xSmall)) {
-                                PlayableContentView(
-                                    content: mostSharedSound,
-                                    showNewTag: false,
-                                    favorites: Set<String>(),
-                                    highlighted: Set<String>(),
-                                    nowPlaying: viewModel.nowPlayingKeeper,
-                                    selectedItems: Set<String>(),
-                                    currentContentListMode: .constant(.regular)
-                                )
+                                Group {
+                                    if FeatureFlag.isEnabled(.novoVisualGradeConteudos) {
+                                        ModernContentButton(
+                                            content: mostSharedSound,
+                                            showNewTag: false,
+                                            favorites: viewModel.favoritesKeeper,
+                                            highlighted: viewModel.highlightKeeper,
+                                            nowPlaying: viewModel.nowPlayingKeeper,
+                                            selectedItems: viewModel.selectionKeeper,
+                                            currentContentListMode: viewModel.currentListMode
+                                        )
+                                    } else {
+                                        PlayableContentView(
+                                            content: mostSharedSound,
+                                            showNewTag: false,
+                                            favorites: Set<String>(),
+                                            highlighted: Set<String>(),
+                                            nowPlaying: viewModel.nowPlayingKeeper,
+                                            selectedItems: Set<String>(),
+                                            currentContentListMode: .constant(.regular)
+                                        )
+                                    }
+                                }
                                 .contentShape(
                                     .contextMenuPreview,
                                     RoundedRectangle(cornerRadius: .spacing(.large), style: .continuous)

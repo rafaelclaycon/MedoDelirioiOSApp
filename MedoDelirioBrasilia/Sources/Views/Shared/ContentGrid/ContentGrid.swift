@@ -151,7 +151,7 @@ struct ContentGrid<
                             }
                             .contentShape(
                                 .contextMenuPreview,
-                                RoundedRectangle(cornerRadius: .spacing(.large), style: .continuous)
+                                RoundedRectangle(cornerRadius: FeatureFlag.isEnabled(.novoVisualGradeConteudos) ? 18 : .spacing(.large), style: .continuous)
                             )
                             .onTapGesture {
                                 viewModel.onContentSelected(content, loadedContent: loadedContent)
@@ -165,6 +165,8 @@ struct ContentGrid<
                                         loadedContent: loadedContent
                                     )
                                 }
+                            } preview: {
+                                ModernContentDetails(content: content)
                             }
                         }
                     }

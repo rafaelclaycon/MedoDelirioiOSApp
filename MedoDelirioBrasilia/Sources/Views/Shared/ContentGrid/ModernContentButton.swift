@@ -75,6 +75,11 @@ struct ModernContentButton: View {
         }
     }
 
+    private var lowerPartColor: Color {
+        colorScheme == .dark ?
+            .primary : content.primaryColor.darkened(by: 0.5)
+    }
+
     private var titleFont: Font {
         if content.title.count <= 26 {
             return .body
@@ -169,6 +174,7 @@ struct ModernContentButton: View {
             HStack {
                 VStack(alignment: .leading, spacing: .spacing(.small)) {
                     Text(content.title)
+                        .fontDesign(.rounded)
                         .font(.body)
                         .lineLimit(2)
 
@@ -179,12 +185,9 @@ struct ModernContentButton: View {
                         }
 
                         Text(subtitle.uppercased())
-                            .foregroundStyle(
-                                colorScheme == .dark ?
-                                    .primary : content.primaryColor.darkened(by: 0.5)
-                            )
+                            .fontDesign(.monospaced)
+                            .foregroundStyle(lowerPartColor)
                             .font(.caption)
-                            .foregroundColor(.primary.opacity(colorScheme == .dark ? 0.5 : 0.5))
                             .bold()
                             .lineLimit(1)
                             .onReceive(timer) { time in
@@ -200,28 +203,28 @@ struct ModernContentButton: View {
             }
             .padding(.leading, .spacing(.medium))
 
-//            if isNew, background == .regular, currentMode == .regular {
-//                VStack {
-//                    Spacer()
-//                    HStack {
-//                        Spacer()
-//                        ZStack {
-//                            RoundedRectangle(cornerRadius: 5, style: .continuous)
-//                                .fill(.yellow)
-//                                .frame(width: 50, height: 20)
-//
-//                            Text("NOVO")
-//                                .foregroundColor(.black)
-//                                .font(.footnote)
-//                                .bold()
-//                                .opacity(0.7)
-//                        }
-//                        .padding(.trailing, 10)
-//                        .padding(.bottom, 10)
-//                    }
-//                }
-//                .frame(height: itemHeight)
-//            }
+            if isNew, background == .regular, currentMode == .regular {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                .fill(.yellow)
+                                .frame(width: 50, height: 20)
+
+                            Text("NOVO")
+                                .foregroundColor(.black)
+                                .font(.footnote)
+                                .bold()
+                                .opacity(0.7)
+                        }
+                        .padding(.trailing, 10)
+                        .padding(.bottom, 10)
+                    }
+                }
+                .frame(height: itemHeight)
+            }
 
             if currentMode == .upForSelection {
                 VStack {
@@ -319,8 +322,6 @@ private struct HighlightRingEffect: View {
 }
 
 // MARK: - Previews
-
-
 
 #Preview("Playing") {
     VStack(spacing: .spacing(.medium)) {
@@ -528,36 +529,36 @@ private struct HighlightRingEffect: View {
     .padding()
 }
 
-//#Preview("New Tag") {
-//    ModernContentButton(
-//        content: Sound(
-//            id: "ABC",
-//            title: "A decisão não cabe a gente, cabe ao TSE",
-//            authorName: "Paulo Sérgio Nogueira",
-//            duration: 2
-//        ),
-//        favorites: Set<String>(),
-//        highlighted: Set<String>(),
-//        nowPlaying: Set<String>(),
-//        selectedItems: Set<String>(),
-//        currentContentListMode: .constant(.regular)
-//    )
-//    .padding()
-//}
-//
-//#Preview("Highlighted") {
-//    ModernContentButton(
-//        content: Sound(
-//            id: "JKL",
-//            title: "Bom dia",
-//            authorName: "Hamilton Mourão",
-//            duration: 2
-//        ),
-//        favorites: Set<String>(),
-//        highlighted: Set<String>(arrayLiteral: "JKL"),
-//        nowPlaying: Set<String>(),
-//        selectedItems: Set<String>(),
-//        currentContentListMode: .constant(.regular)
-//    )
-//    .padding()
-//}
+#Preview("New Tag") {
+    ModernContentButton(
+        content: Sound(
+            id: "ABC",
+            title: "A decisão não cabe a gente, cabe ao TSE",
+            authorName: "Paulo Sérgio Nogueira",
+            duration: 2
+        ),
+        favorites: Set<String>(),
+        highlighted: Set<String>(),
+        nowPlaying: Set<String>(),
+        selectedItems: Set<String>(),
+        currentContentListMode: .constant(.regular)
+    )
+    .padding()
+}
+
+#Preview("Highlighted") {
+    ModernContentButton(
+        content: Sound(
+            id: "JKL",
+            title: "Bom dia",
+            authorName: "Hamilton Mourão",
+            duration: 2
+        ),
+        favorites: Set<String>(),
+        highlighted: Set<String>(arrayLiteral: "JKL"),
+        nowPlaying: Set<String>(),
+        selectedItems: Set<String>(),
+        currentContentListMode: .constant(.regular)
+    )
+    .padding()
+}
