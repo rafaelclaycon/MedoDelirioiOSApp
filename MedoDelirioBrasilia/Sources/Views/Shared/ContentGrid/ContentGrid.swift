@@ -128,7 +128,7 @@ struct ContentGrid<
                         ForEach(searchResults) { content in
                             Group {
                                 if FeatureFlag.isEnabled(.novoVisualGradeConteudos) {
-                                    ModernContentButton(
+                                    ModernContent.Button(
                                         content: content,
                                         showNewTag: showNewTag,
                                         favorites: viewModel.favoritesKeeper,

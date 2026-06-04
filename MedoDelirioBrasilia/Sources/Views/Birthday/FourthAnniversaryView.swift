@@ -145,7 +145,7 @@ struct FourthAnniversaryView: View {
                             VStack(spacing: .spacing(.xSmall)) {
                                 Group {
                                     if FeatureFlag.isEnabled(.novoVisualGradeConteudos) {
-                                        ModernContentButton(
+                                        ModernContent.Button(
                                             content: mostSharedSound,
                                             showNewTag: false,
                                             favorites: viewModel.favoritesKeeper,
