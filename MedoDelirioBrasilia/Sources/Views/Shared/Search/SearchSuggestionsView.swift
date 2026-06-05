@@ -432,30 +432,17 @@ extension SearchSuggestionsView {
         var body: some View {
             LazyVGrid(columns: columns, spacing: UIDevice.isiPhone ? phoneItemSpacing : padItemSpacing) {
                 ForEach(content) { item in
-                    Group {
-                        if FeatureFlag.isEnabled(.novoVisualGradeConteudos) {
-                            ModernContent.Button(
-                                content: item,
-                                favorites: playable.favoritesKeeper,
-                                highlighted: Set<String>(),
-                                nowPlaying: playable.nowPlayingKeeper,
-                                selectedItems: Set<String>(),
-                                currentContentListMode: .constant(.regular)
-                            )
-                        } else {
-                            PlayableContentView(
-                                content: item,
-                                favorites: playable.favoritesKeeper,
-                                highlighted: Set<String>(),
-                                nowPlaying: playable.nowPlayingKeeper,
-                                selectedItems: Set<String>(),
-                                currentContentListMode: .constant(.regular)
-                            )
-                        }
-                    }
+                    ModernContent.Button(
+                        content: item,
+                        favorites: playable.favoritesKeeper,
+                        highlighted: Set<String>(),
+                        nowPlaying: playable.nowPlayingKeeper,
+                        selectedItems: Set<String>(),
+                        currentContentListMode: .constant(.regular)
+                    )
                     .contentShape(
                         .contextMenuPreview,
-                        RoundedRectangle(cornerRadius: FeatureFlag.isEnabled(.novoVisualGradeConteudos) ? 18 : .spacing(.large), style: .continuous)
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
                     )
                     .onTapGesture {
                         if playable.nowPlayingKeeper.contains(item.id) {

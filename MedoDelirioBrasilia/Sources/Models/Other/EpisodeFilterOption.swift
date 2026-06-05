@@ -20,4 +20,15 @@ enum EpisodeFilterOption: CaseIterable, FilterOption {
         case .bookmarked: "Com Marcadores"
         }
     }
+
+    var symbol: String {
+        switch self {
+        case .all:
+            "rectangle.stack.fill"
+        case .favorites:
+            "star.fill"
+        case .bookmarked:
+            "bookmark.fill"
+        }
+    }
 }

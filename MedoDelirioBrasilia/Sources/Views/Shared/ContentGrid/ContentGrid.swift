@@ -126,32 +126,18 @@ struct ContentGrid<
                         NoSearchResultsView(searchText: viewModel.searchText)
                     } else {
                         ForEach(searchResults) { content in
-                            Group {
-                                if FeatureFlag.isEnabled(.novoVisualGradeConteudos) {
-                                    ModernContent.Button(
-                                        content: content,
-                                        showNewTag: showNewTag,
-                                        favorites: viewModel.favoritesKeeper,
-                                        highlighted: viewModel.highlightKeeper,
-                                        nowPlaying: viewModel.nowPlayingKeeper,
-                                        selectedItems: viewModel.selectionKeeper,
-                                        currentContentListMode: viewModel.currentListMode
-                                    )
-                                } else {
-                                    PlayableContentView(
-                                        content: content,
-                                        showNewTag: showNewTag,
-                                        favorites: viewModel.favoritesKeeper,
-                                        highlighted: viewModel.highlightKeeper,
-                                        nowPlaying: viewModel.nowPlayingKeeper,
-                                        selectedItems: viewModel.selectionKeeper,
-                                        currentContentListMode: viewModel.currentListMode
-                                    )
-                                }
-                            }
+                            ModernContent.Button(
+                                content: content,
+                                showNewTag: showNewTag,
+                                favorites: viewModel.favoritesKeeper,
+                                highlighted: viewModel.highlightKeeper,
+                                nowPlaying: viewModel.nowPlayingKeeper,
+                                selectedItems: viewModel.selectionKeeper,
+                                currentContentListMode: viewModel.currentListMode
+                            )
                             .contentShape(
                                 .contextMenuPreview,
-                                RoundedRectangle(cornerRadius: FeatureFlag.isEnabled(.novoVisualGradeConteudos) ? 18 : .spacing(.large), style: .continuous)
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
                             )
                             .onTapGesture {
                                 viewModel.onContentSelected(content, loadedContent: loadedContent)

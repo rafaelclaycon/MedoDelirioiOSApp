@@ -29,4 +29,19 @@ enum ContentModeOption: CaseIterable, FilterOption {
             "Autores"
         }
     }
+
+    var symbol: String {
+        switch self {
+        case .all:
+            "quote.opening"
+        case .favorites:
+            "heart.fill"
+        case .songs:
+            "music.quarternote.3"
+        case .folders:
+            "folder.fill"
+        case .authors:
+            "person.3.sequence.fill"
+        }
+    }
 }

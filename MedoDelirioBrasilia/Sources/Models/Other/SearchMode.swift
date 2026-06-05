@@ -21,4 +21,13 @@ enum SearchMode: CaseIterable, FilterOption {
             "EPISÓDIOS"
         }
     }
+
+    var symbol: String {
+        switch self {
+        case .virgulas:
+            "quote.bubble.fill"
+        case .episodios:
+            "radio.fill"
+        }
+    }
 }

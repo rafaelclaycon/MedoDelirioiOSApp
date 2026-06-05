@@ -121,30 +121,17 @@ struct SearchResultsView: View {
                                 headerTitle: "Nome das Vírgulas",
                                 searchString: searchString,
                                 contentView: { item in
-                                    Group {
-                                        if FeatureFlag.isEnabled(.novoVisualGradeConteudos) {
-                                            ModernContent.Button(
-                                                content: item,
-                                                favorites: playable.favoritesKeeper,
-                                                highlighted: Set<String>(),
-                                                nowPlaying: playable.nowPlayingKeeper,
-                                                selectedItems: Set<String>(),
-                                                currentContentListMode: .constant(.regular)
-                                            )
-                                        } else {
-                                            PlayableContentView(
-                                                content: item,
-                                                favorites: playable.favoritesKeeper,
-                                                highlighted: Set<String>(),
-                                                nowPlaying: playable.nowPlayingKeeper,
-                                                selectedItems: Set<String>(),
-                                                currentContentListMode: .constant(.regular)
-                                            )
-                                        }
-                                    }
+                                    ModernContent.Button(
+                                        content: item,
+                                        favorites: playable.favoritesKeeper,
+                                        highlighted: Set<String>(),
+                                        nowPlaying: playable.nowPlayingKeeper,
+                                        selectedItems: Set<String>(),
+                                        currentContentListMode: .constant(.regular)
+                                    )
                                     .contentShape(
                                         .contextMenuPreview,
-                                        RoundedRectangle(cornerRadius: FeatureFlag.isEnabled(.novoVisualGradeConteudos) ? 18 : .spacing(.large), style: .continuous)
+                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
                                     )
                                     .onTapGesture {
                                         onContentSelected(item, loadedContent: soundsMatchingTitle)
@@ -190,30 +177,17 @@ struct SearchResultsView: View {
                                 headerTitle: "Nome das Músicas",
                                 searchString: searchString,
                                 contentView: { item in
-                                    Group {
-                                        if FeatureFlag.isEnabled(.novoVisualGradeConteudos) {
-                                            ModernContent.Button(
-                                                content: item,
-                                                favorites: playable.favoritesKeeper,
-                                                highlighted: Set<String>(),
-                                                nowPlaying: playable.nowPlayingKeeper,
-                                                selectedItems: Set<String>(),
-                                                currentContentListMode: .constant(.regular)
-                                            )
-                                        } else {
-                                            PlayableContentView(
-                                                content: item,
-                                                favorites: playable.favoritesKeeper,
-                                                highlighted: Set<String>(),
-                                                nowPlaying: playable.nowPlayingKeeper,
-                                                selectedItems: Set<String>(),
-                                                currentContentListMode: .constant(.regular)
-                                            )
-                                        }
-                                    }
+                                    ModernContent.Button(
+                                        content: item,
+                                        favorites: playable.favoritesKeeper,
+                                        highlighted: Set<String>(),
+                                        nowPlaying: playable.nowPlayingKeeper,
+                                        selectedItems: Set<String>(),
+                                        currentContentListMode: .constant(.regular)
+                                    )
                                     .contentShape(
                                         .contextMenuPreview,
-                                        RoundedRectangle(cornerRadius: FeatureFlag.isEnabled(.novoVisualGradeConteudos) ? 18 : .spacing(.large), style: .continuous)
+                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
                                     )
                                     .onTapGesture {
                                         onContentSelected(item, loadedContent: songsMatchingTitle)
@@ -428,30 +402,17 @@ struct SearchResultsView: View {
     private func topHitView(for hit: TopHit) -> some View {
         switch hit.item {
         case .sound(let content), .song(let content):
-            Group {
-                if FeatureFlag.isEnabled(.novoVisualGradeConteudos) {
-                    ModernContent.Button(
-                        content: content,
-                        favorites: playable.favoritesKeeper,
-                        highlighted: Set<String>(),
-                        nowPlaying: playable.nowPlayingKeeper,
-                        selectedItems: Set<String>(),
-                        currentContentListMode: .constant(.regular)
-                    )
-                } else {
-                    PlayableContentView(
-                        content: content,
-                        favorites: playable.favoritesKeeper,
-                        highlighted: Set<String>(),
-                        nowPlaying: playable.nowPlayingKeeper,
-                        selectedItems: Set<String>(),
-                        currentContentListMode: .constant(.regular)
-                    )
-                }
-            }
+            ModernContent.Button(
+                content: content,
+                favorites: playable.favoritesKeeper,
+                highlighted: Set<String>(),
+                nowPlaying: playable.nowPlayingKeeper,
+                selectedItems: Set<String>(),
+                currentContentListMode: .constant(.regular)
+            )
             .contentShape(
                 .contextMenuPreview,
-                RoundedRectangle(cornerRadius: FeatureFlag.isEnabled(.novoVisualGradeConteudos) ? 18 : .spacing(.large), style: .continuous)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
             )
             .onTapGesture {
                 onContentSelected(content, loadedContent: [content])
@@ -699,30 +660,17 @@ extension SearchResultsView {
 
         var body: some View {
             VStack {
-                Group {
-                    if FeatureFlag.isEnabled(.novoVisualGradeConteudos) {
-                        ModernContent.Button(
-                            content: content,
-                            favorites: playable.favoritesKeeper,
-                            highlighted: Set<String>(),
-                            nowPlaying: playable.nowPlayingKeeper,
-                            selectedItems: Set<String>(),
-                            currentContentListMode: .constant(.regular)
-                        )
-                    } else {
-                        PlayableContentView(
-                            content: content,
-                            favorites: playable.favoritesKeeper,
-                            highlighted: Set<String>(),
-                            nowPlaying: playable.nowPlayingKeeper,
-                            selectedItems: Set<String>(),
-                            currentContentListMode: .constant(.regular)
-                        )
-                    }
-                }
+                ModernContent.Button(
+                    content: content,
+                    favorites: playable.favoritesKeeper,
+                    highlighted: Set<String>(),
+                    nowPlaying: playable.nowPlayingKeeper,
+                    selectedItems: Set<String>(),
+                    currentContentListMode: .constant(.regular)
+                )
                 .contentShape(
                     .contextMenuPreview,
-                    RoundedRectangle(cornerRadius: FeatureFlag.isEnabled(.novoVisualGradeConteudos) ? 18 : .spacing(.large), style: .continuous)
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
                 )
                 .onTapGesture {
                     if playable.nowPlayingKeeper.contains(content.id) {

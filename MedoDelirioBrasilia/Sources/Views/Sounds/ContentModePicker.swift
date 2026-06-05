@@ -34,7 +34,9 @@ struct ContentModePicker<Option: FilterOption>: View {
                     selected: selected
                 )
                 .onTapGesture {
-                    selected = option
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        selected = option
+                    }
                 }
                 .sensoryFeedback(.impact(weight: .light, intensity: 0.4), trigger: selected)
             }
@@ -120,19 +122,28 @@ extension ContentModePicker {
 
         var body: some View {
             if #available(iOS 26, *) {
-                Text(option.displayName)
-                    .foregroundStyle(
-                        option == selected ? selectedTextColor : .primary
-                    )
-                    .font(.callout)
-                    .fontWeight(option == selected ? .bold : .regular)
-                    .padding(.vertical, verticalPadding)
-                    .padding(.horizontal, horizontalPadding)
-                    .glassEffect(
-                        .regular.tint(
-                            option == selected ? selectedBackgroundColor : nil
-                        ).interactive()
-                    )
+                Group {
+                    if option == selected {
+                        Text(option.displayName)
+                            .transition(.scale(scale: 0.5).combined(with: .opacity))
+                    } else {
+                        Image(systemName: option.symbol)
+                            .padding(.horizontal, .spacing(.xSmall))
+                            .transition(.scale(scale: 0.5).combined(with: .opacity))
+                    }
+                }
+                .foregroundStyle(
+                    option == selected ? selectedTextColor : .primary
+                )
+                .font(.callout)
+                .fontWeight(option == selected ? .bold : .regular)
+                .padding(.vertical, verticalPadding)
+                .padding(.horizontal, horizontalPadding)
+                .glassEffect(
+                    .regular.tint(
+                        option == selected ? selectedBackgroundColor : nil
+                    ).interactive()
+                )
             } else {
                 Text(option.displayName)
                     .foregroundStyle(

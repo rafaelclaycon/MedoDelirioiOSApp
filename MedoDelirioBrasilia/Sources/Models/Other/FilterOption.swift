@@ -9,4 +9,5 @@ import Foundation
 
 protocol FilterOption: Identifiable, Equatable {
     var displayName: String { get }
+    var symbol: String { get }
 }
