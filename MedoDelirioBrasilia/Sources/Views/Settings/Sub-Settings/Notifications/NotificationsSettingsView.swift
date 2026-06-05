@@ -104,11 +104,11 @@ struct NotificationsSettingsView: View {
 
                     Toggle("Novos Episódios", isOn: episodeNotificationsBinding)
 
-                    Toggle("Destaques da Semana", isOn: weeklyHighlightsBinding)
+                    Toggle("Tops da Semana", isOn: weeklyHighlightsBinding)
                 } header: {
                     Text("Escolha o que quer receber")
                 } footer: {
-                    Text("Receba uma notificação quando um novo episódio do podcast estiver disponível. Os Destaques da Semana chegam toda sexta com os sons e reações mais compartilhados.")
+                    Text("Receba uma notificação quando um novo episódio do podcast estiver disponível. Os Tops da Semana chegam toda sexta com os sons e reações mais usados.")
                 }
 
                 Section {
