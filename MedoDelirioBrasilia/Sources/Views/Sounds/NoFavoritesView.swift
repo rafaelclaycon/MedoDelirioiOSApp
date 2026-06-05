@@ -11,11 +11,11 @@ struct NoFavoritesView: View {
 
     var body: some View {
         VStack(alignment: .center, spacing: .spacing(.xLarge)) {
-            Image(systemName: "star")
+            Image(systemName: "heart")
                 .font(.system(size: 74))
                 .foregroundColor(.red)
             
-            Text("Nenhum Favorito")
+            Text("Sem Favoritos")
                 .font(.title2)
                 .bold()
                 .multilineTextAlignment(.center)

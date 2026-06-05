@@ -58,7 +58,7 @@ struct Shared {
             case .allSounds:
                 "quote.bubble"
             case .favorites:
-                "star"
+                "heart"
             case .groupedByAuthor:
                 "person"
             case .reactions:

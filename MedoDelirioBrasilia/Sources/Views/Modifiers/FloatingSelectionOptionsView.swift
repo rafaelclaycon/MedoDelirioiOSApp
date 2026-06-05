@@ -51,7 +51,7 @@ struct FloatingSelectionOptionsView: ViewModifier {
 
     private var favoriteSymbol: String {
         guard let options else { return "" }
-        return options.allSelectedAreFavorites ? "star.slash" : "star"
+        return options.allSelectedAreFavorites ? "heart.slash" : "heart"
     }
 
     private var favoriteTitle: String {

@@ -488,7 +488,7 @@ extension SearchSuggestionsView {
                             } label: {
                                 Label(
                                     playable.favoritesKeeper.contains(item.id) ? Shared.removeFromFavorites : Shared.addToFavorites,
-                                    systemImage: playable.favoritesKeeper.contains(item.id) ? "star.slash" : "star"
+                                    systemImage: playable.favoritesKeeper.contains(item.id) ? "heart.slash" : "heart"
                                 )
                             }
 

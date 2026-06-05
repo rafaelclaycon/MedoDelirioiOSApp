@@ -579,7 +579,7 @@ struct SearchResultsView: View {
             } label: {
                 Label(
                     favorites.contains(content.id) ? Shared.removeFromFavorites : Shared.addToFavorites,
-                    systemImage: favorites.contains(content.id) ? "star.slash" : "star"
+                    systemImage: favorites.contains(content.id) ? "heart.slash" : "heart"
                 )
             }
 
@@ -753,7 +753,7 @@ extension SearchResultsView {
                         } label: {
                             Label(
                                 playable.favoritesKeeper.contains(content.id) ? Shared.removeFromFavorites : Shared.addToFavorites,
-                                systemImage: playable.favoritesKeeper.contains(content.id) ? "star.slash" : "star"
+                                systemImage: playable.favoritesKeeper.contains(content.id) ? "heart.slash" : "heart"
                             )
                         }
 
