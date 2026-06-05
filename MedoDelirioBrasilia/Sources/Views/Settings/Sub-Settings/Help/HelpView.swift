@@ -13,7 +13,7 @@ struct HelpView: View {
         VStack {
             ScrollView {                
                 VStack(alignment: .leading, spacing: .spacing(.xxLarge)) {
-                    Text("Sons & Músicas")
+                    Text("Vírgulas & Músicas")
                         .font(.title)
                         .bold()
 
@@ -37,7 +37,7 @@ struct HelpView: View {
                     Divider()
 
                     HelpInstructionView(
-                        symbol: "star.fill",
+                        symbol: "heart.fill",
                         color: .red,
                         text: favoritesInstruction
                     )
@@ -94,7 +94,8 @@ struct HelpView: View {
                     )
                 }
                 .padding(.horizontal, .spacing(.medium))
-                .padding(.vertical, .spacing(.xSmall))
+                .padding(.top, .spacing(.xSmall))
+                .padding(.bottom, .spacing(.xLarge))
             }
         }
         .navigationTitle("Ajuda")
@@ -118,23 +119,19 @@ extension HelpView {
         if UIDevice.isMac {
             return "Para compartilhar, clique com o botão direito no conteúdo e escolha Compartilhar."
         } else {
-            return "Para compartilhar, segure o conteúdo por alguns segundos até que o menu de contexto abra e escolha Compartilhar."
+            return "Para compartilhar, segure o conteúdo por alguns segundos até o menu de contexto abrir e escolha Compartilhar."
         }
     }
 
     private var toSearchInstruction: String {
+        let appendix = "A pesquisa inclui todos os conteúdos do app e é tolerante a alguns erros de escrita."
         if UIDevice.isMac {
-            return "Para pesquisar por conteúdos, selecione Buscar na barra lateral.\n\nA pesquisa destaca tanto resultados encontrados no título ou autor quanto dentro do áudio."
+            return "Para pesquisar por conteúdos, selecione Buscar na barra lateral.\n\n\(appendix)"
         } else {
             if UIDevice.isiPhone {
-                if UIDevice.isIOS26OrLater {
-                    return "Para pesquisar, toque na lupa no canto inferior direito da tela a qualquer momento.\n\nA pesquisa destaca tanto resultados encontrados no título ou autor do conteúdo quanto dentro do áudio."
-                } else {
-                    return "Para pesquisar, vá até o topo da lista de conteúdos e puxe mais um pouco para baixo até revelar o campo Buscar.\n\nA pesquisa considera o que é falado no áudio e o nome do autor ou gênero musical. Não use vírgulas."
-                }
+                return "Para pesquisar, toque na lupa no canto inferior direito da tela a qualquer momento.\n\n\(appendix)"
             } else {
-                // iPad - sidebar search available in iOS 18+
-                return "Para pesquisar por conteúdos, toque em Buscar na barra lateral.\n\nA pesquisa destaca tanto resultados encontrados no título ou autor quanto dentro do áudio."
+                return "Para pesquisar por conteúdos, toque em Buscar na barra lateral.\n\n\(appendix)"
             }
         }
     }
@@ -153,11 +150,11 @@ extension HelpView {
     // MARK: - Episodes
 
     private var episodePlayInstruction: String {
-        "Toque em um episódio para ver os detalhes. Toque no botão de Play ao lado de cada episódio para reproduzir. Uma barra aparece na parte inferior, toque nela para abrir a tela Reproduzindo Agora com a capa, o progresso e os controles."
+        "Toque em um episódio para ver os detalhes. Toque no botão de Play ao lado de cada episódio para reproduzir.\n\nUma barra aparece na parte inferior, toque nela para abrir a tela Reproduzindo Agora com a capa, o progresso e os controles."
     }
 
     private var episodeControlsInstruction: String {
-        "Na tela Reproduzindo Agora, arraste a barra de progresso para pular para qualquer ponto. Use os botões para voltar 15 segundos ou avançar 30 segundos. O progresso é salvo automaticamente. Se você sair e voltar, a reprodução continua de onde parou."
+        "Na tela Reproduzindo Agora, arraste a barra de progresso para pular para qualquer ponto. Use os botões para voltar 15 segundos ou avançar 30 segundos.\n\nO progresso é salvo automaticamente. Se você sair e voltar, a reprodução continua de onde parou."
     }
 
     private var episodeBookmarkInstruction: String {
@@ -169,7 +166,7 @@ extension HelpView {
     }
 
     private var episodeFilterInstruction: String {
-        "A lista de episódios tem filtros horizontais e de menu que podem ser combinados. Na parte superior: Todos, Favoritos e Com Marcadores.\n\nNo menu do canto direito você pode filtrar por estado de reprodução (Não Iniciado, Em Progresso, Finalizado). Use o menu de ordenação para ver os mais recentes ou mais antigos primeiro."
+        "A lista de episódios tem filtros horizontais e de menu que podem ser combinados. Na parte superior: Todos, Favoritos e Com Marcadores.\n\nNo menu do canto direito você pode filtrar por estado de reprodução (Não Iniciado, Em Progresso, Finalizado).\n\nUse as opções de ordenação para ver os mais recentes ou mais antigos primeiro."
     }
 
     private var episodeSwipeInstruction: String {
