@@ -10,6 +10,8 @@ import SwiftUI
 struct RoundCheckbox: View {
     
     @Binding var selected: Bool
+    var color: Color = .gray
+
     @Environment(\.colorScheme) var colorScheme
     
     private let circleSize: CGFloat = 28.0
@@ -27,7 +29,7 @@ struct RoundCheckbox: View {
                     .frame(width: circleSize, height: circleSize)
             } else {
                 Circle()
-                    .stroke(colorScheme == .dark ? .white : .gray, lineWidth: 1.7)
+                    .stroke(colorScheme == .dark ? .white : color.darkened(by: 0.5), lineWidth: 1.7)
                     .frame(width: circleSize, height: circleSize)
                     .opacity(colorScheme == .dark ? 1.0 : 0.7)
             }
@@ -39,19 +41,12 @@ struct RoundCheckbox: View {
 
 }
 
-struct RoundCheckbox_Previews: PreviewProvider {
+#Preview {
+    VStack(spacing: .spacing(.xLarge)) {
+        // Unchecked
+        RoundCheckbox(selected: .constant(false))
 
-    static var previews: some View {
-        Group {
-            // Unchecked
-            RoundCheckbox(selected: .constant(false))
-            RoundCheckbox(selected: .constant(false))
-            
-            // Checked
-            RoundCheckbox(selected: .constant(true))
-            RoundCheckbox(selected: .constant(true))
-        }
-        .previewLayout(.fixed(width: 80, height: 80))
+        // Checked
+        RoundCheckbox(selected: .constant(true))
     }
-
 }

@@ -67,6 +67,7 @@ struct ModernContent {
         let color: Color
         let cornerRadius: CGFloat
         let isFavorite: Bool
+        var isSelected: Bool = false
 
         @Environment(\.colorScheme) private var colorScheme
 
@@ -79,8 +80,8 @@ struct ModernContent {
                 .overlay {
                     RoundedRectangle(cornerRadius: cornerRadius)
                         .stroke(
-                            isFavorite ? Color.red.opacity(0.7) : color.opacity(colorScheme == .dark ? 1 : 0.7),
-                            lineWidth: isFavorite ? 2 : 1
+                            isSelected ? .blue : isFavorite ? Color.red.opacity(0.7) : color.opacity(colorScheme == .dark ? 1 : 0.7),
+                            lineWidth: isSelected ? 3 : isFavorite ? 2 : 1
                         )
                 }
         }
@@ -190,7 +191,8 @@ extension ModernContent {
                         SimplestBackground(
                             color: content.primaryColor,
                             cornerRadius: shapeCornerRadius,
-                            isFavorite: favorites.contains(content.id)
+                            isFavorite: favorites.contains(content.id),
+                            isSelected: currentMode == .selected
                         )
                     case .highlighted:
                         RoundedRectangle(cornerRadius: shapeCornerRadius, style: .continuous)
@@ -241,9 +243,12 @@ extension ModernContent {
                         Spacer()
                         HStack {
                             Spacer()
-                            RoundCheckbox(selected: .constant(false))
-                                .padding(.trailing, 10)
-                                .padding(.bottom, 10)
+                            RoundCheckbox(
+                                selected: .constant(false),
+                                color: content.primaryColor
+                            )
+                            .padding(.trailing, 10)
+                            .padding(.bottom, 10)
                         }
                     }
                     .frame(height: itemHeight)
@@ -252,9 +257,12 @@ extension ModernContent {
                         Spacer()
                         HStack {
                             Spacer()
-                            RoundCheckbox(selected: .constant(true))
-                                .padding(.trailing, 10)
-                                .padding(.bottom, 10)
+                            RoundCheckbox(
+                                selected: .constant(true),
+                                color: content.primaryColor
+                            )
+                            .padding(.trailing, 10)
+                            .padding(.bottom, 10)
                         }
                     }
                     .frame(height: itemHeight)
