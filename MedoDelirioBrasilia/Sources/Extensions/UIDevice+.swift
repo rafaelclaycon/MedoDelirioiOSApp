@@ -25,6 +25,16 @@ extension UIDevice {
         guard !isiPad else { return true }
         return !modelName.contains("SE")
     }
+
+    static var biometricsName: String {
+        if isMac {
+            return "Touch ID"
+        } else if isiPad {
+            return modelName.contains("Pro") ? "Face ID" : "Touch ID"
+        } else {
+            return modelName.contains("SE") ? "Touch ID" : "Face ID"
+        }
+    }
 }
 
 // MARK: - Software Characteristics

@@ -22,7 +22,7 @@ struct DunBannerView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .shadow(color: .black.opacity(0.3), radius: 4, y: 2)
 
-            Text("Seus links, só seus.")
+            Text("Seus links, protegidos pelo \(UIDevice.biometricsName).")
                 .bold()
                 .fontDesign(.serif)
                 .foregroundStyle(.white)
@@ -33,7 +33,7 @@ struct DunBannerView: View {
             Button {
                 OpenUtility.open(link: dunAppStoreURL)
             } label: {
-                Text("Baixar")
+                Text("Ver")
                     .font(.subheadline.bold())
                     .padding(.horizontal, .spacing(.xSmall))
                     .padding(.vertical, .spacing(.xxxSmall))
