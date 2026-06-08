@@ -160,9 +160,6 @@ extension ModernContent {
 
         private var subtitle: String {
             if currentMode == .playing {
-                if content.duration < 1.0 {
-                    return "< 1 s"
-                }
                 return timeRemaining.minuteSecondFormatted
             } else {
                 return content.subtitle
