@@ -11,10 +11,6 @@ extension ContentUpdateStatusView {
 
     struct KnowMoreView: View {
 
-        private var tapOrClickText: String {
-            UIDevice.isMac ? "Clique" : "Toque"
-        }
-
         var body: some View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
@@ -51,17 +47,23 @@ extension ContentUpdateStatusView {
 
                     Text("Verificar se isso era possível foi tema do meu Projeto Final do curso de Análise e Desenvolvimento de Sistemas e é inovador por Swift ser majoritariamente uma linguagem de *front-end* (usada para fazer as telas com as quais você está interagindo) e não *back-end* (a parte dos servidores que armazenam e entregam os dados pro app).\n\nObrigado a todos que participaram da fase Beta e responderam ao questionário! A participação de vocês foi crítica para o sucesso do projeto. ❤️")
 
-                    Button("Leia mais sobre o projeto no blogue") {
-                        OpenUtility.open(link: "https://from-rafael-with-code.ghost.io/thank-you-bolsonaro-part-1/")
+                    HStack {
+                        Spacer()
+                        GlassButton(symbol: "book.pages", title: "Leia mais no blogue", color: .blue) {
+                            OpenUtility.open(link: "https://www.fromrafaelwithco.de/thank-you-bolsonaro-part-1/")
+                        }
+                        Spacer()
                     }
-                    .largeRoundedRectangleBordered(colored: .blue)
 
-                    Text("Todos os códigos relacionados ao app são abertos e estão disponíveis para estudo e colaboração. \(tapOrClickText) abaixo para vê-los no meu GitHub.")
+                    Text("Todos os códigos relacionados ao app são abertos e estão disponíveis para estudo e colaboração.")
 
-                    Button("Abrir GitHub") {
-                        OpenUtility.open(link: "https://github.com/rafaelclaycon")
+                    HStack {
+                        Spacer()
+                        GlassButton(symbol: "laptopcomputer", title: "Ver no GitHub", color: .purple) {
+                            OpenUtility.open(link: "https://github.com/rafaelclaycon")
+                        }
+                        Spacer()
                     }
-                    .largeRoundedRectangleBordered(colored: .purple)
                 }
                 .padding(.vertical)
                 .padding(.horizontal, 30)

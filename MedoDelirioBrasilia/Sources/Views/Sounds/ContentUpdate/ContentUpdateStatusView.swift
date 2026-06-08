@@ -13,19 +13,27 @@ struct ContentUpdateStatusView: View {
     let lastUpdateAttempt: String
     let lastUpdateDate: String
 
+    @State private var displayKnowMore = false
+
     @Environment(SyncValues.self) private var syncValues
     @Environment(\.dismiss) var dismiss
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 switch syncValues.syncStatus {
                 case .updating:
                     UpdatingView()
+
                 case .done:
-                    AllOkView(lastUpdateAttempt: lastUpdateAttempt)
+                    AllOkView(
+                        lastUpdateAttempt: lastUpdateAttempt,
+                        displayKnowMore: $displayKnowMore
+                    )
+
                 case .updateError:
                     UpdateErrorView(lastUpdateDate: lastUpdateDate)
+
                 /*case .pendingFirstUpdate:
                     PendingFirstUpdateView()*/
                 }
@@ -38,14 +46,9 @@ struct ContentUpdateStatusView: View {
                         dismiss()
                     }
                 }
-
-                ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink {
-                        ContentUpdateStatusView.KnowMoreView()
-                    } label: {
-                        Image(systemName: "info.circle")
-                    }
-                }
+            }
+            .navigationDestination(isPresented: $displayKnowMore) {
+                ContentUpdateStatusView.KnowMoreView()
             }
         }
     }
@@ -80,6 +83,7 @@ extension ContentUpdateStatusView {
     private struct AllOkView: View {
 
         @State var lastUpdateAttempt: String
+        @Binding var displayKnowMore: Bool
 
         @State private var updates: [SyncLog] = []
         @State private var hiddenUpdates: Int = 0
@@ -102,22 +106,25 @@ extension ContentUpdateStatusView {
         }
 
         var body: some View {
-            VStack(spacing: .spacing(.xxLarge)) {
+            VStack(spacing: .spacing(.xLarge)) {
                 InfoHeader(
                     symbol: "checkmark",
                     color: .green,
                     title: "Conteúdos atualizados",
                     subtitle: lastUpdateText
                 )
-                .padding(.horizontal, .spacing(.xSmall))
+
+                GlassButton(title: "Como esses sistema funciona?", color: .primary) {
+                    displayKnowMore.toggle()
+                }
 
                 HistoryView(
                     updates: updates,
                     hiddenUpdatesCount: hiddenUpdates
                 )
             }
-            .padding(.horizontal)
-            .padding(.bottom, 30)
+            .padding(.horizontal, .spacing(.medium))
+            .padding(.bottom, .spacing(.xxLarge))
             .onAppear {
                 updateLastUpdateText()
                 updates = LocalDatabase.shared.lastFewSyncLogs()
@@ -162,7 +169,6 @@ extension ContentUpdateStatusView {
                     title: title,
                     subtitle: subtitle
                 )
-                .padding(.horizontal, .spacing(.xSmall))
 
                 HistoryView(
                     updates: updates,
@@ -207,7 +213,7 @@ extension ContentUpdateStatusView {
         }
     }
 
-    private struct InfoHeader: View {
+    struct InfoHeader: View {
 
         let symbol: String
         let color: Color
@@ -217,25 +223,35 @@ extension ContentUpdateStatusView {
         @ScaledMetric private var iconWidth: CGFloat = 40
 
         var body: some View {
-            HStack(spacing: .spacing(.large)) {
+            HStack(spacing: .spacing(.xLarge)) {
                 Image(systemName: symbol)
                     .resizable()
                     .scaledToFit()
                     .frame(width: iconWidth)
-                    .foregroundStyle(color)
+                    .foregroundStyle(.white)
+                    .bold()
 
-                VStack(alignment: .leading, spacing: .spacing(.xSmall)) {
+                VStack(alignment: .leading, spacing: .spacing(.medium)) {
                     Text(title)
                         .font(.headline)
                         .multilineTextAlignment(.leading)
 
-                    Text(subtitle)
+                    Text("Pode ficar tranquilo, nenhuma ação sua é necessária aqui.")
                         .font(.callout)
-                        .foregroundColor(.gray)
+
+                    Text(subtitle.uppercased())
+                        .font(.footnote)
+                        .foregroundColor(.primary.opacity(0.8))
                         .multilineTextAlignment(.leading)
                 }
 
                 Spacer()
+            }
+            .padding(.leading, .spacing(.large))
+            .padding(.vertical, .spacing(.xxLarge))
+            .background {
+                RoundedRectangle(cornerRadius: .spacing(.large))
+                    .fill(color.opacity(0.6))
             }
         }
     }
@@ -245,37 +261,39 @@ extension ContentUpdateStatusView {
         let updates: [SyncLog]
         let hiddenUpdatesCount: Int
 
+        @State private var isSectionExpanded = false
+
         var body: some View {
-            VStack(spacing: 20) {
-                HStack {
-                    Text("Histórico:")
-                        .bold()
+            DisclosureGroup(
+                isExpanded: $isSectionExpanded,
+                content: {
+                    LazyVStack(spacing: .spacing(.medium)) {
+                        ForEach(updates) { update in
+                            SyncInfoCard(
+                                imageName: update.logType == .error ? "exclamationmark.triangle" : "checkmark",
+                                imageColor: update.logType == .error ? .orange : .green,
+                                title: update.description,
+                                timestamp: update.dateTime.asRelativeDateTime ?? ""
+                            )
+                            .onTapGesture {
+                                dump(update)
+                            }
+                        }
 
-                    Spacer()
-                }
-                .padding(.horizontal, 10)
-
-                LazyVStack(spacing: 15) {
-                    ForEach(updates) { update in
-                        SyncInfoCard(
-                            imageName: update.logType == .error ? "exclamationmark.triangle" : "checkmark",
-                            imageColor: update.logType == .error ? .orange : .green,
-                            title: update.description,
-                            timestamp: update.dateTime.asRelativeDateTime ?? ""
-                        )
-                        .onTapGesture {
-                            dump(update)
+                        if hiddenUpdatesCount > 0 {
+                            Text("E outras \(hiddenUpdatesCount) atualizações registradas.")
+                                .font(.footnote)
+                                .foregroundColor(.gray)
+                                .multilineTextAlignment(.center)
                         }
                     }
+                    .padding(.top, .spacing(.medium))
+                },
+                label: {
+                    Text("Histórico completo")
                 }
-
-                if hiddenUpdatesCount > 0 {
-                    Text("E outras \(hiddenUpdatesCount) atualizações registradas.")
-                        .font(.footnote)
-                        .foregroundColor(.gray)
-                        .multilineTextAlignment(.center)
-                }
-            }
+            )
+            .foregroundStyle(.primary)
         }
     }
 }
@@ -287,13 +305,19 @@ extension ContentUpdateStatusView {
 //    return ContentUpdateStatusView(lastUpdateAttempt: "", lastUpdateDate: "all")
 //        .environment(syncValuesUpdating)
 //}
-//
-//#Preview("Done") {
-//    let syncValuesDone: SyncValues = SyncValues(syncStatus: .done)
-//    ContentUpdateStatusView(lastUpdateAttempt: "", lastUpdateDate: "2023-08-11T20:29:46.562Z")
-//        .environment(syncValuesDone)
-//}
-//
+
+#Preview("Done") {
+    VStack {
+        ContentUpdateStatusView.InfoHeader(
+            symbol: "checkmark",
+            color: .green,
+            title: "Conteúdos atualizados",
+            subtitle: "Última atualização há 2 minutos"
+        )
+    }
+    .padding(.horizontal, .spacing(.medium))
+}
+
 //#Preview("Update Error") {
 //    let syncValuesUpdateError: SyncValues = SyncValues(syncStatus: .updateError)
 //    return ContentUpdateStatusView(lastUpdateAttempt: "", lastUpdateDate: "2023-08-11T20:29:46.562Z")
