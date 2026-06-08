@@ -31,22 +31,6 @@ extension UIDevice {
 
 extension UIDevice {
 
-    static func supportsiOSiPadOS18(
-        isMac: Bool = UIDevice.isMac,
-        isiPad: Bool = UIDevice.isiPad,
-        _ modelName: String = UIDevice.modelName
-    ) -> Bool {
-        guard !isMac else { return false }
-        guard !isiPad else {
-            return ![
-                "iPad (6th generation)",
-                "iPad Pro (10.5-inch)",
-                "iPad Pro (12.9-inch) (2nd generation)"
-            ].contains(modelName)
-        }
-        return true
-    }
-
     static var isIOS26OrLater: Bool {
         if #available(iOS 26.0, *) {
             return true
