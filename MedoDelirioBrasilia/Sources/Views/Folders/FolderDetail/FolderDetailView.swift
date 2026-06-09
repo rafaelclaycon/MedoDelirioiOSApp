@@ -214,7 +214,7 @@ struct FolderDetailView: View {
                     Text("Título")
                         .tag(0)
 
-                    Text("Nome do(a) Autor(a)")
+                    Text("Nome do Autor")
                         .tag(1)
 
                     if showSortByDateAddedOption {

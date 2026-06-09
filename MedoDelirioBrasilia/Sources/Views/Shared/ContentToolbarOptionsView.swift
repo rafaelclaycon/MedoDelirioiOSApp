@@ -41,17 +41,17 @@ struct ContentToolbarOptionsView: ToolbarContent {
 
                 Section {
                     Picker("Ordenação de Sons", selection: $contentSortOption) {
-                        Text("Título")
-                            .tag(0)
-
-                        Text("Nome do(a) Autor(a) ou Gênero Musical")
-                            .tag(1)
-
                         Text("Mais Recentes no Topo")
                             .tag(2)
 
                         Text("Mais Curtos no Topo")
                             .tag(3)
+
+                        Text("Título")
+                            .tag(0)
+
+                        Text("Nome do Autor ou Gênero Musical")
+                            .tag(1)
 
                         Text("Mais Longos no Topo")
                             .tag(4)
