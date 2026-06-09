@@ -16,11 +16,14 @@ struct ContentUpdateStatusSymbol: View {
         case .updating:
             ProgressView()
                 .progressViewStyle(CircularProgressViewStyle())
+
         case .done:
             Image(systemName: "info")
+
         case .updateError:
             Image(systemName: "exclamationmark.triangle.fill") // "xmark.octagon"
                 .foregroundColor(.orange)
+
 //        case .pendingFirstUpdate:
 //            Image(systemName: "clock")
 //                .foregroundColor(.gray)
