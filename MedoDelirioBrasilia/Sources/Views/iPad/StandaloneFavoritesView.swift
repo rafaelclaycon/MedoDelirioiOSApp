@@ -58,7 +58,6 @@ struct StandaloneFavoritesView: View {
                         viewModel: contentGridViewModel,
                         toast: viewModel.toast,
                         searchTextIsEmpty: $soundSearchTextIsEmpty,
-                        allowSearch: false,
                         isFavoritesOnlyView: true,
                         containerSize: geometry.size,
                         loadingView:

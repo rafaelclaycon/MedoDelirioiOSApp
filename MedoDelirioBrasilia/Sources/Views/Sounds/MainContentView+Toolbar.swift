@@ -15,25 +15,15 @@ extension MainContentView {
         let contentListMode: ContentGridMode
         @Binding var contentSortOption: Int
         @Binding var authorSortOption: Int
-        let isInSearchMode: Bool
         let openContentUpdateSheet: () -> Void
         let multiSelectAction: () -> Void
         let playRandomSoundAction: () -> Void
         let contentSortChangeAction: () -> Void
         let authorSortChangeAction: () -> Void
-        let showFeedbackAction: () -> Void
         let matchedTransitionNamespace: Namespace.ID
 
         var body: some ToolbarContent {
-            if isInSearchMode {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showFeedbackAction()
-                    } label: {
-                        Image(systemName: "bubble.left.and.text.bubble.right")
-                    }
-                }
-            } else if currentViewMode != .folders {
+            if currentViewMode != .folders {
                 if currentViewMode == .authors {
                     AuthorToolbarOptionsView(
                         authorSortOption: $authorSortOption,

@@ -30,7 +30,6 @@ struct ContentGrid<
     @State private var viewModel: ContentGridViewModel
     private var toast: Binding<Toast?>
     private var searchTextIsEmpty: Binding<Bool?>
-    private let allowSearch: Bool
     private let showNewTag: Bool
     private let isFavoritesOnlyView: Bool
     private let authorId: String?
@@ -82,7 +81,6 @@ struct ContentGrid<
         toast: Binding<Toast?>,
 
         searchTextIsEmpty: Binding<Bool?> = .constant(nil),
-        allowSearch: Bool = false,
         showNewTag: Bool = true,
         isFavoritesOnlyView: Bool = false,
         authorId: String? = nil,
@@ -98,7 +96,6 @@ struct ContentGrid<
         self.viewModel = viewModel
         self.toast = toast
         self.searchTextIsEmpty = searchTextIsEmpty
-        self.allowSearch = allowSearch
         self.showNewTag = showNewTag
         self.isFavoritesOnlyView = isFavoritesOnlyView
         self.authorId = authorId
@@ -159,11 +156,6 @@ struct ContentGrid<
                             }
                         }
                     }
-                }
-                .if(allowSearch) {
-                    $0
-                        .searchable(text: $viewModel.searchText)
-                        .disableAutocorrection(true)
                 }
                 // Grid-specific alerts (folder operations)
                 .alert(isPresented: $viewModel.showAlert) {

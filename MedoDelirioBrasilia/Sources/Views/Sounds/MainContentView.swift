@@ -17,25 +17,11 @@ struct MainContentView: View {
     let contentRepository: ContentRepositoryProtocol
     let userFolderRepository: UserFolderRepositoryProtocol
     let bannerRepository: BannerRepositoryProtocol
-    let searchService: SearchServiceProtocol
     let analyticsService: AnalyticsServiceProtocol
 
     @State var subviewToOpen: MainSoundContainerModalToOpen = .syncInfo
     @State var showingModalView = false
     @State var contentSearchTextIsEmpty: Bool? = true
-
-    // iOS 18 Search
-    @State var searchText: String = ""
-    @State var searchResults = SearchResults()
-    @State var searchToast: Toast? = nil
-    @State var isInSearchMode: Bool = false
-    @State var reactionsState: LoadingState<[Reaction]> = .loading
-    @State var showSearchFeedbackAlert: Bool = false
-    @State var searchPlayable: PlayableContentState?
-    @State var searchMode: SearchMode = .virgulas
-    @State var transcriptSearchTask: Task<Void, Never>?
-    @State var isSearchingTranscripts = false
-    @State var hasSentTranscriptSearchAnalytics = false
 
     // Folders
     @State var deleteFolderAide = DeleteFolderViewAide()
@@ -55,7 +41,6 @@ struct MainContentView: View {
     @Environment(TrendsHelper.self) var trendsHelper
     @Environment(SettingsHelper.self) var settingsHelper
     @Environment(PlayRandomSoundHelper.self) var playRandomSoundHelper
-    @Environment(TranscriptDownloadService.self) var transcriptDownloadService
     @Environment(\.push) var push
 
     // MARK: - Computed Properties
@@ -88,7 +73,6 @@ struct MainContentView: View {
         contentRepository: ContentRepositoryProtocol,
         userFolderRepository: UserFolderRepositoryProtocol,
         bannerRepository: BannerRepositoryProtocol,
-        searchService: SearchServiceProtocol,
         analyticsService: AnalyticsServiceProtocol
     ) {
         self.viewModel = viewModel
@@ -109,7 +93,6 @@ struct MainContentView: View {
         self.contentRepository = contentRepository
         self.userFolderRepository = userFolderRepository
         self.bannerRepository = bannerRepository
-        self.searchService = searchService
         self.analyticsService = analyticsService
     }
 
@@ -194,14 +177,6 @@ extension MainContentView {
         contentRepository: FakeContentRepository(),
         userFolderRepository: FakeUserFolderRepository(),
         bannerRepository: BannerRepository(),
-        searchService: SearchService(
-            contentRepository: FakeContentRepository(),
-            authorService: FakeAuthorService(),
-            appMemory: FakeAppPersistentMemory(),
-            userFolderRepository: FakeUserFolderRepository(),
-            userSettings: FakeUserSettings(),
-            reactionRepository: FakeReactionRepository()
-        ),
         analyticsService: FakeAnalyticsService()
     )
 }

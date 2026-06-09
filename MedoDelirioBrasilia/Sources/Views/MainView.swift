@@ -128,7 +128,6 @@ struct MainView: View {
                                 contentRepository: contentRepository,
                                 userFolderRepository: userFolderRepository,
                                 bannerRepository: BannerRepository(),
-                                searchService: searchService,
                                 analyticsService: AnalyticsService()
                             )
                             .environment(trendsHelper)
@@ -225,7 +224,6 @@ struct MainView: View {
                                 contentRepository: contentRepository,
                                 userFolderRepository: userFolderRepository,
                                 bannerRepository: BannerRepository(),
-                                searchService: searchService,
                                 analyticsService: AnalyticsService()
                             )
                             .environment(trendsHelper)
@@ -348,7 +346,6 @@ struct MainView: View {
                                 contentRepository: contentRepository,
                                 userFolderRepository: userFolderRepository,
                                 bannerRepository: BannerRepository(),
-                                searchService: searchService,
                                 analyticsService: AnalyticsService()
                             )
                             .environment(trendsHelper)
