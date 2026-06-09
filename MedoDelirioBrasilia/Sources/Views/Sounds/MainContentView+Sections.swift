@@ -141,7 +141,6 @@ extension MainContentView {
                         lastUpdateAttempt: AppPersistentMemory().getLastUpdateAttempt(),
                         lastUpdateDate: LocalDatabase.shared.dateTimeOfLastUpdate()
                     )
-                    .presentationDetents([.medium, .large])
                     .navigationTransition(
                         .zoom(sourceID: "sync-status-view", in: namespace)
                     )

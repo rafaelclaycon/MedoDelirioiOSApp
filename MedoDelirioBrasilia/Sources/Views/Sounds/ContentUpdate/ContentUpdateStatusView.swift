@@ -14,6 +14,7 @@ struct ContentUpdateStatusView: View {
     let lastUpdateDate: String
 
     @State private var displayKnowMore = false
+    @State private var selectedDetent: PresentationDetent = .medium
 
     @Environment(SyncValues.self) private var syncValues
     @Environment(\.dismiss) var dismiss
@@ -28,7 +29,8 @@ struct ContentUpdateStatusView: View {
                 case .done:
                     AllOkView(
                         lastUpdateAttempt: lastUpdateAttempt,
-                        displayKnowMore: $displayKnowMore
+                        displayKnowMore: $displayKnowMore,
+                        selectedDetent: $selectedDetent
                     )
 
                 case .updateError:
@@ -51,6 +53,7 @@ struct ContentUpdateStatusView: View {
                 ContentUpdateStatusView.KnowMoreView()
             }
         }
+        .presentationDetents([.medium, .large], selection: $selectedDetent)
     }
 }
 
@@ -85,6 +88,7 @@ extension ContentUpdateStatusView {
 
         @State var lastUpdateAttempt: String
         @Binding var displayKnowMore: Bool
+        @Binding var selectedDetent: PresentationDetent
 
         @State private var updates: [SyncLog] = []
         @State private var hiddenUpdates: Int = 0
@@ -117,6 +121,7 @@ extension ContentUpdateStatusView {
                 )
 
                 GlassButton(title: "Como isso funciona?", color: .primary) {
+                    selectedDetent = .large
                     displayKnowMore.toggle()
                 }
 
