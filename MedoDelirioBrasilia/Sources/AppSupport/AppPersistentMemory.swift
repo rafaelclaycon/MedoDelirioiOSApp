@@ -143,13 +143,6 @@ extension AppPersistentMemory {
         return Bool(value as! Bool)
     }
 
-    func getHasSeenRecurringDonationBanner() -> Bool {
-        guard let value = userDefaults.object(forKey: "hasSeenRecurringDonationBanner") else {
-            return false
-        }
-        return Bool(value as! Bool)
-    }
-
     func getHasSeenBetaBanner() -> Bool {
         guard let value = userDefaults.object(forKey: "hasSeenBetaBanner") else {
             return false
@@ -178,41 +171,6 @@ extension AppPersistentMemory {
         return String(value as! String)
     }
 
-    func hasDismissedRetro2025Banner() -> Bool {
-        guard let value = userDefaults.object(forKey: "hasDismissedRetro2025Banner") else {
-            return false
-        }
-        return Bool(value as! Bool)
-    }
-
-    func hasDismissedRetro2025BannerInTrends() -> Bool {
-        guard let value = userDefaults.object(forKey: "hasDismissedRetro2025BannerInTrends") else {
-            return false
-        }
-        return Bool(value as! Bool)
-    }
-
-    func getHasSeenFirstUpdateIncentiveBanner() -> Bool {
-        guard let value = userDefaults.object(forKey: "hasSeenFirstUpdateIncentiveBanner") else {
-            return false
-        }
-        return Bool(value as! Bool)
-    }
-
-    func getHasSentFirstUpdateIncentiveMetric() -> Bool {
-        guard let value = userDefaults.object(forKey: "hasSentFirstUpdateIncentiveMetric") else {
-            return false
-        }
-        return Bool(value as! Bool)
-    }
-
-    func hasSeenNewTrendsUpdateWayBanner() -> Bool {
-        guard let value = userDefaults.object(forKey: "hasSeenNewTrendsUpdateWayBanner") else {
-            return false
-        }
-        return Bool(value as! Bool)
-    }
-
     func folderResearchHashes() -> [String: String]? {
         guard let value = userDefaults.object(forKey: "folderResearchHash") else {
             return nil
@@ -229,13 +187,6 @@ extension AppPersistentMemory {
 
     func hasSeenPinReactionsBanner() -> Bool {
         guard let value = userDefaults.object(forKey: "hasSeenPinReactionsBanner") else {
-            return false
-        }
-        return Bool(value as! Bool)
-    }
-
-    func hasSeenDunTestFlightBanner() -> Bool {
-        guard let value = userDefaults.object(forKey: "hasSeenDunTestFlightBanner") else {
             return false
         }
         return Bool(value as! Bool)
@@ -382,10 +333,6 @@ extension AppPersistentMemory {
         userDefaults.set(newValue, forKey: "hasSeenControlWhatsNewScreen")
     }
 
-    func setHasSeenRecurringDonationBanner(to newValue: Bool) {
-        userDefaults.set(newValue, forKey: "hasSeenRecurringDonationBanner")
-    }
-
     func setHasSeenBetaBanner(to newValue: Bool) {
         userDefaults.set(newValue, forKey: "hasSeenBetaBanner")
     }
@@ -403,26 +350,6 @@ extension AppPersistentMemory {
         userDefaults.set(newValue, forKey: "lastUpdateAttempt")
     }
 
-    func dismissedRetro2025Banner(_ newValue: Bool) {
-        userDefaults.set(newValue, forKey: "hasDismissedRetro2025Banner")
-    }
-
-    func dismissedRetro2025BannerInTrends(_ newValue: Bool) {
-        userDefaults.set(newValue, forKey: "hasDismissedRetro2025BannerInTrends")
-    }
-
-    func setHasSeenFirstUpdateIncentiveBanner(to newValue: Bool) {
-        userDefaults.set(newValue, forKey: "hasSeenFirstUpdateIncentiveBanner")
-    }
-
-    func setHasSentFirstUpdateIncentiveMetric(to newValue: Bool) {
-        userDefaults.set(newValue, forKey: "hasSentFirstUpdateIncentiveMetric")
-    }
-
-    func setHasSeenNewTrendsUpdateWayBanner(to newValue: Bool) {
-        userDefaults.set(newValue, forKey: "hasSeenNewTrendsUpdateWayBanner")
-    }
-
     func folderResearchHashes(_ foldersHashes: [String: String]) {
         userDefaults.set(foldersHashes, forKey: "folderResearchHash")
     }
@@ -433,10 +360,6 @@ extension AppPersistentMemory {
 
     func setHasSeenPinReactionsBanner(to newValue: Bool) {
         userDefaults.set(newValue, forKey: "hasSeenPinReactionsBanner")
-    }
-
-    func setHasSeenDunTestFlightBanner(to newValue: Bool) {
-        userDefaults.set(newValue, forKey: "hasSeenDunTestFlightBanner")
     }
 
     func setHasDismissedDunBanner(to newValue: Bool) {

@@ -7,11 +7,6 @@
 
 import Foundation
 
-@available(*, deprecated, message: "Use a more specific enum for each screen.")
-enum AlertType {
-    case singleOption, twoOptions, twoOptionsOneDelete, twoOptionsOneRedownload, twoOptionsOneContinue
-}
-
 // MARK: - Playable Content
 
 enum PlayableContentAlert: Identifiable {

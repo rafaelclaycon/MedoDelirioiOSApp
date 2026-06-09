@@ -34,7 +34,6 @@ struct MainContentView: View {
     )
 
     @ScaledMetric var explicitOffWarningTopPadding: CGFloat = .spacing(.medium)
-    @ScaledMetric var explicitOffWarningBottomPadding: CGFloat = .spacing(.large)
 
     // MARK: - Environment Objects
 
