@@ -20,6 +20,7 @@ struct ModernContent {
         var duration: Double?
         let color: Color
         let isSong: Bool
+        let isPlaying: Bool
 
         @Environment(\.colorScheme) private var colorScheme
 
@@ -39,6 +40,7 @@ struct ModernContent {
                         if isSong {
                             Image(systemName: "music.quarternote.3")
                                 .foregroundStyle(lowerPartColor)
+                                .symbolEffect(.bounce.up.byLayer, options: .repeat(.continuous), isActive: isPlaying)
                         }
 
                         Group {
@@ -203,7 +205,8 @@ extension ModernContent {
                     title: content.title,
                     subtitle: subtitle,
                     color: content.primaryColor,
-                    isSong: content.type == .song
+                    isSong: content.type == .song,
+                    isPlaying: currentMode == .playing
                 )
                 .onReceive(timer) { time in
                     guard currentMode == .playing else { return }
@@ -327,7 +330,8 @@ extension ModernContent {
                 subtitle: content.subtitle,
                 duration: content.duration,
                 color: content.primaryColor,
-                isSong: content.type == .song
+                isSong: content.type == .song,
+                isPlaying: false
             )
             .frame(width: 300)
             .padding(.vertical, .spacing(.xLarge))
