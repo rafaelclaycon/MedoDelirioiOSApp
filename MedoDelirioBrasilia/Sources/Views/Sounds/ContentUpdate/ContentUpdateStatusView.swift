@@ -58,10 +58,10 @@ struct ContentUpdateStatusView: View {
 
 extension ContentUpdateStatusView {
 
-    private struct UpdatingView: View {
+    struct UpdatingView: View {
 
         var body: some View {
-            VStack(spacing: 30) {
+            VStack(spacing: .spacing(.xxLarge)) {
                 ProgressView()
                     .progressViewStyle(CircularProgressViewStyle())
                     .scaleEffect(2)
@@ -73,10 +73,11 @@ extension ContentUpdateStatusView {
                     .multilineTextAlignment(.center)
 
                 Text("Por favor, aguarde a atualização ser concluída.")
+                    .font(.callout)
                     .foregroundColor(.gray)
                     .multilineTextAlignment(.center)
             }
-            .padding(.horizontal)
+            .padding(.horizontal, .spacing(.large))
         }
     }
 
@@ -111,10 +112,11 @@ extension ContentUpdateStatusView {
                     symbol: "checkmark",
                     color: .green,
                     title: "Conteúdos atualizados",
-                    subtitle: lastUpdateText
+                    subtitle: lastUpdateText,
+                    showNoActionNeededText: true
                 )
 
-                GlassButton(title: "Como esses sistema funciona?", color: .primary) {
+                GlassButton(title: "Como isso funciona?", color: .primary) {
                     displayKnowMore.toggle()
                 }
 
@@ -219,6 +221,7 @@ extension ContentUpdateStatusView {
         let color: Color
         let title: String
         let subtitle: String
+        var showNoActionNeededText: Bool = false
 
         @ScaledMetric private var iconWidth: CGFloat = 40
 
@@ -236,13 +239,15 @@ extension ContentUpdateStatusView {
                         .font(.headline)
                         .multilineTextAlignment(.leading)
 
-                    Text("Pode ficar tranquilo, nenhuma ação sua é necessária aqui.")
-                        .font(.callout)
-
                     Text(subtitle.uppercased())
                         .font(.footnote)
                         .foregroundColor(.primary.opacity(0.8))
                         .multilineTextAlignment(.leading)
+
+                    if showNoActionNeededText {
+                        Text("Nenhuma ação é necessária.")
+                            .font(.callout)
+                    }
                 }
 
                 Spacer()
@@ -300,11 +305,11 @@ extension ContentUpdateStatusView {
 
 // MARK: - Previews
 
-//#Preview("Updating") {
-//    let syncValuesUpdating: SyncValues = SyncValues()
-//    return ContentUpdateStatusView(lastUpdateAttempt: "", lastUpdateDate: "all")
-//        .environment(syncValuesUpdating)
-//}
+#Preview("Updating") {
+    ScrollView {
+        ContentUpdateStatusView.UpdatingView()
+    }
+}
 
 #Preview("Done") {
     VStack {
