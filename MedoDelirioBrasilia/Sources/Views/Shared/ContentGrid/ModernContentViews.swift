@@ -47,7 +47,7 @@ struct ModernContent {
                             Text(subtitle.uppercased())
 
                             if let duration {
-                                Text(duration.minuteSecondFormatted)
+                                Text(isPlaying ? duration.minuteSecondFormatted : duration.minuteSecondFormattedPretty)
                             }
                         }
                         .fontDesign(.monospaced)
