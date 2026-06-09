@@ -144,7 +144,10 @@ struct SearchResultsView: View {
                                             loadedContent: soundsMatchingTitle
                                         )
                                     } preview: {
-                                        ModernContent.MenuPreview(content: item)
+                                        ModernContent.MenuPreview(
+                                            content: item,
+                                            isFavorite: playable.favoritesKeeper.contains(item.id)
+                                        )
                                     }
                                 }
                             )
@@ -200,7 +203,10 @@ struct SearchResultsView: View {
                                             loadedContent: songsMatchingTitle
                                         )
                                     } preview: {
-                                        ModernContent.MenuPreview(content: item)
+                                        ModernContent.MenuPreview(
+                                            content: item,
+                                            isFavorite: playable.favoritesKeeper.contains(item.id)
+                                        )
                                     }
                                 }
                             )
@@ -425,7 +431,10 @@ struct SearchResultsView: View {
                     loadedContent: [content]
                 )
             } preview: {
-                ModernContent.MenuPreview(content: content)
+                ModernContent.MenuPreview(
+                    content: content,
+                    isFavorite: playable.favoritesKeeper.contains(content.id)
+                )
             }
 
         case .author(let author):
@@ -720,7 +729,10 @@ extension SearchResultsView {
                         }
                     }
                 } preview: {
-                    ModernContent.MenuPreview(content: content)
+                    ModernContent.MenuPreview(
+                        content: content,
+                        isFavorite: playable.favoritesKeeper.contains(content.id)
+                    )
                 }
 
                 Text("\"\(text)\"")

@@ -88,6 +88,18 @@ struct ModernContent {
                 }
         }
     }
+
+    private struct FavoriteOverlay: View {
+        var body: some View {
+            Image(systemName: "heart.fill")
+                .resizable()
+                .scaledToFit()
+                .frame(height: 20)
+                .foregroundColor(.red)
+                .padding(.trailing, .spacing(.xSmall))
+                .padding(.bottom, .spacing(.xSmall))
+        }
+    }
 }
 
 // MARK: - Specific Views
@@ -270,13 +282,7 @@ extension ModernContent {
             }
             .overlay(alignment: .bottomTrailing) {
                 if background == .favorite, currentMode == .regular {
-                    Image(systemName: "heart.fill")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: 20)
-                        .foregroundColor(.red)
-                        .padding(.trailing, .spacing(.xSmall))
-                        .padding(.bottom, .spacing(.xSmall))
+                    FavoriteOverlay()
                 }
             }
             .overlay {
@@ -323,6 +329,7 @@ extension ModernContent {
     struct MenuPreview: View {
 
         let content: any MedoContentProtocol
+        let isFavorite: Bool
 
         var body: some View {
             MainText(
@@ -339,8 +346,13 @@ extension ModernContent {
                 SimplestBackground(
                     color: content.primaryColor,
                     cornerRadius: shapeCornerRadius,
-                    isFavorite: false
+                    isFavorite: isFavorite
                 )
+            }
+            .overlay(alignment: .bottomTrailing) {
+                if isFavorite {
+                    FavoriteOverlay()
+                }
             }
         }
     }

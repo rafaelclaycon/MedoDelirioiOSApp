@@ -152,7 +152,10 @@ struct ContentGrid<
                                     )
                                 }
                             } preview: {
-                                ModernContent.MenuPreview(content: content)
+                                ModernContent.MenuPreview(
+                                    content: content,
+                                    isFavorite: viewModel.favoritesKeeper.contains(content.id)
+                                )
                             }
                         }
                     }

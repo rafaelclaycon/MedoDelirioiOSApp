@@ -495,7 +495,10 @@ extension SearchSuggestionsView {
                             }
                         }
                     } preview: {
-                        ModernContent.MenuPreview(content: item)
+                        ModernContent.MenuPreview(
+                            content: item,
+                            isFavorite: playable.favoritesKeeper.contains(item.id)
+                        )
                     }
                 }
             }

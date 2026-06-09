@@ -167,7 +167,10 @@ struct FourthAnniversaryView: View {
                                         loadedContent: [mostSharedSound]
                                     )
                                 } preview: {
-                                    ModernContent.MenuPreview(content: mostSharedSound)
+                                    ModernContent.MenuPreview(
+                                        content: mostSharedSound,
+                                        isFavorite: viewModel.favoritesKeeper.contains(mostSharedSound.id)
+                                    )
                                 }
                                 .frame(width: 180)
 
