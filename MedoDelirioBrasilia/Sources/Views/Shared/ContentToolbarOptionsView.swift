@@ -44,7 +44,7 @@ struct ContentToolbarOptionsView: ToolbarContent {
                         Text("Mais Recentes no Topo")
                             .tag(2)
 
-                        Text("Mais Curtos no Topo")
+                        Text("Mais Curtas no Topo")
                             .tag(3)
 
                         Text("Título")
@@ -53,7 +53,7 @@ struct ContentToolbarOptionsView: ToolbarContent {
                         Text("Nome do Autor ou Gênero Musical")
                             .tag(1)
 
-                        Text("Mais Longos no Topo")
+                        Text("Mais Longas no Topo")
                             .tag(4)
 
                         if CommandLine.arguments.contains("-SHOW_MORE_DEV_OPTIONS") {
