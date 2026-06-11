@@ -23,11 +23,42 @@ struct AuthorCreditsView: View {
 
     @ScaledMetric private var iconWidth: CGFloat = 20.0
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private let sparkles: [PrideSparkle] = PrideSparkle.makeRandom(count: 12)
+
+    private var isPrideMonth: Bool {
+        Calendar.current.component(.month, from: .now) == 6
+    }
+
+    private var prideGradient: LinearGradient {
+        LinearGradient(
+            colors: [.red, .orange, .yellow, .green, .blue, .purple],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+    }
+
     var body: some View {
         VStack(alignment: .center, spacing: .spacing(.large)) {
-            Text("Criado por Rafael Schmitt")
-                .font(.system(.headline, design: .rounded))
-                .multilineTextAlignment(.center)
+            VStack(spacing: .spacing(.xSmall)) {
+                Text("Criado por Rafael Schmitt")
+                    .font(.system(.headline, design: .rounded))
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(isPrideMonth ? AnyShapeStyle(prideGradient) : AnyShapeStyle(.foreground))
+
+                if isPrideMonth {
+                    Text("Feito com orgulho 🏳️‍🌈")
+                        .font(.system(.subheadline, design: .rounded))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+            }
+            .overlay {
+                if isPrideMonth, !reduceMotion {
+                    PrideSparklesView(sparkles: sparkles)
+                }
+            }
 
             HStack(spacing: .spacing(.medium)) {
                 Spacer()
@@ -71,6 +102,71 @@ struct AuthorCreditsView: View {
             originatingScreen: "SettingsView",
             action: action
         )
+    }
+}
+
+private struct PrideSparkle: Identifiable {
+
+    let id = UUID()
+    let relativePosition: CGPoint
+    let size: CGFloat
+    let color: Color
+    let delay: Double
+
+    static func makeRandom(count: Int) -> [PrideSparkle] {
+        let colors: [Color] = [.red, .orange, .yellow, .green, .blue, .purple]
+        return (0..<count).map { index in
+            PrideSparkle(
+                relativePosition: CGPoint(x: .random(in: -0.05...1.05), y: .random(in: -0.3...1.3)),
+                size: .random(in: 8...16),
+                color: colors[index % colors.count],
+                delay: .random(in: 0...0.8)
+            )
+        }
+    }
+}
+
+private struct PrideSparklesView: View {
+
+    let sparkles: [PrideSparkle]
+
+    var body: some View {
+        GeometryReader { geometry in
+            ForEach(sparkles) { sparkle in
+                SingleSparkleView(sparkle: sparkle)
+                    .position(
+                        x: geometry.size.width * sparkle.relativePosition.x,
+                        y: geometry.size.height * sparkle.relativePosition.y
+                    )
+            }
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+private struct SingleSparkleView: View {
+
+    let sparkle: PrideSparkle
+
+    @State private var isVisible = false
+
+    var body: some View {
+        Image(systemName: "sparkle")
+            .font(.system(size: sparkle.size))
+            .foregroundStyle(sparkle.color)
+            .scaleEffect(isVisible ? 1.0 : 0.1)
+            .rotationEffect(.degrees(isVisible ? 0 : -60))
+            .opacity(isVisible ? 1.0 : 0.0)
+            .task {
+                try? await Task.sleep(for: .seconds(sparkle.delay))
+                withAnimation(.spring(duration: 0.4, bounce: 0.5)) {
+                    isVisible = true
+                }
+                try? await Task.sleep(for: .seconds(0.7))
+                withAnimation(.easeOut(duration: 0.5)) {
+                    isVisible = false
+                }
+            }
     }
 }
 
