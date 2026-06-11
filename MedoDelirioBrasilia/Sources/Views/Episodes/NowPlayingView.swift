@@ -12,6 +12,10 @@ import Kingfisher
 /// Full now-playing screen presented as a sheet from the bottom accessory.
 struct NowPlayingView: View {
 
+    enum CanvasMode: Int {
+        case coverArt, transcription, bookmarks
+    }
+
     @Environment(EpisodePlayer.self) private var player
     @Environment(EpisodeBookmarkStore.self) private var bookmarkStore
     @Environment(TranscriptDownloadService.self) private var transcriptDownloadService
@@ -27,10 +31,9 @@ struct NowPlayingView: View {
     @State private var shareLinkMetadata: LPLinkMetadata?
     @State private var showShareSheet: Bool = false
     @State private var transcriptProvider: TranscriptProvider
-    @AppStorage("showTranscript") private var showTranscript: Bool = false
-    @State private var showBookmarks: Bool = false
     @State private var hasSentTranscriptViewedAnalytics: Bool = false
     @State private var showFullTranscript: Bool = false
+    @AppStorage("nowPlayingCanvasMode") private var currentCanvasMode: CanvasMode = .coverArt
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -40,10 +43,25 @@ struct NowPlayingView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                enhancedLayout
+            VStack(spacing: 0) {
+                GeometryReader { geometry in
+                    if currentCanvasMode == .coverArt {
+                        content
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        ScrollView {
+                            content
+                                .frame(
+                                    minHeight: geometry.size.height,
+                                    alignment: currentCanvasMode == .bookmarks ? .top : .center
+                                )
+                        }
+                        .scrollBounceBehavior(.basedOnSize)
+                    }
+                }
+
+                bottomControls
             }
-            .scrollBounceBehavior(.basedOnSize)
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .navigationDestination(isPresented: $showFullTranscript) {
@@ -92,12 +110,12 @@ struct NowPlayingView: View {
             }
         }
         .onChange(of: player.currentTime) {
-            if showTranscript {
+            if currentCanvasMode == .transcription {
                 transcriptProvider.update(currentTime: player.currentTime)
             }
         }
-        .onChange(of: showTranscript) {
-            if showTranscript {
+        .onChange(of: currentCanvasMode) {
+            if currentCanvasMode == .transcription {
                 transcriptProvider.update(currentTime: player.currentTime)
                 if !hasSentTranscriptViewedAnalytics {
                     hasSentTranscriptViewedAnalytics = true
@@ -109,11 +127,16 @@ struct NowPlayingView: View {
 
     // MARK: - Layout
 
-    private var enhancedLayout: some View {
+    private var content: some View {
         VStack(spacing: 0) {
             topContent
                 .frame(maxWidth: .infinity)
+        }
+        .padding(.horizontal, .spacing(.xLarge))
+    }
 
+    private var bottomControls: some View {
+        VStack(spacing: 0) {
             toggleRow
                 .padding(.vertical, .spacing(.xLarge))
 
@@ -141,12 +164,13 @@ struct NowPlayingView: View {
 
     @ViewBuilder
     private var topContent: some View {
-        if showBookmarks {
-            bookmarksContent
-        } else if showTranscript {
-            transcriptContent
-        } else {
+        switch currentCanvasMode {
+        case .coverArt:
             artwork
+        case .transcription:
+            transcriptContent
+        case .bookmarks:
+            bookmarksContent
         }
     }
 
@@ -235,34 +259,16 @@ struct NowPlayingView: View {
     }
 
     private var toggleRow: some View {
-        HStack(spacing: .spacing(.medium)) {
-            GlassButton(
-                symbol: showTranscript && !showBookmarks ? "text.quote" : nil,
-                title: "Transcrição",
-                color: .clear,
-                lightModeLabelColor: .clear,
-                compact: true,
-                action: {
-                    withAnimation(.easeInOut(duration: 0.25)) {
-                        showBookmarks = false
-                        showTranscript.toggle()
-                    }
-                }
-            )
-
-            GlassButton(
-                symbol: showBookmarks ? "bookmark.fill" : nil,
-                title: "Marcadores",
-                color: .clear,
-                lightModeLabelColor: .clear,
-                compact: true,
-                action: {
-                    withAnimation(.easeInOut(duration: 0.25)) {
-                        showBookmarks.toggle()
-                    }
-                }
-            )
+        Picker("Modo", selection: $currentCanvasMode) {
+            Label("Capa", systemImage: "square")
+                .tag(CanvasMode.coverArt)
+            Label("Transcrição", systemImage: "text.quote")
+                .tag(CanvasMode.transcription)
+            Label("Marcadores", systemImage: "bookmark")
+                .tag(CanvasMode.bookmarks)
         }
+        .pickerStyle(.segmented)
+        .frame(maxWidth: 400)
     }
 
     @ToolbarContentBuilder
