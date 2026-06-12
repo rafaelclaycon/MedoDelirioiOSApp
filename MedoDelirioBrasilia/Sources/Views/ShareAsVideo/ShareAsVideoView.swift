@@ -99,10 +99,10 @@ struct ShareAsVideoView: View {
                         .disabled(viewModel.isShowingProcessingView)
                         
                         if viewModel.selectedSocialNetwork == IntendedVideoDestination.twitter.rawValue && showTextSocialNetworkTip {
-                            TipView(text: $tipText, didTapClose: $didCloseTip)
+                            TipView(text: tipText, didTapClose: $didCloseTip)
                                 .disabled(viewModel.isShowingProcessingView)
                         } else if viewModel.selectedSocialNetwork == IntendedVideoDestination.instagramTikTok.rawValue && showInstagramTip {
-                            TipView(text: $tipText, didTapClose: $didCloseTip)
+                            TipView(text: tipText, didTapClose: $didCloseTip)
                                 .disabled(viewModel.isShowingProcessingView)
                         }
                         

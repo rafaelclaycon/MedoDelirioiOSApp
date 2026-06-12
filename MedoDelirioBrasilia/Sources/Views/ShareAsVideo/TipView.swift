@@ -9,60 +9,59 @@ import SwiftUI
 
 struct TipView: View {
 
-    @Environment(\.colorScheme) var colorScheme
-    @Binding var text: String
+    let text: String
     @Binding var didTapClose: Bool
-    
+
+    @Environment(\.colorScheme) var colorScheme
+
     var body: some View {
-        ZStack {
+        HStack(spacing: .spacing(.small)) {
             VStack {
-                HStack {
-                    Spacer()
-                    Button {
-                        didTapClose = true
-                    } label: {
-                        Image(systemName: "xmark")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 15)
-                            .foregroundColor(colorScheme == .dark ? .primary : .gray)
-                    }
-                    .padding(.trailing)
-                }
+                Text("☝️")
+                    .font(.system(size: 30))
+
                 Spacer()
             }
-            
-            HStack(spacing: 20) {
-                Image(systemName: "lightbulb")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(height: 40)
-                    .foregroundColor(.orange)
-                
-                VStack(alignment: .leading, spacing: 7) {
-                    Text("Dica")
-                        .font(.headline)
-                    
-                    Text(text)
-                        .opacity(0.75)
-                }
-                
-                Spacer()
+
+            VStack(alignment: .leading, spacing: .spacing(.small)) {
+                Text("DICA")
+                    .font(.callout)
+                    .bold()
+
+                Text(text)
+                    .font(.callout)
+                    .opacity(0.75)
             }
-            .padding(.leading, 20)
+
+            Spacer()
         }
-        .padding(.vertical)
+        .padding(.leading, .spacing(.small))
+        .padding(.vertical, .spacing(.medium))
         .background {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(Color.gray)
                 .opacity(colorScheme == .dark ? 0.3 : 0.1)
         }
+        .overlay(alignment: .topTrailing) {
+            Button {
+                didTapClose.toggle()
+            } label: {
+                Image(systemName: "xmark")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 15)
+                    .foregroundColor(colorScheme == .dark ? .primary : .gray)
+            }
+            .padding([.top,.trailing], .spacing(.medium))
+        }
     }
 }
 
-struct TipView_Previews: PreviewProvider {
+// MARK: - Preview
 
-    static var previews: some View {
-        TipView(text: .constant("Para responder a uma publicação na sua rede social favorita, escolha Salvar Vídeo e depois adicione o vídeo à resposta a partir do app da rede."), didTapClose: .constant(false))
-    }
+#Preview {
+    TipView(
+        text: "Para responder a uma publicação na sua rede social favorita, escolha Salvar Vídeo e depois adicione o vídeo à resposta a partir do app da rede.",
+        didTapClose: .constant(false)
+    )
 }
