@@ -164,26 +164,53 @@ struct SettingsView: View {
                 Section("Sobre") {
                     Text("Versão \(Versioneer.appVersion) Build \(Versioneer.buildVersionNumber)")
 
-                    HStack(spacing: .spacing(.small)) {
-                        Button("Ver código fonte") {
-                            Task {
-                                OpenUtility.open(link: "https://github.com/rafaelclaycon/MedoDelirioBrasilia")
-                                await SettingsView.sendAnalytics(for: "didTapGitHubButton")
-                            }
+                    Button {
+                        Task {
+                            OpenUtility.open(link: "https://github.com/rafaelclaycon/MedoDelirioBrasilia")
+                            await SettingsView.sendAnalytics(for: "didTapGitHubButton")
                         }
-                        .tint(.purple)
-                        .buttonStyle(.bordered)
-
-                        Button("Diagnóstico") {
-                            path.append(SettingsDestination.diagnostics)
+                    } label: {
+                        HStack {
+                            Label("Ver código fonte", systemImage: "chevron.left.forwardslash.chevron.right")
+                            Spacer()
+                            Image(systemName: "arrow.up.right")
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(.tertiary)
                         }
-                        .tint(.orange)
-                        .buttonStyle(.bordered)
                     }
+                    .buttonStyle(.plain)
                 }
 
                 Section {
                     AuthorCreditsView()
+
+//                    Button {
+//                        OpenUtility.open(link: "https://apps.apple.com/br/app/d%C3%B9n-private-link-storage/id6627333601")
+//                    } label: {
+//                        HStack {
+//                            Label("Experimente Dùn, meu outro app", systemImage: "app")
+//                            Spacer()
+//                            Image(systemName: "arrow.up.right")
+//                                .font(.footnote.weight(.semibold))
+//                                .foregroundStyle(.tertiary)
+//                        }
+//                    }
+//                    .foregroundStyle(.purple)
+                }
+
+                Section {
+                    Button {
+                        path.append(SettingsDestination.diagnostics)
+                    } label: {
+                        HStack {
+                            Label("Diagnóstico", systemImage: "stethoscope")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                    .buttonStyle(.plain)
                 }
             }
             .navigationTitle("Configurações")
