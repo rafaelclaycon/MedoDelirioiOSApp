@@ -3,6 +3,16 @@ import AVFoundation
 
 class VideoMaker {
 
+    /// The shortest a generated video can be, in seconds. Sounds shorter than this
+    /// are padded with a frozen frame so they don't loop frantically on platforms
+    /// like X and so viewers have time to read the content in an Instagram Story.
+    static let minimumDuration: CGFloat = 5.0
+
+    /// A little breathing room added to the end of every video so the last frame
+    /// doesn't cut the instant the sound finishes — even for sounds already longer
+    /// than `minimumDuration`.
+    static let endTail: CGFloat = 0.5
+
     static func createVideo(
         from content: any MedoContentProtocol,
         with sourceImage: UIImage,
@@ -14,9 +24,11 @@ class VideoMaker {
             throw VideoMakerError.couldNotObtainAudioDuration
         }
 
+        let videoDuration = max(audioDuration, minimumDuration) + endTail
+
         return try await VideoMaker.createVideo(
             fromImage: sourceImage,
-            withDuration: audioDuration,
+            withDuration: videoDuration,
             andName: content.title,
             contentUrl: contentUrl,
             exportType: exportType
@@ -65,36 +77,20 @@ class VideoMaker {
                         at: CMTime.zero
                     )
 
-                    let videoDuration = aVideoAsset.duration
+                    // Play the sound exactly once at the start, then hold on the frozen
+                    // frame in silence for the rest of the (padded) video. We never loop
+                    // the audio — looping would just recreate the frantic repetition that
+                    // padding the video is meant to avoid.
+                    let audioDuration = CMTimeMinimum(
+                        aAudioAssetTrack.timeRange.duration,
+                        aVideoAssetTrack.timeRange.duration
+                    )
+                    try mutableCompositionAudioTrack.first?.insertTimeRange(
+                        CMTimeRangeMake(start: CMTime.zero, duration: audioDuration),
+                        of: aAudioAssetTrack,
+                        at: CMTime.zero
+                    )
 
-                    // Video is longer than audio
-                    if CMTimeCompare(videoDuration, aAudioAsset.duration) == -1 {
-                        try mutableCompositionAudioTrack.first?.insertTimeRange(CMTimeRangeMake(start: CMTime.zero, duration: aVideoAssetTrack.timeRange.duration), of: aAudioAssetTrack, at: CMTime.zero)
-                    // Audio is longer than video
-                    } else if CMTimeCompare(videoDuration, aAudioAsset.duration) == 1 {
-                        var currentTime = CMTime.zero
-                        while true {
-                            var audioDuration = aAudioAsset.duration
-                            let totalDuration = CMTimeAdd(currentTime, audioDuration)
-                            if CMTimeCompare(totalDuration, videoDuration) == 1 {
-                                audioDuration = CMTimeSubtract(totalDuration, videoDuration)
-                            }
-                            try mutableCompositionAudioTrack.first?.insertTimeRange(CMTimeRangeMake(start: CMTime.zero, duration: aVideoAssetTrack.timeRange.duration), of: aAudioAssetTrack, at: currentTime)
-
-                            currentTime = CMTimeAdd(currentTime, audioDuration)
-                            if CMTimeCompare(currentTime, videoDuration) == 1 || CMTimeCompare(currentTime, videoDuration) == 0 {
-                                break
-                            }
-                        }
-                    // Both are the same length
-                    } else {
-                        try mutableCompositionAudioTrack.first?.insertTimeRange(
-                            CMTimeRangeMake(start: CMTime.zero, duration: aVideoAssetTrack.timeRange.duration),
-                            of: aAudioAssetTrack,
-                            at: CMTime.zero
-                        )
-                    }
-                    
                     videoTrack.preferredTransform = aVideoAssetTrack.preferredTransform
                 } catch {
                     print(error)
