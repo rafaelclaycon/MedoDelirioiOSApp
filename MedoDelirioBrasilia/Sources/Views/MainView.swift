@@ -189,6 +189,9 @@ struct MainView: View {
                         }
                         .environment(\.push, PushAction { searchTabPath.append($0) })
 
+                        // The `.prominent` tab role is an iOS 27 SDK symbol, so it only
+                        // compiles with the Xcode that bundles that SDK.
+                        #if compiler(>=6.4)
                         if #available(iOS 27.0, *) {
                             Tab("Buscar", systemImage: "magnifyingglass", value: .search, role: .prominent) {
                                 searchNavStack
@@ -198,6 +201,11 @@ struct MainView: View {
                                 searchNavStack
                             }
                         }
+                        #else
+                        Tab(value: .search, role: .search) {
+                            searchNavStack
+                        }
+                        #endif
                     }
                     .if_tabViewBottomAccessory(
                         isEnabled: episodePlayer.currentEpisode != nil
