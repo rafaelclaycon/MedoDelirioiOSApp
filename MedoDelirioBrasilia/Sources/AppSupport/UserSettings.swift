@@ -114,13 +114,6 @@ extension UserSettings {
         return Date(timeIntervalSince1970: value as! Double)
     }
 
-    func getShowUpdateDateOnUI() -> Bool {
-        guard let value = userDefaults.object(forKey: "showUpdateDateOnUI") else {
-            return false
-        }
-        return Bool(value as! Bool)
-    }
-
     func authorSortOption() -> Int {
         guard let value = userDefaults.object(forKey: "authorSortOption") else {
             return 0
@@ -207,10 +200,6 @@ extension UserSettings {
     
     func setLastSendDateOfStillAliveSignalToServer(to newValue: Date) {
         userDefaults.set(newValue.timeIntervalSince1970, forKey: "lastSendDateOfStillAliveSignalToServer")
-    }
-
-    func setShowUpdateDateOnUI(to newValue: Bool) {
-        userDefaults.set(newValue, forKey: "showUpdateDateOnUI")
     }
 
     func authorSortOption(_ newValue: Int) {

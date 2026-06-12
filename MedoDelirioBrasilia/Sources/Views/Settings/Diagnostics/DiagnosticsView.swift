@@ -6,14 +6,11 @@
 //
 
 import SwiftUI
-import Kingfisher
 
 struct DiagnosticsView: View {
 
     let database: LocalDatabaseProtocol
     let analyticsService: AnalyticsServiceProtocol
-
-    @State private var showUpdateDateOnUI: Bool = UserSettings().getShowUpdateDateOnUI()
 
     var body: some View {
         Form {
@@ -23,30 +20,29 @@ struct DiagnosticsView: View {
 
             InstallIdView()
 
-            ImageCacheOptionsView()
-
             Section {
                 ShareLink(
                     item: FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent("medo_db.sqlite3")
                 ) {
                     Text("Exportar base de dados")
                 }
+            } footer: {
+                Text("Necessário apenas para diagnóstico e caso solicitado pelo desenvolvedor.")
             }
 
             ImportFavoritesView(database: database, analyticsService: analyticsService)
 
             Section {
-                Toggle("Exibir data e hora da última atualização na UI", isOn: $showUpdateDateOnUI)
-                    .onChange(of: showUpdateDateOnUI) {
-                        UserSettings().setShowUpdateDateOnUI(to: showUpdateDateOnUI)
-                    }
+                NavigationLink("Logs de compartilhamento") {
+                    ShareLogsView()
+                }
+
+                NavigationLink("Logs de push") {
+                    ChannelLogsView()
+                }
             }
-            
-            ShareLogsView()
 
             PushTokenCacheView()
-
-            ChannelLogsView()
 
             CrashTestView()
 
@@ -107,57 +103,18 @@ extension DiagnosticsView {
             Section {
                 Text(installId)
                     .font(.monospaced(.subheadline)())
-                    .onTapGesture {
-                        UIPasteboard.general.string = installId
-                        showInstallIdCopiedAlert = true
-                    }
-                    .alert(isPresented: $showInstallIdCopiedAlert) {
-                        Alert(title: Text("ID copiado com sucesso!"), dismissButton: .default(Text("OK")))
-                    }
+
+                Button("Copiar ID") {
+                    UIPasteboard.general.string = installId
+                    showInstallIdCopiedAlert = true
+                }
+                .alert(isPresented: $showInstallIdCopiedAlert) {
+                    Alert(title: Text("ID copiado com sucesso!"), dismissButton: .default(Text("OK")))
+                }
             } header: {
                 Text("ID da instalação")
             } footer: {
-                Text("Esse código identifica apenas a instalação do app e é renovado caso você o desinstale e instale novamente. Toque nele uma vez para copiar.")
-            }
-        }
-    }
-
-    struct ImageCacheOptionsView: View {
-
-        @State private var diskImageCacheText: String = ""
-        @State private var cleanImageCacheAlert: Bool = false
-
-        var body: some View {
-            Section("Cache de imagens") {
-                Text(diskImageCacheText)
-
-                Button("Limpar cache") {
-                    Task {
-                        ImageCache.default.clearMemoryCache()
-                        ImageCache.default.clearDiskCache {
-                            updateImageCacheSizeText()
-                            cleanImageCacheAlert = true
-                        }
-                    }
-                }
-                .alert(isPresented: $cleanImageCacheAlert) {
-                    Alert(title: Text("Cache de imagens limpado com sucesso"), dismissButton: .default(Text("OK")))
-                }
-            }
-            .onAppear {
-                updateImageCacheSizeText()
-            }
-        }
-
-        private func updateImageCacheSizeText() {
-            ImageCache.default.calculateDiskStorageSize { result in
-                switch result {
-                case .success(let size):
-                    let imageCacheSize = Double(size) / 1024 / 1024
-                    diskImageCacheText = "Tamanho: \(imageCacheSize.formatted(.number.precision(.fractionLength(1)))) MB"
-                case .failure(let error):
-                    diskImageCacheText = error.localizedDescription
-                }
+                Text("Esse código identifica apenas a instalação do app e é renovado caso você o desinstale e instale novamente.")
             }
         }
     }
@@ -306,21 +263,25 @@ extension DiagnosticsView {
         @State private var shareLogs: [UserShareLog]?
 
         var body: some View {
-            Section("Logs de compartilhamento") {
+            Form {
                 if shareLogs == nil || shareLogs?.count == 0 {
                     Text("Sem Dados")
                 } else {
-                    List(shareLogs!) { log in
-                        SharingLogCell(
-                            destination: ShareDestination(rawValue: log.destination) ?? .other,
-                            contentType: ContentType(rawValue: log.contentType) ?? .sound,
-                            contentTitle: getContentName(contentId: log.contentId),
-                            dateTime: log.dateTime.formattedDayMonthYearHoursMinutesSeconds(),
-                            sentToServer: log.sentToServer
-                        )
+                    Section {
+                        ForEach(shareLogs!) { log in
+                            SharingLogCell(
+                                destination: ShareDestination(rawValue: log.destination) ?? .other,
+                                contentType: ContentType(rawValue: log.contentType) ?? .sound,
+                                contentTitle: getContentName(contentId: log.contentId),
+                                dateTime: log.dateTime.formattedDayMonthYearHoursMinutesSeconds(),
+                                sentToServer: log.sentToServer
+                            )
+                        }
                     }
                 }
             }
+            .navigationTitle("Logs de compartilhamento")
+            .navigationBarTitleDisplayMode(.inline)
             .onAppear {
                 shareLogs = try? LocalDatabase.shared.getAllUserShareLogs()
                 shareLogs?.sort(by: { $0.dateTime > $1.dateTime })
@@ -388,7 +349,7 @@ extension DiagnosticsView {
         }()
 
         var body: some View {
-            Section("Logs de push") {
+            Form {
                 if store.entries.isEmpty {
                     Text("Sem registros nesta sessão")
                         .foregroundStyle(.secondary)
@@ -438,6 +399,8 @@ extension DiagnosticsView {
                     }
                 }
             }
+            .navigationTitle("Logs de push")
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 
