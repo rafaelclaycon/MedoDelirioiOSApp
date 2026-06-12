@@ -30,9 +30,7 @@ struct ToastView: ViewModifier {
 
     @Binding private var toast: Toast?
 
-    public init(_ toast: Binding<Toast?>) {
-        _toast = toast
-    }
+    @Environment(\.colorScheme) private var colorScheme
 
     private var icon: String {
         switch toast?.type {
@@ -64,13 +62,21 @@ struct ToastView: ViewModifier {
         }
     }
 
+    // MARK: - Initializer
+
+    public init(_ toast: Binding<Toast?>) {
+        _toast = toast
+    }
+
+    // MARK: - Content Body
+
     public func body(content: Content) -> some View {
         content
             .overlay(alignment: .bottom) {
                 if let toast {
                     Label {
                         Text(toast.message)
-                            .foregroundColor(.black)
+                            .foregroundColor(.primary)
                             .font(.callout)
                             .bold()
                     } icon: {
@@ -82,9 +88,13 @@ struct ToastView: ViewModifier {
                     .padding()
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background {
-                        RoundedRectangle(cornerRadius: 50, style: .continuous)
-                            .fill(Color.white)
-                            .shadow(color: .gray, radius: 2, y: 2)
+                        RoundedRectangle(cornerRadius: .spacing(.huge), style: .continuous)
+                            .fill(colorScheme == .dark ? .black : .white)
+                            .shadow(
+                                color: colorScheme == .dark ? .white.opacity(0.5) : .black.opacity(0.3),
+                                radius: colorScheme == .dark ? 4 : 2,
+                                y: colorScheme == .dark ? 0 : 2
+                            )
                     }
                     .padding(.horizontal)
                     .padding(.bottom, 15)
@@ -106,7 +116,6 @@ struct ToastView: ViewModifier {
                         }
                     }
                     .animation(.easeInOut, value: self.toast != nil)
-                    //.transition(.moveAndFade)
                     .gesture(
                         DragGesture(minimumDistance: 30)
                             .onEnded { value in
@@ -250,30 +259,38 @@ public extension View {
 // MARK: - Previews
 
 #Preview {
-    Text("Show toast")
-        .toast(.constant(Toast(message: "Toast message", type: .success)))
-}
+    VStack(spacing: .spacing(.xLarge)) {
+        VStack {
+            Text("Success Toast")
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .border(.pink)
+        .toast(
+            .constant(
+                Toast(message: Shared.soundSharedSuccessfullyMessage, type: .success)
+            )
+        )
 
-//#Preview {
-//    VStack(spacing: .spacing(.large)) {
-//        ToastView(
-//            .constant(Toast(message: "Todos os dados atualizados.", type: .success))
-//        )
-//
-//        ToastView(
-//            .constant(Toast(message: "Conteúdo baixado com sucesso. Tente tocá-lo novamente.", type: .success))
-//        )
-//
-//        ToastView(
-//            .constant(Toast(message: "Atualização concluída com sucesso.", type: .success))
-//        )
-//
-//        ToastView(
-//            .constant(Toast(message: "Aguarde mais um pouco para atualizar novamente.", type: .wait))
-//        )
-//
-//        ToastView(
-//            .constant(Toast(message: "Som adicionado à pasta 🤑 Econoboys.", type: .success))
-//        )
-//    }
-//}
+        VStack {
+            Text("Warning Toast")
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .border(.pink)
+        .toast(
+            .constant(
+                Toast(message: "Não foi possível ativar as notificações de episódios. Tente novamente.", type: .warning)
+            )
+        )
+
+        VStack {
+            Text("Thank You Toast")
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .border(.pink)
+        .toast(
+            .constant(
+                Toast(message: "Obrigado!", type: .thankYou)
+            )
+        )
+    }
+}
