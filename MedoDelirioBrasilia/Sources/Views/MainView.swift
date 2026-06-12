@@ -125,47 +125,46 @@ struct MainView: View {
                                     openSettingsAction: {
                                         isShowingSettingsSheet.toggle()
                                     },
-                                contentRepository: contentRepository,
-                                userFolderRepository: userFolderRepository,
-                                bannerRepository: BannerRepository(),
-                                analyticsService: AnalyticsService()
-                            )
-                            .environment(trendsHelper)
-                            .environment(settingsHelper)
-                            .navigationDestination(for: GeneralNavigationDestination.self) { screen in
-                                GeneralRouter(destination: screen, contentRepository: contentRepository)
-                            }
-                        }
-                        .tag(PhoneTab.sounds)
-                        .environment(\.push, PushAction { soundsPath.append($0) })
-                    }
-
-                    Tab(Shared.TabInfo.name(PhoneTab.reactions), systemImage: Shared.TabInfo.symbol(PhoneTab.reactions), value: .reactions) {
-                        NavigationStack(path: $reactionsPath) {
-                            ReactionsView()
+                                    contentRepository: contentRepository,
+                                    userFolderRepository: userFolderRepository,
+                                    bannerRepository: BannerRepository(),
+                                    analyticsService: AnalyticsService()
+                                )
                                 .environment(trendsHelper)
+                                .environment(settingsHelper)
                                 .navigationDestination(for: GeneralNavigationDestination.self) { screen in
                                     GeneralRouter(destination: screen, contentRepository: contentRepository)
                                 }
+                            }
+                            .tag(PhoneTab.sounds)
+                            .environment(\.push, PushAction { soundsPath.append($0) })
                         }
-                        .tag(PhoneTab.reactions)
-                        .environment(\.push, PushAction { reactionsPath.append($0) })
-                    }
 
-                    Tab("Episódios", systemImage: "radio", value: .episodes) {
-                        NavigationStack(path: $episodesPath) {
-                            EpisodesView()
-                                .navigationDestination(for: PodcastEpisode.self) { episode in
-                                    EpisodeDetailView(episode: episode)
-                                }
+                        Tab(Shared.TabInfo.name(PhoneTab.reactions), systemImage: Shared.TabInfo.symbol(PhoneTab.reactions), value: .reactions) {
+                            NavigationStack(path: $reactionsPath) {
+                                ReactionsView()
+                                    .environment(trendsHelper)
+                                    .navigationDestination(for: GeneralNavigationDestination.self) { screen in
+                                        GeneralRouter(destination: screen, contentRepository: contentRepository)
+                                    }
+                            }
+                            .tag(PhoneTab.reactions)
+                            .environment(\.push, PushAction { reactionsPath.append($0) })
                         }
-                        .environment(\.push, PushAction { episodesPath.append($0) })
-                        .tag(PhoneTab.episodes)
-                    }
-                    .badge(episodesBadgeText)
 
-                    Tab(value: .search, role: .search) {
-                        NavigationStack(path: $searchTabPath) {
+                        Tab("Episódios", systemImage: "radio", value: .episodes) {
+                            NavigationStack(path: $episodesPath) {
+                                EpisodesView()
+                                    .navigationDestination(for: PodcastEpisode.self) { episode in
+                                        EpisodeDetailView(episode: episode)
+                                    }
+                            }
+                            .environment(\.push, PushAction { episodesPath.append($0) })
+                            .tag(PhoneTab.episodes)
+                        }
+                        .badge(episodesBadgeText)
+
+                        let searchNavStack = NavigationStack(path: $searchTabPath) {
                             StandaloneSearchView(
                                 searchService: searchService,
                                 trendsService: trendsService,
@@ -173,22 +172,31 @@ struct MainView: View {
                                 userFolderRepository: userFolderRepository,
                                 analyticsService: AnalyticsService()
                             )
-                                .navigationDestination(for: GeneralNavigationDestination.self) { screen in
-                                    GeneralRouter(destination: screen, contentRepository: contentRepository)
-                                }
-                                .navigationDestination(for: SearchNavigationDestination.self) { screen in
-                                    switch screen {
-                                    case .trends:
-                                        TrendsView(
-                                            audienceViewModel: MostSharedByAudienceView.ViewModel(trendsService: trendsService),
-                                            tabSelection: tabSelection,
-                                            activePadScreen: .constant(.trends)
-                                        )
-                                        .environment(trendsHelper)
-                                    }
+                            .navigationDestination(for: GeneralNavigationDestination.self) { screen in
+                                GeneralRouter(destination: screen, contentRepository: contentRepository)
+                            }
+                            .navigationDestination(for: SearchNavigationDestination.self) { screen in
+                                switch screen {
+                                case .trends:
+                                    TrendsView(
+                                        audienceViewModel: MostSharedByAudienceView.ViewModel(trendsService: trendsService),
+                                        tabSelection: tabSelection,
+                                        activePadScreen: .constant(.trends)
+                                    )
+                                    .environment(trendsHelper)
                                 }
                             }
-                            .environment(\.push, PushAction { searchTabPath.append($0) })
+                        }
+                        .environment(\.push, PushAction { searchTabPath.append($0) })
+
+                        if #available(iOS 27.0, *) {
+                            Tab("Buscar", systemImage: "magnifyingglass", value: .search, role: .prominent) {
+                                searchNavStack
+                            }
+                        } else {
+                            Tab(value: .search, role: .search) {
+                                searchNavStack
+                            }
                         }
                     }
                     .if_tabViewBottomAccessory(
