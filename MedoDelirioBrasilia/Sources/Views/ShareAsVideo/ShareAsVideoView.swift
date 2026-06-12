@@ -18,7 +18,8 @@ struct ShareAsVideoView: View {
     @State private var tipText: String = ""
     @State private var verticalOffset: CGFloat = 0.0
     @State private var isExpanded = false
-    @State private var titleSize = 28.0
+    @State private var titleSize = 24.0
+    @State private var subtitleSize = 18.0
 
     @ScaledMetric private var vstackSpacing: CGFloat = 22
     @ScaledMetric private var bottomPadding: CGFloat = 26
@@ -50,16 +51,17 @@ struct ShareAsVideoView: View {
             NavigationView {
                 ScrollView {
                     VStack(spacing: vstackSpacing) {
-                        Picker(selection: $viewModel.selectedSocialNetwork, label: Text("Rede social")) {
-                            Text("Quadrado").tag(0)
-                            Text("9 : 16").tag(1)
-                        }
-                        .pickerStyle(SegmentedPickerStyle())
-                        .disabled(viewModel.isShowingProcessingView)
-                        .onChange(of: viewModel.selectedSocialNetwork) {
-                            tipText = viewModel.selectedSocialNetwork == IntendedVideoDestination.twitter.rawValue ? textSocialNetworkTip : instagramTip
-                        }
-                        
+                        // The 9:16 option is hidden for now, so only the square format is offered.
+                        // Picker(selection: $viewModel.selectedSocialNetwork, label: Text("Rede social")) {
+                        //     Text("Quadrado").tag(0)
+                        //     Text("9 : 16").tag(1)
+                        // }
+                        // .pickerStyle(SegmentedPickerStyle())
+                        // .disabled(viewModel.isShowingProcessingView)
+                        // .onChange(of: viewModel.selectedSocialNetwork) {
+                        //     tipText = viewModel.selectedSocialNetwork == IntendedVideoDestination.twitter.rawValue ? textSocialNetworkTip : instagramTip
+                        // }
+
                         if viewModel.selectedSocialNetwork == 0 {
                             squareImage
                         } else {
@@ -67,7 +69,10 @@ struct ShareAsVideoView: View {
                         }
 
                         if isSquare {
-                            Stepper("Tamanho do título: \(Int(titleSize))", value: $titleSize, in: 22...38, step: 1)
+                            Stepper("Tamanho do texto: \(Int(titleSize))", value: $titleSize, in: 18...38, step: 1)
+                                .onChange(of: titleSize) { _, newValue in
+                                    subtitleSize = newValue - 6
+                                }
                         }
                         
                         if is9By16 {
@@ -185,22 +190,23 @@ struct ShareAsVideoView: View {
                 .frame(width: 350, height: 350)
             
             HStack {
-                VStack(alignment: .leading, spacing: 15) {
+                VStack(alignment: .leading, spacing: .spacing(.medium)) {
                     Text(contentName)
+                        .fontDesign(.rounded)
+                        .fontWeight(.black)
                         .font(.system(size: titleSize))
-                        .bold()
                         .foregroundColor(.black)
 
                     if !contentAuthor.isEmpty {
                         Text(contentAuthor)
-                            .font(.title2)
+                            .fontDesign(.rounded)
+                            .font(.system(size: subtitleSize))
                             .foregroundColor(.black)
                     }
                 }
                 Spacer()
             }
-            .padding(.leading, 25)
-            .padding(.trailing)
+            .padding(.horizontal, .spacing(.xLarge))
             .padding(.bottom)
             .offset(y: verticalOffset)
         }
