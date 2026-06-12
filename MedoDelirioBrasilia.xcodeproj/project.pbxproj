@@ -42,7 +42,6 @@
 		D9E6B33F2CA0EA4A002FCB91 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D9E6B33E2CA0EA4A002FCB91 /* SwiftUI.framework */; };
 		D9E6B34C2CA0EA4B002FCB91 /* MedoDelirioWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D9E6B33A2CA0EA49002FCB91 /* MedoDelirioWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		D9F570882A62F27F00596C32 /* XCTestCase+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9F570872A62F27F00596C32 /* XCTestCase+Extensions.swift */; };
-		D9FF3F9B2B14325A007AE773 /* UpdateIncentiveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9FF3F9A2B14325A007AE773 /* UpdateIncentiveTests.swift */; };
 		EA40BB71F7224B3AAB7B4DAE /* SearchServiceFuzzyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E358B9D7D9043ACB323F141 /* SearchServiceFuzzyTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -112,7 +111,6 @@
 		D9E6B33C2CA0EA4A002FCB91 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		D9E6B33E2CA0EA4A002FCB91 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		D9F570872A62F27F00596C32 /* XCTestCase+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "XCTestCase+Extensions.swift"; sourceTree = "<group>"; };
-		D9FF3F9A2B14325A007AE773 /* UpdateIncentiveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateIncentiveTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -214,7 +212,6 @@
 			children = (
 				D9523744285BF9D300E6C838 /* Logger */,
 				D9523745285BF9D900E6C838 /* Podium */,
-				D9FF3F9A2B14325A007AE773 /* UpdateIncentiveTests.swift */,
 				D96892DD2C9F7DC40084F646 /* VideoMakerTests.swift */,
 				D920BF632CD1E5A800C6BD72 /* FolderResearchProviderTests.swift */,
 				40F192C0CBCA2E306EEA5B76 /* EpisodeListenStatsTests.swift */,
@@ -655,7 +652,6 @@
 				EA40BB71F7224B3AAB7B4DAE /* SearchServiceFuzzyTests.swift in Sources */,
 				D920BF642CD1E5A800C6BD72 /* FolderResearchProviderTests.swift in Sources */,
 				D9A3AB6F28F063FF0064CB7A /* DateExtensionTests.swift in Sources */,
-				D9FF3F9B2B14325A007AE773 /* UpdateIncentiveTests.swift in Sources */,
 				D9625E8F28238F9B00080852 /* LocalDatabaseTests.swift in Sources */,
 				D9351C6128441FA400D4317E /* LoggerTests.swift in Sources */,
 				D9A06417298B59D5006075D1 /* AddToFolderViewModelTests.swift in Sources */,
