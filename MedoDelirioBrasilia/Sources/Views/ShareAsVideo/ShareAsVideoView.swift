@@ -53,10 +53,9 @@ struct ShareAsVideoView: View {
                         HStack {
                             Spacer()
 
-                            Button("REDEFINIR") {
+                            GlassButton(title: "REDEFINIR", color: .gray, compact: true) {
                                 verticalOffset = 0
                             }
-                            .miniButton(colored: .gray)
                         }
                     } label: {
                         Label("Ajustar posição vertical do texto", systemImage: "arrow.up.and.down")
@@ -64,7 +63,7 @@ struct ShareAsVideoView: View {
                     }
                     .disabled(viewModel.isShowingProcessingView)
 
-                    if showTextSocialNetworkTip {
+                    if showTextSocialNetworkTip && !didCloseTip {
                         TipView(
                             text: "Para responder a uma publicação na sua rede social favorita, escolha Salvar Vídeo e depois adicione o vídeo à resposta a partir do app da rede.",
                             didTapClose: $didCloseTip
@@ -103,7 +102,6 @@ struct ShareAsVideoView: View {
                 .onChange(of: didCloseTip) {
                     if didCloseTip {
                         AppPersistentMemory.shared.setHasHiddenShareAsVideoTextSocialNetworkTip(to: true)
-                        didCloseTip.toggle()
                     }
                 }
             }
@@ -155,36 +153,6 @@ struct ShareAsVideoView: View {
             .offset(y: verticalOffset)
         }
         .frame(width: 350, height: 350)
-    }
-    
-    private func nineBySixteenImageView(contentName: String, contentAuthor: String) -> some View {
-        ZStack {
-            Image(viewModel.includeSoundWarning ? "9_16_video_background_with_warning" : "9_16_video_background_no_warning")
-                .resizable()
-                .scaledToFit()
-                .frame(height: 350)
-            
-            HStack {
-                VStack(alignment: .leading, spacing: 7) {
-                    Text(contentName)
-                        .font(Font.system(size: 14))
-                        .bold()
-                        .foregroundColor(.black)
-
-                    if !contentAuthor.isEmpty {
-                        Text(contentAuthor)
-                            .font(Font.system(size: 12))
-                            .foregroundColor(.black)
-                    }
-                }
-                Spacer()
-            }
-            .padding(.leading, 12)
-            .padding(.trailing)
-            .padding(.bottom)
-            .offset(y: verticalOffset)
-        }
-        .frame(width: 196, height: 350)
     }
     
     @ViewBuilder
