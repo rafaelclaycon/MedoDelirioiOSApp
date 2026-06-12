@@ -589,7 +589,7 @@ struct MainView: View {
             }
 
             Task {
-                try? await EpisodesService().syncEpisodes()
+                try? await EpisodesService.shared.syncEpisodes()
                 episodesBadgeStore.recompute()
             }
 

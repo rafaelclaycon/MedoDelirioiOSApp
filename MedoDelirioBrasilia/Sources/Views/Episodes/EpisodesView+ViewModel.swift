@@ -75,6 +75,17 @@ extension EpisodesView.ViewModel {
                 state = .loaded(refreshed)
             }
         } catch {
+            // The .task and .refreshable that drive this sync are cancelled by SwiftUI
+            // whenever the view disappears (tab switch, pushing an episode detail).
+            // That's not a failure — and the launch sync in MainView may well have
+            // succeeded concurrently — so don't surface an error for it.
+            if error is CancellationError || (error as? URLError)?.code == .cancelled {
+                if case .loading = state {
+                    state = .error("Não foi possível carregar os episódios.")
+                }
+                return
+            }
+
             logger.error("Episode sync failed: \(error.localizedDescription, privacy: .public)")
             await analyticsService.send(
                 originatingScreen: "EpisodesView",

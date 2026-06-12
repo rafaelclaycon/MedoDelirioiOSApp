@@ -17,7 +17,7 @@ struct EpisodesView: View {
     @Environment(EpisodesBadgeStore.self) private var badgeStore
     @Environment(TranscriptDownloadService.self) private var transcriptService
     @Environment(\.push) private var push
-    @State private var viewModel = ViewModel(episodesService: EpisodesService())
+    @State private var viewModel = ViewModel(episodesService: EpisodesService.shared)
     @State private var selectedFilter: EpisodeFilterOption = .all
     @State private var activePlaybackStates: Set<EpisodePlaybackStateFilter> = EpisodesView.loadPlaybackStates()
     @State private var sortAscending = false

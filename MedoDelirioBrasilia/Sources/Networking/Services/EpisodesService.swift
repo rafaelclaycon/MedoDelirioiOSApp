@@ -17,11 +17,26 @@ protocol EpisodesServiceProtocol {
 @MainActor
 final class EpisodesService: EpisodesServiceProtocol {
 
+    static let shared = EpisodesService()
+
     static let feedURL = URL(string: "https://www.spreaker.com/show/4711842/episodes/feed")!
 
+    private var inFlightSync: Task<Void, Error>?
+
+    /// Concurrent callers (e.g. the launch sync in MainView and the Episodes tab's own
+    /// sync) share a single in-flight fetch instead of hitting the feed twice. The
+    /// unstructured Task also keeps the sync alive if a SwiftUI caller is cancelled.
     func syncEpisodes(database: LocalDatabaseProtocol = LocalDatabase.shared) async throws {
-        let episodes = try await fetchEpisodes(from: Self.feedURL)
-        try database.upsertPodcastEpisodes(episodes)
+        if let inFlightSync {
+            return try await inFlightSync.value
+        }
+        let task = Task {
+            let episodes = try await fetchEpisodes(from: Self.feedURL)
+            try database.upsertPodcastEpisodes(episodes)
+        }
+        inFlightSync = task
+        defer { inFlightSync = nil }
+        try await task.value
     }
 
     func fetchEpisodes(from url: URL) async throws -> [PodcastEpisode] {
