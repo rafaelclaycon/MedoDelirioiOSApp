@@ -237,7 +237,7 @@ extension ModernContent {
                                     .fill(.yellow)
                                     .frame(width: 50, height: 20)
 
-                                Text("NOVO")
+                                Text("NOVA")
                                     .foregroundColor(.black)
                                     .font(.footnote)
                                     .bold()
