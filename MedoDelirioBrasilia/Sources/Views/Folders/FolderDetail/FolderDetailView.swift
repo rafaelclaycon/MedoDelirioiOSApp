@@ -378,7 +378,7 @@ extension FolderDetailView {
         changeHash: "abcdefg",
         contentCount: 3
     )
-    var repo = FakeContentRepository()
+    let repo = FakeContentRepository()
     let sounds: [Sound] = Sound.sampleSounds
     repo.content = sounds.map { AnyEquatableMedoContent($0) }
 
@@ -405,7 +405,7 @@ extension FolderDetailView {
         changeHash: "abcdefg",
         contentCount: 3
     )
-    var repo = FakeContentRepository()
+    let repo = FakeContentRepository()
     let sounds: [Sound] = Sound.sampleSounds
     repo.content = sounds.map { AnyEquatableMedoContent($0) }
 
@@ -432,7 +432,7 @@ extension FolderDetailView {
         changeHash: "abcdefg",
         contentCount: 3
     )
-    var repo = FakeContentRepository()
+    let repo = FakeContentRepository()
     let sounds: [Sound] = Sound.sampleSounds
     repo.content = sounds.map { AnyEquatableMedoContent($0) }
 
@@ -459,7 +459,7 @@ extension FolderDetailView {
         changeHash: "abcdefg",
         contentCount: 3
     )
-    var repo = FakeContentRepository()
+    let repo = FakeContentRepository()
     let sounds: [Sound] = Sound.sampleSounds
     repo.content = sounds.map { AnyEquatableMedoContent($0) }
 

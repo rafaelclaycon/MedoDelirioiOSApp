@@ -12,7 +12,7 @@ typealias PushAction = Action<any Hashable, Void>
 extension EnvironmentValues {
 
     private enum PushActionKey: EnvironmentKey {
-        nonisolated(unsafe) static let defaultValue = PushAction { _ in
+        static let defaultValue = PushAction { _ in
             print("Push action invoked, but it has not been set up in this environment yet.")
         }
     }

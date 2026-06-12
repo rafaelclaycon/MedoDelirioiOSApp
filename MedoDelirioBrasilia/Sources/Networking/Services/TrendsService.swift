@@ -7,6 +7,7 @@
 
 import Foundation
 
+@MainActor
 protocol TrendsServiceProtocol {
 
     // Receiving
@@ -33,8 +34,8 @@ protocol TrendsServiceProtocol {
 @MainActor
 final class TrendsService: TrendsServiceProtocol {
 
-    public static let defaultSoundsTimeInterval: TrendsTimeInterval = .last24Hours
-    public static let defaultSongsTimeInterval: TrendsTimeInterval = .lastWeek
+    public nonisolated static let defaultSoundsTimeInterval: TrendsTimeInterval = .last24Hours
+    public nonisolated static let defaultSongsTimeInterval: TrendsTimeInterval = .lastWeek
 
     /// Shared singleton instance with default dependencies
     public static let shared = TrendsService(

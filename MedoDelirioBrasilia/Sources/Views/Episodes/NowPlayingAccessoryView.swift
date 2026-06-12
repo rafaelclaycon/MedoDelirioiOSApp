@@ -41,9 +41,7 @@ struct NowPlayingAccessoryView: View {
                 Spacer(minLength: 0)
 
                 Button {
-                    Task {
-                        await player.togglePlayPause()
-                    }
+                    player.togglePlayPause()
                 } label: {
                     Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
                         .font(.body)

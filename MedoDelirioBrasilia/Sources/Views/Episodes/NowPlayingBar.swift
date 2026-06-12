@@ -50,9 +50,7 @@ struct NowPlayingBar: View {
 
                 HStack(spacing: .spacing(.xLarge)) {
                     Button {
-                        Task {
-                            await player.skipBackward()
-                        }
+                        player.skipBackward()
                     } label: {
                         Image(systemName: "gobackward.15")
                             .font(.body)
@@ -60,9 +58,7 @@ struct NowPlayingBar: View {
                     .buttonStyle(.plain)
 
                     Button {
-                        Task {
-                            await player.togglePlayPause()
-                        }
+                        player.togglePlayPause()
                     } label: {
                         Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
                             .font(.title3)

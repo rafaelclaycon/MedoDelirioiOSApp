@@ -15,7 +15,7 @@ struct TrendsSettingsView: View {
         Form {
             Section {
                 Toggle("Habilitar Tendências", isOn: $trendsEnabled)
-                    .onChange(of: trendsEnabled) { newValue in
+                    .onChange(of: trendsEnabled) { _, newValue in
                         UserSettings().setEnableTrends(to: newValue)
                     }
             } footer: {
@@ -24,7 +24,7 @@ struct TrendsSettingsView: View {
             
             Section {
                 Toggle("Sons Mais Compartilhados Pela Audiência (iOS)", isOn: $soundsMostSharedByTheAudienceEnabled)
-                    .onChange(of: soundsMostSharedByTheAudienceEnabled) { newValue in
+                    .onChange(of: soundsMostSharedByTheAudienceEnabled) { _, newValue in
                         UserSettings().setEnableSoundsMostSharedByTheAudience(to: newValue)
                     }
 //                Toggle("Sons Mais Compartilhados Por Mim", isOn: $mostSharedSoundsByTheUserEnabled)
@@ -40,7 +40,7 @@ struct TrendsSettingsView: View {
 //                        UserSettings().setEnableAppsThroughWhichTheUserSharesTheMost(to: newValue)
 //                    }
                 Toggle("Compartilhar minhas tendências", isOn: $shareUserPersonalTrendsEnabled)
-                    .onChange(of: shareUserPersonalTrendsEnabled) { newValue in
+                    .onChange(of: shareUserPersonalTrendsEnabled) { _, newValue in
                         UserSettings().setEnableShareUserPersonalTrends(to: newValue)
                     }
             } header: {

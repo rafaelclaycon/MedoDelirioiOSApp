@@ -8,6 +8,7 @@
 import SwiftUI
 
 /// This protocol exists to enable the communication between ContextMenuOption and ContentGrid.
+@MainActor
 protocol ContentGridDisplaying {
 
     func share(content: AnyEquatableMedoContent)

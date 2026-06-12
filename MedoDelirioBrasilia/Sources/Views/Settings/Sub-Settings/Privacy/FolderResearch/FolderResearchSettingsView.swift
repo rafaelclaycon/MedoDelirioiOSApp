@@ -17,7 +17,7 @@ struct FolderResearchSettingsView: View {
         Form {
             Section {
                 Toggle("Participar da Pesquisa", isOn: $viewModel.hasJoinedFolderResearch)
-                    .onChange(of: viewModel.hasJoinedFolderResearch) { enroll in
+                    .onChange(of: viewModel.hasJoinedFolderResearch) { _, enroll in
                         Task {
                             await viewModel.onEnrollOptionChanged(enroll)
                         }

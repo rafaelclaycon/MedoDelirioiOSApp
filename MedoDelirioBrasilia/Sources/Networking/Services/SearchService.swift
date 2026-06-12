@@ -7,6 +7,7 @@
 
 import Foundation
 
+@MainActor
 protocol SearchServiceProtocol {
 
     var reactionsState: LoadingState<[Reaction]> { get }
@@ -77,7 +78,9 @@ final class SearchService: SearchServiceProtocol {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.invalidateTranscriptCache()
+            Task { @MainActor in
+                self?.invalidateTranscriptCache()
+            }
         }
     }
 

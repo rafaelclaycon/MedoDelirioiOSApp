@@ -20,7 +20,7 @@ struct ContextMenuOption: Identifiable {
     let symbol: (Bool) -> String
     let title: (Bool) -> String
     let appliesTo: [MediaType]
-    let action: (ContentGridDisplaying, ContextMenuPassthroughData) -> Void
+    let action: @MainActor (ContentGridDisplaying, ContextMenuPassthroughData) -> Void
 }
 
 struct ContextMenuSection {
