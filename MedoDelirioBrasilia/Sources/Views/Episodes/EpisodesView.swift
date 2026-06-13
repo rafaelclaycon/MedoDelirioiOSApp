@@ -427,9 +427,7 @@ extension EpisodesView {
                             .lineLimit(2)
                     }
 
-                    if !isPlayed && FeatureFlag.isEnabled(.episodePillControls) {
-                        EpisodeRowPillPlaybackControls(episode: episode, progress: progress)
-                    } else if hasProgress, let progress, !FeatureFlag.isEnabled(.episodePillControls) {
+                    if hasProgress, let progress {
                         ProgressView(value: progress.currentTime, total: progress.duration)
                             .tint(.blue)
                             .frame(height: 6)
@@ -443,7 +441,7 @@ extension EpisodesView {
                         .font(.largeTitle)
                         .foregroundStyle(.secondary.opacity(0.5))
                         .frame(width: 60)
-                } else if !FeatureFlag.isEnabled(.episodePillControls) {
+                } else {
                     EpisodePlaybackControlsColumn(episode: episode, progress: progress)
                 }
             }
@@ -505,105 +503,6 @@ extension EpisodesView {
             .frame(minHeight: height)
         }
     }
-}
-
-private struct EpisodeRowPillPlaybackControls: View {
-    @Environment(EpisodePlayer.self) private var episodePlayer
-
-    let episode: PodcastEpisode
-    let progress: EpisodeProgressStore.EpisodeProgress?
-
-    private var isThisEpisodePlaying: Bool {
-        episodePlayer.isCurrentEpisode(episode) && episodePlayer.isPlaying
-    }
-
-    private var hasProgress: Bool {
-        guard let progress else { return false }
-        return progress.currentTime > 0 && progress.duration > 0
-    }
-
-    private var timeText: String {
-        if hasProgress, let progress {
-            return formatCompactDuration(progress.duration - progress.currentTime)
-        } else if let duration = episode.duration {
-            return formatCompactDuration(duration)
-        }
-        return ""
-    }
-
-    var body: some View {
-        HStack(spacing: 8) {
-            playPauseButton
-
-            if hasProgress, let progress {
-                ProgressView(value: progress.currentTime, total: progress.duration)
-                    .tint(.accentColor)
-            } else {
-                Spacer()
-            }
-
-            if !timeText.isEmpty {
-                Text(timeText)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-                    .fixedSize()
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 7)
-        .background(.regularMaterial)
-        .clipShape(Capsule())
-        .frame(maxWidth: .infinity)
-    }
-
-    @ViewBuilder
-    private var playPauseButton: some View {
-        if episodePlayer.isDownloading(episode) {
-            downloadProgressIndicator
-        } else if episodePlayer.isPreparing(episode) {
-            ProgressView()
-                .frame(width: 18, height: 18)
-                .scaleEffect(0.75)
-        } else if isThisEpisodePlaying {
-            Button {
-                episodePlayer.togglePlayPause()
-            } label: {
-                Image(systemName: "pause.fill")
-                    .font(.callout)
-            }
-            .buttonStyle(.borderless)
-        } else {
-            Button {
-                Task { await episodePlayer.play(episode: episode) }
-            } label: {
-                Image(systemName: "play.fill")
-                    .font(.callout)
-            }
-            .buttonStyle(.borderless)
-        }
-    }
-
-    private var downloadProgressIndicator: some View {
-        let p = episodePlayer.downloadProgress[episode.id] ?? 0
-        return ZStack {
-            Circle()
-                .stroke(Color.primary.opacity(0.2), lineWidth: 2)
-            Circle()
-                .trim(from: 0, to: p)
-                .stroke(Color.primary, style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-            Button {
-                episodePlayer.cancelDownload()
-            } label: {
-                Image(systemName: "stop.fill")
-                    .font(.system(size: 8))
-            }
-            .buttonStyle(.plain)
-        }
-        .frame(width: 18, height: 18)
-    }
-
 }
 
 private struct EpisodePlayerAlerts: View {
