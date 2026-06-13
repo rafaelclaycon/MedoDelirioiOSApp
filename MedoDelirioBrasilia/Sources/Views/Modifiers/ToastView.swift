@@ -7,6 +7,8 @@
 
 import SwiftUI
 
+// MARK: - Models
+
 public enum ToastType {
     
     case success, warning, wait, thankYou
@@ -26,216 +28,121 @@ public struct Toast {
     }
 }
 
-struct ToastView: ViewModifier {
+// MARK: - Reusable Views
 
-    @Binding private var toast: Toast?
+struct ToastView {
 
-    @Environment(\.colorScheme) private var colorScheme
+    private struct MainLabel: View {
 
-    private var icon: String {
-        switch toast?.type {
-        case .success:
-            "checkmark"
-        case .warning:
-            "exclamationmark.triangle.fill"
-        case .wait:
-            "clock.fill"
-        case .thankYou:
-            "heart"
-        case nil:
-            ""
-        }
-    }
+        let toast: Toast
 
-    private var iconColor: Color {
-        switch toast?.type {
-        case .success:
-            .green
-        case .warning:
-            .orange
-        case .wait:
-            .orange
-        case .thankYou:
-            .pink
-        case nil:
-            .green
-        }
-    }
+        @Environment(\.colorScheme) private var colorScheme
 
-    // MARK: - Initializer
-
-    public init(_ toast: Binding<Toast?>) {
-        _toast = toast
-    }
-
-    // MARK: - Content Body
-
-    public func body(content: Content) -> some View {
-        content
-            .overlay(alignment: .bottom) {
-                if let toast {
-                    Label {
-                        Text(toast.message)
-                            .foregroundColor(.primary)
-                            .font(.callout)
-                            .bold()
-                    } icon: {
-                        Image(systemName: icon)
-                            .font(Font.system(size: 20, weight: .bold))
-                            .foregroundColor(iconColor)
-                    }
-                    .labelStyle(.centerAligned)
-                    .padding()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background {
-                        RoundedRectangle(cornerRadius: .spacing(.huge), style: .continuous)
-                            .fill(colorScheme == .dark ? .black : .white)
-                            .shadow(
-                                color: colorScheme == .dark ? .white.opacity(0.5) : .black.opacity(0.3),
-                                radius: colorScheme == .dark ? 4 : 2,
-                                y: colorScheme == .dark ? 0 : 2
-                            )
-                    }
-                    .padding(.horizontal)
-                    .padding(.bottom, 15)
-                    .dynamicTypeSize(.xSmall ... .accessibility1)
-                    .onAppear {
-                        switch toast.type {
-                        case .success:
-                            HapticFeedback.success()
-                        case .warning:
-                            HapticFeedback.warning()
-                        case .wait:
-                            HapticFeedback.warning()
-                        case .thankYou:
-                            HapticFeedback.success()
-                        }
-
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
-                            self.toast = nil
-                        }
-                    }
-                    .animation(.easeInOut, value: self.toast != nil)
-                    .gesture(
-                        DragGesture(minimumDistance: 30)
-                            .onEnded { value in
-                                if value.translation.height < 0 {
-                                    self.toast = nil
-                                }
-                            }
-                    )
-                    .dynamicTypeSize(.xSmall ... .accessibility1)
-                }
+        private var icon: String {
+            switch toast.type {
+            case .success:
+                "checkmark"
+            case .warning:
+                "exclamationmark.triangle.fill"
+            case .wait:
+                "clock.fill"
+            case .thankYou:
+                "heart"
             }
+        }
+
+        private var iconColor: Color {
+            switch toast.type {
+            case .success:
+                .green
+            case .warning:
+                .orange
+            case .wait:
+                .orange
+            case .thankYou:
+                .pink
+            }
+        }
+
+        var body: some View {
+            Label {
+                Text(toast.message)
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                    .font(.callout)
+                    .bold()
+            } icon: {
+                Image(systemName: icon)
+                    .font(Font.system(size: 20, weight: .bold))
+                    .foregroundColor(iconColor)
+            }
+            .labelStyle(.centerAligned)
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background {
+                RoundedRectangle(cornerRadius: .spacing(.huge), style: .continuous)
+                    .fill(colorScheme == .dark ? Color(.secondarySystemBackground) : .white)
+                    .shadow(
+                        color: colorScheme == .dark ? .white.opacity(0.5) : .black.opacity(0.3),
+                        radius: colorScheme == .dark ? 4 : 2,
+                        y: colorScheme == .dark ? 0 : 2
+                    )
+            }
+            .padding([.horizontal,.vertical], .spacing(.medium))
+        }
     }
 }
 
-// MARK: - Top Toast (dark-mode aware, top-aligned)
+// MARK: - Specific Views
 
-struct TopToastView: ViewModifier {
+extension ToastView {
 
-    @Binding private var toast: Toast?
-    @Environment(\.colorScheme) private var colorScheme
+    struct Scaffolding: ViewModifier {
 
-    init(_ toast: Binding<Toast?>) {
-        _toast = toast
-    }
+        @Binding private var toast: Toast?
+        let isTop: Bool
 
-    private var icon: String {
-        switch toast?.type {
-        case .success:
-            "checkmark"
-        case .warning:
-            "exclamationmark.triangle.fill"
-        case .wait:
-            "clock.fill"
-        case .thankYou:
-            "heart"
-        case nil:
-            ""
+        public init(
+            _ toast: Binding<Toast?>,
+            isTop: Bool = false
+        ) {
+            self._toast = toast
+            self.isTop = isTop
         }
-    }
 
-    private var iconColor: Color {
-        switch toast?.type {
-        case .success:
-            .green
-        case .warning:
-            .orange
-        case .wait:
-            .orange
-        case .thankYou:
-            .pink
-        case nil:
-            .green
-        }
-    }
+        public func body(content: Content) -> some View {
+            content
+                .overlay(alignment: isTop ? .top : .bottom) {
+                    if let toast {
+                        MainLabel(toast: toast)
+                            .onAppear {
+                                switch toast.type {
+                                case .success:
+                                    HapticFeedback.success()
+                                case .warning:
+                                    HapticFeedback.warning()
+                                case .wait:
+                                    HapticFeedback.warning()
+                                case .thankYou:
+                                    HapticFeedback.success()
+                                }
 
-    private var backgroundColor: Color {
-        colorScheme == .dark ? Color(.secondarySystemBackground) : .white
-    }
-
-    private var textColor: Color {
-        colorScheme == .dark ? .white : .black
-    }
-
-    private var shadowColor: Color {
-        colorScheme == .dark ? .clear : .gray
-    }
-
-    public func body(content: Content) -> some View {
-        content
-            .overlay(alignment: .top) {
-                if let toast {
-                    Label {
-                        Text(toast.message)
-                            .foregroundColor(textColor)
-                            .font(.callout)
-                            .bold()
-                    } icon: {
-                        Image(systemName: icon)
-                            .font(Font.system(size: 20, weight: .bold))
-                            .foregroundColor(iconColor)
-                    }
-                    .labelStyle(.centerAligned)
-                    .padding()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background {
-                        RoundedRectangle(cornerRadius: 50, style: .continuous)
-                            .fill(backgroundColor)
-                            .shadow(color: shadowColor, radius: 2, y: 2)
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 15)
-                    .dynamicTypeSize(.xSmall ... .accessibility1)
-                    .onAppear {
-                        switch toast.type {
-                        case .success:
-                            HapticFeedback.success()
-                        case .warning:
-                            HapticFeedback.warning()
-                        case .wait:
-                            HapticFeedback.warning()
-                        case .thankYou:
-                            HapticFeedback.success()
-                        }
-
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
-                            self.toast = nil
-                        }
-                    }
-                    .animation(.easeInOut, value: self.toast != nil)
-                    .gesture(
-                        DragGesture(minimumDistance: 30)
-                            .onEnded { value in
-                                if value.translation.height < 0 {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
                                     self.toast = nil
                                 }
                             }
-                    )
-                    .dynamicTypeSize(.xSmall ... .accessibility1)
+                            .animation(.easeInOut, value: self.toast != nil)
+                            .gesture(
+                                DragGesture(minimumDistance: 30)
+                                    .onEnded { value in
+                                        if value.translation.height < 0 {
+                                            self.toast = nil
+                                        }
+                                    }
+                            )
+                            .dynamicTypeSize(.xSmall ... .accessibility1)
+                    }
                 }
-            }
+        }
     }
 }
 
@@ -247,12 +154,12 @@ public extension View {
     /// - Parameters:
     ///   - toast: Binding to a toast to display. When nil, toast is not presented.
     func toast(_ toast: Binding<Toast?>) -> some View {
-        modifier(ToastView(toast))
+        modifier(ToastView.Scaffolding(toast))
     }
 
     /// Adds a top-aligned, dark-mode-aware toast overlay.
     func topToast(_ toast: Binding<Toast?>) -> some View {
-        modifier(TopToastView(toast))
+        modifier(ToastView.Scaffolding(toast, isTop: true))
     }
 }
 
@@ -272,6 +179,17 @@ public extension View {
         )
 
         VStack {
+            Text("Success Top Toast")
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .border(.pink)
+        .topToast(
+            .constant(
+                Toast(message: Shared.soundSharedSuccessfullyMessage, type: .success)
+            )
+        )
+
+        VStack {
             Text("Warning Toast")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -279,6 +197,17 @@ public extension View {
         .toast(
             .constant(
                 Toast(message: "Não foi possível ativar as notificações de episódios. Tente novamente.", type: .warning)
+            )
+        )
+
+        VStack {
+            Text("Wait Toast")
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .border(.pink)
+        .toast(
+            .constant(
+                Toast(message: String(format: Shared.Sync.waitMessage, "58 segundos"), type: .wait)
             )
         )
 
