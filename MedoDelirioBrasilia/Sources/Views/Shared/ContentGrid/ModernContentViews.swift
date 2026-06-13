@@ -21,11 +21,15 @@ struct ModernContent {
         let color: Color
         let isSong: Bool
         let isPlaying: Bool
+        let isHighlighted: Bool
 
         @Environment(\.colorScheme) private var colorScheme
 
         private var lowerPartColor: Color {
-            colorScheme == .dark ? color : color.darkened(by: 0.5)
+            guard !isHighlighted else {
+                return .black
+            }
+            return colorScheme == .dark ? color : color.darkened(by: 0.5)
         }
 
         var body: some View {
@@ -35,6 +39,7 @@ struct ModernContent {
                         .fontDesign(.rounded)
                         .font(.body)
                         .lineLimit(2)
+                        .foregroundStyle(isHighlighted ? .black : .primary)
 
                     HStack(spacing: 10) {
                         if isSong {
@@ -218,7 +223,8 @@ extension ModernContent {
                     subtitle: subtitle,
                     color: content.primaryColor,
                     isSong: content.type == .song,
-                    isPlaying: currentMode == .playing
+                    isPlaying: currentMode == .playing,
+                    isHighlighted: highlighted.contains(content.id)
                 )
                 .onReceive(timer) { time in
                     guard currentMode == .playing else { return }
@@ -338,7 +344,8 @@ extension ModernContent {
                 duration: content.duration,
                 color: content.primaryColor,
                 isSong: content.type == .song,
-                isPlaying: false
+                isPlaying: false,
+                isHighlighted: false
             )
             .frame(width: 300)
             .padding(.vertical, .spacing(.xLarge))
