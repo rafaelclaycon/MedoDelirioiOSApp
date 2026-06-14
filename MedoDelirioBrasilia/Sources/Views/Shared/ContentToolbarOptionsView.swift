@@ -40,7 +40,7 @@ struct ContentToolbarOptionsView: ToolbarContent {
                 }
 
                 Section {
-                    Picker("Ordenação de Sons", selection: $contentSortOption) {
+                    Picker("Ordenação", selection: $contentSortOption) {
                         Text("Mais Recentes no Topo")
                             .tag(2)
 

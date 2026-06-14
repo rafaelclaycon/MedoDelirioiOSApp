@@ -16,7 +16,7 @@ struct AuthorToolbarOptionsView: ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
                 Section {
-                    Picker("Ordenação de Autores", selection: $authorSortOption) {
+                    Picker("Ordenação", selection: $authorSortOption) {
                         Text("Nome")
                             .tag(0)
 

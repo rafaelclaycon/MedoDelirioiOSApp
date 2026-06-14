@@ -210,7 +210,7 @@ struct FolderDetailView: View {
 //            }
 
             //Section {
-                Picker("Ordenação de Sons", selection: $viewModel.contentSortOption) {
+                Picker("Ordenação", selection: $viewModel.contentSortOption) {
                     Text("Título")
                         .tag(0)
 

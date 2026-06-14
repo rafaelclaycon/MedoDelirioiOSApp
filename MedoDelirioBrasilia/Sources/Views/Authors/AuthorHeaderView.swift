@@ -537,7 +537,7 @@ extension AuthorHeaderView {
 
                 if soundCount > 1 {
                     Section {
-                        Picker("Ordenação de Sons", selection: $contentSortOption) {
+                        Picker("Ordenação", selection: $contentSortOption) {
                             Text("Título")
                                 .tag(0)
 

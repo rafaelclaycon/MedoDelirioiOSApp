@@ -256,7 +256,7 @@ extension ReactionDetailView {
                         }
 
                         Section {
-                            Picker("Ordenação de Sons", selection: $contentSortOption) {
+                            Picker("Ordenação", selection: $contentSortOption) {
                                 ForEach(ReactionSoundSortOption.allCases, id: \.self) { option in
                                     Text(option.description).tag(option.rawValue)
                                 }
@@ -304,7 +304,7 @@ extension ReactionDetailView {
                         }
 
                         Section {
-                            Picker("Ordenação de Sons", selection: $contentSortOption) {
+                            Picker("Ordenação", selection: $contentSortOption) {
                                 ForEach(ReactionSoundSortOption.allCases, id: \.self) { option in
                                     Text(option.description).tag(option.rawValue)
                                 }
