@@ -22,7 +22,7 @@ struct LeadingToolbarControls: ToolbarContent {
                     Text("Cancelar")
                         .bold()
                 }
-            } else if UIDevice.isiPhone {
+            } else if UIDevice.deviceType == .iPhone {
                 Button {
                     openSettingsAction()
                 } label: {

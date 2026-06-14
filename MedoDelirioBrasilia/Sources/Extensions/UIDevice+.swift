@@ -4,35 +4,27 @@ import UIKit
 
 extension UIDevice {
 
-    /// Same width in points as 4-inch iPhones used to have.
-    /// Now applies to Display Zoom == Larger Text for 16 Pro and down.
-    static var isNarrowestWidth: Bool {
-        guard UIDevice.isiPhone else {
-            return false
-        }
-        return UIScreen.main.bounds.width == 320
-    }
-
     /// In default non-Display Zoom mode, this applies to SE 2, SE 3, XS, 11 Pro, 12 mini, 13 mini.
     static var isSmallDevice: Bool {
-        guard UIDevice.isiPhone else {
+        guard UIDevice.deviceType == .iPhone else {
             return false
         }
         return UIScreen.main.bounds.width < 380
     }
 
     static var isControlCenterAccessibleFromTheTop: Bool {
-        guard !isiPad else { return true }
+        guard deviceType != .iPad else { return true }
         return !modelName.contains("SE")
     }
 
     static var biometricsName: String {
-        if isMac {
-            return "Touch ID"
-        } else if isiPad {
-            return modelName.contains("Pro") ? "Face ID" : "Touch ID"
-        } else {
+        switch deviceType {
+        case .iPhone:
             return modelName.contains("SE") ? "Touch ID" : "Face ID"
+        case .iPad:
+            return modelName.contains("Pro") ? "Face ID" : "Touch ID"
+        case .mac:
+            return "Touch ID"
         }
     }
 }
@@ -49,43 +41,43 @@ extension UIDevice {
     }
 
     static var systemMarketingName: String {
-        if self.isMac {
-            return "macOS"
-        } else if UIDevice.isiPhone {
+        switch deviceType {
+        case .iPhone:
             return "iOS"
-        } else {
+        case .iPad:
             return "iPadOS"
+        case .mac:
+            return "macOS"
         }
     }
 }
 
 // MARK: - Is specific device
 
+enum MedoSupportedDevice {
+
+    case iPhone, iPad, mac
+}
+
 extension UIDevice {
     
-    static var isiPadMini: Bool {
-        let model = UIDevice.modelName
-        return model.contains("iPad mini")
-    }
-
-    static var isiPhone: Bool {
-        self.current.userInterfaceIdiom == .phone
-    }
-
-    static var isiPad: Bool {
-        self.current.userInterfaceIdiom == .pad
-    }
-
-    static var isMac: Bool {
-        ProcessInfo.processInfo.isiOSAppOnMac
+    static var deviceType: MedoSupportedDevice {
+        if current.userInterfaceIdiom == .phone {
+            return .iPhone
+        } else if current.userInterfaceIdiom == .pad {
+            return .iPad
+        } else {
+            return .mac
+        }
     }
 
     static var deviceGenericName: String {
-        if UIDevice.isiPhone {
+        switch deviceType {
+        case .iPhone:
             return "iPhone"
-        } else if UIDevice.isiPad {
+        case .iPad:
             return "iPad"
-        } else {
+        case .mac:
             return "Mac"
         }
     }

@@ -260,7 +260,7 @@ struct SearchSuggestionsView: View {
             VStack(alignment: .leading, spacing: .spacing(.medium)) {
                 popularContentHeader
 
-                LazyVGrid(columns: columns, spacing: UIDevice.isiPhone ? phoneItemSpacing : padItemSpacing) {
+                LazyVGrid(columns: columns, spacing: UIDevice.deviceType == .iPhone ? phoneItemSpacing : padItemSpacing) {
                     ForEach(0..<3, id: \.self) { _ in
                         SkeletonContentView()
                     }
@@ -311,7 +311,7 @@ struct SearchSuggestionsView: View {
                 Text("Reações Populares")
                     .font(.headline)
 
-                LazyVGrid(columns: columns, spacing: UIDevice.isiPhone ? phoneItemSpacing : padItemSpacing) {
+                LazyVGrid(columns: columns, spacing: UIDevice.deviceType == .iPhone ? phoneItemSpacing : padItemSpacing) {
                     ForEach(0..<3, id: \.self) { _ in
                         SkeletonReactionView()
                     }
@@ -395,7 +395,8 @@ struct SearchSuggestionsView: View {
         columns = GridHelper.adaptableColumns(
             listWidth: containerWidth,
             sizeCategory: sizeCategory,
-            spacing: UIDevice.isiPhone ? phoneItemSpacing : padItemSpacing
+            spacing: UIDevice.deviceType == .iPhone ? phoneItemSpacing : padItemSpacing,
+            deviceType: UIDevice.deviceType
         )
     }
 }
@@ -430,7 +431,7 @@ extension SearchSuggestionsView {
         let padItemSpacing: CGFloat
 
         var body: some View {
-            LazyVGrid(columns: columns, spacing: UIDevice.isiPhone ? phoneItemSpacing : padItemSpacing) {
+            LazyVGrid(columns: columns, spacing: UIDevice.deviceType == .iPhone ? phoneItemSpacing : padItemSpacing) {
                 ForEach(content) { item in
                     ModernContent.Button(
                         content: item,
@@ -514,7 +515,7 @@ extension SearchSuggestionsView {
         let padItemSpacing: CGFloat
 
         var body: some View {
-            LazyVGrid(columns: columns, spacing: UIDevice.isiPhone ? phoneItemSpacing : padItemSpacing) {
+            LazyVGrid(columns: columns, spacing: UIDevice.deviceType == .iPhone ? phoneItemSpacing : padItemSpacing) {
                 ForEach(reactions) { reaction in
                     ReactionItem(reaction: reaction)
                         .onTapGesture {
@@ -724,9 +725,7 @@ extension SearchSuggestionsView {
 
         @State private var isAnimating = false
 
-        private var itemHeight: CGFloat {
-            UIDevice.isiPhone ? 100 : (UIDevice.isiPadMini ? 116 : 100)
-        }
+        private let itemHeight: CGFloat = 100
 
         var body: some View {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
@@ -755,7 +754,7 @@ extension SearchSuggestionsView {
         @State private var isAnimating = false
 
         private var itemHeight: CGFloat {
-            UIDevice.isiPhone ? 100 : 120
+            UIDevice.deviceType == .iPhone ? 100 : 120
         }
 
         var body: some View {

@@ -586,7 +586,7 @@ extension OnboardingView {
                     .disabled(selectedOption == nil)
                     .opacity(selectedOption == nil ? 0.5 : 1.0)
 
-                    if !UIDevice.isiPhone {
+                    if UIDevice.deviceType != .iPhone {
                         Text("Caso a tela não feche automaticamente, toque fora dela (na área apagada).")
                             .multilineTextAlignment(.center)
                             .padding(.horizontal)

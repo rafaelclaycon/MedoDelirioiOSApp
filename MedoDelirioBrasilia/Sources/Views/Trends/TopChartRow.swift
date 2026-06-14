@@ -33,7 +33,7 @@ struct TopChartRow: View {
     }
 
     private var showStripedList: Bool {
-        UIDevice.isMac
+        UIDevice.deviceType == .mac
     }
 
     private var isSpecialCase: Bool {

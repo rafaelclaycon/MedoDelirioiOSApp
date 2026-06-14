@@ -26,7 +26,7 @@ struct AuthorHeaderView: View {
     // MARK: - View Body
 
     var body: some View {
-        if UIDevice.isiPhone {
+        if UIDevice.deviceType == .iPhone {
             PhoneHeader(
                 author: author,
                 title: title,

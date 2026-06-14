@@ -11,13 +11,14 @@ struct ContentGridSkeletonView: View {
 
     @Environment(\.sizeCategory) private var sizeCategory
 
-    private var spacing: CGFloat { UIDevice.isiPhone ? 9 : 14 }
+    private var spacing: CGFloat { UIDevice.deviceType == .iPhone ? 9 : 14 }
 
     private var columns: [GridItem] {
         GridHelper.adaptableColumns(
             listWidth: containerSize.width,
             sizeCategory: sizeCategory,
-            spacing: spacing
+            spacing: spacing,
+            deviceType: UIDevice.deviceType
         )
     }
 
@@ -34,9 +35,7 @@ private struct SkeletonContentTile: View {
 
     @State private var animating = false
 
-    private var itemHeight: CGFloat {
-        UIDevice.isiPadMini ? 116 : 100
-    }
+    private let itemHeight: CGFloat = 100
 
     var body: some View {
         RoundedRectangle(cornerRadius: 18, style: .continuous)

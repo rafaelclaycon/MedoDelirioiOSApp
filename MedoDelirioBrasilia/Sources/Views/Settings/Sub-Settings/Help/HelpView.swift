@@ -108,7 +108,7 @@ struct HelpView: View {
 extension HelpView {
 
     private var toPlayInstruction: String {
-        if UIDevice.isMac {
+        if UIDevice.deviceType == .mac {
             return "Para reproduzir um conteúdo, clique nele 1 vez. Para parar de reproduzir, clique nele novamente."
         } else {
             return "Para reproduzir um conteúdo, toque nele 1 vez. Para parar de reproduzir, toque nele novamente."
@@ -116,7 +116,7 @@ extension HelpView {
     }
 
     private var toShareInstruction: String {
-        if UIDevice.isMac {
+        if UIDevice.deviceType == .mac {
             return "Para compartilhar, clique com o botão direito no conteúdo e escolha Compartilhar."
         } else {
             return "Para compartilhar, segure o conteúdo por alguns segundos até o menu de contexto abrir e escolha Compartilhar."
@@ -125,26 +125,24 @@ extension HelpView {
 
     private var toSearchInstruction: String {
         let appendix = "A pesquisa inclui todos os conteúdos do app e é tolerante a alguns erros de escrita."
-        if UIDevice.isMac {
+        switch UIDevice.deviceType {
+        case .iPhone:
+            return "Para pesquisar, toque na lupa no canto inferior direito da tela a qualquer momento.\n\n\(appendix)"
+        case .iPad:
+            return "Para pesquisar por conteúdos, toque em Buscar na barra lateral.\n\n\(appendix)"
+        case .mac:
             return "Para pesquisar por conteúdos, selecione Buscar na barra lateral.\n\n\(appendix)"
-        } else {
-            if UIDevice.isiPhone {
-                return "Para pesquisar, toque na lupa no canto inferior direito da tela a qualquer momento.\n\n\(appendix)"
-            } else {
-                return "Para pesquisar por conteúdos, toque em Buscar na barra lateral.\n\n\(appendix)"
-            }
         }
     }
 
     private var favoritesInstruction: String {
-        if UIDevice.isMac {
-            return "Para favoritar, clique com o botão direito em um conteúdo e escolha Adicionar aos Favoritos.\n\nPara ver apenas os favoritos, clique em Favoritos na barra lateral."
-        } else {
-            if UIDevice.isiPhone {
-                return "Para favoritar, segure o conteúdo e escolha Adicionar aos Favoritos.\n\nPara ver apenas os favoritos, toque em Favoritos nos filtros da parte superior da tela."
-            } else {
-                return "Para favoritar, segure o conteúdo e escolha Adicionar aos Favoritos.\n\nPara ver apenas os favoritos, toque em Favoritos na barra lateral."
-            }
+        switch UIDevice.deviceType {
+        case .iPhone:
+            "Para favoritar, segure o conteúdo e escolha Adicionar aos Favoritos.\n\nPara ver apenas os favoritos, toque no coração nos filtros da parte superior da tela."
+        case .iPad:
+            "Para favoritar, segure o conteúdo e escolha Adicionar aos Favoritos.\n\nPara ver apenas os favoritos, toque em Favoritos na barra lateral."
+        case .mac:
+            "Para favoritar, clique com o botão direito em um conteúdo e escolha Adicionar aos Favoritos.\n\nPara ver apenas os favoritos, clique em Favoritos na barra lateral."
         }
     }
     // MARK: - Episodes

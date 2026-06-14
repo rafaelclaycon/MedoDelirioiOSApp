@@ -368,7 +368,7 @@ struct NowPlayingView: View {
                 )
             }
         }
-        .padding(.bottom, UIDevice.isMac ? .spacing(.medium) : .zero)
+        .padding(.bottom, UIDevice.deviceType == .mac ? .spacing(.medium) : .zero)
     }
 
     // MARK: - Artwork

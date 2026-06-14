@@ -118,7 +118,7 @@ struct ContentGrid<
             if loadedContent.isEmpty {
                 emptyStateView
             } else {
-                LazyVGrid(columns: columns, spacing: UIDevice.isiPhone ? phoneItemSpacing : padItemSpacing) {
+                LazyVGrid(columns: columns, spacing: UIDevice.deviceType == .iPhone ? phoneItemSpacing : padItemSpacing) {
                     if searchResults.isEmpty {
                         NoSearchResultsView(searchText: viewModel.searchText)
                     } else {
@@ -300,7 +300,8 @@ struct ContentGrid<
         columns = GridHelper.adaptableColumns(
             listWidth: containerSize.width,
             sizeCategory: sizeCategory,
-            spacing: UIDevice.isiPhone ? phoneItemSpacing : padItemSpacing
+            spacing: UIDevice.deviceType == .iPhone ? phoneItemSpacing : padItemSpacing,
+            deviceType: UIDevice.deviceType
         )
     }
 }

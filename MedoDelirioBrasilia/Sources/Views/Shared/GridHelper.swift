@@ -5,9 +5,10 @@ class GridHelper {
     static func adaptableColumns(
         listWidth: CGFloat,
         sizeCategory: ContentSizeCategory,
-        spacing: CGFloat
+        spacing: CGFloat,
+        deviceType: MedoSupportedDevice
     ) -> [GridItem] {
-        if UIDevice.isiPhone {
+        if deviceType == .iPhone {
             if sizeCategory > ContentSizeCategory.large {
                 return [
                     GridItem(.flexible(), spacing: spacing, alignment: .center)
@@ -23,41 +24,19 @@ class GridHelper {
                 return [
                     GridItem(.flexible(), spacing: spacing, alignment: .center)
                 ]
-            } else if listWidth < 600 {
-                return [
-                    GridItem(.flexible(), spacing: spacing, alignment: .center),
-                    GridItem(.flexible(), spacing: spacing, alignment: .center)
-                ]
-            } else if listWidth < 870 {
-                return [
-                    GridItem(.flexible(), spacing: spacing, alignment: .center),
-                    GridItem(.flexible(), spacing: spacing, alignment: .center),
-                    GridItem(.flexible(), spacing: spacing, alignment: .center)
-                ]
-            } else if listWidth < 1200 {
-                return [
-                    GridItem(.flexible(), spacing: spacing, alignment: .center),
-                    GridItem(.flexible(), spacing: spacing, alignment: .center),
-                    GridItem(.flexible(), spacing: spacing, alignment: .center),
-                    GridItem(.flexible(), spacing: spacing, alignment: .center)
-                ]
             } else {
-                return [
-                    GridItem(.flexible(), spacing: spacing, alignment: .center),
-                    GridItem(.flexible(), spacing: spacing, alignment: .center),
-                    GridItem(.flexible(), spacing: spacing, alignment: .center),
-                    GridItem(.flexible(), spacing: spacing, alignment: .center),
-                    GridItem(.flexible(), spacing: spacing, alignment: .center)
-                ]
+                let qty = Int(listWidth / (deviceType == .mac ? 320 : 220))
+                return Array(repeating: GridItem(.flexible(), spacing: spacing, alignment: .center), count: qty)
             }
         }
     }
 
     static func authorColumns(
         gridWidth: CGFloat,
-        spacing: CGFloat
+        spacing: CGFloat,
+        deviceType: MedoSupportedDevice
     ) -> [GridItem] {
-        if UIDevice.isiPhone {
+        if UIDevice.deviceType == .iPhone {
             return [
                 GridItem(.flexible(), spacing: spacing, alignment: .center)
             ]

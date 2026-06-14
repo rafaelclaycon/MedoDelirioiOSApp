@@ -80,7 +80,8 @@ extension AuthorsGrid.ViewModel {
     private func updateColumns(newWidth: CGFloat) {
         columns = GridHelper.authorColumns(
             gridWidth: newWidth,
-            spacing: UIDevice.isiPhone ? .spacing(.small) : .spacing(.large)
+            spacing: UIDevice.deviceType == .iPhone ? .spacing(.small) : .spacing(.large),
+            deviceType: UIDevice.deviceType
         )
     }
 

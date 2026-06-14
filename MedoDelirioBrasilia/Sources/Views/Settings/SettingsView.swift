@@ -13,7 +13,7 @@ struct SettingsView: View {
 
     @State private var showExplicitSounds: Bool = UserSettings().getShowExplicitContent()
 
-    @State private var showChangeAppIcon: Bool = !UIDevice.isMac
+    @State private var showChangeAppIcon: Bool = UIDevice.deviceType != .mac
 
     @State private var showAskForMoneyView: Bool = false
     @State private var showOnboardingPreview: Bool = false

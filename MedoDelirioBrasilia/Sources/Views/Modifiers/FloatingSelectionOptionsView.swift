@@ -57,7 +57,7 @@ struct FloatingSelectionOptionsView: ViewModifier {
     private var favoriteTitle: String {
         guard let options else { return "" }
         if options.allSelectedAreFavorites {
-            return UIDevice.isiPhone ? "Desfav." : "Desfavoritar"
+            return UIDevice.deviceType == .iPhone ? "Desfav." : "Desfavoritar"
         } else {
             return "Favoritar"
         }
@@ -69,7 +69,7 @@ struct FloatingSelectionOptionsView: ViewModifier {
     }
 
     private var folderTitle: String {
-        if UIDevice.isiPhone {
+        if UIDevice.deviceType == .iPhone {
             return "Pasta"
         } else {
             guard let options else { return "" }
@@ -121,13 +121,13 @@ struct FloatingSelectionOptionsView: ViewModifier {
                                     options.shareAction()
                                 } label: {
                                     Label {
-                                        Text(UIDevice.isiPhone ? "Comp." : "Compartilhar")
+                                        Text(UIDevice.deviceType == .iPhone ? "Comp." : "Compartilhar")
                                             .bold()
                                     } icon: {
                                         Image(systemName: "square.and.arrow.up")
                                     }
                                 }
-                                .disabled(!options.areButtonsEnabled || !UIDevice.isiPhone) // Sharing many crashed on iPad.
+                                .disabled(!options.areButtonsEnabled || UIDevice.deviceType != .iPhone) // Sharing many crashed on iPad.
                             }
                         }
                     }
@@ -172,13 +172,13 @@ struct FloatingSelectionOptionsView: ViewModifier {
                                     options.shareAction()
                                 } label: {
                                     Label {
-                                        Text(UIDevice.isiPhone ? "Comp." : "Compartilhar")
+                                        Text(UIDevice.deviceType == .iPhone ? "Comp." : "Compartilhar")
                                             .bold()
                                     } icon: {
                                         Image(systemName: "square.and.arrow.up")
                                     }
                                 }
-                                .disabled(!options.areButtonsEnabled || !UIDevice.isiPhone) // Sharing many crashed on iPad.
+                                .disabled(!options.areButtonsEnabled || UIDevice.deviceType != .iPhone) // Sharing many crashed on iPad.
                             }
                         }
                         .padding(.horizontal, 20)

@@ -50,7 +50,7 @@ extension ContentDetailView {
                             HStack(spacing: 15) {
                                 ForEach(reactions) { reaction in
                                     ReactionItem(reaction: reaction)
-                                        .frame(width: UIDevice.isiPhone ? 180 : 200)
+                                        .frame(width: UIDevice.deviceType == .iPhone ? 180 : 200)
                                         .onTapGesture {
                                             openReactionAction(reaction)
                                         }

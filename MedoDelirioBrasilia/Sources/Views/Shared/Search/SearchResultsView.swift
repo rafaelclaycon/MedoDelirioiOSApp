@@ -576,7 +576,8 @@ struct SearchResultsView: View {
         columns = GridHelper.adaptableColumns(
             listWidth: containerWidth,
             sizeCategory: sizeCategory,
-            spacing: .spacing(.small)
+            spacing: .spacing(.small),
+            deviceType: UIDevice.deviceType
         )
     }
 }

@@ -26,7 +26,7 @@ struct EmptyFolderView: View {
             Text("Nós também não. Volte para os sons, segure em um deles e escolha Adicionar a Pasta para adicioná-lo aqui.")
                 .multilineTextAlignment(.center)
                 .foregroundColor(.gray)
-                .padding(.horizontal, UIDevice.isiPhone ? 15 : 40)
+                .padding(.horizontal, UIDevice.deviceType == .iPhone ? 15 : 40)
         }
     }
 }

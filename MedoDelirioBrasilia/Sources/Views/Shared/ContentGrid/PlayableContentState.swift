@@ -121,7 +121,7 @@ extension PlayableContentState {
             return
         }
 
-        if UIDevice.isiPhone {
+        if UIDevice.deviceType == .iPhone {
             do {
                 try SharingUtility.shareSound(
                     from: content.fileURL(),
@@ -312,7 +312,7 @@ extension PlayableContentState {
 
     private func showVideoSavedSuccessfullyToast() {
         toast.wrappedValue = Toast(
-            message: UIDevice.isMac ? Shared.ShareAsVideo.videoSavedSucessfullyMac : Shared.ShareAsVideo.videoSavedSucessfully,
+            message: UIDevice.deviceType == .mac ? Shared.ShareAsVideo.videoSavedSucessfullyMac : Shared.ShareAsVideo.videoSavedSucessfully,
             type: .success
         )
     }
@@ -324,7 +324,7 @@ extension PlayableContentState {
     ) {
         let videoType = ContentType.videoShareType(for: selectedContent?.type ?? .sound) ?? .videoFromSound
 
-        if UIDevice.isiPhone {
+        if UIDevice.deviceType == .iPhone {
             do {
                 try SharingUtility.share(
                     videoType,

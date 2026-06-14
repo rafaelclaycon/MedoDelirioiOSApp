@@ -102,7 +102,7 @@ struct MainView: View {
 
     var body: some View {
         ZStack {
-            if UIDevice.isiPhone {
+            if UIDevice.deviceType == .iPhone {
                 if #available(iOS 26.0, *) {
                     TabView(selection: tabSelection) {
                         Tab(Shared.TabInfo.name(.sounds), systemImage: Shared.TabInfo.symbol(.sounds), value: .sounds) {
@@ -632,7 +632,7 @@ struct MainView: View {
 
             case .onboarding:
                 OnboardingView()
-                    .interactiveDismissDisabled(UIDevice.isiPhone)
+                    .interactiveDismissDisabled(UIDevice.deviceType == .iPhone)
 
             case .retrospective, .whatsNew:
                 EmptyView()

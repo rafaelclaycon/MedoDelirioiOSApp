@@ -272,7 +272,7 @@ extension ContentGridViewModel {
 
     private func showVideoSavedSuccessfullyToast() {
         toast.wrappedValue = Toast(
-            message: UIDevice.isMac ? Shared.ShareAsVideo.videoSavedSucessfullyMac : Shared.ShareAsVideo.videoSavedSucessfully,
+            message: UIDevice.deviceType == .mac ? Shared.ShareAsVideo.videoSavedSucessfullyMac : Shared.ShareAsVideo.videoSavedSucessfully,
             type: .success
         )
     }

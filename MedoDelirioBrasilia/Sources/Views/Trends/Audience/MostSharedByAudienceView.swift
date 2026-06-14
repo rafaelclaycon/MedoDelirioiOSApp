@@ -97,7 +97,7 @@ struct MostSharedByAudienceView: View {
     // MARK: - Functions
 
     private func navigateTo(content contentId: String) {
-        if UIDevice.isiPhone {
+        if UIDevice.deviceType == .iPhone {
             tabSelection = .sounds
         } else {
             activePadScreen = .allSounds
@@ -106,7 +106,7 @@ struct MostSharedByAudienceView: View {
     }
 
     private func navigateTo(reaction reactionId: String) {
-        if UIDevice.isiPhone {
+        if UIDevice.deviceType == .iPhone {
             tabSelection = .reactions
         } else {
             activePadScreen = .reactions
@@ -191,14 +191,14 @@ extension MostSharedByAudienceView {
                         if items.isEmpty {
                             NoDataToDisplayView()
                         } else {
-                            LazyVGrid(columns: UIDevice.isMac ? columnsMac : columns, spacing: 10) {
+                            LazyVGrid(columns: UIDevice.deviceType == .mac ? columnsMac : columns, spacing: 10) {
                                 ForEach(items) { item in
                                     TopChartRow(item: item)
                                         .onTapGesture {
                                             navigateToAction(item.contentId)
                                         }
                                         .contextMenu {
-                                            if UIDevice.isiPhone {
+                                            if UIDevice.deviceType == .iPhone {
                                                 Button {
                                                     navigateToAction(item.contentId)
                                                 } label: {
@@ -308,7 +308,7 @@ extension MostSharedByAudienceView {
                     VStack(spacing: .spacing(.xxxSmall)) {
                         LazyVGrid(
                             columns: columns,
-                            spacing: UIDevice.isiPhone ? .spacing(.small) : .spacing(.large)
+                            spacing: UIDevice.deviceType == .iPhone ? .spacing(.small) : .spacing(.large)
                         ) {
                             ForEach(items) { item in
                                 RankedReactionItem(

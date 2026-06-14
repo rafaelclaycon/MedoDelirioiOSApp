@@ -71,11 +71,11 @@ struct StandaloneSearchView: View {
                                 isSearchingTranscripts: isSearchingTranscripts,
                                 retryLoadReactionsAction: loadReactions
                             )
-                            .padding(.horizontal, UIDevice.isiPhone ? .spacing(.xSmall) : 0)
+                            .padding(.horizontal, UIDevice.deviceType == .iPhone ? .spacing(.xSmall) : 0)
                         }
                     }
                 }
-                .padding(.all, UIDevice.isiPad ? .spacing(.medium) : .spacing(.xSmall))
+                .padding(.all, UIDevice.deviceType == .iPad ? .spacing(.medium) : .spacing(.xSmall))
                 .navigationTitle(Text("Buscar"))
                 .searchable(text: $searchText, placement: .navigationBarDrawer, prompt: searchPrompt)
                 .autocorrectionDisabled()

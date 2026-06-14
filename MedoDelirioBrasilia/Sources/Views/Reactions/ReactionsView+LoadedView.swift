@@ -40,7 +40,7 @@ extension ReactionsView {
                     if let pinnedReactions, pinnedReactions.count > 0 {
                         LazyVGrid(
                             columns: columns,
-                            spacing: UIDevice.isiPhone ? 12 : 20
+                            spacing: UIDevice.deviceType == .iPhone ? 12 : 20
                         ) {
                             ForEach(pinnedReactions) { reaction in
                                 InteractibleReactionItem(
@@ -68,7 +68,7 @@ extension ReactionsView {
 
                     LazyVGrid(
                         columns: columns,
-                        spacing: UIDevice.isiPhone ? 12 : 20
+                        spacing: UIDevice.deviceType == .iPhone ? 12 : 20
                     ) {
                         ForEach(otherReactions) { reaction in
                             InteractibleReactionItem(

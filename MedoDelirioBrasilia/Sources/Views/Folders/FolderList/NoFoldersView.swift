@@ -10,14 +10,13 @@ import SwiftUI
 struct NoFoldersView: View {
     
     private var text: String {
-        if UIDevice.isiPhone {
-            return "Toque no + no canto superior direito para criar uma nova pasta de sons."
-        } else {
-            if UIDevice.isMac {
-                return "Clique em Nova Pasta acima para criar uma nova pasta de sons."
-            } else {
-                return "Toque em Nova Pasta acima para criar uma nova pasta de sons."
-            }
+        switch UIDevice.deviceType {
+        case .iPhone:
+            "Toque no + no canto superior direito para criar uma nova pasta de sons."
+        case .iPad:
+            "Toque em Nova Pasta acima para criar uma nova pasta de sons."
+        case .mac:
+            "Clique em Nova Pasta acima para criar uma nova pasta de sons."
         }
     }
 

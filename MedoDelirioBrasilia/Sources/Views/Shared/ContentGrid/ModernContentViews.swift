@@ -169,14 +169,6 @@ extension ModernContent {
             }
         }
 
-        private var itemHeight: CGFloat {
-            if UIDevice.isiPhone {
-                return 100
-            } else {
-                return UIDevice.isiPadMini ? 116 : 100
-            }
-        }
-
         private var subtitle: String {
             if currentMode == .playing {
                 return timeRemaining.minuteSecondFormatted
@@ -192,6 +184,7 @@ extension ModernContent {
 
         // MARK: - Static Properties
 
+        private let itemHeight: CGFloat = 100
         private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
         private let unselectedForegroundColor: Color = .gray
         private let favoriteGradient = LinearGradient(gradient: Gradient(colors: [.red]), startPoint: .topLeading, endPoint: .bottomTrailing)

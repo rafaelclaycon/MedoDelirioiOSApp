@@ -15,7 +15,7 @@ struct ReactionItem: View {
     // MARK: - Computed Properties
 
     private var itemHeight: CGFloat {
-        UIDevice.isiPhone ? 100 : 120
+        UIDevice.deviceType == .iPhone ? 100 : 120
     }
 
     private var reduceTextSize: Bool {
