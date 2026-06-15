@@ -12,11 +12,11 @@ struct NoFoldersView: View {
     private var text: String {
         switch UIDevice.deviceType {
         case .iPhone:
-            "Toque no + no canto superior direito para criar uma nova pasta de sons."
+            "Toque no + no canto superior direito para criar uma nova pasta."
         case .iPad:
-            "Toque em Nova Pasta acima para criar uma nova pasta de sons."
+            "Toque em Nova Pasta acima para criar uma nova pasta."
         case .mac:
-            "Clique em Nova Pasta acima para criar uma nova pasta de sons."
+            "Clique em Nova Pasta acima para criar uma nova pasta."
         }
     }
 
@@ -42,9 +42,8 @@ struct NoFoldersView: View {
     }
 }
 
-struct NoFoldersView_Previews: PreviewProvider {
+// MARK: - Preview
 
-    static var previews: some View {
-        NoFoldersView()
-    }
+#Preview {
+    NoFoldersView()
 }

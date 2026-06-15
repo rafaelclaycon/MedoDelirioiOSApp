@@ -41,6 +41,7 @@ struct StandaloneFolderGridView: View {
                 .padding(.horizontal, .spacing(.medium))
                 .padding(.top, 7)
                 .padding(.bottom, 18)
+                .frame(minHeight: geometry.size.height)
             }
             .navigationTitle("Pastas")
             .navigationBarTitleDisplayMode(.inline)

@@ -184,6 +184,8 @@ extension MainContentView {
                 authorsContent(geometry: geometry)
             }
         }
+        // Lets the Folders empty state center itself in the visible area below the picker.
+        .frame(minHeight: viewModel.currentViewMode == .folders ? geometry.size.height : nil)
         .navigationTitle(Text(title))
         .toolbar {
             LeadingToolbarControls(

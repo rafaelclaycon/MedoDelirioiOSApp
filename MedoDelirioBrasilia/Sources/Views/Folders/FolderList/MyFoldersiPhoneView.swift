@@ -24,23 +24,21 @@ struct MyFoldersiPhoneView: View {
     // MARK: - View Body
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .center) {
-                FolderGrid(
-                    viewModel: FolderGridViewModel(
-                        userFolderRepository: userFolderRepository,
-                        userSettings: UserSettings(),
-                        appMemory: AppPersistentMemory.shared
-                    ),
-                    updateFolderList: $updateFolderList,
-                    folderForEditing: $folderForEditing,
-                    contentRepository: contentRepository,
-                    containerSize: containerSize
-                )
-            }
-            .padding(.top, 7)
-            .padding(.bottom, 18)
+        VStack(alignment: .center) {
+            FolderGrid(
+                viewModel: FolderGridViewModel(
+                    userFolderRepository: userFolderRepository,
+                    userSettings: UserSettings(),
+                    appMemory: AppPersistentMemory.shared
+                ),
+                updateFolderList: $updateFolderList,
+                folderForEditing: $folderForEditing,
+                contentRepository: contentRepository,
+                containerSize: containerSize
+            )
         }
+        .padding(.top, 7)
+        .padding(.bottom, 18)
         .navigationTitle("Minhas Pastas")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {

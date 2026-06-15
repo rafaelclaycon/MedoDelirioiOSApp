@@ -33,23 +33,6 @@ struct FolderGrid: View {
     @Environment(DeleteFolderViewAide.self) private var deleteFolderAide
     @Environment(\.sizeCategory) private var sizeCategory
 
-    // MARK: - Computed Properties
-
-    private var noFoldersScrollHeight: CGFloat {
-        if UIDevice.deviceType == .iPhone {
-            let screenWidth = UIScreen.main.bounds.height
-            if screenWidth < 600 {
-                return 0
-            } else if screenWidth < 800 {
-                return 50
-            } else {
-                return 100
-            }
-        } else {
-            return 100
-        }
-    }
-
     // MARK: - View Body
 
     var body: some View {
@@ -112,9 +95,11 @@ struct FolderGrid: View {
                             }
                         }
                     }
+
+                    Spacer(minLength: 0)
                 } else {
                     NoFoldersView()
-                        .padding(.vertical, noFoldersScrollHeight)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
 
             case .error(let errorMessage):
