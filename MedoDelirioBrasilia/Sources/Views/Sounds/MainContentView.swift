@@ -21,7 +21,6 @@ struct MainContentView: View {
 
     @State var subviewToOpen: MainSoundContainerModalToOpen = .syncInfo
     @State var showingModalView = false
-    @State var contentSearchTextIsEmpty: Bool? = true
 
     // Folders
     @State var deleteFolderAide = DeleteFolderViewAide()
@@ -133,7 +132,7 @@ extension MainContentView {
     func highlight(contentId: String) {
         guard !contentId.isEmpty else { return }
         viewModel.currentViewMode = .all
-        contentGridViewModel.cancelSearchAndHighlight(id: contentId)
+        contentGridViewModel.highlight(id: contentId)
         trendsHelper.contentIdToNavigateTo = ""
         DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(600)) {
             contentGridViewModel.scrollTo = contentId

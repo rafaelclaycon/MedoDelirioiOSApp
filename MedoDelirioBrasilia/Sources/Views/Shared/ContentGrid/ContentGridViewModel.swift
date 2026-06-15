@@ -24,9 +24,6 @@ final class ContentGridViewModel {
     var highlightKeeper = Set<String>()
     var selectionKeeper = Set<String>()
 
-    // Search
-    var searchText: String = ""
-
     // Long Updates
     var processedUpdateNumber: Int = 0
     var totalUpdateCount: Int = 0
@@ -461,7 +458,6 @@ extension ContentGridViewModel {
         currentListMode.wrappedValue = .regular
         selectionKeeper.removeAll()
         selectedContentMultiple = nil
-        searchText = ""
         floatingOptions.wrappedValue = nil
         if #available(iOS 26, *) {
             tabBarVisibility = .visible
@@ -604,12 +600,7 @@ extension ContentGridViewModel {
 
 extension ContentGridViewModel {
 
-    public func cancelSearchAndHighlight(id contentId: String) {
-        if !searchText.isEmpty {
-            searchText = ""
-            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-        }
-
+    public func highlight(id contentId: String) {
         highlightKeeper.insert(contentId)
         DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(2)) {
             self.highlightKeeper.remove(contentId)

@@ -17,8 +17,6 @@ final class MainContentViewModel {
     var contentSortOption: Int
     var authorSortOption: Int
 
-    var searchText: String = ""
-
     // MARK: - Stored Properties
 
     public var currentContentListMode: Binding<ContentGridMode>

@@ -13,7 +13,7 @@ extension MainContentView {
 
     @ViewBuilder
     var contentModePicker: some View {
-        if contentSearchTextIsEmpty ?? true, currentContentListMode.wrappedValue == .regular {
+        if currentContentListMode.wrappedValue == .regular {
             ContentModePicker(
                 options: UIDevice.deviceType == .iPhone ? ContentModeOption.allCases : [.all, .songs],
                 selected: $viewModel.currentViewMode,
@@ -35,7 +35,7 @@ extension MainContentView {
                     )
                 }
 
-                if viewModel.currentViewMode == .all, contentSearchTextIsEmpty ?? false {
+                if viewModel.currentViewMode == .all {
                     BannersView(
                         bannerRepository: bannerRepository,
                         toast: viewModel.toast
@@ -47,7 +47,6 @@ extension MainContentView {
                 state: viewModel.state,
                 viewModel: contentGridViewModel,
                 toast: viewModel.toast,
-                searchTextIsEmpty: $contentSearchTextIsEmpty,
                 isFavoritesOnlyView: viewModel.currentViewMode == .favorites,
                 containerSize: geometry.size,
                 scrollViewProxy: proxy,
@@ -78,8 +77,7 @@ extension MainContentView {
 
             if
                 viewModel.currentViewMode == .all,
-                loadedContent.count > 0,
-                contentSearchTextIsEmpty ?? true
+                loadedContent.count > 0
             {
                 Text("\(loadedContent.count) ITENS")
                     .font(.footnote)

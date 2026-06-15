@@ -10,7 +10,7 @@ import UIKit
 
 /// A generic view that displays a list of sounds with customizable states for loading, empty, and error conditions.
 ///
-/// `ContentGrid` supports various customization options, including search functionality, multi-selection, and conditional UI elements like
+/// `ContentGrid` supports various customization options, including multi-selection, and conditional UI elements like
 /// sound counts, explicit content warnings, and more. It relies on `ContentGridViewModel` to manage its data and state.
 ///
 /// - Parameters:
@@ -29,7 +29,6 @@ struct ContentGrid<
     private var state: LoadingState<[AnyEquatableMedoContent]>
     @State private var viewModel: ContentGridViewModel
     private var toast: Binding<Toast?>
-    private var searchTextIsEmpty: Binding<Bool?>
     private let showNewTag: Bool
     private let isFavoritesOnlyView: Bool
     private let authorId: String?
@@ -50,24 +49,6 @@ struct ContentGrid<
     @State private var multiSelectButtonsEnabled: Bool = false
     @State private var allSelectedAreFavorites: Bool = false
 
-    // MARK: - Computed Properties
-
-    private var searchResults: [AnyEquatableMedoContent] {
-        switch state {
-        case .loaded(let content):
-            if viewModel.searchText.isEmpty {
-                return content
-            } else {
-                return content.filter { item in
-                    let searchString = "\(item.description.lowercased().withoutDiacritics()) \(item.subtitle.lowercased().withoutDiacritics())"
-                    return searchString.contains(viewModel.searchText.lowercased().withoutDiacritics())
-                }
-            }
-        case .loading, .error:
-            return []
-        }
-    }
-
     // MARK: - Environment
 
     @Environment(\.sizeCategory) private var sizeCategory
@@ -80,7 +61,6 @@ struct ContentGrid<
         viewModel: ContentGridViewModel,
         toast: Binding<Toast?>,
 
-        searchTextIsEmpty: Binding<Bool?> = .constant(nil),
         showNewTag: Bool = true,
         isFavoritesOnlyView: Bool = false,
         authorId: String? = nil,
@@ -95,7 +75,6 @@ struct ContentGrid<
         self.state = state
         self.viewModel = viewModel
         self.toast = toast
-        self.searchTextIsEmpty = searchTextIsEmpty
         self.showNewTag = showNewTag
         self.isFavoritesOnlyView = isFavoritesOnlyView
         self.authorId = authorId
@@ -119,41 +98,37 @@ struct ContentGrid<
                 emptyStateView
             } else {
                 LazyVGrid(columns: columns, spacing: UIDevice.deviceType == .iPhone ? phoneItemSpacing : padItemSpacing) {
-                    if searchResults.isEmpty {
-                        NoSearchResultsView(searchText: viewModel.searchText)
-                    } else {
-                        ForEach(searchResults) { content in
-                            ModernContent.Button(
-                                content: content,
-                                showNewTag: showNewTag,
-                                favorites: viewModel.favoritesKeeper,
-                                highlighted: viewModel.highlightKeeper,
-                                nowPlaying: viewModel.nowPlayingKeeper,
-                                selectedItems: viewModel.selectionKeeper,
-                                currentContentListMode: viewModel.currentListMode
-                            )
-                            .contentShape(
-                                .contextMenuPreview,
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            )
-                            .onTapGesture {
-                                viewModel.onContentSelected(content, loadedContent: loadedContent)
-                            }
-                            .contextMenu {
-                                if viewModel.currentListMode.wrappedValue != .selection {
-                                    contextMenuOptionsView(
-                                        content: content,
-                                        menuOptions: viewModel.menuOptions,
-                                        favorites: viewModel.favoritesKeeper,
-                                        loadedContent: loadedContent
-                                    )
-                                }
-                            } preview: {
-                                ModernContent.MenuPreview(
+                    ForEach(loadedContent) { content in
+                        ModernContent.Button(
+                            content: content,
+                            showNewTag: showNewTag,
+                            favorites: viewModel.favoritesKeeper,
+                            highlighted: viewModel.highlightKeeper,
+                            nowPlaying: viewModel.nowPlayingKeeper,
+                            selectedItems: viewModel.selectionKeeper,
+                            currentContentListMode: viewModel.currentListMode
+                        )
+                        .contentShape(
+                            .contextMenuPreview,
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        )
+                        .onTapGesture {
+                            viewModel.onContentSelected(content, loadedContent: loadedContent)
+                        }
+                        .contextMenu {
+                            if viewModel.currentListMode.wrappedValue != .selection {
+                                contextMenuOptionsView(
                                     content: content,
-                                    isFavorite: viewModel.favoritesKeeper.contains(content.id)
+                                    menuOptions: viewModel.menuOptions,
+                                    favorites: viewModel.favoritesKeeper,
+                                    loadedContent: loadedContent
                                 )
                             }
+                        } preview: {
+                            ModernContent.MenuPreview(
+                                content: content,
+                                isFavorite: viewModel.favoritesKeeper.contains(content.id)
+                            )
                         }
                     }
                 }
@@ -203,9 +178,6 @@ struct ContentGrid<
                         push(GeneralNavigationDestination.reactionDetail(reaction))
                     }
                 )
-                .onChange(of: viewModel.searchText) {
-                    searchTextIsEmpty.wrappedValue = viewModel.searchText.isEmpty
-                }
                 .onChange(of: viewModel.activeSheet) {
                     if viewModel.activeSheet != nil {
                         if case .addToFolder = viewModel.activeSheet {
@@ -216,13 +188,6 @@ struct ContentGrid<
                 }
                 .onChange(of: containerSize.width) {
                     updateGridLayout()
-                }
-                .onChange(of: searchResults) {
-                    if searchResults.isEmpty {
-                        columns = [GridItem(.flexible())]
-                    } else {
-                        updateGridLayout()
-                    }
                 }
                 .onChange(of: viewModel.selectionKeeper.count) {
                     viewModel.onItemSelectionChanged()
