@@ -266,7 +266,7 @@ struct ContentGrid<
 
     private func updateGridLayout() {
         columns = GridHelper.adaptableColumns(
-            listWidth: containerSize.width,
+            gridWidth: containerSize.width,
             sizeCategory: sizeCategory,
             spacing: UIDevice.deviceType == .iPhone ? phoneItemSpacing : padItemSpacing
         )

@@ -393,7 +393,7 @@ struct SearchSuggestionsView: View {
 
     private func updateGridLayout() {
         columns = GridHelper.adaptableColumns(
-            listWidth: containerWidth,
+            gridWidth: containerWidth,
             sizeCategory: sizeCategory,
             spacing: UIDevice.deviceType == .iPhone ? phoneItemSpacing : padItemSpacing
         )

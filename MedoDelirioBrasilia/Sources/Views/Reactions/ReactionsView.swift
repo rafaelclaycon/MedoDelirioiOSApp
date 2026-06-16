@@ -58,7 +58,7 @@ struct ReactionsView: View {
                     )
                     .onAppear {
                         columns = GridHelper.adaptableColumns(
-                            listWidth: geometry.size.width,
+                            gridWidth: geometry.size.width,
                             sizeCategory: sizeCategory,
                             spacing: UIDevice.deviceType == .iPhone ? 12 : 20
                         )
@@ -72,7 +72,7 @@ struct ReactionsView: View {
                     }
                     .onChange(of: geometry.size.width) {
                         columns = GridHelper.adaptableColumns(
-                            listWidth: geometry.size.width,
+                            gridWidth: geometry.size.width,
                             sizeCategory: sizeCategory,
                             spacing: UIDevice.deviceType == .iPhone ? 12 : 20
                         )

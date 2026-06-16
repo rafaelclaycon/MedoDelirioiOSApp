@@ -15,7 +15,7 @@ struct ContentGridSkeletonView: View {
 
     private var columns: [GridItem] {
         GridHelper.adaptableColumns(
-            listWidth: containerSize.width,
+            gridWidth: containerSize.width,
             sizeCategory: sizeCategory,
             spacing: spacing
         )

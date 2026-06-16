@@ -574,7 +574,7 @@ struct SearchResultsView: View {
 
     private func updateGridLayout() {
         columns = GridHelper.adaptableColumns(
-            listWidth: containerWidth,
+            gridWidth: containerWidth,
             sizeCategory: sizeCategory,
             spacing: .spacing(.small)
         )
