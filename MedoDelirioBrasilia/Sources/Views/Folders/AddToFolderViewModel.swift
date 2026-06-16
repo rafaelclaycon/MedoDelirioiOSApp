@@ -138,16 +138,16 @@ extension AddToFolderViewModel {
 
     private func showSingleSoundAlredyInFolderAlert(folderName: String) {
         alertTitle = "Já Adicionado"
-        alertMessage = "Esse som já está na pasta \"\(folderName)\"."
+        alertMessage = "Esse conteúdo já está na pasta \"\(folderName)\"."
         alertType = .ok
         showAlert = true
     }
 
     private func showSomeSoundsAlreadyInFolderAlert(soundCountAlreadyInFolder: Int, folderName: String) {
         if soundCountAlreadyInFolder == 1 {
-            alertTitle = "1 Som Já Adicionado"
+            alertTitle = "1 Conteúdo Já Adicionado"
         } else {
-            alertTitle = "\(soundCountAlreadyInFolder) Sons Já Adicionados"
+            alertTitle = "\(soundCountAlreadyInFolder) Conteúdos Já Adicionados"
         }
         alertMessage = "Deseja adicionar o restante à pasta \"\(folderName)\"?"
         alertType = .addOnlyNonOverlapping
@@ -156,13 +156,13 @@ extension AddToFolderViewModel {
 
     private func showAllSoundsAlredyInFolderAlert(folderName: String) {
         alertTitle = "Já Adicionados"
-        alertMessage = "Todos os sons já estão na pasta \"\(folderName)\"."
+        alertMessage = "Todos os conteúdos selecionados já estão na pasta \"\(folderName)\"."
         alertType = .ok
         showAlert = true
     }
 
     private func showIssueSavingAlert(_ message: String) {
-        alertTitle = "Erro Adicionando Sons à Pasta"
+        alertTitle = "Erro Adicionando Conteúdos à Pasta"
         alertMessage = message
         alertType = .ok
         showAlert = true

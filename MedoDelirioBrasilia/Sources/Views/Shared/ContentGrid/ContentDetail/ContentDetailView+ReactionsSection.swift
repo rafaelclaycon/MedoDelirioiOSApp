@@ -94,7 +94,7 @@ extension ContentDetailView {
 
             var body: some View {
                 VStack(spacing: .spacing(.xLarge)) {
-                    Text("Esse som não aparece em nenhuma Reação.")
+                    Text("Esse conteúdo não aparece em nenhuma Reação.")
                         .multilineTextAlignment(.center)
                         .foregroundStyle(.gray)
 

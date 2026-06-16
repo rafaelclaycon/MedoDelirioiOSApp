@@ -94,7 +94,7 @@ extension ContentDetailView.ViewModel {
     func onSuggestAddToReactionSelected() async {
         await Mailman.openDefaultEmailApp(
             subject: String(format: "Sugestão Para Adicionar '%@' a Uma Reação", content.title),
-            body: String(format: "As Reações expressam emoções, acontecimentos ou personalidades. Qual o nome da Reação nova ou existente na qual você acha que esse som se encaixa?")
+            body: String(format: "As Reações expressam emoções, acontecimentos ou personalidades. Qual o nome da Reação nova ou existente na qual você acha que esse conteúdo se encaixa?")
         )
     }
 
