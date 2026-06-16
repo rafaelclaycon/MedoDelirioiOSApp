@@ -17,8 +17,7 @@ struct ContentGridSkeletonView: View {
         GridHelper.adaptableColumns(
             listWidth: containerSize.width,
             sizeCategory: sizeCategory,
-            spacing: spacing,
-            deviceType: UIDevice.deviceType
+            spacing: spacing
         )
     }
 

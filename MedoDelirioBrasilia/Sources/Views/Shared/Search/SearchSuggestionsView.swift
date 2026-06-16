@@ -395,8 +395,7 @@ struct SearchSuggestionsView: View {
         columns = GridHelper.adaptableColumns(
             listWidth: containerWidth,
             sizeCategory: sizeCategory,
-            spacing: UIDevice.deviceType == .iPhone ? phoneItemSpacing : padItemSpacing,
-            deviceType: UIDevice.deviceType
+            spacing: UIDevice.deviceType == .iPhone ? phoneItemSpacing : padItemSpacing
         )
     }
 }

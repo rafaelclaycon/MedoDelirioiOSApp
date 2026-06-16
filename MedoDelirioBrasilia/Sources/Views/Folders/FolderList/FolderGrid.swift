@@ -143,8 +143,7 @@ struct FolderGrid: View {
         columns = GridHelper.adaptableColumns(
             listWidth: containerSize.width,
             sizeCategory: sizeCategory,
-            spacing: UIDevice.deviceType == .iPhone ? phoneItemSpacing : padItemSpacing,
-            deviceType: UIDevice.deviceType
+            spacing: UIDevice.deviceType == .iPhone ? phoneItemSpacing : padItemSpacing
         )
     }
 }

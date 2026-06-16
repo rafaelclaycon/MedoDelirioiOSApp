@@ -12,8 +12,7 @@ class GridHelper {
     static func adaptableColumns(
         listWidth: CGFloat,
         sizeCategory: ContentSizeCategory,
-        spacing: CGFloat,
-        deviceType: MedoSupportedDevice
+        spacing: CGFloat
     ) -> [GridItem] {
         if sizeCategory > ContentSizeCategory.large && listWidth < 440 {
             return [GridItem(.flexible(), spacing: spacing, alignment: .center)]
