@@ -740,6 +740,8 @@ extension SearchResultsView {
                     .lineLimit(3)
                     .multilineTextAlignment(.leading)
                     .foregroundStyle(.gray)
+
+                Spacer()
             }
         }
     }
