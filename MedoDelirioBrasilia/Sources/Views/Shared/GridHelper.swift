@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-class GridHelper {
+enum GridHelper {
 
     static func adaptableColumns(
         gridWidth: CGFloat,
