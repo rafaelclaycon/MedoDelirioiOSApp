@@ -1,3 +1,10 @@
+//
+//  GridHelper.swift
+//  MedoDelirioBrasilia
+//
+//  Created by Rafael Claycon Schmitt on 29/08/22.
+//
+
 import SwiftUI
 
 class GridHelper {
@@ -33,45 +40,13 @@ class GridHelper {
 
     static func authorColumns(
         gridWidth: CGFloat,
-        spacing: CGFloat,
-        deviceType: MedoSupportedDevice
+        spacing: CGFloat
     ) -> [GridItem] {
-        if UIDevice.deviceType == .iPhone {
-            return [
-                GridItem(.flexible(), spacing: spacing, alignment: .center)
-            ]
+        if gridWidth < 450 {
+            return [GridItem(.flexible(), spacing: spacing, alignment: .center)]
         } else {
-            if gridWidth < 600 {
-                return [
-                    GridItem(.flexible(), spacing: spacing, alignment: .center)
-                ]
-            } else if gridWidth < 850 {
-                return [
-                    GridItem(.flexible(), spacing: spacing, alignment: .center),
-                    GridItem(.flexible(), spacing: spacing, alignment: .center)
-                ]
-            } else if gridWidth < 1200 {
-                return [
-                    GridItem(.flexible(), spacing: spacing, alignment: .center),
-                    GridItem(.flexible(), spacing: spacing, alignment: .center),
-                    GridItem(.flexible(), spacing: spacing, alignment: .center)
-                ]
-            } else if gridWidth < 2000 {
-                return [
-                    GridItem(.flexible(), spacing: spacing, alignment: .center),
-                    GridItem(.flexible(), spacing: spacing, alignment: .center),
-                    GridItem(.flexible(), spacing: spacing, alignment: .center),
-                    GridItem(.flexible(), spacing: spacing, alignment: .center)
-                ]
-            } else {
-                return [
-                    GridItem(.flexible(), spacing: spacing, alignment: .center),
-                    GridItem(.flexible(), spacing: spacing, alignment: .center),
-                    GridItem(.flexible(), spacing: spacing, alignment: .center),
-                    GridItem(.flexible(), spacing: spacing, alignment: .center),
-                    GridItem(.flexible(), spacing: spacing, alignment: .center)
-                ]
-            }
+            let qty = Int(gridWidth / 300)
+            return Array(repeating: GridItem(.flexible(), spacing: spacing, alignment: .center), count: qty)
         }
     }
 }
