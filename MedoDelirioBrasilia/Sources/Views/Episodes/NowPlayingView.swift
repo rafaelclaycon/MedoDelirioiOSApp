@@ -36,14 +36,22 @@ struct NowPlayingView: View {
     @AppStorage("nowPlayingCanvasMode") private var currentCanvasMode: CanvasMode = .coverArt
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.verticalSizeClass) private var vSizeClass
 
     init(transcriptProvider: TranscriptProvider = TranscriptProvider()) {
         _transcriptProvider = State(initialValue: transcriptProvider)
     }
 
+    /// In compact vertical layouts (iPhone landscape) the bottom controls sit
+    /// beside the canvas, so they fill the available width; otherwise they size
+    /// to their content.
+    private var bottomControlsMaxWidth: CGFloat? {
+        vSizeClass == .compact ? .infinity : nil
+    }
+
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
+            AdaptiveStack(spacing: 0) {
                 GeometryReader { geometry in
                     if currentCanvasMode == .coverArt {
                         content
@@ -61,6 +69,7 @@ struct NowPlayingView: View {
                 }
 
                 bottomControls
+                    .frame(maxWidth: bottomControlsMaxWidth)
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
