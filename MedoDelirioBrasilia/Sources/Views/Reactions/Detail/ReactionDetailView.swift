@@ -56,6 +56,7 @@ struct ReactionDetailView: View {
             currentListMode: currentListMode,
             toast: viewModel.toast,
             floatingOptions: viewModel.floatingOptions,
+            onContentPlayed: viewModel.onReactionEngaged,
             analyticsService: AnalyticsService()
         )
     }

@@ -44,7 +44,7 @@ extension AuthorsGrid.ViewModel {
 
         updateColumns(newWidth: viewWidth)
 
-        //viewModel.donateActivity()
+        donateActivity()
     }
 
     public func onContainerWidthChanged(newWidth: CGFloat) {
@@ -85,8 +85,12 @@ extension AuthorsGrid.ViewModel {
         )
     }
 
-//    func donateActivity() {
-//        self.currentActivity = UserActivityWaiter.getDonatableActivity(withType: Shared.viewCollectionsActivityTypeName, andTitle: "Ver Coleções de sons")
-//        self.currentActivity?.becomeCurrent()
-//    }
+    func donateActivity() {
+        currentActivity = UserActivityWaiter.getDonatableActivity(
+            withType: Shared.ActivityTypes.viewAuthors,
+            andTitle: "Ver autores",
+            persistentIdentifier: Shared.ActivityTypes.viewAuthors
+        )
+        currentActivity?.becomeCurrent()
+    }
 }

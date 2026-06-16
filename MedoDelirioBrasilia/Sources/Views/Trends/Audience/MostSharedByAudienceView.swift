@@ -22,7 +22,7 @@ struct MostSharedByAudienceView: View {
     var body: some View {
         VStack(spacing: .spacing(.large)) {
             TitledRankingView(
-                title: "Sons Mais Compartilhados",
+                title: "Vírgulas Mais Compartilhadas",
                 state: viewModel.soundsState,
                 timeIntervalOption: $viewModel.soundsTimeInterval,
                 lastUpdatedText: viewModel.soundsLastCheckString,
@@ -67,7 +67,7 @@ struct MostSharedByAudienceView: View {
                 }
             )
 
-            Text("Os dados se referem apenas à audiência dos apps iOS/iPadOS/Mac.")
+            Text("Os dados se referem apenas à audiência das plataformas Apple.")
                 .font(.subheadline)
                 .multilineTextAlignment(.center)
                 .foregroundColor(.gray)
@@ -80,9 +80,13 @@ struct MostSharedByAudienceView: View {
             viewModel.onLastCheckStringUpdatingTimerFired()
         }
         .onAppear {
+            applyTimeIntervalFromSiriIfNeeded()
             Task {
                 await viewModel.onViewAppeared()
             }
+        }
+        .onChange(of: trendsHelper.timeIntervalToGoTo) {
+            applyTimeIntervalFromSiriIfNeeded()
         }
         .alert(isPresented: $viewModel.showAlert) {
             Alert(title: Text(viewModel.alertTitle), message: Text(viewModel.alertMessage), dismissButton: .default(Text("OK")))
@@ -95,6 +99,14 @@ struct MostSharedByAudienceView: View {
     }
 
     // MARK: - Functions
+
+    /// Applies a time interval requested by a Trends Siri Suggestion. Setting `soundsTimeInterval`
+    /// triggers the existing `.onChange` that reloads the sounds ranking for that interval.
+    private func applyTimeIntervalFromSiriIfNeeded() {
+        guard let interval = trendsHelper.timeIntervalToGoTo else { return }
+        viewModel.soundsTimeInterval = interval
+        trendsHelper.timeIntervalToGoTo = nil
+    }
 
     private func navigateTo(content contentId: String) {
         if UIDevice.deviceType == .iPhone {

@@ -83,7 +83,11 @@ struct Shared {
     struct ActivityTypes {
         
         static let playAndShareSounds = "com.rafaelschmitt.MedoDelirioBrasilia.PlayAndShareSounds"
+        static let viewFavorites = "com.rafaelschmitt.MedoDelirioBrasilia.ViewFavorites"
         static let viewCollections = "com.rafaelschmitt.MedoDelirioBrasilia.ViewCollections"
+        static let viewAuthors = "com.rafaelschmitt.MedoDelirioBrasilia.ViewAuthors"
+        static let viewReactions = "com.rafaelschmitt.MedoDelirioBrasilia.ViewReactions"
+        static let viewReaction = "com.rafaelschmitt.MedoDelirioBrasilia.ViewReaction"
         static let playAndShareSongs = "com.rafaelschmitt.MedoDelirioBrasilia.PlayAndShareSongs"
         static let viewLast24HoursTopChart = "com.rafaelschmitt.MedoDelirioBrasilia.ViewLast24HoursTopChart"
         static let viewLast3DaysTopChart = "com.rafaelschmitt.MedoDelirioBrasilia.ViewLast3DaysTopChart"

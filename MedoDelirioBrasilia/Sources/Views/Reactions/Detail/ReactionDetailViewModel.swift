@@ -20,6 +20,8 @@ class ReactionDetailViewModel {
     public var toast: Binding<Toast?>
     public var floatingOptions: Binding<FloatingContentOptions?>
     private let reactionService: ReactionServiceProtocol
+    private var currentActivity: NSUserActivity?
+    private var hasDonatedActivity: Bool = false
 
     // MARK: - Computed Properties
 
@@ -71,8 +73,29 @@ extension ReactionDetailViewModel {
         await loadContent()
     }
 
+    /// Called when the user plays a sound from this reaction — a real engagement signal.
+    /// Donates the "Ver reação ‹Nome›" Siri Suggestion, once per visit.
+    public func onReactionEngaged() {
+        guard !hasDonatedActivity else { return }
+        hasDonatedActivity = true
+        donateActivity()
+    }
+
     public func onContentSortingChanged() async {
         await loadContent(enterLoadingState: false)
+    }
+
+    /// Donates a Siri Suggestion for this specific reaction (e.g. "Ver reação Risada").
+    /// The reaction ID rides along in `userInfo` so the continuation handler can deep-link straight to it.
+    private func donateActivity() {
+        let name = reaction.title.capitalized(with: Locale(identifier: "pt_BR"))
+        currentActivity = UserActivityWaiter.getDonatableActivity(
+            withType: Shared.ActivityTypes.viewReaction,
+            andTitle: "Ver reação \(name)",
+            persistentIdentifier: "\(Shared.ActivityTypes.viewReaction).\(reaction.id)",
+            userInfo: ["reactionId": reaction.id]
+        )
+        currentActivity?.becomeCurrent()
     }
 }
 

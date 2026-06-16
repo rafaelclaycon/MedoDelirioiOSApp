@@ -77,7 +77,8 @@ extension FolderGridViewModel {
     private func donateActivity() {
         currentActivity = UserActivityWaiter.getDonatableActivity(
             withType: Shared.ActivityTypes.viewCollections,
-            andTitle: "Ver e criar pastas de sons"
+            andTitle: "Ver e criar pastas de sons",
+            persistentIdentifier: Shared.ActivityTypes.viewCollections
         )
         currentActivity?.becomeCurrent()
     }

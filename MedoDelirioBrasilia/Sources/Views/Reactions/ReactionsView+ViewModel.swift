@@ -23,6 +23,8 @@ extension ReactionsView {
         var reactionIdToOpenAfterLoading = ""
         var reactionToOpen: Reaction? = nil
 
+        private var currentActivity: NSUserActivity?
+
         private let reactionRepository: ReactionRepositoryProtocol
 
         // MARK: - Initializer
@@ -41,6 +43,7 @@ extension ReactionsView.ViewModel {
 
     public func onViewLoaded() async {
         await loadReactions()
+        donateActivity()
     }
 
     public func onTryAgainSelected() async {
@@ -134,6 +137,15 @@ extension ReactionsView.ViewModel {
             updatedGroup.regular.removeAll(where: { $0.id == reaction.id })
             state = .loaded(updatedGroup)
         }
+    }
+
+    private func donateActivity() {
+        currentActivity = UserActivityWaiter.getDonatableActivity(
+            withType: Shared.ActivityTypes.viewReactions,
+            andTitle: "Ver Reações",
+            persistentIdentifier: Shared.ActivityTypes.viewReactions
+        )
+        currentActivity?.becomeCurrent()
     }
 
     private func checkIfNeedsToOpenReaction() {

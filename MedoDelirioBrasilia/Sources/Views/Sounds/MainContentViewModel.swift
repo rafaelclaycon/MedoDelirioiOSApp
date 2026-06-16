@@ -17,6 +17,8 @@ final class MainContentViewModel {
     var contentSortOption: Int
     var authorSortOption: Int
 
+    private var currentActivity: NSUserActivity?
+
     // MARK: - Stored Properties
 
     public var currentContentListMode: Binding<ContentGridMode>
@@ -79,6 +81,7 @@ extension MainContentViewModel {
 
     public func onViewDidAppear() async {
         loadContent()
+        donateActivity()
         let didUpdate = await contentUpdateService.update()
         loadContent(clearCache: didUpdate)
         
@@ -94,6 +97,7 @@ extension MainContentViewModel {
 
     public func onSelectedViewModeChanged() async {
         loadContent()
+        donateActivity()
         await fireAnalytics()
     }
 
@@ -117,6 +121,30 @@ extension MainContentViewModel {
 
     public func onFavoritesChanged() {
         loadContent()
+    }
+
+    /// Donates a Siri Suggestion for the active mode. Folders and Authors modes
+    /// donate from their own embedded view models, so only `.all` and `.favorites`
+    /// are handled here.
+    private func donateActivity() {
+        let activityType: String
+        let title: String
+        switch currentViewMode {
+        case .all:
+            activityType = Shared.ActivityTypes.playAndShareSounds
+            title = "Ver e compartilhar vírgulas"
+        case .favorites:
+            activityType = Shared.ActivityTypes.viewFavorites
+            title = "Ver vírgulas favoritas"
+        default:
+            return
+        }
+        currentActivity = UserActivityWaiter.getDonatableActivity(
+            withType: activityType,
+            andTitle: title,
+            persistentIdentifier: activityType
+        )
+        currentActivity?.becomeCurrent()
     }
 }
 

@@ -181,37 +181,37 @@ extension MostSharedByAudienceView.ViewModel {
         switch timeIntervalOption {
         case .last24Hours:
             activityType = Shared.ActivityTypes.viewLast24HoursTopChart
-            activityName = "Ver sons mais compartilhados nas últimas 24 horas"
+            activityName = "Ver vírgulas mais compartilhadas nas últimas 24 horas"
         case .last3Days:
             activityType = Shared.ActivityTypes.viewLast24HoursTopChart
-            activityName = "Ver sons mais compartilhados nos últimos 3 dias"
+            activityName = "Ver vírgulas mais compartilhadas nos últimos 3 dias"
         case .lastWeek:
             activityType = Shared.ActivityTypes.viewLastWeekTopChart
-            activityName = "Ver sons mais compartilhados na última semana"
+            activityName = "Ver vírgulas mais compartilhadas na última semana"
         case .lastMonth:
             activityType = Shared.ActivityTypes.viewLastMonthTopChart
-            activityName = "Ver sons mais compartilhados no último mês"
+            activityName = "Ver vírgulas mais compartilhadas no último mês"
         case .last3Months:
             activityType = Shared.ActivityTypes.viewLastMonthTopChart
             activityName = ""
         case .year2026:
             activityType = Shared.ActivityTypes.view2026TopChart
-            activityName = "Ver sons mais compartilhados de 2026"
+            activityName = "Ver vírgulas mais compartilhadas de 2026"
         case .year2025:
             activityType = Shared.ActivityTypes.view2025TopChart
-            activityName = "Ver sons mais compartilhados de 2025"
+            activityName = "Ver vírgulas mais compartilhadas de 2025"
         case .year2024:
             activityType = Shared.ActivityTypes.view2024TopChart
-            activityName = "Ver sons mais compartilhados de 2024"
+            activityName = "Ver vírgulas mais compartilhadas de 2024"
         case .year2023:
             activityType = Shared.ActivityTypes.view2023TopChart
-            activityName = "Ver sons mais compartilhados de 2023"
+            activityName = "Ver vírgulas mais compartilhadas de 2023"
         case .year2022:
             activityType = Shared.ActivityTypes.view2022TopChart
-            activityName = "Ver sons mais compartilhados de 2022"
+            activityName = "Ver vírgulas mais compartilhadas de 2022"
         case .allTime:
             activityType = Shared.ActivityTypes.viewAllTimeTopChart
-            activityName = "Ver sons mais compartilhados de todos os tempos"
+            activityName = "Ver vírgulas mais compartilhadas de todos os tempos"
         }
 
         self.currentActivity = UserActivityWaiter.getDonatableActivity(withType: activityType, andTitle: activityName)

@@ -23,7 +23,7 @@ struct TrendsSettingsView: View {
             }
             
             Section {
-                Toggle("Sons Mais Compartilhados Pela Audiência (iOS)", isOn: $soundsMostSharedByTheAudienceEnabled)
+                Toggle("Vírgulas Mais Compartilhadas Pela Audiência (iOS)", isOn: $soundsMostSharedByTheAudienceEnabled)
                     .onChange(of: soundsMostSharedByTheAudienceEnabled) { _, newValue in
                         UserSettings().setEnableSoundsMostSharedByTheAudience(to: newValue)
                     }

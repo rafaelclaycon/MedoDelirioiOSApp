@@ -19,6 +19,9 @@ final class ContentGridViewModel {
 
     var menuOptions: [ContextMenuSection]
     var refreshAction: (() -> Void)?
+    /// Called when a piece of content starts playing. Used by screens that only care about
+    /// genuine engagement (e.g. donating a Siri Suggestion for a reaction once a sound is played).
+    var onContentPlayed: (() -> Void)?
     var folder: UserFolder?
 
     var highlightKeeper = Set<String>()
@@ -114,6 +117,7 @@ final class ContentGridViewModel {
         toast: Binding<Toast?>,
         floatingOptions: Binding<FloatingContentOptions?>,
         refreshAction: (() -> Void)? = nil,
+        onContentPlayed: (() -> Void)? = nil,
         insideFolder: UserFolder? = nil,
         multiSelectFolderOperation: FolderOperation = .add,
         analyticsService: AnalyticsServiceProtocol
@@ -127,6 +131,7 @@ final class ContentGridViewModel {
         self.toast = toast
         self.floatingOptions = floatingOptions
         self.refreshAction = refreshAction
+        self.onContentPlayed = onContentPlayed
         self.folder = insideFolder
         self.multiSelectFolderOperation = multiSelectFolderOperation
 
@@ -302,6 +307,8 @@ extension ContentGridViewModel {
         if scrollToPlaying {
             scrollTo = content.id
         }
+
+        onContentPlayed?()
 
         playable.play(content) { [weak self] in
             self?.onPlaybackStopped(scrollToPlaying: scrollToPlaying, loadedContent: loadedContent)

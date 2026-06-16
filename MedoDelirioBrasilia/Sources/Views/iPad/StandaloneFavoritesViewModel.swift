@@ -21,6 +21,7 @@ class StandaloneFavoritesViewModel {
     public var floatingOptions: Binding<FloatingContentOptions?>
 
     private let contentRepository: ContentRepositoryProtocol
+    private var currentActivity: NSUserActivity?
 
     // MARK: - Initializer
 
@@ -45,6 +46,13 @@ extension StandaloneFavoritesViewModel {
         print("StandaloneFavoritesView - ON APPEAR")
 
         loadContent()
+
+        currentActivity = UserActivityWaiter.getDonatableActivity(
+            withType: Shared.ActivityTypes.viewFavorites,
+            andTitle: "Ver vírgulas favoritas",
+            persistentIdentifier: Shared.ActivityTypes.viewFavorites
+        )
+        currentActivity?.becomeCurrent()
     }
 
     public func onFavoriteRemoved() {

@@ -158,6 +158,12 @@ extension MainContentView {
             .onChange(of: trendsHelper.contentIdToNavigateTo) {
                 highlight(contentId: trendsHelper.contentIdToNavigateTo)
             }
+            .onChange(of: trendsHelper.contentModeToGoTo) {
+                if let mode = trendsHelper.contentModeToGoTo {
+                    viewModel.currentViewMode = mode
+                    trendsHelper.contentModeToGoTo = nil
+                }
+            }
             .task {
                 await viewModel.onViewDidAppear()
             }

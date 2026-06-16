@@ -313,31 +313,6 @@ struct MainView: View {
                         .tag(PhoneTab.search)
                         .environment(\.push, PushAction { searchTabPath.append($0) })
                     }
-                    .onContinueUserActivity(Shared.ActivityTypes.playAndShareSounds, perform: { _ in
-                        tabSelection.wrappedValue = .sounds
-                    })
-                    //                .onContinueUserActivity(Shared.ActivityTypes.viewCollections, perform: { _ in
-                    //                    tabSelection = .collections
-                    //                })
-                    //                .onContinueUserActivity(Shared.ActivityTypes.playAndShareSongs, perform: { _ in
-                    //                    tabSelection = .songs
-                    //                })
-                    .onContinueUserActivity(Shared.ActivityTypes.viewLast24HoursTopChart, perform: { _ in
-                        tabSelection.wrappedValue = .episodes
-                        trendsHelper.timeIntervalToGoTo = .last24Hours
-                    })
-                    .onContinueUserActivity(Shared.ActivityTypes.viewLastWeekTopChart, perform: { _ in
-                        tabSelection.wrappedValue = .episodes
-                        trendsHelper.timeIntervalToGoTo = .lastWeek
-                    })
-                    .onContinueUserActivity(Shared.ActivityTypes.viewLastMonthTopChart, perform: { _ in
-                        tabSelection.wrappedValue = .episodes
-                        trendsHelper.timeIntervalToGoTo = .lastMonth
-                    })
-                    .onContinueUserActivity(Shared.ActivityTypes.viewAllTimeTopChart, perform: { _ in
-                        tabSelection.wrappedValue = .episodes
-                        trendsHelper.timeIntervalToGoTo = .allTime
-                    })
                 }
             } else {
                 TabView {
@@ -557,6 +532,43 @@ struct MainView: View {
         .environment(episodeBookmarkStore)
         .environment(episodeListenStore)
         .environment(episodesBadgeStore)
+        // Siri Suggestions. Attached here, on the shared ancestor, so they fire on
+        // every device path (both iPhone TabView variants and iPad).
+        .onContinueUserActivity(Shared.ActivityTypes.playAndShareSounds) { _ in
+            tabSelection.wrappedValue = .sounds
+            trendsHelper.contentModeToGoTo = .all
+        }
+        .onContinueUserActivity(Shared.ActivityTypes.viewFavorites) { _ in
+            tabSelection.wrappedValue = .sounds
+            trendsHelper.contentModeToGoTo = .favorites
+        }
+        .onContinueUserActivity(Shared.ActivityTypes.viewCollections) { _ in
+            tabSelection.wrappedValue = .sounds
+            trendsHelper.contentModeToGoTo = .folders
+        }
+        .onContinueUserActivity(Shared.ActivityTypes.viewAuthors) { _ in
+            tabSelection.wrappedValue = .sounds
+            trendsHelper.contentModeToGoTo = .authors
+        }
+        .onContinueUserActivity(Shared.ActivityTypes.viewReactions) { _ in
+            tabSelection.wrappedValue = .reactions
+        }
+        .onContinueUserActivity(Shared.ActivityTypes.viewReaction) { activity in
+            guard let reactionId = activity.userInfo?["reactionId"] as? String else { return }
+            handleDeepLink(.reaction(id: reactionId))
+        }
+        .onContinueUserActivity(Shared.ActivityTypes.viewLast24HoursTopChart) { _ in
+            goToTrends(timeInterval: .last24Hours)
+        }
+        .onContinueUserActivity(Shared.ActivityTypes.viewLastWeekTopChart) { _ in
+            goToTrends(timeInterval: .lastWeek)
+        }
+        .onContinueUserActivity(Shared.ActivityTypes.viewLastMonthTopChart) { _ in
+            goToTrends(timeInterval: .lastMonth)
+        }
+        .onContinueUserActivity(Shared.ActivityTypes.viewAllTimeTopChart) { _ in
+            goToTrends(timeInterval: .allTime)
+        }
         .onChange(of: tabSelection.wrappedValue) { _, newTab in
             if newTab == .episodes {
                 episodesBadgeStore.markAsVisited()
@@ -729,6 +741,16 @@ struct MainView: View {
     }
 
     // MARK: - Functions
+
+    /// Routes a Trends top-chart Siri Suggestion to the Trends screen (under the Search tab),
+    /// carrying the requested time interval via `TrendsHelper` for the view to apply.
+    private func goToTrends(timeInterval: TrendsTimeInterval) {
+        trendsHelper.timeIntervalToGoTo = timeInterval
+        tabSelection.wrappedValue = .search
+        if searchTabPath.isEmpty {
+            searchTabPath.append(SearchNavigationDestination.trends)
+        }
+    }
 
     private func handleDeepLink(_ deepLink: DeepLink) {
         deepLinkHandler.pendingDeepLink = nil
