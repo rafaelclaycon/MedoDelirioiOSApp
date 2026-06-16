@@ -189,6 +189,9 @@ struct ContentGrid<
                 .onChange(of: containerSize.width) {
                     updateGridLayout()
                 }
+                .onChange(of: sizeCategory) {
+                    updateGridLayout()
+                }
                 .onChange(of: viewModel.selectionKeeper.count) {
                     viewModel.onItemSelectionChanged()
                 }
