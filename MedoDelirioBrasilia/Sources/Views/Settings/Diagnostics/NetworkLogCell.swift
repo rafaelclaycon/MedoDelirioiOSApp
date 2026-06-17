@@ -2,9 +2,9 @@ import SwiftUI
 
 struct NetworkLogCell: View {
 
-    @State var callType: NetworkCallType
-    @State var dateTime: String
-    @State var wasSuccessful: Bool
+    let callType: NetworkCallType
+    let dateTime: String
+    let wasSuccessful: Bool
     
     var typeToSymbol: String {
         switch callType {

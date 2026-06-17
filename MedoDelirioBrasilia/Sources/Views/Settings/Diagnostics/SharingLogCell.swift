@@ -2,11 +2,11 @@ import SwiftUI
 
 struct SharingLogCell: View {
 
-    @State var destination: ShareDestination
-    @State var contentType: ContentType
-    @State var contentTitle: String
-    @State var dateTime: String
-    @State var sentToServer: Bool
+    let destination: ShareDestination
+    let contentType: ContentType
+    let contentTitle: String
+    let dateTime: String
+    let sentToServer: Bool
     
     var symbolColor: Color {
         switch destination {
