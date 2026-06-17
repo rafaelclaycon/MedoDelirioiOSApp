@@ -351,9 +351,15 @@ class FakeLocalDatabase: LocalDatabaseProtocol {
 
     // Episode Progress
 
-    func allEpisodeProgress() throws -> [String: (currentTime: Double, duration: Double)] { [:] }
-    func upsertEpisodeProgress(episodeId: String, currentTime: Double, duration: Double) throws {}
-    func deleteEpisodeProgress(episodeId: String) throws {}
+    var episodeProgress: [String: (currentTime: Double, duration: Double)] = [:]
+
+    func allEpisodeProgress() throws -> [String: (currentTime: Double, duration: Double)] { episodeProgress }
+    func upsertEpisodeProgress(episodeId: String, currentTime: Double, duration: Double) throws {
+        episodeProgress[episodeId] = (currentTime, duration)
+    }
+    func deleteEpisodeProgress(episodeId: String) throws {
+        episodeProgress.removeValue(forKey: episodeId)
+    }
 
     // Podcast Episode Cache
 
@@ -363,12 +369,28 @@ class FakeLocalDatabase: LocalDatabaseProtocol {
 
     // Episode Bookmark
 
-    func allBookmarks(forEpisodeId episodeId: String) throws -> [EpisodeBookmark] { [] }
-    func allBookmarkedEpisodeIDs() throws -> Set<String> { [] }
-    func allBookmarkDates() throws -> [Date] { [] }
-    func insertBookmark(_ bookmark: EpisodeBookmark) throws {}
-    func updateBookmark(_ bookmark: EpisodeBookmark) throws {}
-    func deleteBookmark(id: String) throws {}
+    var bookmarks: [EpisodeBookmark] = []
+
+    func allBookmarks(forEpisodeId episodeId: String) throws -> [EpisodeBookmark] {
+        bookmarks.filter { $0.episodeId == episodeId }
+    }
+    func allBookmarkedEpisodeIDs() throws -> Set<String> {
+        Set(bookmarks.map { $0.episodeId })
+    }
+    func allBookmarkDates() throws -> [Date] {
+        bookmarks.map { $0.createdAt }
+    }
+    func insertBookmark(_ bookmark: EpisodeBookmark) throws {
+        bookmarks.append(bookmark)
+    }
+    func updateBookmark(_ bookmark: EpisodeBookmark) throws {
+        if let index = bookmarks.firstIndex(where: { $0.id == bookmark.id }) {
+            bookmarks[index] = bookmark
+        }
+    }
+    func deleteBookmark(id: String) throws {
+        bookmarks.removeAll { $0.id == id }
+    }
 
     // Episode Listen Log
 
