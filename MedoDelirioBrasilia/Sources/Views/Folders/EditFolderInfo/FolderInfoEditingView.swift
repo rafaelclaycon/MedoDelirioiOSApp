@@ -34,7 +34,7 @@ struct FolderInfoEditingView: View {
     // MARK: - View Body
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: .spacing(.medium)) {
                     Spacer()

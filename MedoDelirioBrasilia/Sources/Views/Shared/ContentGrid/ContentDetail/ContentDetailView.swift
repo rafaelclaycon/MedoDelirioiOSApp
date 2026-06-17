@@ -45,7 +45,7 @@ struct ContentDetailView: View {
     // MARK: - View Body
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 30) {
                     HStack {

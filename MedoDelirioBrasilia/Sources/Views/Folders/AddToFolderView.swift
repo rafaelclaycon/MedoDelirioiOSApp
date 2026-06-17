@@ -25,7 +25,7 @@ struct AddToFolderView: View {
     // MARK: - View Body
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(alignment: .center, spacing: .spacing(.large)) {
                 ScrollView {
                     VStack {

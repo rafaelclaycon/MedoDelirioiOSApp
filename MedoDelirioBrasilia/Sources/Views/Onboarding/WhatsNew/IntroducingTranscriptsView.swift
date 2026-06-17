@@ -42,7 +42,7 @@ struct IntroducingTranscriptsView: View {
     private let accentAmber = Color(red: 0.92, green: 0.60, blue: 0.15)
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: 0) {
                     ZStack {

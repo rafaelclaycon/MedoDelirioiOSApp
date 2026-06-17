@@ -73,7 +73,7 @@ struct IntroducingUniversalSearchView: View {
     ]
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: 0) {
                     // Hero Header with Gradient

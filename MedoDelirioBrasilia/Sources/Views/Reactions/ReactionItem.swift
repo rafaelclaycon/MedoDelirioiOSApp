@@ -184,7 +184,7 @@ extension ReactionItem {
 
     let columns: [GridItem] = [GridItem(.flexible()), GridItem(.flexible())]
 
-    return NavigationView {
+    return NavigationStack {
         ScrollView {
             LazyVGrid(columns: columns, alignment: .listRowSeparatorLeading, spacing: 14) {
                 ForEach(Reaction.allMocks) {

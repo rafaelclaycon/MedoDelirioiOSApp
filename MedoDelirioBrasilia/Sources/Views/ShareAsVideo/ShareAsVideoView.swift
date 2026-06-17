@@ -27,7 +27,7 @@ struct ShareAsVideoView: View {
     var body: some View {
         let squareImage = squareImageView(contentName: viewModel.content.title, contentAuthor: viewModel.subtitle)
 
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: .spacing(.xLarge)) {
                     // Rounded corners + glow are preview-only. The instance passed to the
