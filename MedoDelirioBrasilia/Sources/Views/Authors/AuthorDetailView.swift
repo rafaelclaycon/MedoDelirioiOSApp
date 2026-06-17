@@ -124,7 +124,7 @@ struct AuthorDetailView: View {
                         toast: viewModel.toast,
                         authorId: viewModel.author.id,
                         containerSize: geometry.size,
-                        loadingView: BasicLoadingView(text: "Carregando sons..."),
+                        loadingView: ContentGridSkeletonView(containerSize: geometry.size),
                         emptyStateView:
                             VStack {
                                 NoSoundsView()

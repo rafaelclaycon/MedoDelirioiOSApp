@@ -141,7 +141,7 @@ struct FolderDetailView: View {
                 toast: contentGridViewModel.toast,
                 showNewTag: false,
                 containerSize: size,
-                loadingView: BasicLoadingView(text: "Carregando Conteúdos..."),
+                loadingView: ContentGridSkeletonView(containerSize: size),
                 emptyStateView:
                     VStack {
                         EmptyFolderView()

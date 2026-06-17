@@ -313,7 +313,7 @@ struct SearchSuggestionsView: View {
 
                 LazyVGrid(columns: columns, spacing: UIDevice.deviceType == .iPhone ? phoneItemSpacing : padItemSpacing) {
                     ForEach(0..<3, id: \.self) { _ in
-                        SkeletonReactionView()
+                        ReactionSkeletonView()
                     }
                 }
             }
@@ -748,28 +748,6 @@ extension SearchSuggestionsView {
         }
     }
 
-    struct SkeletonReactionView: View {
-
-        @State private var isAnimating = false
-
-        private var itemHeight: CGFloat {
-            UIDevice.deviceType == .iPhone ? 100 : 120
-        }
-
-        var body: some View {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.gray.opacity(0.2))
-                .frame(height: itemHeight)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.gray.opacity(0.3))
-                        .frame(width: 80, height: 20)
-                }
-                .opacity(isAnimating ? 0.6 : 1.0)
-                .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: isAnimating)
-                .onAppear { isAnimating = true }
-        }
-    }
 }
 
 // MARK: - Preview

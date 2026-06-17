@@ -18,86 +18,112 @@ struct ReactionsView: View {
     @Environment(TrendsHelper.self) private var trendsHelper
     @Environment(\.push) private var push
 
+    /// Equatable token for the current state, used to drive the crossfade
+    /// between loading, loaded and error views.
+    private enum ViewPhase {
+        case loading, loaded, error
+    }
+
+    private var phase: ViewPhase {
+        switch viewModel.state {
+        case .loading: .loading
+        case .loaded: .loaded
+        case .error: .error
+        }
+    }
+
+    private var isLoaded: Bool { phase == .loaded }
+
     // MARK: - View Body
 
     var body: some View {
         GeometryReader { geometry in
-            switch viewModel.state {
-            case .loading:
-                LoadingView(
-                    width: geometry.size.width,
-                    height: geometry.size.height
-                )
+            // A single persistent ScrollView owns scrolling so the large nav-bar
+            // title stays anchored to it across state changes — only the inner
+            // content crossfades, which avoids the title blinking on each swap.
+            ScrollView {
+                ZStack(alignment: .top) {
+                    switch viewModel.state {
+                    case .loading:
+                        LoadingView(width: geometry.size.width)
+                            .transition(.opacity)
 
-            case .loaded(let reactionGroup):
-                if reactionGroup.regular.isEmpty {
-                    EmptyView(
-                        width: geometry.size.width,
-                        height: geometry.size.height
-                    )
-                } else {
-                    LoadedView(
-                        pinnedReactions: reactionGroup.pinned,
-                        otherReactions: reactionGroup.regular,
-                        columns: columns,
-                        pullToRefreshAction: {
-                            Task {
-                                await viewModel.onPullToRefresh()
-                            }
-                        },
-                        pinAction: { reaction in
-                            Task {
-                                await viewModel.onPinReactionSelected(reaction: reaction)
-                            }
-                        },
-                        unpinAction: { reaction in
-                            Task {
-                                await viewModel.onUnpinReactionSelected(reaction: reaction)
-                            }
-                        }
-                    )
-                    .onAppear {
-                        columns = GridHelper.adaptableColumns(
-                            gridWidth: geometry.size.width,
-                            sizeCategory: sizeCategory,
-                            spacing: UIDevice.deviceType == .iPhone ? 12 : 20
-                        )
-
-                        Task {
-                            await AnalyticsService().send(
-                                originatingScreen: "ReactionsView",
-                                action: "didViewReactionsTab"
+                    case .loaded(let reactionGroup):
+                        if reactionGroup.regular.isEmpty {
+                            EmptyView(
+                                width: geometry.size.width,
+                                height: geometry.size.height
                             )
+                            .transition(.opacity)
+                        } else {
+                            LoadedView(
+                                pinnedReactions: reactionGroup.pinned,
+                                otherReactions: reactionGroup.regular,
+                                columns: columns,
+                                pinAction: { reaction in
+                                    Task {
+                                        await viewModel.onPinReactionSelected(reaction: reaction)
+                                    }
+                                },
+                                unpinAction: { reaction in
+                                    Task {
+                                        await viewModel.onUnpinReactionSelected(reaction: reaction)
+                                    }
+                                }
+                            )
+                            .transition(.opacity)
+                            .onAppear {
+                                columns = GridHelper.adaptableColumns(
+                                    gridWidth: geometry.size.width,
+                                    sizeCategory: sizeCategory,
+                                    spacing: UIDevice.deviceType == .iPhone ? 12 : 20
+                                )
+
+                                Task {
+                                    await AnalyticsService().send(
+                                        originatingScreen: "ReactionsView",
+                                        action: "didViewReactionsTab"
+                                    )
+                                }
+                            }
+                            .onChange(of: geometry.size.width) {
+                                columns = GridHelper.adaptableColumns(
+                                    gridWidth: geometry.size.width,
+                                    sizeCategory: sizeCategory,
+                                    spacing: UIDevice.deviceType == .iPhone ? 12 : 20
+                                )
+                            }
                         }
-                    }
-                    .onChange(of: geometry.size.width) {
-                        columns = GridHelper.adaptableColumns(
-                            gridWidth: geometry.size.width,
-                            sizeCategory: sizeCategory,
-                            spacing: UIDevice.deviceType == .iPhone ? 12 : 20
+
+                    case .error(let errorString):
+                        ErrorView(
+                            error: errorString,
+                            tryAgainAction: {
+                                Task {
+                                    await viewModel.onTryAgainSelected()
+                                }
+                            },
+                            width: geometry.size.width,
+                            height: geometry.size.height
                         )
+                        .transition(.opacity)
                     }
                 }
-
-            case .error(let errorString):
-                ErrorView(
-                    error: errorString,
-                    tryAgainAction: {
-                        Task {
-                            await viewModel.onTryAgainSelected()
-                        }
-                    },
-                    width: geometry.size.width,
-                    height: geometry.size.height
-                )
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: geometry.size.height, alignment: .top)
+                .animation(.easeInOut(duration: 0.3), value: phase)
+            }
+            .scrollDisabled(!isLoaded)
+            .refreshable {
+                await viewModel.onPullToRefresh()
             }
         }
+        .navigationTitle("Reações")
         .toolbar {
-            if case .loaded = viewModel.state {
-                ToolbarControls(
-                    showHowReactionsWorkAction: { viewModel.showHowReactionsWorkSheet.toggle() }
-                )
-            }
+            ToolbarControls(
+                isEnabled: isLoaded,
+                showHowReactionsWorkAction: { viewModel.showHowReactionsWorkSheet.toggle() }
+            )
         }
         .sheet(isPresented: $viewModel.showHowReactionsWorkSheet) {
             HowReactionsWorkView()
@@ -145,6 +171,7 @@ extension ReactionsView {
 
     struct ToolbarControls: ToolbarContent {
 
+        let isEnabled: Bool
         let showHowReactionsWorkAction: () -> Void
 
         var body: some ToolbarContent {
@@ -154,6 +181,7 @@ extension ReactionsView {
                 } label: {
                     Image(systemName: "questionmark")
                 }
+                .disabled(!isEnabled)
             }
         }
     }
@@ -161,20 +189,26 @@ extension ReactionsView {
     struct LoadingView: View {
 
         let width: CGFloat
-        let height: CGFloat
+
+        @Environment(\.sizeCategory) private var sizeCategory
+
+        private var spacing: CGFloat { UIDevice.deviceType == .iPhone ? 12 : 20 }
+
+        private var columns: [GridItem] {
+            GridHelper.adaptableColumns(
+                gridWidth: width,
+                sizeCategory: sizeCategory,
+                spacing: spacing
+            )
+        }
 
         var body: some View {
-            VStack(spacing: 50) {
-                ProgressView()
-                    .scaleEffect(2.0)
-
-                Text("Carregando Reações...")
-                    .font(.title3)
-                    .bold()
-                    .foregroundColor(.gray)
+            LazyVGrid(columns: columns, spacing: spacing) {
+                ForEach(0..<12, id: \.self) { _ in
+                    ReactionSkeletonView()
+                }
             }
-            .frame(width: width)
-            .frame(minHeight: height)
+            .padding()
         }
     }
 
@@ -200,7 +234,6 @@ extension ReactionsView {
             .padding(.horizontal, 20)
             .frame(width: width)
             .frame(minHeight: height)
-            .navigationTitle("Reações")
         }
     }
 

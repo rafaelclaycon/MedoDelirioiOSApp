@@ -15,7 +15,6 @@ extension ReactionsView {
         let pinnedReactions: [Reaction]?
         let otherReactions: [Reaction]
         let columns: [GridItem]
-        let pullToRefreshAction: () -> Void
         let pinAction: (Reaction) -> Void
         let unpinAction: (Reaction) -> Void
 
@@ -27,74 +26,68 @@ extension ReactionsView {
         @State private var shareLinkMetadata: LPLinkMetadata?
 
         var body: some View {
-            ScrollView {
-                VStack {
-                    if shouldDisplayPinBanner {
-                        PinReactionsBanner(
-                            isBeingShown: $shouldDisplayPinBanner
-                        )
-                        .layoutPriority(1)
-                        .padding(.bottom)
-                    }
+            VStack {
+                if shouldDisplayPinBanner {
+                    PinReactionsBanner(
+                        isBeingShown: $shouldDisplayPinBanner
+                    )
+                    .layoutPriority(1)
+                    .padding(.bottom)
+                }
 
-                    if let pinnedReactions, pinnedReactions.count > 0 {
-                        LazyVGrid(
-                            columns: columns,
-                            spacing: UIDevice.deviceType == .iPhone ? 12 : 20
-                        ) {
-                            ForEach(pinnedReactions) { reaction in
-                                InteractibleReactionItem(
-                                    reaction: reaction,
-                                    isPinned: true,
-                                    options: {
-                                        Button {
-                                            unpinAction(reaction)
-                                        } label: {
-                                            Label("Desafixar", systemImage: "pin.slash")
-                                        }
-                                    },
-                                    reactionRemovedAction: {
-                                        print("Reaction removed: \($0.title)")
-                                        removedReaction = $0
-                                        showReactionRemovedAlert = true
-                                    }
-                                )
-                            }
-                        }
-
-                        Divider()
-                            .padding(.vertical, 10)
-                    }
-
+                if let pinnedReactions, pinnedReactions.count > 0 {
                     LazyVGrid(
                         columns: columns,
                         spacing: UIDevice.deviceType == .iPhone ? 12 : 20
                     ) {
-                        ForEach(otherReactions) { reaction in
+                        ForEach(pinnedReactions) { reaction in
                             InteractibleReactionItem(
                                 reaction: reaction,
-                                isPinned: false,
+                                isPinned: true,
                                 options: {
                                     Button {
-                                        pinAction(reaction)
+                                        unpinAction(reaction)
                                     } label: {
-                                        Label("Fixar no Topo", systemImage: "pin")
-                                    }
-                                    Button { shareAction(reaction) } label: {
-                                        Label("Compartilhar", systemImage: "square.and.arrow.up")
+                                        Label("Desafixar", systemImage: "pin.slash")
                                     }
                                 },
-                                reactionRemovedAction: { _ in }
+                                reactionRemovedAction: {
+                                    print("Reaction removed: \($0.title)")
+                                    removedReaction = $0
+                                    showReactionRemovedAlert = true
+                                }
                             )
                         }
                     }
+
+                    Divider()
+                        .padding(.vertical, 10)
                 }
-                .padding()
-                .navigationTitle("Reações")
+
+                LazyVGrid(
+                    columns: columns,
+                    spacing: UIDevice.deviceType == .iPhone ? 12 : 20
+                ) {
+                    ForEach(otherReactions) { reaction in
+                        InteractibleReactionItem(
+                            reaction: reaction,
+                            isPinned: false,
+                            options: {
+                                Button {
+                                    pinAction(reaction)
+                                } label: {
+                                    Label("Fixar no Topo", systemImage: "pin")
+                                }
+                                Button { shareAction(reaction) } label: {
+                                    Label("Compartilhar", systemImage: "square.and.arrow.up")
+                                }
+                            },
+                            reactionRemovedAction: { _ in }
+                        )
+                    }
+                }
             }
-            .refreshable {
-                pullToRefreshAction()
-            }
+            .padding()
             .onAppear {
                 shouldDisplayPinBanner = !AppPersistentMemory.shared.hasSeenPinReactionsBanner()
             }
