@@ -126,7 +126,7 @@ struct AddToFolderViewModelTests {
         #expect(repository.didCallInsert == false)
         #expect(repository.didCallUpdate == false)
         #expect(sut.showAlert == true)
-        #expect(sut.alertTitle == "2 Sons Já Adicionados")
+        #expect(sut.alertTitle == "2 Conteúdos Já Adicionados")
         #expect(sut.alertType == .addOnlyNonOverlapping)
     }
 }
