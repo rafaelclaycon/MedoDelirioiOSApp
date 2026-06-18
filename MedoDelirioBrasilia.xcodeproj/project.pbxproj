@@ -87,8 +87,8 @@
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		D92A316E2F8ADD5E003CD02E /* MedoDelirioBrasilia */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (D92A37A92F8ADD5F003CD02E /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = MedoDelirioBrasilia; sourceTree = "<group>"; };
-		D9E6B3402CA0EA4A002FCB91 /* MedoDelirioWidget */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (D9E6B3852CA1A6B1002FCB91 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, D9E6B34F2CA0EA4B002FCB91 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = MedoDelirioWidget; sourceTree = "<group>"; };
 		D9625E8D28238F9B00080852 /* MedoDelirioBrasiliaTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = MedoDelirioBrasiliaTests; sourceTree = "<group>"; };
+		D9E6B3402CA0EA4A002FCB91 /* MedoDelirioWidget */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (D9E6B3852CA1A6B1002FCB91 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, D9E6B34F2CA0EA4B002FCB91 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = MedoDelirioWidget; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */

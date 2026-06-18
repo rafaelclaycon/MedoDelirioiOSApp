@@ -14,6 +14,11 @@ final class FakeContentRepository: ContentRepositoryProtocol {
     private var insertedFavorites: [Favorite] = []
     private var deletedFavoriteIds: Set<String> = []
 
+    /// Content returned from `content(by:_:_:)`. When `contentByAuthorError` is set, that method throws instead.
+    var contentByAuthor: [AnyEquatableMedoContent] = []
+    var contentByAuthorError: Error?
+    private(set) var lastContentByAuthorCall: (authorId: String, allowSensitive: Bool, sortOrder: SoundSortOption)?
+
     func allContent(_ allowSensitive: Bool, _ sortOrder: SoundSortOption) throws -> [AnyEquatableMedoContent] {
         content
     }
@@ -27,7 +32,11 @@ final class FakeContentRepository: ContentRepositoryProtocol {
     }
     
     func content(by authorId: String, _ allowSensitive: Bool, _ sortOrder: SoundSortOption) throws -> [AnyEquatableMedoContent] {
-        []
+        lastContentByAuthorCall = (authorId, allowSensitive, sortOrder)
+        if let contentByAuthorError {
+            throw contentByAuthorError
+        }
+        return contentByAuthor
     }
     
     func content(in folderId: String, _ allowSensitive: Bool, _ sortOrder: FolderSoundSortOption) throws -> [AnyEquatableMedoContent] {

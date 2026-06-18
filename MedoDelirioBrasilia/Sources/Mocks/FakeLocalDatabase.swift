@@ -363,9 +363,21 @@ class FakeLocalDatabase: LocalDatabaseProtocol {
 
     // Podcast Episode Cache
 
-    func allPodcastEpisodes() throws -> [PodcastEpisode] { [] }
-    func podcastEpisode(id: String) throws -> PodcastEpisode? { nil }
-    func upsertPodcastEpisodes(_ episodes: [PodcastEpisode]) throws {}
+    var podcastEpisodes: [PodcastEpisode] = []
+
+    func allPodcastEpisodes() throws -> [PodcastEpisode] { podcastEpisodes }
+    func podcastEpisode(id: String) throws -> PodcastEpisode? {
+        podcastEpisodes.first { $0.id == id }
+    }
+    func upsertPodcastEpisodes(_ episodes: [PodcastEpisode]) throws {
+        for episode in episodes {
+            if let index = podcastEpisodes.firstIndex(where: { $0.id == episode.id }) {
+                podcastEpisodes[index] = episode
+            } else {
+                podcastEpisodes.append(episode)
+            }
+        }
+    }
 
     // Episode Bookmark
 

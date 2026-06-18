@@ -24,6 +24,7 @@ public class AuthorDetailViewModel {
     public var isLoadingEmail: Bool = false
 
     private let contentRepository: ContentRepositoryProtocol
+    private let userSettings: UserSettingsProtocol
 
     // Alerts
     var alertTitle: String = ""
@@ -49,13 +50,15 @@ public class AuthorDetailViewModel {
         currentContentListMode: Binding<ContentGridMode>,
         toast: Binding<Toast?>,
         floatingOptions: Binding<FloatingContentOptions?>,
-        contentRepository: ContentRepositoryProtocol
+        contentRepository: ContentRepositoryProtocol,
+        userSettings: UserSettingsProtocol = UserSettings()
     ) {
         self.author = author
         self.currentContentListMode = currentContentListMode
         self.toast = toast
         self.floatingOptions = floatingOptions
         self.contentRepository = contentRepository
+        self.userSettings = userSettings
     }
 }
 
@@ -102,7 +105,7 @@ private extension AuthorDetailViewModel {
     func loadContent() {
         state = .loading
         do {
-            let allowSensitive = UserSettings().getShowExplicitContent()
+            let allowSensitive = userSettings.getShowExplicitContent()
             let sort = SoundSortOption(rawValue: soundSortOption) ?? .dateAddedDescending
             state = .loaded(try contentRepository.content(by: author.id, allowSensitive, sort))
         } catch {
