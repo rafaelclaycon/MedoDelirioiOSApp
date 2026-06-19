@@ -47,4 +47,20 @@ extension View {
             }
         }
     }
+
+    /// Applies a zoom `navigationTransition` from the given matched source id.
+    ///
+    /// Gated to iOS 26 because the only matching `matchedTransitionSource`
+    /// lives in the iOS 26+ tab bar accessory; on earlier OSes the sheet
+    /// presents with the default animation.
+    @ViewBuilder func if_zoomNavigationTransition<ID: Hashable>(
+        sourceID: ID,
+        in namespace: Namespace.ID
+    ) -> some View {
+        if #available(iOS 26.0, *) {
+            self.navigationTransition(.zoom(sourceID: sourceID, in: namespace))
+        } else {
+            self
+        }
+    }
 }

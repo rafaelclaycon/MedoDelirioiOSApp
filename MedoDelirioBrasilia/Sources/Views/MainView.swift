@@ -66,6 +66,7 @@ struct MainView: View {
     @State private var episodeListenStore = EpisodeListenStore()
     @State private var episodesBadgeStore = EpisodesBadgeStore()
     @State private var showNowPlaying = false
+    @Namespace private var nowPlayingTransition
 
     @State private var contentRepository: ContentRepository
     private let trendsService = TrendsService.shared
@@ -214,6 +215,7 @@ struct MainView: View {
                             .onTapGesture {
                                 showNowPlaying = true
                             }
+                            .matchedTransitionSource(id: "nowPlaying", in: nowPlayingTransition)
                     }
                     .tabBarMinimizeBehavior(.onScrollDown)
                 } else {
@@ -681,6 +683,7 @@ struct MainView: View {
                 .environment(episodeBookmarkStore)
                 .environment(transcriptDownloadService)
                 .environment(episodeFavoritesStore)
+                .if_zoomNavigationTransition(sourceID: "nowPlaying", in: nowPlayingTransition)
         }
         .sheet(isPresented: $episodePlayer.showSupportPrompt, onDismiss: {
             let memory = AppPersistentMemory.shared
