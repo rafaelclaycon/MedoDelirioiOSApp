@@ -161,7 +161,7 @@ extension DiagnosticsView {
                     }
                 }
                 .alert(
-                    "\(importCount) Favoritos Importados com Sucesso",
+                    "\(importCount) Favoritas Importados com Sucesso",
                     isPresented: $displaySuccessAlert
                 ) {
                     Button("OK") {
@@ -169,7 +169,7 @@ extension DiagnosticsView {
                     }
                 }
                 .alert(
-                    "Erro ao Tentar Importar Favoritos: \(errorMessage)",
+                    "Erro ao Tentar Importar Favoritas: \(errorMessage)",
                     isPresented: $displayError
                 ) {
                     Button("OK") {
@@ -177,7 +177,7 @@ extension DiagnosticsView {
                     }
                 }
             } header: {
-                Text("Importar favoritos de um arquivo")
+                Text("Importar favoritas de um arquivo")
             } footer: {
                 Text("Para que essa opção funcione, selecione um arquivo que contém apenas os IDs dos conteúdos, cada um em uma linha, e nada mais, em um arquivo no formato .csv.")
             }

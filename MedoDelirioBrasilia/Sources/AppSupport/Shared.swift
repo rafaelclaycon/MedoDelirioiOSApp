@@ -39,7 +39,7 @@ struct Shared {
             case .allSounds:
                 "Vírgulas"
             case .favorites:
-                "Favoritos"
+                "Favoritas"
             case .groupedByAuthor:
                 "Autores"
             case .reactions:
@@ -105,8 +105,8 @@ struct Shared {
     static let shareSoundButtonText = "Compartilhar"
     static let shareSongButtonText = "Compartilhar Música"
     static let shareAsVideoButtonText = "Compartilhar como Vídeo"
-    static let addToFavorites = "Adicionar aos Favoritos"
-    static let removeFromFavorites = "Remover dos Favoritos"
+    static let addToFavorites = "Favoritar"
+    static let removeFromFavorites = "Desfavoritar"
     
     struct SoundSelection {
         

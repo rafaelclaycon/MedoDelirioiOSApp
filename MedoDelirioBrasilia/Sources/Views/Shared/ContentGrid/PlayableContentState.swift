@@ -274,7 +274,7 @@ extension PlayableContentState {
                 self.favoritesKeeper.insert(favorite.contentId)
             }
         } catch {
-            print("Falha ao carregar favoritos: \(error.localizedDescription)")
+            print("Falha ao carregar favoritas: \(error.localizedDescription)")
         }
     }
 

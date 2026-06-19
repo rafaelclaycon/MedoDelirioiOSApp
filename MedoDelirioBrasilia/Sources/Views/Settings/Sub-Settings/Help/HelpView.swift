@@ -138,11 +138,11 @@ extension HelpView {
     private var favoritesInstruction: String {
         switch UIDevice.deviceType {
         case .iPhone:
-            "Para favoritar, segure o conteúdo e escolha Adicionar aos Favoritos.\n\nPara ver apenas os favoritos, toque no coração nos filtros da parte superior da tela."
+            "Para favoritar, segure o conteúdo e escolha Favoritar.\n\nPara ver apenas as favoritas, toque no coração nos filtros da parte superior da tela."
         case .iPad:
-            "Para favoritar, segure o conteúdo e escolha Adicionar aos Favoritos.\n\nPara ver apenas os favoritos, toque em Favoritos na barra lateral."
+            "Para favoritar, segure o conteúdo e escolha Favoritar.\n\nPara ver apenas as favoritas, toque em Favoritas na barra lateral."
         case .mac:
-            "Para favoritar, clique com o botão direito em um conteúdo e escolha Adicionar aos Favoritos.\n\nPara ver apenas os favoritos, clique em Favoritos na barra lateral."
+            "Para favoritar, clique com o botão direito em um conteúdo e escolha Favoritar.\n\nPara ver apenas as favoritas, clique em Favoritas na barra lateral."
         }
     }
     // MARK: - Episodes

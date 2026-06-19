@@ -15,12 +15,12 @@ struct NoFavoritesView: View {
                 .font(.system(size: 74))
                 .foregroundColor(.red)
             
-            Text("Sem Favoritos")
+            Text("Sem Favoritas")
                 .font(.title2)
                 .bold()
                 .multilineTextAlignment(.center)
             
-            Text("Para adicionar um conteúdo aos Favoritos, segure-o e escolha **Adicionar aos Favoritos**.")
+            Text("Para adicionar uma vírgula às Favoritas, segura-o e escolha **Favoritar**.")
                 .foregroundColor(.gray)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
