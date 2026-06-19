@@ -421,8 +421,7 @@ struct NowPlayingView: View {
                 .font(.title2)
                 .fontDesign(.serif)
                 .fontWeight(.semibold)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
+                .marquee(spacing: 40, delay: 2, speedBasis: .velocity(40), fadeWidth: 16)
 
             if let pubDate = player.currentEpisode?.pubDate {
                 Text(pubDate, format: .dateTime.day().month(.wide).year())
