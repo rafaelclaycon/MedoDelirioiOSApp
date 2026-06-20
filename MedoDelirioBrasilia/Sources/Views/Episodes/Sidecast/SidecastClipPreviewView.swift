@@ -7,6 +7,7 @@
 
 import AVKit
 import SwiftUI
+import UIKit
 
 struct SidecastClipPreviewView: View {
 
@@ -16,7 +17,6 @@ struct SidecastClipPreviewView: View {
     @State private var player: AVPlayer?
     @State private var generationPhase: SidecastClipGenerator.GenerationPhase?
     @State private var error: Error?
-    @State private var isShowingShareSheet: Bool = false
     @State private var generationTask: Task<Void, Never>?
 
     var body: some View {
@@ -38,11 +38,6 @@ struct SidecastClipPreviewView: View {
             generationTask?.cancel()
             generationTask = nil
             player?.pause()
-        }
-        .sheet(isPresented: $isShowingShareSheet) {
-            if let videoURL {
-                ActivityViewController(activityItems: [videoURL])
-            }
         }
     }
 
@@ -91,7 +86,8 @@ struct SidecastClipPreviewView: View {
 
     private var shareButton: some View {
         Button {
-            isShowingShareSheet = true
+            guard let videoURL else { return }
+            presentShareSheet(for: videoURL)
         } label: {
             HStack {
                 Spacer()
@@ -122,6 +118,25 @@ struct SidecastClipPreviewView: View {
             guard !Task.isCancelled else { return }
             self.error = error
         }
+    }
+
+    // MARK: - Sharing
+
+    /// Presents the share sheet imperatively from the top-most view controller.
+    ///
+    /// This screen lives three sheets deep (Now Playing › Create Clip › this
+    /// pushed view), so a SwiftUI `.sheet` for the activity controller silently
+    /// fails to present. Presenting via UIKit from the top-most VC sidesteps it.
+    @MainActor
+    private func presentShareSheet(for url: URL) {
+        guard let top = UIApplication.shared.topMostViewController else { return }
+        let activityVC = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+        if let popover = activityVC.popoverPresentationController {
+            popover.sourceView = top.view
+            popover.sourceRect = CGRect(x: top.view.bounds.midX, y: top.view.bounds.midY, width: 0, height: 0)
+            popover.permittedArrowDirections = []
+        }
+        top.present(activityVC, animated: true)
     }
 }
 
