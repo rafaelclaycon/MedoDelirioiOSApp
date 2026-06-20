@@ -366,7 +366,7 @@ struct NowPlayingView: View {
             if FeatureFlag.isEnabled(.projectSidecast) {
                 GlassButton(
                     symbol: "scissors",
-                    title: "Criar Clipe",
+                    title: "Cortar",
                     color: .orange,
                     action: {
                         if player.isPlaying {
