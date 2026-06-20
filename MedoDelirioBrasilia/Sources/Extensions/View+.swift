@@ -48,6 +48,19 @@ extension View {
         }
     }
 
+    /// Like `if_tabViewBottomAccessory`, but callable from contexts that are
+    /// not already gated to iOS 26 (e.g. the iPad branch). No-ops on earlier OSes.
+    @ViewBuilder func if_tabViewBottomAccessoryIfAvailable<Accessory: View>(
+        isEnabled: @autoclosure () -> Bool,
+        @ViewBuilder content: @escaping () -> Accessory
+    ) -> some View {
+        if #available(iOS 26.0, *) {
+            self.if_tabViewBottomAccessory(isEnabled: isEnabled(), content: content)
+        } else {
+            self
+        }
+    }
+
     /// Applies a zoom `navigationTransition` from the given matched source id.
     ///
     /// Gated to iOS 26 because the only matching `matchedTransitionSource`

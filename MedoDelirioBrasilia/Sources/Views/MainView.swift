@@ -401,8 +401,10 @@ struct MainView: View {
                                 }
                         }
                         .environment(\.push, PushAction { episodesPath.append($0) })
-                        .safeAreaInset(edge: .bottom) {
-                            NowPlayingBarContainer(player: episodePlayer, showNowPlaying: $showNowPlaying)
+                        .if(!FeatureFlag.isEnabled(.iPadNowPlayingAccessory)) { view in
+                            view.safeAreaInset(edge: .bottom) {
+                                NowPlayingBarContainer(player: episodePlayer, showNowPlaying: $showNowPlaying)
+                            }
                         }
                     }
                     .badge(episodesBadgeText)
@@ -497,6 +499,17 @@ struct MainView: View {
                     }
                 }
                 .tabViewStyle(.sidebarAdaptable)
+                .if_tabViewBottomAccessoryIfAvailable(
+                    isEnabled: FeatureFlag.isEnabled(.iPadNowPlayingAccessory) && episodePlayer.currentEpisode != nil
+                ) {
+                    if #available(iOS 26.0, *) {
+                        NowPlayingAccessoryView(episode: episodePlayer.currentEpisode, player: episodePlayer)
+                            .onTapGesture {
+                                showNowPlaying = true
+                            }
+                            .matchedTransitionSource(id: "nowPlaying", in: nowPlayingTransition)
+                    }
+                }
                 .tabViewSidebarHeader {
                     HStack {
                         Text("Medo e Delírio")
