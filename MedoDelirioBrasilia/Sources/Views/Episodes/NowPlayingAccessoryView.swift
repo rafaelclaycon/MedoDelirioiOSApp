@@ -104,7 +104,7 @@ struct NowPlayingAccessoryView: View {
                         .frame(width: barWidth, height: 5)
 
                     Capsule()
-                        .fill(Color.primary.opacity(0.6))
+                        .fill(Color.darkestGreen)
                         .frame(width: barWidth * progress, height: 5)
                 }
 
@@ -154,5 +154,6 @@ struct NowPlayingAccessoryView: View {
                 .buttonStyle(.plain)
             }
         }
+        .foregroundStyle(Color.darkestGreen)
     }
 }
