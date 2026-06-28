@@ -5,6 +5,7 @@
 //  Created by Rafael Claycon Schmitt on 19/05/22.
 //
 
+import LinkPresentation
 import os
 import SwiftUI
 
@@ -67,6 +68,12 @@ struct MainView: View {
     @State private var episodesBadgeStore = EpisodesBadgeStore()
     @State private var showNowPlaying = false
     @Namespace private var nowPlayingTransition
+
+    /// Whether the iOS 26 tab bar bottom accessory is available on this OS.
+    /// On earlier versions the floating `NowPlayingBar` is used instead.
+    private var isBottomAccessoryAvailable: Bool {
+        if #available(iOS 26.0, *) { return true } else { return false }
+    }
 
     @State private var contentRepository: ContentRepository
     private let trendsService = TrendsService.shared
@@ -211,11 +218,16 @@ struct MainView: View {
                     .if_tabViewBottomAccessory(
                         isEnabled: episodePlayer.currentEpisode != nil
                     ) {
-                        NowPlayingAccessoryView(episode: episodePlayer.currentEpisode, player: episodePlayer)
-                            .onTapGesture {
-                                showNowPlaying = true
-                            }
-                            .matchedTransitionSource(id: "nowPlaying", in: nowPlayingTransition)
+                        NowPlayingAccessoryView(
+                            episode: episodePlayer.currentEpisode,
+                            player: episodePlayer,
+                            onShare: { shareCurrentEpisode() },
+                            onGoToEpisode: { goToCurrentEpisode() }
+                        )
+                        .onTapGesture {
+                            showNowPlaying = true
+                        }
+                        .matchedTransitionSource(id: "nowPlaying", in: nowPlayingTransition)
                     }
                     .tabBarMinimizeBehavior(.onScrollDown)
                 } else {
@@ -401,7 +413,7 @@ struct MainView: View {
                                 }
                         }
                         .environment(\.push, PushAction { episodesPath.append($0) })
-                        .if(!FeatureFlag.isEnabled(.iPadNowPlayingAccessory)) { view in
+                        .if(!isBottomAccessoryAvailable) { view in
                             view.safeAreaInset(edge: .bottom) {
                                 NowPlayingBarContainer(player: episodePlayer, showNowPlaying: $showNowPlaying)
                             }
@@ -500,14 +512,23 @@ struct MainView: View {
                 }
                 .tabViewStyle(.sidebarAdaptable)
                 .if_tabViewBottomAccessoryIfAvailable(
-                    isEnabled: FeatureFlag.isEnabled(.iPadNowPlayingAccessory) && episodePlayer.currentEpisode != nil
+                    isEnabled: episodePlayer.currentEpisode != nil
                 ) {
                     if #available(iOS 26.0, *) {
-                        NowPlayingAccessoryView(episode: episodePlayer.currentEpisode, player: episodePlayer)
-                            .onTapGesture {
-                                showNowPlaying = true
-                            }
-                            .matchedTransitionSource(id: "nowPlaying", in: nowPlayingTransition)
+                        // No `matchedTransitionSource` here: on iPad the Now Playing
+                        // sheet presents as a centered card and the zoom morph from a
+                        // bottom-bar accessory misbehaves, so iPad uses the standard
+                        // sheet animation (see `if_zoomNavigationTransition`).
+                        NowPlayingAccessoryView(
+                            episode: episodePlayer.currentEpisode,
+                            player: episodePlayer,
+                            onShare: { shareCurrentEpisode() },
+                            onGoToEpisode: { goToCurrentEpisode() }
+                        )
+                        .onTapGesture {
+                            showNowPlaying = true
+                        }
+                        .frame(maxWidth: 700)
                     }
                 }
                 .tabViewSidebarHeader {
@@ -696,7 +717,11 @@ struct MainView: View {
                 .environment(episodeBookmarkStore)
                 .environment(transcriptDownloadService)
                 .environment(episodeFavoritesStore)
-                .if_zoomNavigationTransition(sourceID: "nowPlaying", in: nowPlayingTransition)
+                .if_zoomNavigationTransition(
+                    sourceID: "nowPlaying",
+                    in: nowPlayingTransition,
+                    isEnabled: UIDevice.deviceType == .iPhone
+                )
         }
         .sheet(isPresented: $episodePlayer.showSupportPrompt, onDismiss: {
             let memory = AppPersistentMemory.shared
@@ -757,6 +782,71 @@ struct MainView: View {
     }
 
     // MARK: - Functions
+
+    /// Prepares and presents the share sheet for the currently playing episode.
+    ///
+    /// Presented imperatively rather than via a SwiftUI `.sheet` because the
+    /// accessory menu only appears at regular width (iPad), where a
+    /// `UIActivityViewController` embedded in a sheet renders blank — it needs a
+    /// popover anchor instead.
+    private func shareCurrentEpisode() {
+        guard let episode = episodePlayer.currentEpisode else { return }
+        guard let shareURL = URL(string: APIConfig.baseLinkURL + "episodio/\(episode.id)") else { return }
+        Task { await AnalyticsService().send(originatingScreen: "NowPlayingAccessory", action: "didTapShare(\(episode.id))") }
+
+        Task { @MainActor in
+            let meta = LPLinkMetadata()
+            meta.url = shareURL
+            meta.title = episode.title
+
+            if let imageURL = episode.imageURL,
+               let (data, _) = try? await URLSession.shared.data(from: imageURL),
+               let image = UIImage(data: data) {
+                meta.imageProvider = NSItemProvider(object: image)
+            }
+
+            presentShareSheet(for: meta)
+        }
+    }
+
+    @MainActor
+    private func presentShareSheet(for metadata: LPLinkMetadata) {
+        guard let windowScene = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .first(where: { $0.activationState == .foregroundActive }),
+            let window = windowScene.windows.first(where: { $0.isKeyWindow }) ?? windowScene.windows.first
+        else { return }
+
+        var presenter = window.rootViewController
+        while let presented = presenter?.presentedViewController {
+            presenter = presented
+        }
+        guard let presenter else { return }
+
+        let source = LinkMetadataItemSource(metadata: metadata)
+        let activityVC = UIActivityViewController(activityItems: [source], applicationActivities: nil)
+
+        // iPad requires a popover anchor; center it near the bottom, where the accessory lives.
+        if let popover = activityVC.popoverPresentationController {
+            popover.sourceView = presenter.view
+            popover.sourceRect = CGRect(
+                x: presenter.view.bounds.midX,
+                y: presenter.view.bounds.maxY - 80,
+                width: 0,
+                height: 0
+            )
+            popover.permittedArrowDirections = []
+        }
+
+        presenter.present(activityVC, animated: true)
+    }
+
+    /// Navigates to the currently playing episode's detail screen on the Episodes tab.
+    private func goToCurrentEpisode() {
+        guard let episode = episodePlayer.currentEpisode else { return }
+        tabSelection.wrappedValue = .episodes
+        episodesPath.append(episode)
+    }
 
     /// Routes a Trends top-chart Siri Suggestion to the Trends screen (under the Search tab),
     /// carrying the requested time interval via `TrendsHelper` for the view to apply.

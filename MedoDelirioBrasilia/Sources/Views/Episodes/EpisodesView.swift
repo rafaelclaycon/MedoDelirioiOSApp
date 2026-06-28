@@ -17,6 +17,8 @@ struct EpisodesView: View {
     @Environment(EpisodesBadgeStore.self) private var badgeStore
     @Environment(TranscriptDownloadService.self) private var transcriptService
     @Environment(\.push) private var push
+    @Environment(\.horizontalSizeClass) private var hSizeClass
+
     @State private var viewModel = ViewModel(episodesService: EpisodesService.shared)
     @State private var selectedFilter: EpisodeFilterOption = .all
     @State private var activePlaybackStates: Set<EpisodePlaybackStateFilter> = EpisodesView.loadPlaybackStates()
@@ -78,6 +80,12 @@ struct EpisodesView: View {
                                         Text(String(group.year))
                                             .font(.title3)
                                             .fontWeight(.bold)
+                                            .listRowInsets(EdgeInsets(
+                                                top: 0,
+                                                leading: horizontalRowInset,
+                                                bottom: 0,
+                                                trailing: horizontalRowInset
+                                            ))
                                     }
                                 }
 
@@ -277,7 +285,20 @@ struct EpisodesView: View {
             .tint(.yellow)
         }
         .listRowSeparator(.visible)
-        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+        .listRowInsets(EdgeInsets(
+            top: 6,
+            leading: horizontalRowInset,
+            bottom: 6,
+            trailing: horizontalRowInset
+        ))
+    }
+
+    /// Horizontal inset for list rows. Adds extra breathing room on regular-width
+    /// layouts (iPad/Mac). Applied via `listRowInsets` rather than padding/content
+    /// margins so it's symmetric and independent of the sidebar's safe area, while
+    /// the scroll indicator stays on the screen edge.
+    private var horizontalRowInset: CGFloat {
+        hSizeClass == .regular ? 16 + .spacing(.large) : 16
     }
 
     // MARK: - Grouping & Filtering

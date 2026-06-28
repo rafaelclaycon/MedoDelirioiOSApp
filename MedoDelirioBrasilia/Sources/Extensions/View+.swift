@@ -66,11 +66,17 @@ extension View {
     /// Gated to iOS 26 because the only matching `matchedTransitionSource`
     /// lives in the iOS 26+ tab bar accessory; on earlier OSes the sheet
     /// presents with the default animation.
+    ///
+    /// `isEnabled` lets callers opt out where the zoom misbehaves — notably
+    /// iPad, where sheets present as centered cards and the morph from a
+    /// bottom-bar accessory looks broken. When disabled, the standard sheet
+    /// animation is used.
     @ViewBuilder func if_zoomNavigationTransition<ID: Hashable>(
         sourceID: ID,
-        in namespace: Namespace.ID
+        in namespace: Namespace.ID,
+        isEnabled: Bool = true
     ) -> some View {
-        if #available(iOS 26.0, *) {
+        if isEnabled, #available(iOS 26.0, *) {
             self.navigationTransition(.zoom(sourceID: sourceID, in: namespace))
         } else {
             self

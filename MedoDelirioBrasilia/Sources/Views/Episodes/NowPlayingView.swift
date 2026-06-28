@@ -21,8 +21,6 @@ struct NowPlayingView: View {
     @Environment(TranscriptDownloadService.self) private var transcriptDownloadService
     @Environment(EpisodeFavoritesStore.self) private var favoritesStore
 
-    @State private var isScrubbing: Bool = false
-    @State private var scrubValue: TimeInterval = 0
     @State private var toast: Toast?
     @State private var editingBookmark: EpisodeBookmark?
     @State private var bookmarksSortAscending: Bool = true
@@ -80,6 +78,16 @@ struct NowPlayingView: View {
             .toolbar {
                 toolbarControls
             }
+            // Observe `currentTime` in an isolated child so the toolbar's host view
+            // doesn't re-evaluate on every playback tick (which made toolbar items
+            // intermittently disappear/misalign).
+            .background {
+                PlaybackTimeObserver(player: player) { time in
+                    if currentCanvasMode == .transcription {
+                        transcriptProvider.update(currentTime: time)
+                    }
+                }
+            }
         }
         .presentationDragIndicator(.visible)
         .topToast($toast)
@@ -118,11 +126,6 @@ struct NowPlayingView: View {
                 transcriptProvider.load(episodeId: player.currentEpisode?.id, pubDate: player.currentEpisode?.pubDate)
             }
         }
-        .onChange(of: player.currentTime) {
-            if currentCanvasMode == .transcription {
-                transcriptProvider.update(currentTime: player.currentTime)
-            }
-        }
         .onChange(of: currentCanvasMode) {
             if currentCanvasMode == .transcription {
                 transcriptProvider.update(currentTime: player.currentTime)
@@ -154,7 +157,7 @@ struct NowPlayingView: View {
             Spacer()
                 .frame(height: .spacing(.medium))
 
-            progressSection
+            ProgressScrubber(player: player, bookmarks: currentBookmarks)
 
             Spacer()
                 .frame(height: .spacing(.small))
@@ -205,17 +208,9 @@ struct NowPlayingView: View {
             case .notAvailable(let reason, let isComingSoon):
                 TranscriptNotAvailableView(reason: reason, isComingSoon: isComingSoon)
             case .loaded:
-                VStack(alignment: .leading, spacing: .spacing(.xSmall)) {
-                    TranscriptOverlayView(
-                        previousCue: transcriptProvider.previousCue,
-                        currentCue: transcriptProvider.currentCue,
-                        nextCue: transcriptProvider.nextCue
-                    )
-
-                    Text("Transcrição gerada por IA. Pode conter erros.")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
+                // Reads the live cues in its own view so the parent (and the toolbar)
+                // isn't invalidated every tick as the highlighted cue advances.
+                TranscriptLoadedOverlay(transcriptProvider: transcriptProvider)
             }
         }
     }
@@ -280,72 +275,61 @@ struct NowPlayingView: View {
         .frame(maxWidth: 400)
     }
 
+    /// A single, structurally-stable toolbar tree. The view's `body` re-evaluates
+    /// on every playback tick (the scrubber observes `player.currentTime`), so this
+    /// content is rebuilt ~twice a second. Explicit `id`s keep each item's identity
+    /// stable across those rebuilds — without them the glass toolbar group can drop
+    /// or misalign items when the labels change (star ⇄ star.fill, share enable/disable).
     @ToolbarContentBuilder
     private var toolbarControls: some ToolbarContent {
+        ToolbarItem(id: "favorite", placement: .primaryAction) {
+            favoriteButton
+        }
+
         if #available(iOS 26.0, *) {
-            ToolbarItem(placement: .primaryAction) {
-                let isFav = player.currentEpisode.map { favoritesStore.isFavorite($0.id) } ?? false
-                Button {
-                    guard let episodeId = player.currentEpisode?.id else { return }
-                    favoritesStore.toggle(episodeId)
-                } label: {
-                    Image(systemName: isFav ? "star.fill" : "star")
-                        .foregroundStyle(isFav ? .yellow : .primary)
-                }
-            }
-
             ToolbarSpacer(.fixed)
+        }
 
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    prepareShare()
-                } label: {
-                    Image(systemName: "square.and.arrow.up")
-                }
-                .disabled(isPreparingShare)
-            }
+        ToolbarItem(id: "share", placement: .primaryAction) {
+            shareButton
+        }
 
-            if FeatureFlag.isEnabled(.transcriptFullView) {
+        if FeatureFlag.isEnabled(.transcriptFullView) {
+            if #available(iOS 26.0, *) {
                 ToolbarSpacer(.fixed)
-
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        showFullTranscript = true
-                    } label: {
-                        Image(systemName: "magnifyingglass")
-                    }
-                }
-            }
-        } else {
-            ToolbarItem(placement: .primaryAction) {
-                let isFav = player.currentEpisode.map { favoritesStore.isFavorite($0.id) } ?? false
-                Button {
-                    guard let episodeId = player.currentEpisode?.id else { return }
-                    favoritesStore.toggle(episodeId)
-                } label: {
-                    Image(systemName: isFav ? "star.fill" : "star")
-                        .foregroundStyle(isFav ? .yellow : .primary)
-                }
             }
 
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    prepareShare()
-                } label: {
-                    Image(systemName: "square.and.arrow.up")
-                }
-                .disabled(isPreparingShare)
+            ToolbarItem(id: "transcript", placement: .primaryAction) {
+                transcriptButton
             }
+        }
+    }
 
-            if FeatureFlag.isEnabled(.transcriptFullView) {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        showFullTranscript = true
-                    } label: {
-                        Image(systemName: "magnifyingglass")
-                    }
-                }
-            }
+    private var favoriteButton: some View {
+        let isFav = player.currentEpisode.map { favoritesStore.isFavorite($0.id) } ?? false
+        return Button {
+            guard let episodeId = player.currentEpisode?.id else { return }
+            favoritesStore.toggle(episodeId)
+        } label: {
+            Image(systemName: isFav ? "star.fill" : "star")
+                .foregroundStyle(isFav ? .yellow : .primary)
+        }
+    }
+
+    private var shareButton: some View {
+        Button {
+            prepareShare()
+        } label: {
+            Image(systemName: "square.and.arrow.up")
+        }
+        .disabled(isPreparingShare)
+    }
+
+    private var transcriptButton: some View {
+        Button {
+            showFullTranscript = true
+        } label: {
+            Image(systemName: "magnifyingglass")
         }
     }
 
@@ -421,7 +405,7 @@ struct NowPlayingView: View {
                 .font(.title2)
                 .fontDesign(.serif)
                 .fontWeight(.semibold)
-                .marquee(spacing: 40, delay: 2, speedBasis: .velocity(40), fadeWidth: 16)
+                .marquee(spacing: 40, delay: 2, speedBasis: .velocity(40), fadeWidth: 16, centersWhenFitting: true)
 
             if let pubDate = player.currentEpisode?.pubDate {
                 Text(pubDate, format: .dateTime.day().month(.wide).year())
@@ -429,82 +413,6 @@ struct NowPlayingView: View {
                     .foregroundStyle(.secondary)
             }
         }
-    }
-
-    // MARK: - Progress
-
-    private var progressSection: some View {
-        VStack(spacing: .spacing(.xxxSmall)) {
-            scrubberWithMarkers
-
-            HStack {
-                Text(Self.formatTime(isScrubbing ? scrubValue : player.currentTime))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-
-                Spacer()
-
-                Text("-" + Self.formatTime(player.duration - (isScrubbing ? scrubValue : player.currentTime)))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-            }
-        }
-    }
-
-    private static let trackHeight: CGFloat = 4
-    private static let thumbSize: CGFloat = 14
-    private static let trackColor = Color.darkerGreen
-    private static let trackBgColor = Color(.systemGray4)
-
-    private var scrubberWithMarkers: some View {
-        GeometryReader { geometry in
-            let totalDuration = max(player.duration, 1)
-            let currentValue = isScrubbing ? scrubValue : player.currentTime
-            let fraction = CGFloat(currentValue / totalDuration)
-            let thumbX = fraction * geometry.size.width
-
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(Self.trackBgColor)
-                    .frame(height: Self.trackHeight)
-
-                Capsule()
-                    .fill(Self.trackColor)
-                    .frame(width: max(thumbX, 0), height: Self.trackHeight)
-
-                ForEach(currentBookmarks) { bookmark in
-                    let bFraction = bookmark.timestamp / totalDuration
-                    let bX = geometry.size.width * bFraction
-
-                    Capsule()
-                        .fill(Color.rubyRed)
-                        .frame(width: 3, height: Self.trackHeight + 12)
-                        .offset(x: bX - 1.5)
-                }
-
-                Circle()
-                    .fill(Self.trackColor)
-                    .frame(width: Self.thumbSize, height: Self.thumbSize)
-                    .offset(x: thumbX - Self.thumbSize / 2)
-            }
-            .frame(height: Self.thumbSize)
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        if !isScrubbing { isScrubbing = true }
-                        let clamped = min(max(value.location.x, 0), geometry.size.width)
-                        scrubValue = TimeInterval(clamped / geometry.size.width) * totalDuration
-                    }
-                    .onEnded { _ in
-                        isScrubbing = false
-                        player.seek(to: scrubValue)
-                    }
-            )
-        }
-        .frame(height: Self.thumbSize)
     }
 
     // MARK: - Playback Controls
@@ -708,6 +616,132 @@ struct NowPlayingView: View {
             return String(format: "%d:%02d:%02d", hours, minutes, seconds)
         } else {
             return String(format: "%d:%02d", minutes, seconds)
+        }
+    }
+}
+
+// MARK: - Isolated, Time-Driven Subviews
+
+/// The scrubber and elapsed/remaining time labels. Owns its scrubbing gesture state
+/// and reads `player.currentTime` itself, so the parent `NowPlayingView` body — which
+/// hosts the navigation toolbar — isn't re-evaluated on every playback tick.
+private struct ProgressScrubber: View {
+
+    let player: EpisodePlayer
+    let bookmarks: [EpisodeBookmark]
+
+    @State private var isScrubbing: Bool = false
+    @State private var scrubValue: TimeInterval = 0
+
+    private static let trackHeight: CGFloat = 4
+    private static let thumbSize: CGFloat = 14
+    private static let trackColor = Color.darkerGreen
+    private static let trackBgColor = Color(.systemGray4)
+
+    var body: some View {
+        VStack(spacing: .spacing(.xxxSmall)) {
+            scrubber
+
+            HStack {
+                Text(NowPlayingView.formatTime(isScrubbing ? scrubValue : player.currentTime))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+
+                Spacer()
+
+                Text("-" + NowPlayingView.formatTime(player.duration - (isScrubbing ? scrubValue : player.currentTime)))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+        }
+    }
+
+    private var scrubber: some View {
+        GeometryReader { geometry in
+            let totalDuration = max(player.duration, 1)
+            let currentValue = isScrubbing ? scrubValue : player.currentTime
+            let fraction = CGFloat(currentValue / totalDuration)
+            let thumbX = fraction * geometry.size.width
+
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Self.trackBgColor)
+                    .frame(height: Self.trackHeight)
+
+                Capsule()
+                    .fill(Self.trackColor)
+                    .frame(width: max(thumbX, 0), height: Self.trackHeight)
+
+                ForEach(bookmarks) { bookmark in
+                    let bFraction = bookmark.timestamp / totalDuration
+                    let bX = geometry.size.width * bFraction
+
+                    Capsule()
+                        .fill(Color.rubyRed)
+                        .frame(width: 3, height: Self.trackHeight + 12)
+                        .offset(x: bX - 1.5)
+                }
+
+                Circle()
+                    .fill(Self.trackColor)
+                    .frame(width: Self.thumbSize, height: Self.thumbSize)
+                    .offset(x: thumbX - Self.thumbSize / 2)
+            }
+            .frame(height: Self.thumbSize)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        if !isScrubbing { isScrubbing = true }
+                        let clamped = min(max(value.location.x, 0), geometry.size.width)
+                        scrubValue = TimeInterval(clamped / geometry.size.width) * totalDuration
+                    }
+                    .onEnded { _ in
+                        isScrubbing = false
+                        player.seek(to: scrubValue)
+                    }
+            )
+        }
+        .frame(height: Self.thumbSize)
+    }
+}
+
+/// An invisible view that observes `player.currentTime` and forwards each change to
+/// `onTick`. Keeping this read out of the parent body prevents the toolbar host from
+/// invalidating every playback tick.
+private struct PlaybackTimeObserver: View {
+
+    let player: EpisodePlayer
+    let onTick: (TimeInterval) -> Void
+
+    var body: some View {
+        Color.clear
+            .frame(width: 0, height: 0)
+            .onChange(of: player.currentTime) { _, newValue in
+                onTick(newValue)
+            }
+    }
+}
+
+/// The live transcript overlay. Reads the advancing cues in its own view so the
+/// parent body (and the toolbar) isn't invalidated as the highlighted cue moves.
+private struct TranscriptLoadedOverlay: View {
+
+    let transcriptProvider: TranscriptProvider
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: .spacing(.xSmall)) {
+            TranscriptOverlayView(
+                previousCue: transcriptProvider.previousCue,
+                currentCue: transcriptProvider.currentCue,
+                nextCue: transcriptProvider.nextCue
+            )
+
+            Text("Transcrição gerada por IA. Pode conter erros.")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
         }
     }
 }

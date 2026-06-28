@@ -17,8 +17,16 @@ struct NowPlayingAccessoryView: View {
 
     let episode: PodcastEpisode?
     let player: EpisodePlayer
+    let onShare: () -> Void
+    let onGoToEpisode: () -> Void
+
+    @Environment(EpisodeFavoritesStore.self) private var favoritesStore
+    @Environment(EpisodePlayedStore.self) private var playedStore
+    @Environment(EpisodeProgressStore.self) private var progressStore
 
     @Environment(\.tabViewBottomAccessoryPlacement) private var placement
+    @Environment(\.horizontalSizeClass) private var hSizeClass
+    @Environment(\.colorScheme) private var colorScheme
 
     /// In `.inline` the accessory is collapsed into the tab bar and severely
     /// width-constrained, so we drop the progress bar and skip buttons.
@@ -44,29 +52,113 @@ struct NowPlayingAccessoryView: View {
         }
     }
 
+    private var highlightColor: Color {
+        colorScheme == .dark ? .primary : .darkestGreen
+    }
+
     var body: some View {
         if let episode {
-            HStack(spacing: .spacing(.xSmall)) {
-                artwork(for: episode)
+            if hSizeClass == .compact {
+                HStack(spacing: .spacing(.xSmall)) {
+                    Artwork(
+                        imageURL: episode.imageURL,
+                        isLarge: false
+                    )
 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(episode.title)
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .lineLimit(1)
-                        .marquee()
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(episode.title)
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .lineLimit(1)
+                            .marquee()
 
-                    if !isInline {
+                        if !isInline {
+                            progressRow
+                        }
+                    }
+
+                    Spacer(minLength: 0)
+
+                    SmallControls(
+                        isInline: isInline,
+                        color: highlightColor,
+                        isPlaying: player.isPlaying,
+                        skipBackwardAction: { player.skipBackward() },
+                        playPauseAction: { player.togglePlayPause() },
+                        skipForwardAction: { player.skipForward() }
+                    )
+                }
+                .padding(.leading, .spacing(.xSmall))
+                .padding(.trailing, placement == .expanded ? .spacing(.medium) : .spacing(.xSmall))
+            } else {
+                HStack(spacing: .spacing(.large)) {
+                    LargeControls(
+                        isInline: isInline,
+                        color: highlightColor,
+                        isPlaying: player.isPlaying,
+                        skipBackwardAction: { player.skipBackward() },
+                        playPauseAction: { player.togglePlayPause() },
+                        skipForwardAction: { player.skipForward() }
+                    )
+
+                    Artwork(
+                        imageURL: episode.imageURL,
+                        isLarge: false
+                    )
+
+                    VStack(alignment: .leading, spacing: .spacing(.xxSmall)) {
+                        Text(episode.title)
+                            .font(.callout)
+                            .fontWeight(.medium)
+                            .lineLimit(1)
+                            .marquee()
+
                         progressRow
                     }
+
+                    Spacer()
+
+                    Menu {
+                        Button {
+                            onShare()
+                        } label: {
+                            Label("Compartilhar", systemImage: "square.and.arrow.up")
+                        }
+
+                        Button {
+                            favoritesStore.toggle(episode.id)
+                        } label: {
+                            Label(
+                                favoritesStore.isFavorite(episode.id) ? "Desfavoritar" : "Marcar como Favorito",
+                                systemImage: favoritesStore.isFavorite(episode.id) ? "star.slash" : "star"
+                            )
+                        }
+
+                        Button {
+                            toggleFinished(episode)
+                        } label: {
+                            Label(
+                                playedStore.isPlayed(episode.id) ? "Marcar como Não Finalizado" : "Marcar como Finalizado",
+                                systemImage: playedStore.isPlayed(episode.id) ? "arrow.uturn.backward" : "checkmark"
+                            )
+                        }
+
+                        Button {
+                            onGoToEpisode()
+                        } label: {
+                            Label("Ir para o Episódio", systemImage: "info.circle")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.title2)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
                 }
-
-                Spacer(minLength: 0)
-
-                controls
+                .padding(.horizontal, .spacing(.large))
+                .padding(.vertical, .spacing(.xLarge))
             }
-            .padding(.leading, .spacing(.xSmall))
-            .padding(.trailing, placement == .expanded ? .spacing(.medium) : .spacing(.xSmall))
         } else {
             HStack(spacing: .spacing(.xSmall)) {
                 Text("Não Reproduzindo")
@@ -80,17 +172,33 @@ struct NowPlayingAccessoryView: View {
         }
     }
 
-    private func artwork(for episode: PodcastEpisode) -> some View {
-        KFImage(episode.imageURL)
-            .placeholder {
-                Image(systemName: "radio")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .resizable()
-            .aspectRatio(contentMode: .fill)
-            .frame(width: 34, height: 34)
-            .clipShape(RoundedRectangle(cornerRadius: 7))
+    /// Marks the now-playing episode as finished: stops playback, persists progress
+    /// at 100%, marks it as played, bumps the completed count, and honors the
+    /// auto-delete setting. Unmarking just flips the played flag back.
+    private func toggleFinished(_ episode: PodcastEpisode) {
+        if playedStore.isPlayed(episode.id) {
+            playedStore.toggle(episode.id)
+            return
+        }
+
+        // Capture the duration before stopping, since `stop()` resets the player.
+        let totalDuration = player.duration > 0 ? player.duration : (episode.duration ?? 0)
+
+        player.stop()
+
+        // Persist full progress so the episode reads as completely listened.
+        if totalDuration > 0 {
+            progressStore.save(episodeID: episode.id, currentTime: totalDuration, duration: totalDuration)
+        }
+
+        playedStore.toggle(episode.id)
+
+        let memory = AppPersistentMemory.shared
+        memory.setEpisodesCompletedCount(memory.getEpisodesCompletedCount() + 1)
+
+        if UserSettings().getAutoDeletePlayedEpisodes() {
+            try? FileManager.default.removeItem(at: EpisodePlayer.localFileURL(for: episode))
+        }
     }
 
     private var progressRow: some View {
@@ -104,7 +212,7 @@ struct NowPlayingAccessoryView: View {
                         .frame(width: barWidth, height: 5)
 
                     Capsule()
-                        .fill(Color.darkestGreen)
+                        .fill(highlightColor)
                         .frame(width: barWidth * progress, height: 5)
                 }
 
@@ -120,40 +228,125 @@ struct NowPlayingAccessoryView: View {
         }
         .frame(height: 10)
     }
+}
 
-    private var controls: some View {
-        HStack(spacing: .spacing(.medium)) {
-            if !isInline {
-                Button {
-                    player.skipBackward()
-                } label: {
-                    Image(systemName: "arrow.counterclockwise")
-                        .font(.body)
-                        .fontWeight(.bold)
-                }
-                .buttonStyle(.plain)
-            }
+// MARK: - Subviews
 
-            Button {
-                player.togglePlayPause()
-            } label: {
-                Image(systemName: player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                    .font(.title)
-                    .contentTransition(.symbolEffect(.replace))
-            }
-            .buttonStyle(.plain)
+@available(iOS 26.0, *)
+extension NowPlayingAccessoryView {
 
-            if !isInline {
-                Button {
-                    player.skipForward()
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.body)
-                        .fontWeight(.bold)
-                }
-                .buttonStyle(.plain)
-            }
+    struct Artwork: View {
+
+        let imageURL: URL?
+        let isLarge: Bool
+
+        private var sideSize: CGFloat {
+            isLarge ? 50 : 34
         }
-        .foregroundStyle(Color.darkestGreen)
+
+        var body: some View {
+            KFImage(imageURL)
+                .placeholder {
+                    Image(systemName: "radio")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(width: sideSize, height: sideSize)
+                .clipShape(RoundedRectangle(cornerRadius: isLarge ? 15 : 7))
+        }
+    }
+
+    struct SmallControls: View {
+
+        let isInline: Bool
+        let color: Color
+        let isPlaying: Bool
+        let skipBackwardAction: () -> Void
+        let playPauseAction: () -> Void
+        let skipForwardAction: () -> Void
+
+        var body: some View {
+            HStack(spacing: .spacing(.medium)) {
+                if !isInline {
+                    Button {
+                        skipBackwardAction()
+                    } label: {
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(.body)
+                            .fontWeight(.bold)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                Button {
+                    playPauseAction()
+                } label: {
+                    Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                        .font(.title)
+                        .contentTransition(.symbolEffect(.replace))
+                }
+                .buttonStyle(.plain)
+
+                if !isInline {
+                    Button {
+                        skipForwardAction()
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.body)
+                            .fontWeight(.bold)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .foregroundStyle(color)
+        }
+    }
+
+    struct LargeControls: View {
+
+        let isInline: Bool
+        let color: Color
+        let isPlaying: Bool
+        let skipBackwardAction: () -> Void
+        let playPauseAction: () -> Void
+        let skipForwardAction: () -> Void
+
+        var body: some View {
+            HStack(spacing: .spacing(.xLarge)) {
+                if !isInline {
+                    Button {
+                        skipBackwardAction()
+                    } label: {
+                        Image(systemName: "gobackward.15")
+                            .font(.title2)
+                            //.fontWeight(.bold)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                Button {
+                    playPauseAction()
+                } label: {
+                    Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                        .font(.largeTitle)
+                        .contentTransition(.symbolEffect(.replace))
+                }
+                .buttonStyle(.plain)
+
+                if !isInline {
+                    Button {
+                        skipForwardAction()
+                    } label: {
+                        Image(systemName: "goforward.30")
+                            .font(.title2)
+                            //.fontWeight(.bold)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .foregroundStyle(color)
+        }
     }
 }

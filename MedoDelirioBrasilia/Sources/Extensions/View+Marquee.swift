@@ -46,52 +46,30 @@ struct MarqueeModifier: ViewModifier {
     let delay: TimeInterval
     let speedBasis: SpeedBasis
     let fadeWidth: CGFloat
-    
+    let centersWhenFitting: Bool
+
     @State private var contentSize: CGSize?
     @State private var availableWidth: CGFloat?
-    
-    @State private var offset: CGFloat = 0
-    
+
+    @State private var startDate = Date()
+
     private var isOverflowing: Bool {
         guard let availableWidth, let contentSize else { return false }
         return availableWidth < contentSize.width
     }
+
+    /// When the content fits and centering is requested, this shifts the
+    /// leading-aligned scroll content to the middle of the available width.
+    /// It's zero while overflowing, so it never interferes with the marquee.
+    private var centeringOffset: CGFloat {
+        guard centersWhenFitting, !isOverflowing,
+              let availableWidth, let contentSize else { return 0 }
+        return max((availableWidth - contentSize.width) / 2, 0)
+    }
     
     func body(content: Content) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: spacing) {
-                content
-                    .fixedSize()
-                    .overlay(
-                        GeometryReader { geometry in
-                            Color.clear
-                                .preference(key: ContentSizeKey.self, value: geometry.size)
-                        }
-                    )
-                    .onPreferenceChange(ContentSizeKey.self) { value in
-                        contentSize = value
-                    }
-                
-                if let availableWidth, let contentSize, availableWidth < contentSize.width {
-                    content
-                        .fixedSize()
-                        .onAppear {
-                            withAnimation(
-                                Animation.linear(duration: speedBasis.duration(distance: contentSize.width + spacing))
-                                    .delay(delay)
-                                    .repeatForever(autoreverses: false)
-                            ) {
-                                offset = -(contentSize.width + spacing)
-                            }
-                        }
-                        .onDisappear {
-                            withAnimation(.linear(duration: 0)) {
-                                offset = 0
-                            }
-                        }
-                }
-            }
-            .offset(x: offset)
+            scrollingContent(content)
         }
         .scrollDisabled(true)
         .overlay(
@@ -104,6 +82,61 @@ struct MarqueeModifier: ViewModifier {
             availableWidth = value
         }
         .mask(fadeMask)
+    }
+
+    @ViewBuilder
+    private func scrollingContent(_ content: Content) -> some View {
+        if isOverflowing, let contentSize {
+            // Drive the scroll from a per-frame clock rather than a `repeatForever`
+            // animation. A perpetual Core Animation living inside a NavigationStack
+            // keeps its navigation bar in a continuous animation state and breaks the
+            // toolbar (items render blank or misaligned). Computing the offset each
+            // frame keeps all the work local to this view, with no implicit animation
+            // for the navigation bar to get tangled in.
+            let scrollDistance = contentSize.width + spacing
+            TimelineView(.animation) { context in
+                marqueeStack(content, showsDuplicate: true)
+                    .offset(x: offset(at: context.date, scrollDistance: scrollDistance))
+            }
+        } else {
+            marqueeStack(content, showsDuplicate: false)
+                .offset(x: centeringOffset)
+        }
+    }
+
+    private func marqueeStack(_ content: Content, showsDuplicate: Bool) -> some View {
+        HStack(spacing: spacing) {
+            content
+                .fixedSize()
+                .overlay(
+                    GeometryReader { geometry in
+                        Color.clear
+                            .preference(key: ContentSizeKey.self, value: geometry.size)
+                    }
+                )
+                .onPreferenceChange(ContentSizeKey.self) { value in
+                    contentSize = value
+                }
+
+            if showsDuplicate {
+                content
+                    .fixedSize()
+            }
+        }
+    }
+
+    /// The marquee offset at a given frame time: a `delay` pause at the start of each
+    /// loop, then a linear scroll of `scrollDistance` over the speed-based duration.
+    /// At the end of the scroll the duplicate copy sits exactly where the original
+    /// began, so wrapping back to zero is seamless.
+    private func offset(at date: Date, scrollDistance: CGFloat) -> CGFloat {
+        let scrollDuration = speedBasis.duration(distance: scrollDistance)
+        guard scrollDuration > 0 else { return 0 }
+        let cycle = delay + scrollDuration
+        let elapsed = date.timeIntervalSince(startDate).truncatingRemainder(dividingBy: cycle)
+        guard elapsed > delay else { return 0 }
+        let progress = (elapsed - delay) / scrollDuration
+        return -scrollDistance * CGFloat(progress)
     }
     
     @ViewBuilder
@@ -126,14 +159,16 @@ extension View {
         spacing: CGFloat = 10,
         delay: TimeInterval = 3,
         speedBasis: SpeedBasis = .velocity(50),
-        fadeWidth: CGFloat = 8
+        fadeWidth: CGFloat = 8,
+        centersWhenFitting: Bool = false
     ) -> some View {
         self.modifier(
             MarqueeModifier(
                 spacing: spacing,
                 delay: delay,
                 speedBasis: speedBasis,
-                fadeWidth: fadeWidth
+                fadeWidth: fadeWidth,
+                centersWhenFitting: centersWhenFitting
             )
         )
     }
