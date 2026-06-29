@@ -100,10 +100,14 @@ extension HelpTheAppView {
 
     struct ImageView: View {
 
+        @Environment(\.horizontalSizeClass) private var hSizeClass
+
+        private var isCompact: Bool { hSizeClass == .compact }
+
         var body: some View {
             Rectangle()
                 .fill(Color.clear)
-                .frame(height: 150)
+                .frame(height: isCompact ? 150 : 400)
                 .background {
                     Image("help_the_app_header")
                         .resizable()
@@ -115,7 +119,11 @@ extension HelpTheAppView {
                                 endPoint: .top
                             )
                         }
-                        .scaleEffect(1.2)
+                        // iPad/Mac has a wide, short frame: dropping the zoom and
+                        // nudging the crop downward keeps the lower-left face in
+                        // view, while iPhone keeps its original framing.
+                        .scaleEffect(isCompact ? 1.2 : 1.0)
+                        .offset(y: isCompact ? 0 : -100)
                 }
         }
     }
