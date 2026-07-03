@@ -35,6 +35,7 @@ struct NowPlayingView: View {
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.verticalSizeClass) private var vSizeClass
+    @Environment(\.dismiss) private var dismiss
 
     init(transcriptProvider: TranscriptProvider = TranscriptProvider()) {
         _transcriptProvider = State(initialValue: transcriptProvider)
@@ -282,6 +283,14 @@ struct NowPlayingView: View {
     /// or misalign items when the labels change (star ⇄ star.fill, share enable/disable).
     @ToolbarContentBuilder
     private var toolbarControls: some ToolbarContent {
+        // iPad/Mac present this full screen with no swipe-to-dismiss, so they
+        // need an explicit close button. iPhone keeps the drag-to-dismiss sheet.
+        if UIDevice.deviceType != .iPhone {
+            ToolbarItem(id: "close", placement: .cancellationAction) {
+                closeButton
+            }
+        }
+
         ToolbarItem(id: "favorite", placement: .primaryAction) {
             favoriteButton
         }
@@ -302,6 +311,14 @@ struct NowPlayingView: View {
             ToolbarItem(id: "transcript", placement: .primaryAction) {
                 transcriptButton
             }
+        }
+    }
+
+    private var closeButton: some View {
+        Button {
+            dismiss()
+        } label: {
+            Image(systemName: "xmark")
         }
     }
 

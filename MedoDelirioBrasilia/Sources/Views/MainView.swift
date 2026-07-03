@@ -711,7 +711,7 @@ struct MainView: View {
             IntroducingTranscriptsView(appMemory: AppPersistentMemory.shared)
                 .environment(transcriptDownloadService)
         }
-        .sheet(isPresented: $showNowPlaying) {
+        .sheetOrFullScreenCover(isPresented: $showNowPlaying) {
             NowPlayingView()
                 .environment(episodePlayer)
                 .environment(episodeBookmarkStore)
