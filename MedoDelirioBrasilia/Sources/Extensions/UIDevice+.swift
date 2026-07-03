@@ -88,10 +88,22 @@ extension UIDevice {
 public extension UIDevice {
 
     static let modelName: String = {
-        if ProcessInfo.processInfo.isiOSAppOnMac || ProcessInfo.processInfo.isMacCatalystApp {
-            return "Mac"
+        func hardwareModelIdentifier() -> String {
+            var size = 0
+            sysctlbyname("hw.model", nil, &size, nil, 0)
+            var buffer = [CChar](repeating: 0, count: size)
+            sysctlbyname("hw.model", &buffer, &size, nil, 0)
+            return String(cString: buffer)
         }
-        
+
+        if ProcessInfo.processInfo.isiOSAppOnMac {
+            return hardwareModelIdentifier()
+        }
+
+        if ProcessInfo.processInfo.isMacCatalystApp {
+            return "Mac Catalyst"
+        }
+
         var systemInfo = utsname()
         uname(&systemInfo)
         let machineMirror = Mirror(reflecting: systemInfo.machine)
