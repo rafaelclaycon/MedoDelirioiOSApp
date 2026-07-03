@@ -97,7 +97,8 @@ public extension UIDevice {
         }
 
         if ProcessInfo.processInfo.isiOSAppOnMac {
-            return hardwareModelIdentifier()
+            let internalId = hardwareModelIdentifier()
+            return mapToDevice(identifier: internalId)
         }
 
         if ProcessInfo.processInfo.isMacCatalystApp {
@@ -185,6 +186,9 @@ public extension UIDevice {
             case "iPad16,6":                                       return "iPad Pro 13-inch (M4)" // 2024 - M4 (6E,3-4P) - 8 or 16 GB
             case "iPad17,1","iPad17,2":                            return "iPad Pro 11-inch (M5)" // 2025 - M5 (6E,3-4P) - 12 or 16 GB
             case "iPad17,4":                                       return "iPad Pro 13-inch (M5)" // 2025 - M5 (6E,3-4P) - 12 or 16 GB
+
+            case "MacBookAir10,1":                                 return "MacBook Air (M1, 2020)"
+            case "Mac16,5":                                        return "MacBook Pro (16-inch, 2024)"
 
             case "RealityDevice14,1":                              return "Apple Vision Pro (M2, Original)" // 2024 - M2 (4E,4P) - 16 GB
             case "RealityDevice17,1":                              return "Apple Vision Pro (M5)" // 2025 - M5 (9 or 10 cores) - 16 GB

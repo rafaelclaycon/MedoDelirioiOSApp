@@ -153,9 +153,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         registerForPushNotificationsIfAuthorized()
         subscribeToWeeklyHighlightsIfNeeded()
 
-        print("### RAFA")
-        print(UIDevice.modelName)
-
         return true
     }
 
