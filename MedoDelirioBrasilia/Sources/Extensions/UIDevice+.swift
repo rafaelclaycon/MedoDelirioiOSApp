@@ -183,12 +183,13 @@ public extension UIDevice {
             case "iPad13,8", "iPad13,9", "iPad13,10", "iPad13,11": return "iPad Pro (12.9-inch) (5th generation)" // 2021 - M1 - 8 or 16 GB
             case "iPad14,5", "iPad14,6":                           return "iPad Pro (12.9-inch) (6th generation)" // 2022 - M2 - 8 or 16 GB
             case "iPad16,3","iPad16,4":                            return "iPad Pro 11-inch (M4)" // 2024 - M4 (6E,3-4P) - 8 or 16 GB
-            case "iPad16,6":                                       return "iPad Pro 13-inch (M4)" // 2024 - M4 (6E,3-4P) - 8 or 16 GB
+            case "iPad16,5","iPad16,6":                            return "iPad Pro 13-inch (M4)" // 2024 - M4 (6E,3-4P) - 8 or 16 GB
             case "iPad17,1","iPad17,2":                            return "iPad Pro 11-inch (M5)" // 2025 - M5 (6E,3-4P) - 12 or 16 GB
-            case "iPad17,4":                                       return "iPad Pro 13-inch (M5)" // 2025 - M5 (6E,3-4P) - 12 or 16 GB
+            case "iPad17,3","iPad17,4":                            return "iPad Pro 13-inch (M5)" // 2025 - M5 (6E,3-4P) - 12 or 16 GB
 
             case "MacBookAir10,1":                                 return "MacBook Air (M1, 2020)"
-            case "Mac16,5":                                        return "MacBook Pro (16-inch, 2024)"
+            case "Mac14,5":                                        return "MacBook Pro (14-inch, 2023)" // M2
+            case "Mac16,5":                                        return "MacBook Pro (16-inch, 2024)" // M4
 
             case "RealityDevice14,1":                              return "Apple Vision Pro (M2, Original)" // 2024 - M2 (4E,4P) - 16 GB
             case "RealityDevice17,1":                              return "Apple Vision Pro (M5)" // 2025 - M5 (9 or 10 cores) - 16 GB
