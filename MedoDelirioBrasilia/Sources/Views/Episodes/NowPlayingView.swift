@@ -69,6 +69,7 @@ struct NowPlayingView: View {
 
                 bottomControls
                     .frame(maxWidth: bottomControlsMaxWidth)
+                    .padding(.bottom, UIDevice.deviceType == .iPhone ? 0 : .spacing(.medium))
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
