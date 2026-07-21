@@ -11,7 +11,7 @@ struct AuthorCreditsView: View {
 
     private let links: [AuthorSectionLink] = [
         AuthorSectionLink(
-            name: "Blogue", imageName: "book", link: "https://from-rafael-with-code.ghost.io/", color: .pink, type: .blog
+            name: "Blogue", imageName: "book", link: "https://www.fromrafaelwithco.de/", color: .pink, type: .blog
         ),
         AuthorSectionLink(
             name: "Mastodon", imageName: "mastodon", link: "https://burnthis.town/@rafael", color: .purple, type: .socialMedia
@@ -43,9 +43,11 @@ struct AuthorCreditsView: View {
         VStack(alignment: .center, spacing: .spacing(.large)) {
             VStack(spacing: .spacing(.xSmall)) {
                 Text("Criado por Rafael Schmitt")
-                    .font(.system(.headline, design: .rounded))
+                    .font(.system(.title3, design: .rounded))
+                    .bold()
                     .multilineTextAlignment(.center)
                     .foregroundStyle(isPrideMonth ? AnyShapeStyle(prideGradient) : AnyShapeStyle(.foreground))
+                    .padding(.top, .spacing(.xSmall))
 
                 if isPrideMonth {
                     Text("Feito com orgulho 🏳️‍🌈")
@@ -93,6 +95,22 @@ struct AuthorCreditsView: View {
                 }
 
                 Spacer()
+            }
+
+            VStack(spacing: .spacing(.xxSmall)) {
+                Image("about_the_dev_photo")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 300, height: 180)
+                    .mask {
+                        RoundedRectangle(cornerRadius: .spacing(.xSmall))
+                    }
+
+                Text("Cristiano, Pedro e eu (com o app aberto no celular do Pedro) em junho de 2026 em Porto Alegre.")
+                    .font(.footnote)
+                    .foregroundStyle(.gray)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, .spacing(.xLarge))
             }
         }
     }

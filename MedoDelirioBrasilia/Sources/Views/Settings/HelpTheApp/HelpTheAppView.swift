@@ -24,18 +24,28 @@ struct HelpTheAppView: View {
     var body: some View {
         Section("Ajude o app") {
             VStack(alignment: .center, spacing: .spacing(.large)) {
-                ImageView()
-
                 VStack(alignment: .leading, spacing: .spacing(.xLarge)) {
                     VStack(alignment: .leading, spacing: .spacing(.medium)) {
-                        Text("Desenvolvedor & comunidade, juntos desde 2022")
-                            .font(.title2)
-                            .bold()
+                        HStack {
+                            Spacer()
+                            Text("Se isso aqui tá de pé é por causa de gente como *você*")
+                                .font(.title2)
+                                .bold()
+                                .multilineTextAlignment(.center)
+                            Spacer()
+                        }
+                        .padding(.vertical, .spacing(.small))
 
                         if let donors {
+                            let apoiaseDonors = donors.filter { $0.isSpecial }
+                            let pixDonors = donors.filter { !$0.isSpecial }
+
                             VStack(alignment: .center, spacing: .spacing(.large)) {
-                                DonorsView(donors: donors)
-                                    .marquee()
+                                DonorsView(donors: apoiaseDonors)
+                                    .marquee(speedBasis: .velocity(35))
+
+                                DonorsView(donors: pixDonors)
+                                    .marquee(speedBasis: .velocity(40))
 
                                 Button {
                                     showDonorInfoView.toggle()
@@ -98,36 +108,6 @@ struct HelpTheAppView: View {
 
 extension HelpTheAppView {
 
-    struct ImageView: View {
-
-        @Environment(\.horizontalSizeClass) private var hSizeClass
-
-        private var isCompact: Bool { hSizeClass == .compact }
-
-        var body: some View {
-            Rectangle()
-                .fill(Color.clear)
-                .frame(height: isCompact ? 150 : 400)
-                .background {
-                    Image("help_the_app_header")
-                        .resizable()
-                        .scaledToFill()
-                        .mask {
-                            LinearGradient(
-                                gradient: Gradient(colors: [.clear, .systemBackground]),
-                                startPoint: .bottom,
-                                endPoint: .top
-                            )
-                        }
-                        // iPad/Mac has a wide, short frame: dropping the zoom and
-                        // nudging the crop downward keeps the lower-left face in
-                        // view, while iPhone keeps its original framing.
-                        .scaleEffect(isCompact ? 1.2 : 1.0)
-                        .offset(y: isCompact ? 0 : -100)
-                }
-        }
-    }
-
     struct MoneyInfoView: View {
 
         let info: [MoneyInfo]
@@ -183,7 +163,7 @@ extension HelpTheAppView {
         var body: some View {
             VStack(alignment: .center, spacing: .spacing(.xLarge)) {
                 if showHeader {
-                    Text("💚 Junte-se aos apoiadores do app")
+                    Text("🚀 Junte-se aos apoiadores do app")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
