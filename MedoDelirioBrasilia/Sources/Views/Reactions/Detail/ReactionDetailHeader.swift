@@ -50,9 +50,11 @@ struct ReactionDetailHeader: View {
             Text(title)
                 .font(.largeTitle)
                 .bold()
+                .multilineTextAlignment(.center)
                 .foregroundStyle(.white)
                 .shadow(color: .black, radius: 4, x: 2, y: 2)
                 .offset(y: 30)
+                .padding(.horizontal, .spacing(.small))
         }
         .background {
             if #available(iOS 26.0, *) {
