@@ -189,7 +189,18 @@ public extension UIDevice {
 
             case "MacBookAir10,1":                                 return "MacBook Air (M1, 2020)"
             case "Mac14,5":                                        return "MacBook Pro (14-inch, 2023)" // M2
+            case "Mac14,13":                                       return "Mac Studio (M2 Max, 2023)"
+            case "Mac16,1":                                        return "MacBook Pro (14-inch, M4, 2024)"
             case "Mac16,5":                                        return "MacBook Pro (16-inch, 2024)" // M4
+            case "Mac16,6":                                        return "MacBook Pro (14-inch, M4 Pro, 2024)"
+            case "Mac16,8":                                        return "MacBook Pro (14-inch, M4 Max, 2024)"
+            case "Mac17,2":                                        return "MacBook Pro (14-inch, M5)"
+            case "Mac17,3":                                        return "MacBook Air (13-inch, M5)"
+            case "Mac17,4":                                        return "MacBook Air (15-inch, M5)"
+            case "Mac17,6":                                        return "MacBook Pro (16-inch, M5 Pro)"
+            case "Mac17,7":                                        return "MacBook Pro (14-inch, M5 Pro)"
+            case "Mac17,8":                                        return "MacBook Pro (16-inch, M5 Max)"
+            case "Mac17,9":                                        return "MacBook Pro (14-inch, M5 Max)"
 
             case "RealityDevice14,1":                              return "Apple Vision Pro (M2, Original)" // 2024 - M2 (4E,4P) - 16 GB
             case "RealityDevice17,1":                              return "Apple Vision Pro (M5)" // 2025 - M5 (9 or 10 cores) - 16 GB
