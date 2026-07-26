@@ -1,5 +1,5 @@
 //
-//  SidecastClipView.swift
+//  ShareClipView.swift
 //  MedoDelirioBrasilia
 //
 //  Created by Rafael Claycon Schmitt on 24/02/26.
@@ -8,9 +8,10 @@
 import AVFoundation
 import SwiftUI
 
-struct SidecastClipView: View {
+struct ShareClipView: View {
 
     let episode: PodcastEpisode
+    var onExportComplete: () -> Void = {}
 
     @Environment(EpisodePlayer.self) private var player
     @Environment(\.dismiss) private var dismiss
@@ -54,7 +55,7 @@ struct SidecastClipView: View {
                 }
             }
             .navigationDestination(isPresented: $showPreview) {
-                SidecastClipConfirmView(config: clipConfiguration)
+                ShareClipConfirmView(config: clipConfiguration, onExportComplete: onExportComplete)
             }
         }
         .task {
@@ -71,11 +72,11 @@ struct SidecastClipView: View {
         .onDisappear {
             pausePreview()
             previewPlayer = nil
-            SidecastClipGenerator.cleanupOutputDirectory()
+            ShareClipGenerator.cleanupOutputDirectory()
         }
     }
 
-    private var clipConfiguration: SidecastClipGenerator.Configuration {
+    private var clipConfiguration: ShareClipGenerator.Configuration {
         .init(
             episode: episode,
             audioFileURL: EpisodePlayer.localFileURL(for: episode),
@@ -220,11 +221,11 @@ struct SidecastClipView: View {
 
 // MARK: - Subviews
 
-extension SidecastClipView {
+extension ShareClipView {
 
     struct ShareModeButton: View {
 
-        let mode: SidecastClipShareMode
+        let mode: ShareClipShareMode
         let isSelected: Bool
         let action: () -> Void
 
@@ -265,7 +266,7 @@ extension SidecastClipView {
 
     struct BrandingButton: View {
 
-        let branding: SidecastClipBranding
+        let branding: ShareClipBranding
         let isSelected: Bool
         let action: () -> Void
 
@@ -310,7 +311,7 @@ extension SidecastClipView {
 // MARK: - Preview
 
 #Preview {
-    SidecastClipView(episode: .mockRecent)
+    ShareClipView(episode: .mockRecent)
         .environment({
             let p = EpisodePlayer()
             p.currentEpisode = .mockRecent

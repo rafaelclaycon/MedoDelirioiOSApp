@@ -1,5 +1,5 @@
 //
-//  SidecastClipOption.swift
+//  ShareClipOption.swift
 //  MedoDelirioBrasilia
 //
 //  Created by Rafael Claycon Schmitt on 24/02/26.
@@ -10,7 +10,7 @@ import Foundation
 
 // MARK: - Share Mode
 
-enum SidecastClipShareMode: String, CaseIterable, Identifiable {
+enum ShareClipShareMode: String, CaseIterable, Identifiable {
 
     case soundOnly
     case portraitVideo
@@ -48,14 +48,14 @@ enum SidecastClipShareMode: String, CaseIterable, Identifiable {
     }
 
     /// All modes that produce a video (excludes audio-only).
-    static var videoCases: [SidecastClipShareMode] {
+    static var videoCases: [ShareClipShareMode] {
         allCases.filter { $0.videoSize != nil }
     }
 }
 
 // MARK: - Branding
 
-enum SidecastClipBranding: String, CaseIterable, Identifiable {
+enum ShareClipBranding: String, CaseIterable, Identifiable {
 
     case none
     case appBadge

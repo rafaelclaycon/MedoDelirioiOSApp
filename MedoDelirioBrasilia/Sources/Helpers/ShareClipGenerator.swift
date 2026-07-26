@@ -1,5 +1,5 @@
 //
-//  SidecastClipGenerator.swift
+//  ShareClipGenerator.swift
 //  MedoDelirioBrasilia
 //
 //  Created by Rafael Claycon Schmitt on 25/02/26.
@@ -9,14 +9,14 @@ import AVFoundation
 import SwiftUI
 import UIKit
 
-enum SidecastClipGenerator {
+enum ShareClipGenerator {
 
     struct Configuration: Sendable {
         let episode: PodcastEpisode
         let audioFileURL: URL
         let clipStart: TimeInterval
         let clipEnd: TimeInterval
-        let shareMode: SidecastClipShareMode
+        let shareMode: ShareClipShareMode
     }
 
     enum GenerationPhase: String, Sendable {
@@ -32,7 +32,7 @@ enum SidecastClipGenerator {
         onPhaseChange: (@Sendable (GenerationPhase) -> Void)? = nil
     ) async throws -> URL {
         guard let videoSize = config.shareMode.videoSize else {
-            throw SidecastClipError.unsupportedMode
+            throw ShareClipError.unsupportedMode
         }
         let clipDuration = config.clipEnd - config.clipStart
 
@@ -71,7 +71,7 @@ enum SidecastClipGenerator {
         return finalURL
     }
 
-    /// Removes all previously generated Sidecast clip files.
+    /// Removes all previously generated ShareClip clip files.
     static func cleanupOutputDirectory() {
         removeIfExists(at: outputDirectory)
     }
@@ -80,11 +80,11 @@ enum SidecastClipGenerator {
 
     private static func downloadArtwork(for episode: PodcastEpisode) async throws -> UIImage {
         guard let imageURL = episode.imageURL else {
-            throw SidecastClipError.missingArtwork
+            throw ShareClipError.missingArtwork
         }
         let (data, _) = try await URLSession.shared.data(from: imageURL)
         guard let image = UIImage(data: data) else {
-            throw SidecastClipError.invalidArtwork
+            throw ShareClipError.invalidArtwork
         }
         return image
     }
@@ -98,13 +98,13 @@ enum SidecastClipGenerator {
     ) async throws -> URL {
         let asset = AVAsset(url: sourceURL)
         let outputURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("sidecast_trim_\(UUID().uuidString).m4a")
+            .appendingPathComponent("shareclip_trim_\(UUID().uuidString).m4a")
 
         guard let session = AVAssetExportSession(
             asset: asset,
             presetName: AVAssetExportPresetAppleM4A
         ) else {
-            throw SidecastClipError.audioTrimFailed
+            throw ShareClipError.audioTrimFailed
         }
 
         session.outputURL = outputURL
@@ -117,7 +117,7 @@ enum SidecastClipGenerator {
         await session.export()
 
         guard session.status == .completed else {
-            throw SidecastClipError.audioTrimFailed
+            throw ShareClipError.audioTrimFailed
         }
         return outputURL
     }
@@ -130,7 +130,7 @@ enum SidecastClipGenerator {
         artwork: UIImage,
         videoSize: CGSize
     ) throws -> UIImage {
-        let view = SidecastVideoFrameView(
+        let view = ShareClipVideoFrameView(
             artwork: artwork,
             episodeTitle: episode.title,
             episodeDate: episode.pubDate,
@@ -139,7 +139,7 @@ enum SidecastClipGenerator {
         let renderer = ImageRenderer(content: view)
         renderer.scale = 1.0
         guard let image = renderer.uiImage else {
-            throw SidecastClipError.frameRenderFailed
+            throw ShareClipError.frameRenderFailed
         }
         return image
     }
@@ -152,11 +152,11 @@ enum SidecastClipGenerator {
         size: CGSize
     ) async throws -> URL {
         guard let ciImage = CIImage(image: image) else {
-            throw SidecastClipError.frameRenderFailed
+            throw ShareClipError.frameRenderFailed
         }
 
         let outputURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("sidecast_static_\(UUID().uuidString).mov")
+            .appendingPathComponent("shareclip_static_\(UUID().uuidString).mov")
 
         let writer = try AVAssetWriter(outputURL: outputURL, fileType: .mov)
         let settings: [String: Any] = [
@@ -182,12 +182,12 @@ enum SidecastClipGenerator {
         writer.startSession(atSourceTime: .zero)
 
         guard let pool = adaptor.pixelBufferPool else {
-            throw SidecastClipError.videoWriteFailed
+            throw ShareClipError.videoWriteFailed
         }
         var pixelBuffer: CVPixelBuffer?
         CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &pixelBuffer)
         guard let buffer = pixelBuffer else {
-            throw SidecastClipError.frameRenderFailed
+            throw ShareClipError.frameRenderFailed
         }
         CIContext().render(ciImage, to: buffer)
 
@@ -197,14 +197,14 @@ enum SidecastClipGenerator {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             nonisolated(unsafe) var frameCount = 0
             nonisolated(unsafe) var hasResumed = false
-            let queue = DispatchQueue(label: "com.medoedelirio.sidecast.videowriter")
+            let queue = DispatchQueue(label: "com.medoedelirio.shareclip.videowriter")
 
             input.requestMediaDataWhenReady(on: queue) {
                 while input.isReadyForMoreMediaData {
                     guard !hasResumed else { return }
                     guard writer.status == .writing else {
                         hasResumed = true
-                        continuation.resume(throwing: SidecastClipError.videoWriteFailed)
+                        continuation.resume(throwing: ShareClipError.videoWriteFailed)
                         return
                     }
                     guard frameCount < totalFrames else {
@@ -223,7 +223,7 @@ enum SidecastClipGenerator {
         await writer.finishWriting()
 
         guard writer.status == .completed else {
-            throw SidecastClipError.videoWriteFailed
+            throw ShareClipError.videoWriteFailed
         }
         return outputURL
     }
@@ -255,7 +255,7 @@ enum SidecastClipGenerator {
             ),
             let srcAudioTrack = audioTracks.first
         else {
-            throw SidecastClipError.compositionFailed
+            throw ShareClipError.compositionFailed
         }
 
         let videoDuration = try await videoAsset.load(.duration)
@@ -285,14 +285,14 @@ enum SidecastClipGenerator {
 
         // -- Export --
         try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
-        let outputURL = outputDirectory.appendingPathComponent("sidecast_clip.mp4")
+        let outputURL = outputDirectory.appendingPathComponent("shareclip_clip.mp4")
         removeIfExists(at: outputURL)
 
         guard let session = AVAssetExportSession(
             asset: composition,
             presetName: AVAssetExportPresetHighestQuality
         ) else {
-            throw SidecastClipError.exportFailed
+            throw ShareClipError.exportFailed
         }
 
         session.outputURL = outputURL
@@ -304,7 +304,7 @@ enum SidecastClipGenerator {
 
         guard session.status == .completed else {
             if let error = session.error { throw error }
-            throw SidecastClipError.exportFailed
+            throw ShareClipError.exportFailed
         }
         return outputURL
     }
@@ -315,7 +315,7 @@ enum SidecastClipGenerator {
         safeDuration: CMTime,
         compVideoTrack: AVMutableCompositionTrack
     ) -> AVMutableVideoComposition {
-        let layout = SidecastVideoLayout(videoSize: videoSize)
+        let layout = ShareClipVideoLayout(videoSize: videoSize)
         let track = layout.trackFrame
 
         let parentLayer = CALayer()
@@ -367,7 +367,7 @@ enum SidecastClipGenerator {
 
     private static var outputDirectory: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("SidecastClips")
+            .appendingPathComponent("ShareClips")
     }
 
     private static func removeIfExists(at url: URL) {
@@ -381,7 +381,7 @@ enum SidecastClipGenerator {
 
 // MARK: - Errors
 
-enum SidecastClipError: Error, LocalizedError {
+enum ShareClipError: Error, LocalizedError {
 
     case unsupportedMode
     case missingArtwork

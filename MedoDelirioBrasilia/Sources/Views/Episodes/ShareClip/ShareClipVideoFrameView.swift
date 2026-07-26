@@ -1,5 +1,5 @@
 //
-//  SidecastVideoFrameView.swift
+//  ShareClipVideoFrameView.swift
 //  MedoDelirioBrasilia
 //
 //  Created by Rafael Claycon Schmitt on 25/02/26.
@@ -12,7 +12,7 @@ import SwiftUI
 /// Computes absolute positions and sizes for the video frame content.
 /// Shared between the SwiftUI view (static rendering) and the generator
 /// (CALayer scrubber animation) to guarantee pixel-perfect alignment.
-struct SidecastVideoLayout {
+struct ShareClipVideoLayout {
 
     let videoSize: CGSize
 
@@ -73,14 +73,14 @@ struct SidecastVideoLayout {
 /// Rendered off-screen via `ImageRenderer` at the video's pixel dimensions (scale 1.0).
 /// The progress bar track background is included here; the animated orange fill
 /// is composited on top as a `CALayer` during video generation.
-struct SidecastVideoFrameView: View {
+struct ShareClipVideoFrameView: View {
 
     let artwork: UIImage
     let episodeTitle: String
     let episodeDate: Date
     let videoSize: CGSize
 
-    private var layout: SidecastVideoLayout { .init(videoSize: videoSize) }
+    private var layout: ShareClipVideoLayout { .init(videoSize: videoSize) }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -160,7 +160,7 @@ private let previewArtwork: UIImage = UIGraphicsImageRenderer(size: .init(width:
 }
 
 #Preview("Square") {
-    SidecastVideoFrameView(
+    ShareClipVideoFrameView(
         artwork: previewArtwork,
         episodeTitle: "O Fim do Mandato e as Perspectivas para 2026",
         episodeDate: .now,
@@ -172,7 +172,7 @@ private let previewArtwork: UIImage = UIGraphicsImageRenderer(size: .init(width:
 }
 
 #Preview("Square – long title") {
-    SidecastVideoFrameView(
+    ShareClipVideoFrameView(
         artwork: previewArtwork,
         episodeTitle: "Eleições 2026: Candidatos, Alianças e o Futuro da Democracia Brasileira",
         episodeDate: .now,

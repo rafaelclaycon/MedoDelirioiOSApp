@@ -1,5 +1,5 @@
 //
-//  SidecastClipPreviewView.swift
+//  ShareClipPreviewView.swift
 //  MedoDelirioBrasilia
 //
 //  Created by Rafael Claycon Schmitt on 25/02/26.
@@ -9,13 +9,14 @@ import AVKit
 import SwiftUI
 import UIKit
 
-struct SidecastClipPreviewView: View {
+struct ShareClipPreviewView: View {
 
-    let config: SidecastClipGenerator.Configuration
+    let config: ShareClipGenerator.Configuration
+    var onExportComplete: () -> Void = {}
 
     @State private var videoURL: URL?
     @State private var player: AVPlayer?
-    @State private var generationPhase: SidecastClipGenerator.GenerationPhase?
+    @State private var generationPhase: ShareClipGenerator.GenerationPhase?
     @State private var error: Error?
     @State private var generationTask: Task<Void, Never>?
 
@@ -96,14 +97,14 @@ struct SidecastClipPreviewView: View {
                 Spacer()
             }
         }
-        .sidecastButtonStyle()
+        .shareClipButtonStyle()
     }
 
     // MARK: - Generation
 
     private func generateClip() async {
         do {
-            let url = try await SidecastClipGenerator.generate(
+            let url = try await ShareClipGenerator.generate(
                 config: config
             ) { phase in
                 Task { @MainActor in
@@ -136,6 +137,10 @@ struct SidecastClipPreviewView: View {
             popover.sourceRect = CGRect(x: top.view.bounds.midX, y: top.view.bounds.midY, width: 0, height: 0)
             popover.permittedArrowDirections = []
         }
+        activityVC.completionWithItemsHandler = { [onExportComplete] _, completed, _, _ in
+            guard completed else { return }
+            onExportComplete()
+        }
         top.present(activityVC, animated: true)
     }
 }
@@ -145,7 +150,7 @@ struct SidecastClipPreviewView: View {
 extension View {
 
     @ViewBuilder
-    func sidecastButtonStyle() -> some View {
+    func shareClipButtonStyle() -> some View {
         if #available(iOS 26, *) {
             self
                 .controlSize(.large)

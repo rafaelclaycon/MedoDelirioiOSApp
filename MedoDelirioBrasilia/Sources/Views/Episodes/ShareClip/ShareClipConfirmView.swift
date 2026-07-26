@@ -1,5 +1,5 @@
 //
-//  SidecastClipConfirmView.swift
+//  ShareClipConfirmView.swift
 //  MedoDelirioBrasilia
 //
 //  Created by Rafael Claycon Schmitt on 17/05/26.
@@ -8,9 +8,10 @@
 import AVFoundation
 import SwiftUI
 
-struct SidecastClipConfirmView: View {
+struct ShareClipConfirmView: View {
 
-    let config: SidecastClipGenerator.Configuration
+    let config: ShareClipGenerator.Configuration
+    var onExportComplete: () -> Void = {}
 
     @State private var artwork: UIImage = placeholder
     @State private var audioPlayer: AVAudioPlayer?
@@ -19,8 +20,12 @@ struct SidecastClipConfirmView: View {
     @State private var playbackTask: Task<Void, Never>?
     @State private var showGeneration = false
 
-    init(config: SidecastClipGenerator.Configuration) {
+    init(
+        config: ShareClipGenerator.Configuration,
+        onExportComplete: @escaping () -> Void = {}
+    ) {
         self.config = config
+        self.onExportComplete = onExportComplete
         _currentTime = State(initialValue: config.clipStart)
     }
 
@@ -46,7 +51,7 @@ struct SidecastClipConfirmView: View {
         .navigationTitle("Pré-visualização")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(isPresented: $showGeneration) {
-            SidecastClipPreviewView(config: config)
+            ShareClipPreviewView(config: config, onExportComplete: onExportComplete)
         }
         .task { await setup() }
         .onDisappear {
@@ -60,7 +65,7 @@ struct SidecastClipConfirmView: View {
     private var framePreview: some View {
         let size = CGFloat(1080)
         let scale = CGFloat(0.3)
-        return SidecastVideoFrameView(
+        return ShareClipVideoFrameView(
             artwork: artwork,
             episodeTitle: config.episode.title,
             episodeDate: config.episode.pubDate,
@@ -132,7 +137,7 @@ struct SidecastClipConfirmView: View {
                 Spacer()
             }
         }
-        .sidecastButtonStyle()
+        .shareClipButtonStyle()
     }
 
     // MARK: - Setup

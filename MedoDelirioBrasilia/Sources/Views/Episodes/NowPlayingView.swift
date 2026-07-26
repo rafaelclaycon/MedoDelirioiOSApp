@@ -24,7 +24,7 @@ struct NowPlayingView: View {
     @State private var toast: Toast?
     @State private var editingBookmark: EpisodeBookmark?
     @State private var bookmarksSortAscending: Bool = true
-    @State private var showSidecastClip: Bool = false
+    @State private var showShareClip: Bool = false
     @State private var isPreparingShare: Bool = false
     @State private var shareLinkMetadata: LPLinkMetadata?
     @State private var showShareSheet: Bool = false
@@ -34,6 +34,7 @@ struct NowPlayingView: View {
     @AppStorage("nowPlayingCanvasMode") private var currentCanvasMode: CanvasMode = .coverArt
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.horizontalSizeClass) private var hSizeClass
     @Environment(\.verticalSizeClass) private var vSizeClass
     @Environment(\.dismiss) private var dismiss
 
@@ -103,10 +104,13 @@ struct NowPlayingView: View {
                     .presentationDetents([.medium, .large])
             }
         }
-        .sheet(isPresented: $showSidecastClip) {
+        .sheet(isPresented: $showShareClip) {
             if let episode = player.currentEpisode {
-                SidecastClipView(episode: episode)
-                    .environment(player)
+                ShareClipView(episode: episode) {
+                    showShareClip = false
+                    toast = Toast(message: Shared.videoSharedSuccessfullyMessage, type: .success)
+                }
+                .environment(player)
             }
         }
         .onAppear {
@@ -365,16 +369,17 @@ struct NowPlayingView: View {
                 }
             )
 
-            if FeatureFlag.isEnabled(.projectSidecast) {
+            if FeatureFlag.isEnabled(.projectShareClip) {
+                let title = hSizeClass == .compact ? "Compart. Trecho" : "Compartilhar Trecho"
                 GlassButton(
                     symbol: "scissors",
-                    title: "Cortar",
+                    title: title,
                     color: .orange,
                     action: {
                         if player.isPlaying {
                             player.togglePlayPause()
                         }
-                        showSidecastClip = true
+                        showShareClip = true
                     }
                 )
             }
