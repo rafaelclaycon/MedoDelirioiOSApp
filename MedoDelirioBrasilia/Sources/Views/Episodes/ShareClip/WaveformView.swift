@@ -25,7 +25,7 @@ struct WaveformView: View {
     private static let barSpacing: CGFloat = 2
     private static let barCornerRadius: CGFloat = 2
     private static let viewHeight: CGFloat = 100
-    private static let minClipLength: TimeInterval = 1
+    private static let minClipLength: TimeInterval = 5
     private static let maxClipLength: TimeInterval = 150
 
     private static let edgeHandleWidth: CGFloat = 10
