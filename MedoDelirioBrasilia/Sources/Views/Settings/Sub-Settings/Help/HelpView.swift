@@ -9,89 +9,125 @@ import SwiftUI
 
 struct HelpView: View {
 
+    @State private var isBasicsExpanded: Bool = false
+    @State private var isEpisodesExpanded: Bool = false
+    @State private var isDifferentiatorsExpanded: Bool = true
+
     var body: some View {
         VStack {
-            ScrollView {                
+            ScrollView {
                 VStack(alignment: .leading, spacing: .spacing(.xxLarge)) {
-                    Text("Vírgulas & Músicas")
-                        .font(.title)
-                        .bold()
+                    DisclosureGroup(isExpanded: $isBasicsExpanded) {
+                        VStack(alignment: .leading, spacing: .spacing(.xxLarge)) {
+                            HelpInstructionView(
+                                symbol: "play.fill",
+                                text: toPlayInstruction
+                            )
 
-                    HelpInstructionView(
-                        symbol: "play.fill",
-                        text: toPlayInstruction
-                    )
+                            HelpInstructionView(
+                                symbol: "square.and.arrow.up",
+                                text: toShareInstruction
+                            )
 
-                    HelpInstructionView(
-                        symbol: "square.and.arrow.up",
-                        text: toShareInstruction
-                    )
-                    
-                    Divider()
+                            Divider()
 
-                    HelpInstructionView(
-                        symbol: "magnifyingglass",
-                        text: toSearchInstruction
-                    )
-                    
-                    Divider()
+                            HelpInstructionView(
+                                symbol: "magnifyingglass",
+                                text: toSearchInstruction
+                            )
 
-                    HelpInstructionView(
-                        symbol: "heart.fill",
-                        color: .red,
-                        text: favoritesInstruction
-                    )
+                            Divider()
 
-                    Divider()
-                        .padding(.vertical, .spacing(.small))
+                            HelpInstructionView(
+                                symbol: "heart.fill",
+                                color: .red,
+                                text: favoritesInstruction
+                            )
+                        }
+                        .padding(.top, .spacing(.medium))
+                    } label: {
+                        Text("O básico")
+                            .font(.title)
+                            .bold()
+                    }
 
-                    Text("Episódios")
-                        .font(.title)
-                        .bold()
+                    DisclosureGroup(isExpanded: $isEpisodesExpanded) {
+                        VStack(alignment: .leading, spacing: .spacing(.xxLarge)) {
+                            HelpInstructionView(
+                                symbol: "play.circle.fill",
+                                color: .green,
+                                text: episodePlayInstruction
+                            )
 
-                    HelpInstructionView(
-                        symbol: "play.circle.fill",
-                        color: .green,
-                        text: episodePlayInstruction
-                    )
+                            Divider()
 
-                    Divider()
+                            HelpInstructionView(
+                                symbol: "hand.draw",
+                                text: episodeSwipeInstruction
+                            )
 
-                    HelpInstructionView(
-                        symbol: "hand.draw",
-                        text: episodeSwipeInstruction
-                    )
+                            Divider()
 
-                    Divider()
+                            HelpInstructionView(
+                                symbol: "goforward.30",
+                                color: .green,
+                                text: episodeControlsInstruction
+                            )
 
-                    HelpInstructionView(
-                        symbol: "goforward.30",
-                        color: .green,
-                        text: episodeControlsInstruction
-                    )
+                            Divider()
 
-                    Divider()
+                            HelpInstructionView(
+                                symbol: "arrow.down.circle",
+                                color: .green,
+                                text: episodeDownloadInstruction
+                            )
 
-                    HelpInstructionView(
-                        symbol: "bookmark.fill",
-                        color: .red,
-                        text: episodeBookmarkInstruction
-                    )
+                            Divider()
 
-                    Divider()
+                            HelpInstructionView(
+                                symbol: "line.3.horizontal.decrease",
+                                text: episodeFilterInstruction
+                            )
+                        }
+                        .padding(.top, .spacing(.medium))
+                    } label: {
+                        Text("Episódios")
+                            .font(.title)
+                            .bold()
+                    }
 
-                    HelpInstructionView(
-                        symbol: "arrow.down.circle",
-                        color: .green,
-                        text: episodeDownloadInstruction
-                    )
+                    DisclosureGroup(isExpanded: $isDifferentiatorsExpanded) {
+                        VStack(alignment: .leading, spacing: .spacing(.xxLarge)) {
+                            HelpInstructionView(
+                                symbol: "bookmark.fill",
+                                color: .red,
+                                text: episodeBookmarkInstruction
+                            )
 
-                    Divider()
+                            Divider()
 
-                    HelpInstructionView(
-                        symbol: "line.3.horizontal.decrease",
-                        text: episodeFilterInstruction
-                    )
+                            if FeatureFlag.isEnabled(.projectShareClip) {
+                                HelpInstructionView(
+                                    symbol: "scissors",
+                                    color: .orange,
+                                    text: shareClipInstruction
+                                )
+
+                                Divider()
+                            }
+
+                            HelpInstructionView(
+                                symbol: "theatermasks",
+                                color: .green,
+                                text: reactionsInstruction
+                            )
+                        }
+                        .padding(.top, .spacing(.medium))
+                    } label: {
+                        Text("Diferenciais do app")
+                            .font(.title)
+                            .bold()
+                    }
                 }
                 .padding(.horizontal, .spacing(.medium))
                 .padding(.top, .spacing(.xSmall))
@@ -169,6 +205,16 @@ extension HelpView {
 
     private var episodeSwipeInstruction: String {
         "Deslize um episódio para a direita para favoritar ou desfavoritar. Deslize para a esquerda para marcar como finalizado ou desfazer."
+    }
+
+    // MARK: - Differentiators
+
+    private var shareClipInstruction: String {
+        "Enquanto ouve um episódio, toque em \"Compartilhar Trecho\" para escolher um pedaço específico do áudio e compartilhá-lo como vídeo.\n\nArraste a forma de onda para os lados para selecionar o trecho exato que você quer compartilhar."
+    }
+
+    private var reactionsInstruction: String {
+        "As Reações são um jeito diferente de descobrir as vírgulas sonoras: escolha uma categoria e responda rápido com a vírgula perfeita.\n\nSegure em uma reação e escolha \"Fixar no Topo\" para acessá-la facilmente, ou toque em compartilhar para enviar o link dela a um amigo."
     }
 }
 
