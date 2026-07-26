@@ -36,7 +36,7 @@ enum ShareClipGenerator {
         }
         let clipDuration = config.clipEnd - config.clipStart
 
-        let artwork = try await downloadArtwork(for: config.episode)
+        let artwork = await downloadArtwork(for: config.episode)
 
         onPhaseChange?(.preparingAudio)
         let trimmedAudioURL = try await trimAudio(
@@ -81,15 +81,27 @@ enum ShareClipGenerator {
 
     // MARK: - Step 1: Download Artwork
 
-    private static func downloadArtwork(for episode: PodcastEpisode) async throws -> UIImage {
-        guard let imageURL = episode.imageURL else {
-            throw ShareClipError.missingArtwork
-        }
-        let (data, _) = try await URLSession.shared.data(from: imageURL)
-        guard let image = UIImage(data: data) else {
-            throw ShareClipError.invalidArtwork
+    /// Falls back to `placeholderArtwork` on any failure instead of throwing,
+    /// so a broken/missing artwork URL doesn't fail the whole export after
+    /// the confirm screen already showed the same placeholder as if nothing
+    /// were wrong.
+    private static func downloadArtwork(for episode: PodcastEpisode) async -> UIImage {
+        guard let imageURL = episode.imageURL,
+              let (data, _) = try? await URLSession.shared.data(from: imageURL),
+              let image = UIImage(data: data)
+        else {
+            return placeholderArtwork
         }
         return image
+    }
+
+    /// Shared with `ShareClipConfirmView`, which shows the same fallback
+    /// while the real artwork is still downloading.
+    static let placeholderArtwork: UIImage = UIGraphicsImageRenderer(
+        size: .init(width: 100, height: 100)
+    ).image { ctx in
+        UIColor.gray.withAlphaComponent(0.2).setFill()
+        ctx.fill(CGRect(x: 0, y: 0, width: 100, height: 100))
     }
 
     // MARK: - Step 2: Trim Audio
@@ -489,8 +501,6 @@ enum ShareClipGenerator {
 enum ShareClipError: Error, LocalizedError {
 
     case unsupportedMode
-    case missingArtwork
-    case invalidArtwork
     case audioTrimFailed
     case frameRenderFailed
     case videoWriteFailed
@@ -500,8 +510,6 @@ enum ShareClipError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unsupportedMode: "O modo selecionado não suporta exportação de vídeo."
-        case .missingArtwork: "Imagem do episódio não encontrada."
-        case .invalidArtwork: "Não foi possível carregar a imagem do episódio."
         case .audioTrimFailed: "Falha ao recortar o áudio."
         case .frameRenderFailed: "Falha ao renderizar o quadro do vídeo."
         case .videoWriteFailed: "Falha ao gravar o vídeo."

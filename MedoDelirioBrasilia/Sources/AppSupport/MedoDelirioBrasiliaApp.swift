@@ -148,6 +148,8 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             await collectTelemetry()
         }
         createFoldersForDownloadedContent()
+        // Safety net for ShareClip's own onDisappear cleanup, which doesn't run if the app is force-quit mid-flow.
+        ShareClipGenerator.cleanupOutputDirectory()
         updateExternalLinks()
         updateFolderChangeHashes()
         registerForPushNotificationsIfAuthorized()

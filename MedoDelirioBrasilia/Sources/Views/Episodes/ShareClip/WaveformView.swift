@@ -26,6 +26,7 @@ struct WaveformView: View {
     private static let barCornerRadius: CGFloat = 2
     private static let viewHeight: CGFloat = 100
     private static let minClipLength: TimeInterval = 1
+    private static let maxClipLength: TimeInterval = 150
 
     private static let edgeHandleWidth: CGFloat = 10
     private static let edgeHandleCornerRadius: CGFloat = 4
@@ -150,7 +151,8 @@ struct WaveformView: View {
                 .onChanged { value in
                     let newStart = TimeInterval(value.location.x / totalContentWidth) * duration
                     let maxStart = clipEnd - Self.minClipLength
-                    clipStart = min(max(newStart, 0), maxStart)
+                    let minStart = max(0, clipEnd - Self.maxClipLength)
+                    clipStart = min(max(newStart, minStart), maxStart)
                 }
         )
     }
@@ -168,7 +170,8 @@ struct WaveformView: View {
                 .onChanged { value in
                     let newEnd = TimeInterval(value.location.x / totalContentWidth) * duration
                     let minEnd = clipStart + Self.minClipLength
-                    clipEnd = max(min(newEnd, duration), minEnd)
+                    let maxEnd = min(duration, clipStart + Self.maxClipLength)
+                    clipEnd = max(min(newEnd, maxEnd), minEnd)
                 }
         )
     }

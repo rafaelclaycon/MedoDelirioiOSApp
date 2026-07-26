@@ -109,6 +109,7 @@ struct NowPlayingView: View {
                 ShareClipView(episode: episode) {
                     showShareClip = false
                     toast = Toast(message: Shared.videoSharedSuccessfullyMessage, type: .success)
+                    Task { await AnalyticsService().send(originatingScreen: "ShareClip", action: "clip_shared") }
                 }
                 .environment(player)
             }
@@ -378,6 +379,7 @@ struct NowPlayingView: View {
                         player.togglePlayPause()
                     }
                     showShareClip = true
+                    Task { await AnalyticsService().send(originatingScreen: "NowPlaying", action: "didTapShareClip") }
                 }
             )
         }

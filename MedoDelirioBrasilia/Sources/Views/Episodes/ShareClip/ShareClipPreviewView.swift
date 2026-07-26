@@ -64,11 +64,22 @@ struct ShareClipPreviewView: View {
     }
 
     private func errorView(error: Error) -> some View {
-        ContentUnavailableView(
-            "Erro ao gerar clipe",
-            systemImage: "exclamationmark.triangle",
-            description: Text(error.localizedDescription)
-        )
+        VStack(spacing: .spacing(.large)) {
+            ContentUnavailableView(
+                "Erro ao gerar clipe",
+                systemImage: "exclamationmark.triangle",
+                description: Text(error.localizedDescription)
+            )
+
+            Button {
+                retryGeneration()
+            } label: {
+                Label("Tentar Novamente", systemImage: "arrow.clockwise")
+                    .frame(maxWidth: .infinity)
+            }
+            .shareClipButtonStyle()
+            .padding(.horizontal, .spacing(.xLarge))
+        }
     }
 
     private var loadingView: some View {
@@ -118,7 +129,15 @@ struct ShareClipPreviewView: View {
         } catch {
             guard !Task.isCancelled else { return }
             self.error = error
+            Task { await AnalyticsService().send(originatingScreen: "ShareClip", action: "clip_generation_failed(\(error.localizedDescription))") }
         }
+    }
+
+    private func retryGeneration() {
+        error = nil
+        generationPhase = nil
+        generationTask?.cancel()
+        generationTask = Task { await generateClip() }
     }
 
     // MARK: - Sharing

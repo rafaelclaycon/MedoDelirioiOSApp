@@ -13,7 +13,7 @@ struct ShareClipConfirmView: View {
     let config: ShareClipGenerator.Configuration
     var onExportComplete: () -> Void = {}
 
-    @State private var artwork: UIImage = placeholder
+    @State private var artwork: UIImage = ShareClipGenerator.placeholderArtwork
     @State private var audioPlayer: AVAudioPlayer?
     @State private var isPlaying = false
     @State private var currentTime: TimeInterval
@@ -226,13 +226,4 @@ struct ShareClipConfirmView: View {
             }
         }
     }
-}
-
-// MARK: - Placeholder artwork
-
-private let placeholder: UIImage = UIGraphicsImageRenderer(
-    size: .init(width: 100, height: 100)
-).image { ctx in
-    UIColor.gray.withAlphaComponent(0.2).setFill()
-    ctx.fill(CGRect(x: 0, y: 0, width: 100, height: 100))
 }
