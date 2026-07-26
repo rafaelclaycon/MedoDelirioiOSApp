@@ -18,6 +18,7 @@ struct SettingsView: View {
     @State private var showAskForMoneyView: Bool = false
     @State private var showOnboardingPreview: Bool = false
     @State private var showTranscriptsWhatsNewPreview: Bool = false
+    @State private var showShareClipWhatsNewPreview: Bool = false
     @State private var toast: Toast?
     @State private var donors: [Donor]? = nil
 
@@ -228,6 +229,9 @@ struct SettingsView: View {
                 IntroducingTranscriptsView(appMemory: AppPersistentMemory.shared)
                     .environment(transcriptDownloadService)
             }
+            .sheet(isPresented: $showShareClipWhatsNewPreview) {
+                IntroducingShareClipView(appMemory: AppPersistentMemory.shared)
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     CloseButton {
@@ -251,7 +255,8 @@ struct SettingsView: View {
                 case .devOptions:
                     DevOptionsView(
                         showOnboardingPreview: $showOnboardingPreview,
-                        showTranscriptsWhatsNewPreview: $showTranscriptsWhatsNewPreview
+                        showTranscriptsWhatsNewPreview: $showTranscriptsWhatsNewPreview,
+                        showShareClipWhatsNewPreview: $showShareClipWhatsNewPreview
                     )
 
                 case .diagnostics:
@@ -309,6 +314,7 @@ struct DevOptionsView: View {
 
     @Binding var showOnboardingPreview: Bool
     @Binding var showTranscriptsWhatsNewPreview: Bool
+    @Binding var showShareClipWhatsNewPreview: Bool
 
     var body: some View {
         Form {
@@ -321,6 +327,10 @@ struct DevOptionsView: View {
 
                 Button("Reexibir Transcripts What's New") {
                     showTranscriptsWhatsNewPreview = true
+                }
+
+                Button("Reexibir ShareClip What's New") {
+                    showShareClipWhatsNewPreview = true
                 }
             }
         }

@@ -106,15 +106,13 @@ struct HelpView: View {
 
                             Divider()
 
-                            if FeatureFlag.isEnabled(.projectShareClip) {
-                                HelpInstructionView(
-                                    symbol: "scissors",
-                                    color: .orange,
-                                    text: shareClipInstruction
-                                )
+                            HelpInstructionView(
+                                symbol: "scissors",
+                                color: .orange,
+                                text: shareClipInstruction
+                            )
 
-                                Divider()
-                            }
+                            Divider()
 
                             HelpInstructionView(
                                 symbol: "theatermasks",

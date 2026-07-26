@@ -369,20 +369,17 @@ struct NowPlayingView: View {
                 }
             )
 
-            if FeatureFlag.isEnabled(.projectShareClip) {
-                let title = hSizeClass == .compact ? "Compart. Trecho" : "Compartilhar Trecho"
-                GlassButton(
-                    symbol: "scissors",
-                    title: title,
-                    color: .orange,
-                    action: {
-                        if player.isPlaying {
-                            player.togglePlayPause()
-                        }
-                        showShareClip = true
+            GlassButton(
+                symbol: "scissors",
+                title: hSizeClass == .compact ? "Compart. Trecho" : "Compartilhar Trecho",
+                color: .orange,
+                action: {
+                    if player.isPlaying {
+                        player.togglePlayPause()
                     }
-                )
-            }
+                    showShareClip = true
+                }
+            )
         }
         .padding(.bottom, UIDevice.deviceType == .mac ? .spacing(.medium) : .zero)
     }

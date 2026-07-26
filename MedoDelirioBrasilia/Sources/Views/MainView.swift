@@ -40,6 +40,7 @@ struct MainView: View {
     @State private var subviewToOpen: MainViewModalToOpen = .onboarding
     @State private var showingModalView: Bool = false
     @State private var showTranscriptsWhatsNew: Bool = false
+    @State private var showShareClipWhatsNew: Bool = false
 
     // iPad
     @State private var sidebarFoldersViewModel: SidebarFoldersViewModel
@@ -643,7 +644,12 @@ struct MainView: View {
             logger.debug("MainView appeared")
             sendUserPersonalTrendsToServerIfEnabled()
             displayOnboardingIfNeeded()
-            displayTranscriptsWhatsNewIfNeeded()
+            // Only one "what's new" sheet can be presented at a time, so these
+            // are mutually exclusive per app open — ShareClip (the newer
+            // feature) takes priority; Transcripts catches up on a later open.
+            if !displayShareClipWhatsNewIfNeeded() {
+                displayTranscriptsWhatsNewIfNeeded()
+            }
 
             Task {
 //                if AppPersistentMemory.shared.hasAllowedContentUpdate() {
@@ -710,6 +716,11 @@ struct MainView: View {
         }) {
             IntroducingTranscriptsView(appMemory: AppPersistentMemory.shared)
                 .environment(transcriptDownloadService)
+        }
+        .sheet(isPresented: $showShareClipWhatsNew, onDismiss: {
+            AppPersistentMemory.shared.hasSeenShareClipWhatsNewScreen(true)
+        }) {
+            IntroducingShareClipView(appMemory: AppPersistentMemory.shared)
         }
         .sheetOrFullScreenCover(isPresented: $showNowPlaying) {
             NowPlayingView()
@@ -937,6 +948,15 @@ struct MainView: View {
         guard !AppPersistentMemory.shared.hasSeenTranscriptsWhatsNewScreen() else { return }
 
         showTranscriptsWhatsNew = true
+    }
+
+    @discardableResult
+    private func displayShareClipWhatsNewIfNeeded() -> Bool {
+        guard AppPersistentMemory.shared.hasShownNotificationsOnboarding() else { return false }
+        guard !AppPersistentMemory.shared.hasSeenShareClipWhatsNewScreen() else { return false }
+
+        showShareClipWhatsNew = true
+        return true
     }
 
     private func sendFolderResearchChanges() async {

@@ -33,6 +33,9 @@ protocol AppPersistentMemoryProtocol {
     func hasSeenTranscriptsWhatsNewScreen() -> Bool
     func hasSeenTranscriptsWhatsNewScreen(_ newValue: Bool)
 
+    func hasSeenShareClipWhatsNewScreen() -> Bool
+    func hasSeenShareClipWhatsNewScreen(_ newValue: Bool)
+
     var customInstallId: String { get }
 
     func saveRecentSearches(_ searchTerms: [String])
@@ -227,6 +230,13 @@ extension AppPersistentMemory {
         return Bool(value as! Bool)
     }
 
+    func hasSeenShareClipWhatsNewScreen() -> Bool {
+        guard let value = userDefaults.object(forKey: "hasSeenShareClipWhatsNewScreen") else {
+            return false
+        }
+        return Bool(value as! Bool)
+    }
+
     func recentSearches() -> [String]? {
         guard let value = userDefaults.stringArray(forKey: "recentSearches") else {
             return nil
@@ -380,6 +390,10 @@ extension AppPersistentMemory {
 
     func hasSeenTranscriptsWhatsNewScreen(_ newValue: Bool) {
         userDefaults.set(newValue, forKey: "hasSeenTranscriptsWhatsNewScreen")
+    }
+
+    func hasSeenShareClipWhatsNewScreen(_ newValue: Bool) {
+        userDefaults.set(newValue, forKey: "hasSeenShareClipWhatsNewScreen")
     }
 
     func saveRecentSearches(_ searchTerms: [String]) {
