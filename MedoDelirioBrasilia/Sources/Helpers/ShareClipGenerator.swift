@@ -66,7 +66,8 @@ enum ShareClipGenerator {
             staticVideoURL: staticVideoURL,
             trimmedAudioURL: trimmedAudioURL,
             videoSize: videoSize,
-            clipDuration: clipDuration
+            clipDuration: clipDuration,
+            config: config
         )
 
         cleanup(urls: [trimmedAudioURL, staticVideoURL])
@@ -240,7 +241,8 @@ enum ShareClipGenerator {
         staticVideoURL: URL,
         trimmedAudioURL: URL,
         videoSize: CGSize,
-        clipDuration: TimeInterval
+        clipDuration: TimeInterval,
+        config: Configuration
     ) async throws -> URL {
         let composition = AVMutableComposition()
 
@@ -291,7 +293,7 @@ enum ShareClipGenerator {
 
         // -- Export --
         try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
-        let outputURL = outputDirectory.appendingPathComponent("shareclip_clip.mp4")
+        let outputURL = outputDirectory.appendingPathComponent(exportFileName(for: config))
         removeIfExists(at: outputURL)
 
         guard let session = AVAssetExportSession(
@@ -459,6 +461,26 @@ enum ShareClipGenerator {
 
     private static func cleanup(urls: [URL]) {
         for url in urls { removeIfExists(at: url) }
+    }
+
+    /// A user-facing filename derived from the episode title and clip start
+    /// time, so the exported file (visible in Files, AirDrop, Mail, etc.)
+    /// reads as the actual clip rather than a generic, identical-every-time name.
+    private static func exportFileName(for config: Configuration) -> String {
+        let invalidCharacters = CharacterSet(charactersIn: "/\\:*?\"<>|")
+        let sanitizedTitle = config.episode.title
+            .components(separatedBy: invalidCharacters)
+            .joined(separator: " ")
+            .components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+
+        let maxTitleLength = 60
+        let title = sanitizedTitle.isEmpty ? "Clipe" : String(sanitizedTitle.prefix(maxTitleLength))
+
+        let clipStartTag = NowPlayingView.formatTime(config.clipStart).replacingOccurrences(of: ":", with: "-")
+
+        return "\(title) - \(clipStartTag).mp4"
     }
 }
 

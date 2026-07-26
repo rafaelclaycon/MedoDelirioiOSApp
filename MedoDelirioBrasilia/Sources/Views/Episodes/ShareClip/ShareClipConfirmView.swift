@@ -19,6 +19,10 @@ struct ShareClipConfirmView: View {
     @State private var currentTime: TimeInterval
     @State private var playbackTask: Task<Void, Never>?
     @State private var showGeneration = false
+    @State private var isScrubbing = false
+    @State private var scrubValue: TimeInterval = 0
+
+    private static let scrubberThumbSize: CGFloat = 14
 
     init(
         config: ShareClipGenerator.Configuration,
@@ -30,8 +34,9 @@ struct ShareClipConfirmView: View {
     }
 
     private var clipDuration: TimeInterval { config.clipEnd - config.clipStart }
+    private var displayedTime: TimeInterval { isScrubbing ? scrubValue : currentTime }
     private var elapsedInClip: TimeInterval {
-        max(0, min(currentTime - config.clipStart, clipDuration))
+        max(0, min(displayedTime - config.clipStart, clipDuration))
     }
 
     var body: some View {
@@ -82,20 +87,7 @@ struct ShareClipConfirmView: View {
 
     private var audioControls: some View {
         VStack(spacing: .spacing(.small)) {
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color.primary.opacity(0.1))
-                    Capsule()
-                        .fill(Color.orange)
-                        .frame(
-                            width: clipDuration > 0
-                                ? geo.size.width * elapsedInClip / clipDuration
-                                : 0
-                        )
-                }
-            }
-            .frame(height: 4)
+            scrubber
 
             HStack {
                 Text(NowPlayingView.formatTime(elapsedInClip))
@@ -125,6 +117,44 @@ struct ShareClipConfirmView: View {
             .monospacedDigit()
             .foregroundStyle(.secondary)
         }
+    }
+
+    private var scrubber: some View {
+        GeometryReader { geo in
+            let fraction = clipDuration > 0 ? elapsedInClip / clipDuration : 0
+            let thumbX = CGFloat(fraction) * geo.size.width
+
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.primary.opacity(0.1))
+                    .frame(height: 4)
+
+                Capsule()
+                    .fill(Color.orange)
+                    .frame(width: max(thumbX, 0), height: 4)
+
+                Circle()
+                    .fill(Color.orange)
+                    .frame(width: Self.scrubberThumbSize, height: Self.scrubberThumbSize)
+                    .offset(x: thumbX - Self.scrubberThumbSize / 2)
+            }
+            .frame(height: Self.scrubberThumbSize)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        isScrubbing = true
+                        let clamped = min(max(value.location.x, 0), geo.size.width)
+                        let clampedFraction = geo.size.width > 0 ? clamped / geo.size.width : 0
+                        scrubValue = config.clipStart + TimeInterval(clampedFraction) * clipDuration
+                    }
+                    .onEnded { _ in
+                        isScrubbing = false
+                        seek(to: scrubValue)
+                    }
+            )
+        }
+        .frame(height: Self.scrubberThumbSize)
     }
 
     private var generateButton: some View {
@@ -173,6 +203,11 @@ struct ShareClipConfirmView: View {
         isPlaying = false
         playbackTask?.cancel()
         playbackTask = nil
+    }
+
+    private func seek(to time: TimeInterval) {
+        currentTime = min(max(time, config.clipStart), config.clipEnd)
+        audioPlayer?.currentTime = currentTime
     }
 
     private func startTracking() {

@@ -30,7 +30,7 @@ struct ShareClipPreviewView: View {
                 loadingView
             }
         }
-        .navigationTitle("Pré-visualização")
+        .navigationTitle("Exportar Clipe")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             generationTask = Task { await generateClip() }
