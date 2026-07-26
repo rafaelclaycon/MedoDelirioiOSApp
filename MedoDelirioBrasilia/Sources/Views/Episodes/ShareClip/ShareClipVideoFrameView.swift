@@ -24,19 +24,13 @@ struct ShareClipVideoLayout {
     var artworkSize: CGFloat {
         if isPortrait { return videoSize.width * 0.55 }
         if isLandscape { return min(videoSize.height * 0.45, videoSize.width * 0.28) }
-        return videoSize.width * 0.50
+        return videoSize.width * 0.40
     }
 
     var artworkCornerRadius: CGFloat { artworkSize * 0.06 }
 
-    var artworkTopPadding: CGFloat {
-        if isPortrait { return videoSize.height * 0.15 }
-        if isLandscape { return videoSize.height * 0.08 }
-        return videoSize.height * 0.08
-    }
-
-    var titleSpacing: CGFloat { videoSize.height * 0.035 }
-    var dateSpacing: CGFloat { videoSize.height * 0.015 }
+    var titleSpacing: CGFloat { videoSize.height * 0.05 }
+    var dateSpacing: CGFloat { videoSize.height * 0.025 }
 
     var titleFontSize: CGFloat {
         if isLandscape { return 44 }
@@ -44,7 +38,6 @@ struct ShareClipVideoLayout {
     }
 
     var dateFontSize: CGFloat { titleFontSize * 0.7 }
-    var brandingFontSize: CGFloat { titleFontSize * 0.6 }
 
     var trackCornerRadius: CGFloat { trackFrame.height / 2 }
 
@@ -56,7 +49,7 @@ struct ShareClipVideoLayout {
         let y: CGFloat
         if isPortrait { y = videoSize.height * 0.65 }
         else if isLandscape { y = videoSize.height * 0.78 }
-        else { y = videoSize.height * 0.82 }
+        else { y = videoSize.height * 0.79 }
         return CGRect(x: padding, y: y, width: width, height: height)
     }
 
@@ -75,11 +68,16 @@ struct ShareClipVideoLayout {
         CGRect(x: trackFrame.maxX - timestampLabelWidth, y: timestampY, width: timestampLabelWidth, height: timestampHeight)
     }
 
-    var brandingY: CGFloat {
-        if isPortrait { return videoSize.height * 0.72 }
-        if isLandscape { return videoSize.height * 0.88 }
-        return videoSize.height * 0.90
-    }
+    /// Height of the region above the progress track and its timestamps. The
+    /// artwork/title/date block is laid out within this region so it never
+    /// collides with the track, however long the title wraps.
+    var contentAreaHeight: CGFloat { timestampY }
+
+    /// A deliberate, fixed gap between the frame's top edge and the artwork.
+    /// Kept independent of title length so there's always visible breathing
+    /// room up top — the leftover space below (before the track) is what
+    /// flexes with shorter or longer titles.
+    var contentTopPadding: CGFloat { contentAreaHeight * 0.16 }
 }
 
 // MARK: - View
@@ -96,17 +94,18 @@ struct ShareClipVideoFrameView: View {
     /// Where the clip starts within the full episode. Baked in statically since,
     /// unlike the trailing countdown, it never changes over the clip's duration.
     let clipStart: TimeInterval
+    let shareMode: ShareClipShareMode
     let videoSize: CGSize
 
     private var layout: ShareClipVideoLayout { .init(videoSize: videoSize) }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            backgroundColor
+            background
 
             VStack(spacing: 0) {
                 Spacer()
-                    .frame(height: layout.artworkTopPadding)
+                    .frame(height: layout.contentTopPadding)
 
                 Image(uiImage: artwork)
                     .resizable()
@@ -131,20 +130,33 @@ struct ShareClipVideoFrameView: View {
                     .font(.system(size: layout.dateFontSize))
                     .foregroundStyle(textColor.opacity(0.6))
 
-                Spacer()
+                Spacer(minLength: 0)
             }
-            .frame(width: videoSize.width)
+            .frame(width: videoSize.width, height: layout.contentAreaHeight)
 
             trackBackground
 
             leadingTimestampLabel
-
-            brandingLabel
         }
         .frame(width: videoSize.width, height: videoSize.height)
     }
 
     // MARK: - Subviews
+
+    /// Fills the frame with the mode's designed background image, if it has
+    /// one; falls back to a solid color for modes without dedicated artwork.
+    @ViewBuilder
+    private var background: some View {
+        if let imageName = shareMode.backgroundImageName, let backgroundImage = UIImage(named: imageName) {
+            Image(uiImage: backgroundImage)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(width: videoSize.width, height: videoSize.height)
+                .clipped()
+        } else {
+            backgroundColor
+        }
+    }
 
     /// Anchors viewers to where this clip sits in the full episode. The trailing
     /// countdown isn't rendered here — it's animated as a `CATextLayer` during
@@ -169,14 +181,6 @@ struct ShareClipVideoFrameView: View {
             )
     }
 
-    private var brandingLabel: some View {
-        Text("Clipe criado com Medo e Delírio iOS")
-            .font(.system(size: layout.brandingFontSize, weight: .medium))
-            .foregroundStyle(textColor.opacity(0.4))
-            .frame(width: videoSize.width)
-            .offset(y: layout.brandingY)
-    }
-
     // MARK: - Colors
 
     private let backgroundColor = Color(red: 0.06, green: 0.24, blue: 0.14)
@@ -198,6 +202,7 @@ private let previewArtwork: UIImage = UIGraphicsImageRenderer(size: .init(width:
         episodeTitle: "O Fim do Mandato e as Perspectivas para 2026",
         episodeDate: .now,
         clipStart: 620,
+        shareMode: .square,
         videoSize: .init(width: 1080, height: 1080)
     )
     .frame(width: 1080, height: 1080)
@@ -211,6 +216,7 @@ private let previewArtwork: UIImage = UIGraphicsImageRenderer(size: .init(width:
         episodeTitle: "Eleições 2026: Candidatos, Alianças e o Futuro da Democracia Brasileira",
         episodeDate: .now,
         clipStart: 3725,
+        shareMode: .square,
         videoSize: .init(width: 1080, height: 1080)
     )
     .frame(width: 1080, height: 1080)

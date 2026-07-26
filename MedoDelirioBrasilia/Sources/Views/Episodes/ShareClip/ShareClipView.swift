@@ -33,6 +33,11 @@ struct ShareClipView: View {
                     waveformSection
 
                     previewControls
+
+                    Text("Selecione o trecho que você quer compartilhar.\n\nArraste a forma de onda para os lados para acessar outras partes do episódio.")
+                        .font(.callout)
+                        .foregroundStyle(.gray)
+                        .multilineTextAlignment(.center)
                 }
                 .padding(.horizontal, .spacing(.xLarge))
                 .padding(.vertical, .spacing(.large))

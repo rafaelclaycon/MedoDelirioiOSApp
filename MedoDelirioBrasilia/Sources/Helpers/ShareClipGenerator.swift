@@ -50,6 +50,7 @@ enum ShareClipGenerator {
             episode: config.episode,
             artwork: artwork,
             clipStart: config.clipStart,
+            shareMode: config.shareMode,
             videoSize: videoSize
         )
 
@@ -130,6 +131,7 @@ enum ShareClipGenerator {
         episode: PodcastEpisode,
         artwork: UIImage,
         clipStart: TimeInterval,
+        shareMode: ShareClipShareMode,
         videoSize: CGSize
     ) throws -> UIImage {
         let view = ShareClipVideoFrameView(
@@ -137,6 +139,7 @@ enum ShareClipGenerator {
             episodeTitle: episode.title,
             episodeDate: episode.pubDate,
             clipStart: clipStart,
+            shareMode: shareMode,
             videoSize: videoSize
         )
         let renderer = ImageRenderer(content: view)
@@ -348,7 +351,7 @@ enum ShareClipGenerator {
         fillLayer.add(anim, forKey: "progressFill")
 
         parentLayer.addSublayer(fillLayer)
-        parentLayer.addSublayer(countdownTextLayer(layout: layout, videoSize: videoSize, safeDuration: safeDuration))
+        parentLayer.addSublayer(countdownLayer(layout: layout, videoSize: videoSize, safeDuration: safeDuration))
 
         let videoComposition = AVMutableVideoComposition()
         videoComposition.renderSize = videoSize
@@ -367,17 +370,23 @@ enum ShareClipGenerator {
         return videoComposition
     }
 
-    /// Builds the trailing "time remaining" label as a `CATextLayer` animated with
-    /// discrete, one-second steps. Unlike the leading (clip-start) timestamp, this
-    /// value changes throughout the clip, so it can't be baked into the static
-    /// frame image the way the rest of the layout is — it has to be composited
-    /// live, the same way the progress fill is.
+    /// Builds the trailing "time remaining" label as a plain `CALayer` whose
+    /// `contents` is keyframed through one pre-rendered bitmap per second.
+    ///
+    /// A `CATextLayer` with an animated `string` looks right in Xcode previews
+    /// but renders frozen once passed through `AVVideoCompositionCoreAnimationTool`:
+    /// its custom text-drawing path reads the layer's live model value directly
+    /// instead of the interpolated/keyframed one, so the export just bakes in
+    /// whatever `string` happened to be at snapshot time. `contents`, on the
+    /// other hand, is a genuine compositor-level property — the same kind the
+    /// progress fill's `bounds` animation relies on — so keyframing it through
+    /// a sequence of images actually gets resampled per frame.
     @MainActor
-    private static func countdownTextLayer(
+    private static func countdownLayer(
         layout: ShareClipVideoLayout,
         videoSize: CGSize,
         safeDuration: CMTime
-    ) -> CATextLayer {
+    ) -> CALayer {
         let frame = layout.trailingTimestampFrame
         let frameCA = CGRect(
             x: frame.origin.x,
@@ -386,34 +395,55 @@ enum ShareClipGenerator {
             height: frame.height
         )
 
-        let textLayer = CATextLayer()
-        textLayer.frame = frameCA
-        textLayer.alignmentMode = .right
-        textLayer.font = UIFont.systemFont(ofSize: layout.timestampFontSize, weight: .semibold)
-        textLayer.fontSize = layout.timestampFontSize
-        textLayer.foregroundColor = UIColor.white.withAlphaComponent(0.85).cgColor
-        textLayer.contentsScale = 3
-        textLayer.isWrapped = false
-        textLayer.truncationMode = .none
-
         let durationSeconds = CMTimeGetSeconds(safeDuration)
         let wholeSeconds = max(Int(ceil(durationSeconds)), 1)
-        let values = (0..<wholeSeconds).map { NowPlayingView.formatTime(TimeInterval(wholeSeconds - $0)) }
+
+        let scale: CGFloat = 3
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = scale
+        format.opaque = false
+        let renderer = UIGraphicsImageRenderer(size: frame.size, format: format)
+
+        let font = UIFont.systemFont(ofSize: layout.timestampFontSize, weight: .semibold)
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.alignment = .right
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: UIColor.white.withAlphaComponent(0.85),
+            .paragraphStyle: paragraphStyle
+        ]
+
+        let images: [CGImage] = (0..<wholeSeconds).map { i in
+            let remaining = wholeSeconds - i
+            let text = ("-" + NowPlayingView.formatTime(TimeInterval(remaining))) as NSString
+            let image = renderer.image { _ in
+                let y = (frame.height - font.lineHeight) / 2
+                text.draw(
+                    in: CGRect(x: 0, y: y, width: frame.width, height: font.lineHeight),
+                    withAttributes: attributes
+                )
+            }
+            return image.cgImage!
+        }
+
+        let layer = CALayer()
+        layer.frame = frameCA
+        layer.contentsScale = scale
+        layer.contents = images.first
+
         let keyTimes = (0..<wholeSeconds).map { NSNumber(value: Double($0) / durationSeconds) }
 
-        textLayer.string = values.first
-
-        let countdown = CAKeyframeAnimation(keyPath: "string")
-        countdown.values = values
+        let countdown = CAKeyframeAnimation(keyPath: "contents")
+        countdown.values = images
         countdown.keyTimes = keyTimes
         countdown.calculationMode = .discrete
         countdown.beginTime = AVCoreAnimationBeginTimeAtZero
         countdown.duration = durationSeconds
         countdown.isRemovedOnCompletion = false
         countdown.fillMode = .forwards
-        textLayer.add(countdown, forKey: "countdown")
+        layer.add(countdown, forKey: "countdown")
 
-        return textLayer
+        return layer
     }
 
     // MARK: - Helpers

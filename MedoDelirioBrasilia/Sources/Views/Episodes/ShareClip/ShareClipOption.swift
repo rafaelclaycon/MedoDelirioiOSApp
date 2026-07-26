@@ -51,6 +51,15 @@ enum ShareClipShareMode: String, CaseIterable, Identifiable {
     static var videoCases: [ShareClipShareMode] {
         allCases.filter { $0.videoSize != nil }
     }
+
+    /// Asset catalog name for this mode's clip background image.
+    /// Returns `nil` for modes without dedicated artwork, which fall back to a solid color.
+    var backgroundImageName: String? {
+        switch self {
+        case .soundOnly, .portraitVideo, .landscapeVideo: nil
+        case .square: "square_share_clip"
+        }
+    }
 }
 
 // MARK: - Branding
