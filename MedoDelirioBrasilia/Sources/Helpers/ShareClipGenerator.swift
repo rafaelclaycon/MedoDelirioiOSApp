@@ -410,7 +410,15 @@ enum ShareClipGenerator {
         )
 
         let durationSeconds = CMTimeGetSeconds(safeDuration)
-        let wholeSeconds = max(Int(ceil(durationSeconds)), 1)
+        let totalSeconds = max(Int(durationSeconds.rounded(.up)), 1)
+        // One extra step beyond `totalSeconds` so the final value is 0
+        // ("-0:00"), with every step — including that last one — getting an
+        // equal, fully visible slice of the clip. Real clip durations almost
+        // always have a fractional remainder (e.g. 24.3s), so keying steps to
+        // exact one-second boundaries left the final step compressed into
+        // just that leftover fraction — often too short to actually be seen,
+        // which is why the countdown appeared to freeze a couple seconds early.
+        let stepCount = totalSeconds + 1
 
         let scale: CGFloat = 3
         let format = UIGraphicsImageRendererFormat()
@@ -427,8 +435,8 @@ enum ShareClipGenerator {
             .paragraphStyle: paragraphStyle
         ]
 
-        let images: [CGImage] = (0..<wholeSeconds).map { i in
-            let remaining = wholeSeconds - i
+        let images: [CGImage] = (0..<stepCount).map { i in
+            let remaining = totalSeconds - i
             let text = ("-" + NowPlayingView.formatTime(TimeInterval(remaining))) as NSString
             let image = renderer.image { _ in
                 let y = (frame.height - font.lineHeight) / 2
@@ -445,7 +453,7 @@ enum ShareClipGenerator {
         layer.contentsScale = scale
         layer.contents = images.first
 
-        let keyTimes = (0..<wholeSeconds).map { NSNumber(value: Double($0) / durationSeconds) }
+        let keyTimes = (0..<stepCount).map { NSNumber(value: Double($0) / Double(stepCount)) }
 
         let countdown = CAKeyframeAnimation(keyPath: "contents")
         countdown.values = images
