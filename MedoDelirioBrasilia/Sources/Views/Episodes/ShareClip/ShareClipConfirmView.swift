@@ -69,6 +69,7 @@ struct ShareClipConfirmView: View {
             artwork: artwork,
             episodeTitle: config.episode.title,
             episodeDate: config.episode.pubDate,
+            clipStart: config.clipStart,
             videoSize: .init(width: size, height: size)
         )
         .frame(width: size, height: size)

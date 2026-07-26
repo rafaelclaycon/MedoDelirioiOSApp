@@ -60,6 +60,21 @@ struct ShareClipVideoLayout {
         return CGRect(x: padding, y: y, width: width, height: height)
     }
 
+    var timestampFontSize: CGFloat { max(videoSize.width * 0.028, 22) }
+    var timestampHeight: CGFloat { timestampFontSize * 1.3 }
+    var timestampY: CGFloat { trackFrame.origin.y - timestampHeight - videoSize.height * 0.012 }
+    var timestampLabelWidth: CGFloat { videoSize.width * 0.22 }
+
+    /// Anchors the clip's start time within the full episode, left-aligned above the track's leading edge.
+    var leadingTimestampFrame: CGRect {
+        CGRect(x: trackFrame.origin.x, y: timestampY, width: timestampLabelWidth, height: timestampHeight)
+    }
+
+    /// Counts down the clip's remaining time, right-aligned above the track's trailing edge.
+    var trailingTimestampFrame: CGRect {
+        CGRect(x: trackFrame.maxX - timestampLabelWidth, y: timestampY, width: timestampLabelWidth, height: timestampHeight)
+    }
+
     var brandingY: CGFloat {
         if isPortrait { return videoSize.height * 0.72 }
         if isLandscape { return videoSize.height * 0.88 }
@@ -78,6 +93,9 @@ struct ShareClipVideoFrameView: View {
     let artwork: UIImage
     let episodeTitle: String
     let episodeDate: Date
+    /// Where the clip starts within the full episode. Baked in statically since,
+    /// unlike the trailing countdown, it never changes over the clip's duration.
+    let clipStart: TimeInterval
     let videoSize: CGSize
 
     private var layout: ShareClipVideoLayout { .init(videoSize: videoSize) }
@@ -119,12 +137,27 @@ struct ShareClipVideoFrameView: View {
 
             trackBackground
 
+            leadingTimestampLabel
+
             brandingLabel
         }
         .frame(width: videoSize.width, height: videoSize.height)
     }
 
     // MARK: - Subviews
+
+    /// Anchors viewers to where this clip sits in the full episode. The trailing
+    /// countdown isn't rendered here — it's animated as a `CATextLayer` during
+    /// video generation, the same way the progress fill is.
+    private var leadingTimestampLabel: some View {
+        let frame = layout.leadingTimestampFrame
+        return Text(NowPlayingView.formatTime(clipStart))
+            .font(.system(size: layout.timestampFontSize, weight: .semibold))
+            .foregroundStyle(textColor.opacity(0.85))
+            .monospacedDigit()
+            .frame(width: frame.width, height: frame.height, alignment: .leading)
+            .offset(x: frame.origin.x, y: frame.origin.y)
+    }
 
     private var trackBackground: some View {
         RoundedRectangle(cornerRadius: layout.trackCornerRadius)
@@ -164,6 +197,7 @@ private let previewArtwork: UIImage = UIGraphicsImageRenderer(size: .init(width:
         artwork: previewArtwork,
         episodeTitle: "O Fim do Mandato e as Perspectivas para 2026",
         episodeDate: .now,
+        clipStart: 620,
         videoSize: .init(width: 1080, height: 1080)
     )
     .frame(width: 1080, height: 1080)
@@ -176,6 +210,7 @@ private let previewArtwork: UIImage = UIGraphicsImageRenderer(size: .init(width:
         artwork: previewArtwork,
         episodeTitle: "Eleições 2026: Candidatos, Alianças e o Futuro da Democracia Brasileira",
         episodeDate: .now,
+        clipStart: 3725,
         videoSize: .init(width: 1080, height: 1080)
     )
     .frame(width: 1080, height: 1080)

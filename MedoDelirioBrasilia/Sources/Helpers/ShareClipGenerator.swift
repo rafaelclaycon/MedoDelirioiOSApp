@@ -49,6 +49,7 @@ enum ShareClipGenerator {
         let frameImage = try await renderStaticFrame(
             episode: config.episode,
             artwork: artwork,
+            clipStart: config.clipStart,
             videoSize: videoSize
         )
 
@@ -128,12 +129,14 @@ enum ShareClipGenerator {
     private static func renderStaticFrame(
         episode: PodcastEpisode,
         artwork: UIImage,
+        clipStart: TimeInterval,
         videoSize: CGSize
     ) throws -> UIImage {
         let view = ShareClipVideoFrameView(
             artwork: artwork,
             episodeTitle: episode.title,
             episodeDate: episode.pubDate,
+            clipStart: clipStart,
             videoSize: videoSize
         )
         let renderer = ImageRenderer(content: view)
@@ -345,6 +348,7 @@ enum ShareClipGenerator {
         fillLayer.add(anim, forKey: "progressFill")
 
         parentLayer.addSublayer(fillLayer)
+        parentLayer.addSublayer(countdownTextLayer(layout: layout, videoSize: videoSize, safeDuration: safeDuration))
 
         let videoComposition = AVMutableVideoComposition()
         videoComposition.renderSize = videoSize
@@ -361,6 +365,55 @@ enum ShareClipGenerator {
         videoComposition.instructions = [instruction]
 
         return videoComposition
+    }
+
+    /// Builds the trailing "time remaining" label as a `CATextLayer` animated with
+    /// discrete, one-second steps. Unlike the leading (clip-start) timestamp, this
+    /// value changes throughout the clip, so it can't be baked into the static
+    /// frame image the way the rest of the layout is — it has to be composited
+    /// live, the same way the progress fill is.
+    @MainActor
+    private static func countdownTextLayer(
+        layout: ShareClipVideoLayout,
+        videoSize: CGSize,
+        safeDuration: CMTime
+    ) -> CATextLayer {
+        let frame = layout.trailingTimestampFrame
+        let frameCA = CGRect(
+            x: frame.origin.x,
+            y: videoSize.height - frame.origin.y - frame.height,
+            width: frame.width,
+            height: frame.height
+        )
+
+        let textLayer = CATextLayer()
+        textLayer.frame = frameCA
+        textLayer.alignmentMode = .right
+        textLayer.font = UIFont.systemFont(ofSize: layout.timestampFontSize, weight: .semibold)
+        textLayer.fontSize = layout.timestampFontSize
+        textLayer.foregroundColor = UIColor.white.withAlphaComponent(0.85).cgColor
+        textLayer.contentsScale = 3
+        textLayer.isWrapped = false
+        textLayer.truncationMode = .none
+
+        let durationSeconds = CMTimeGetSeconds(safeDuration)
+        let wholeSeconds = max(Int(ceil(durationSeconds)), 1)
+        let values = (0..<wholeSeconds).map { NowPlayingView.formatTime(TimeInterval(wholeSeconds - $0)) }
+        let keyTimes = (0..<wholeSeconds).map { NSNumber(value: Double($0) / durationSeconds) }
+
+        textLayer.string = values.first
+
+        let countdown = CAKeyframeAnimation(keyPath: "string")
+        countdown.values = values
+        countdown.keyTimes = keyTimes
+        countdown.calculationMode = .discrete
+        countdown.beginTime = AVCoreAnimationBeginTimeAtZero
+        countdown.duration = durationSeconds
+        countdown.isRemovedOnCompletion = false
+        countdown.fillMode = .forwards
+        textLayer.add(countdown, forKey: "countdown")
+
+        return textLayer
     }
 
     // MARK: - Helpers
