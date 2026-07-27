@@ -97,6 +97,13 @@ extension AppPersistentMemory {
         return String(value as! String)
     }
 
+    func getLastPushTokenSendDate() -> Date? {
+        guard let value = userDefaults.object(forKey: "lastPushTokenSendDate") else {
+            return nil
+        }
+        return Date(timeIntervalSince1970: value as! Double)
+    }
+
     func hasShownNotificationsOnboarding() -> Bool {
         guard let value = userDefaults.object(forKey: "hasShownNotificationsOnboarding") else {
             return false
@@ -311,8 +318,13 @@ extension AppPersistentMemory {
         userDefaults.set(token, forKey: "lastSentPushToken")
     }
 
+    func setLastPushTokenSendDate(to newValue: Date) {
+        userDefaults.set(newValue.timeIntervalSince1970, forKey: "lastPushTokenSendDate")
+    }
+
     func clearLastSentPushToken() {
         userDefaults.removeObject(forKey: "lastSentPushToken")
+        userDefaults.removeObject(forKey: "lastPushTokenSendDate")
     }
     
     func hasShownNotificationsOnboarding(_ newValue: Bool) {

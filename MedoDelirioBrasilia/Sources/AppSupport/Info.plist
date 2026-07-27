@@ -19,11 +19,16 @@
 		<string>ymail</string>
 		<string>whatsapp</string>
 	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.rafaelschmitt.MedoDelirioBrasilia.contentRefresh</string>
+	</array>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
+		<string>fetch</string>
 		<string>audio</string>
 	</array>
 	<key>UILaunchScreen</key>

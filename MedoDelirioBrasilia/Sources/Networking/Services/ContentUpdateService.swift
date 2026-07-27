@@ -19,6 +19,16 @@ protocol ContentUpdateServiceProtocol {
 @MainActor
 class ContentUpdateService: ContentUpdateServiceProtocol {
 
+    /// Single instance shared between the UI and background execution (silent pushes,
+    /// scheduled refreshes) so concurrent updates can't process the same events twice.
+    static let shared = ContentUpdateService(
+        apiClient: APIClient.shared,
+        database: LocalDatabase.shared,
+        fileManager: ContentFileManager(),
+        appMemory: AppPersistentMemory.shared,
+        logger: Logger.shared
+    )
+
     // MARK: - Public Properties
 
     public var processedUpdateNumber: Int = 0
@@ -76,7 +86,13 @@ extension ContentUpdateService {
     /// Performs the content update operation with the server.
     @discardableResult
     public func update() async -> Bool {
+        guard !isUpdating else { return false }
         isUpdating = true
+
+        // The service outlives any single run, so progress starts from scratch each time.
+        processedUpdateNumber = 0
+        totalUpdateCount = 0
+        updateStartTime = nil
 
         defer {
             appMemory.setLastUpdateAttempt(to: Date.now.iso8601withFractionalSeconds)
@@ -128,18 +144,16 @@ extension ContentUpdateService {
 
     private func retryLocal() async throws -> Bool {
         let localResult = try await retrieveUnsuccessfulLocalUpdates()
-        
-        // Set totalUpdateCount early so the banner can show while we process
-        if localResult >= 10 {
-            totalUpdateCount = localResult
-            processedUpdateNumber = 0
+        guard localResult > 0 else { return false }
+
+        // Counted before processing so the banner can show while we work through them.
+        totalUpdateCount += localResult
+        if updateStartTime == nil {
             updateStartTime = Date()
         }
-        
-        if localResult > 0 {
-            try await syncUnsuccessful()
-        }
-        return localResult > 0
+
+        try await syncUnsuccessful()
+        return true
     }
 
     private func syncDataWithServer() async throws -> Bool {
@@ -153,15 +167,17 @@ extension ContentUpdateService {
     private func retrieveServerUpdates() async throws -> Int {
         let lastUpdateDate = localDatabase.dateTimeOfLastUpdate()
         serverUpdates = try await getUpdates(from: lastUpdateDate)
-        
-        // Set totalUpdateCount early so the banner can show while we process
+
+        // Added to whatever the local retry phase already queued, so progress
+        // reflects every event this run will process.
         let count = serverUpdates?.count ?? 0
-        if count >= 10 {
-            totalUpdateCount = count
-            processedUpdateNumber = 0
-            updateStartTime = Date()
+        if count > 0 {
+            totalUpdateCount += count
+            if updateStartTime == nil {
+                updateStartTime = Date()
+            }
         }
-        
+
         if var serverUpdates = serverUpdates {
             for i in serverUpdates.indices {
                 do {
@@ -185,14 +201,8 @@ extension ContentUpdateService {
     private func serverSync() async throws {
         guard let serverUpdates = serverUpdates, !serverUpdates.isEmpty else { return }
 
-        // Only set these if not already set (for < 10 updates case)
-        if totalUpdateCount == 0 {
-            processedUpdateNumber = 0
-            totalUpdateCount = serverUpdates.count
-            updateStartTime = Date()
-        }
-
         for update in serverUpdates {
+            guard !Task.isCancelled else { break }
             await process(updateEvent: update)
             processedUpdateNumber += 1
         }
@@ -201,14 +211,8 @@ extension ContentUpdateService {
     private func syncUnsuccessful() async throws {
         guard let localUnsuccessfulUpdates = localUnsuccessfulUpdates, !localUnsuccessfulUpdates.isEmpty else { return }
 
-        // Only set these if not already set (for < 10 updates case)
-        if totalUpdateCount == 0 {
-            processedUpdateNumber = 0
-            totalUpdateCount = localUnsuccessfulUpdates.count
-            updateStartTime = Date()
-        }
-
         for update in localUnsuccessfulUpdates {
+            guard !Task.isCancelled else { break }
             await process(updateEvent: update)
             processedUpdateNumber += 1
         }

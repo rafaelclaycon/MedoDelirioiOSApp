@@ -35,13 +35,7 @@ final class MainContentViewModel {
 
     // MARK: - Content Update
 
-    var contentUpdateService = ContentUpdateService(
-        apiClient: APIClient.shared,
-        database: LocalDatabase.shared,
-        fileManager: ContentFileManager(),
-        appMemory: AppPersistentMemory.shared,
-        logger: Logger.shared
-    )
+    var contentUpdateService = ContentUpdateService.shared
     private let syncValues: SyncValues
 
     var displayLongUpdateBanner: Bool {
@@ -115,6 +109,9 @@ extension MainContentViewModel {
 
     public func onScenePhaseChanged(newPhase: ScenePhase) async {
         if newPhase == .active {
+            if BackgroundContentSync.consumePendingRefresh() {
+                loadContent(clearCache: true)
+            }
             await warmOpenContentUpdate()
         }
     }

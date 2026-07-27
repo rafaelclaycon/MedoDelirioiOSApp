@@ -120,6 +120,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 
         print("APP - APP DELEGATE")
         UNUserNotificationCenter.current().delegate = self
+        BackgroundContentSync.registerRefreshTask()
 
         // Fixes
         moveDatabaseFileIfNeeded()
@@ -152,7 +153,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         ShareClipGenerator.cleanupOutputDirectory()
         updateExternalLinks()
         updateFolderChangeHashes()
-        registerForPushNotificationsIfAuthorized()
+        registerForRemoteNotifications()
         subscribeToWeeklyHighlightsIfNeeded()
 
         return true
@@ -243,21 +244,28 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         Task {
             let tokenParts = deviceToken.map { data in String(format: "%02.2hhx", data) }
             let token = tokenParts.joined()
+            print("🔑 Push token: \(token)")
 
-            let storedToken = AppPersistentMemory().getLastSentPushToken()
+            let appMemory = AppPersistentMemory()
+            let storedToken = appMemory.getLastSentPushToken()
+            let sentToday = appMemory.getLastPushTokenSendDate()?.onlyDate == Date.now.onlyDate
 
-            guard token != storedToken else {
-                ChannelLogStore.shared.logEvent("Push token em cache (já enviado)", success: true)
+            // Resending daily even when the token hasn't changed: the server drops tokens
+            // APNs rejects, and a cache that never expired would leave this device
+            // unreachable for good once that happened.
+            guard token != storedToken || !sentToday else {
+                ChannelLogStore.shared.logEvent("Push token em cache (já enviado hoje)", success: true)
                 PushRegistrationStatus.shared.markRegistered()
                 return
             }
 
-            let device = PushDevice(installId: AppPersistentMemory().customInstallId, pushToken: token)
+            let device = PushDevice(installId: appMemory.customInstallId, pushToken: token)
 
             do {
                 let success = try await APIClient.shared.register(pushDevice: device)
                 if success {
-                    AppPersistentMemory().setLastSentPushToken(to: token)
+                    appMemory.setLastSentPushToken(to: token)
+                    appMemory.setLastPushTokenSendDate(to: .now)
                     ChannelLogStore.shared.logEvent("Push token enviado ao servidor", success: true)
                     PushRegistrationStatus.shared.markRegistered()
                 }
@@ -285,17 +293,38 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         }
     }
 
-    private func registerForPushNotificationsIfAuthorized() {
+    /// Registration is unconditional: silent content-update pushes only need a device
+    /// token, not notification permission. Permission still gates visible alerts.
+    private func registerForRemoteNotifications() {
         Task {
             let center = UNUserNotificationCenter.current()
             let settings = await center.notificationSettings()
 
             if settings.authorizationStatus == .authorized {
                 PushRegistrationStatus.shared.markChecking()
-                await MainActor.run {
-                    UIApplication.shared.registerForRemoteNotifications()
-                }
             }
+            await MainActor.run {
+                UIApplication.shared.registerForRemoteNotifications()
+            }
+        }
+    }
+
+    func application(
+        _ application: UIApplication,
+        didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+        fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+    ) {
+        print("🔔 Push silencioso recebido: \(userInfo)")
+        guard let typeString = userInfo["type"] as? String,
+              PushNotificationType(rawValue: typeString) == .contentUpdate else {
+            print("🔔 Push ignorado (type não é content_update)")
+            return completionHandler(.noData)
+        }
+
+        Task { @MainActor in
+            let result = await BackgroundContentSync.run()
+            print("🔔 Sync via push concluído: \(result.debugLabel)")
+            completionHandler(result)
         }
     }
 
@@ -334,6 +363,8 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
                     object: nil,
                     userInfo: [NavigateToTabKey.phoneTab: PhoneTab.reactions]
                 )
+            case .contentUpdate:
+                break // Silent push; never user-visible, so never tapped.
             }
         }
 
