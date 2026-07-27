@@ -244,7 +244,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         Task {
             let tokenParts = deviceToken.map { data in String(format: "%02.2hhx", data) }
             let token = tokenParts.joined()
-            print("🔑 Push token: \(token)")
+            BackgroundContentSync.log("🔑 Push token: \(token)")
 
             let appMemory = AppPersistentMemory()
             let storedToken = appMemory.getLastSentPushToken()
@@ -314,16 +314,16 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         didReceiveRemoteNotification userInfo: [AnyHashable: Any],
         fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
     ) {
-        print("🔔 Push silencioso recebido: \(userInfo)")
+        BackgroundContentSync.log("🔔 Push silencioso recebido: \(userInfo)")
         guard let typeString = userInfo["type"] as? String,
               PushNotificationType(rawValue: typeString) == .contentUpdate else {
-            print("🔔 Push ignorado (type não é content_update)")
+            BackgroundContentSync.log("🔔 Push ignorado (type não é content_update)")
             return completionHandler(.noData)
         }
 
         Task { @MainActor in
             let result = await BackgroundContentSync.run()
-            print("🔔 Sync via push concluído: \(result.debugLabel)")
+            BackgroundContentSync.log("🔔 Sync via push concluído: \(result.debugLabel)")
             completionHandler(result)
         }
     }

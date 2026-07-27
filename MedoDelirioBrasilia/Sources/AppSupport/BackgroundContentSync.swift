@@ -26,6 +26,14 @@ enum BackgroundContentSync {
         return didUpdateInBackground
     }
 
+    /// Traces background work, which is awkward to inspect with breakpoints because it
+    /// runs while the app is suspended. Compiled out of release builds.
+    static func log(_ message: String) {
+        #if DEBUG
+        print(message)
+        #endif
+    }
+
     /// Registers the background refresh handler. Must be called before the app finishes launching.
     static func registerRefreshTask() {
         BGTaskScheduler.shared.register(forTaskWithIdentifier: refreshTaskIdentifier, using: nil) { task in
@@ -42,6 +50,7 @@ enum BackgroundContentSync {
         ) { _ in
             Task { @MainActor in
                 scheduleRefresh()
+                ContentUpdateContinuation.appDidEnterBackground()
             }
         }
     }
@@ -54,9 +63,9 @@ enum BackgroundContentSync {
 
         do {
             try BGTaskScheduler.shared.submit(request)
-            print("⏰ BGAppRefresh: próxima atualização agendada (piso de 4 h)")
+            log("⏰ BGAppRefresh: próxima atualização agendada (piso de 4 h)")
         } catch {
-            print("⏰ Erro ao agendar atualização de conteúdo em segundo plano: \(error)")
+            log("⏰ Erro ao agendar atualização de conteúdo em segundo plano: \(error)")
         }
     }
 
@@ -65,13 +74,13 @@ enum BackgroundContentSync {
     static func run() async -> UIBackgroundFetchResult {
         let service = ContentUpdateService.shared
         guard !service.isUpdating else {
-            print("🔄 BG sync: atualização já em andamento, pulando")
+            log("🔄 BG sync: atualização já em andamento, pulando")
             return .noData
         }
 
-        print("🔄 BG sync: iniciando atualização de conteúdo")
+        log("🔄 BG sync: iniciando atualização de conteúdo")
         let didUpdate = await service.update()
-        print("🔄 BG sync: terminou com status \(service.lastUpdateStatus), processou \(service.processedUpdateNumber) de \(service.totalUpdateCount) eventos")
+        log("🔄 BG sync: terminou com status \(service.lastUpdateStatus), processou \(service.processedUpdateNumber) de \(service.totalUpdateCount) eventos")
 
         guard service.lastUpdateStatus == .done else { return .failed }
 
@@ -82,19 +91,19 @@ enum BackgroundContentSync {
     }
 
     private static func handle(_ task: BGAppRefreshTask) {
-        print("⏰ BGAppRefresh: sistema acordou o app para atualizar")
+        log("⏰ BGAppRefresh: sistema acordou o app para atualizar")
         scheduleRefresh() // Keep the chain going for the next opportunity.
 
         let updateTask = Task { @MainActor in
             let result = await run()
-            print("⏰ BGAppRefresh: concluído: \(result.debugLabel)")
+            log("⏰ BGAppRefresh: concluído: \(result.debugLabel)")
             task.setTaskCompleted(success: result != .failed)
         }
 
         // If time runs out, cancellation makes the update loop stop at the next event;
         // unfinished events stay marked unsuccessful and are retried on the next run.
         task.expirationHandler = {
-            print("⏰ BGAppRefresh: tempo esgotado, cancelando")
+            log("⏰ BGAppRefresh: tempo esgotado, cancelando")
             updateTask.cancel()
         }
     }
