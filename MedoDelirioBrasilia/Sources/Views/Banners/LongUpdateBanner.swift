@@ -12,8 +12,19 @@ struct LongUpdateBanner: View {
     let completedNumber: Int
     let totalUpdateCount: Int
     let estimatedSecondsRemaining: TimeInterval?
+    let continuesInBackground: Bool
 
     @Environment(\.colorScheme) private var colorScheme
+
+    /// Leaving mid-update never loses work — unfinished items are retried — so the version
+    /// for systems without background continuation nudges instead of forbidding.
+    private var instructionText: LocalizedStringKey {
+        if continuesInBackground {
+            return "Novidades estão sendo baixadas. Você pode **sair do app**, a atualização continua."
+        } else {
+            return "Novidades estão sendo baixadas. Deixe o **app aberto** para terminar mais rápido."
+        }
+    }
 
     private var percentageText: String {
         guard
@@ -57,7 +68,7 @@ struct LongUpdateBanner: View {
                     .bold()
                     .multilineTextAlignment(.leading)
 
-                Text("Novidades estão sendo baixadas. Por favor, deixe o **app aberto** até a atualização ser concluída.")
+                Text(instructionText)
                     .opacity(0.8)
                     .font(.callout)
 
@@ -87,11 +98,22 @@ struct LongUpdateBanner: View {
 
 // MARK: - Preview
 
-#Preview("Partial - With Time") {
+#Preview("Continues In Background") {
     LongUpdateBanner(
         completedNumber: 3,
         totalUpdateCount: 12,
-        estimatedSecondsRemaining: 90
+        estimatedSecondsRemaining: 90,
+        continuesInBackground: true
+    )
+    .padding()
+}
+
+#Preview("Needs App Open") {
+    LongUpdateBanner(
+        completedNumber: 3,
+        totalUpdateCount: 12,
+        estimatedSecondsRemaining: 90,
+        continuesInBackground: false
     )
     .padding()
 }
@@ -100,7 +122,8 @@ struct LongUpdateBanner: View {
     LongUpdateBanner(
         completedNumber: 0,
         totalUpdateCount: 10,
-        estimatedSecondsRemaining: nil
+        estimatedSecondsRemaining: nil,
+        continuesInBackground: true
     )
     .padding()
 }
@@ -109,7 +132,8 @@ struct LongUpdateBanner: View {
     LongUpdateBanner(
         completedNumber: 9,
         totalUpdateCount: 10,
-        estimatedSecondsRemaining: 15
+        estimatedSecondsRemaining: 15,
+        continuesInBackground: false
     )
     .padding()
 }

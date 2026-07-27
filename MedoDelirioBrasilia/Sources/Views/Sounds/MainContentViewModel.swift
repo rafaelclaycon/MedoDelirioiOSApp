@@ -40,7 +40,7 @@ final class MainContentViewModel {
 
     var displayLongUpdateBanner: Bool {
         contentUpdateService.isUpdating &&
-        contentUpdateService.totalUpdateCount >= 10 &&
+        contentUpdateService.totalUpdateCount >= ContentUpdateService.longUpdateThreshold &&
         contentUpdateService.processedUpdateNumber < contentUpdateService.totalUpdateCount
     }
 

@@ -121,6 +121,10 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         print("APP - APP DELEGATE")
         UNUserNotificationCenter.current().delegate = self
         BackgroundContentSync.registerRefreshTask()
+        ContentUpdateContinuation.register()
+        ContentUpdateService.shared.onLongUpdateDetected = {
+            ContentUpdateContinuation.begin()
+        }
 
         // Fixes
         moveDatabaseFileIfNeeded()

@@ -29,6 +29,10 @@ class ContentUpdateService: ContentUpdateServiceProtocol {
         logger: Logger.shared
     )
 
+    /// Number of events past which an update is worth showing progress for, in the
+    /// in-app banner and outside the app.
+    static let longUpdateThreshold: Int = 10
+
     // MARK: - Public Properties
 
     public var processedUpdateNumber: Int = 0
@@ -36,6 +40,11 @@ class ContentUpdateService: ContentUpdateServiceProtocol {
     public var isUpdating: Bool = false
     public var updateStartTime: Date? = nil
     public var lastUpdateStatus: ContentUpdateStatus = .updating
+
+    /// Called once per run, as soon as the event count is known to be large. Lets the
+    /// app layer ask the system to keep the update alive past backgrounding without
+    /// this service knowing anything about background tasks.
+    public var onLongUpdateDetected: (() -> Void)?
 
     public var estimatedSecondsRemaining: TimeInterval? {
         guard let start = updateStartTime,
@@ -53,6 +62,7 @@ class ContentUpdateService: ContentUpdateServiceProtocol {
 
     private var localUnsuccessfulUpdates: [UpdateEvent]?
     private var serverUpdates: [UpdateEvent]?
+    private var didReportLongUpdate: Bool = false
 
     // MARK: - Dependencies
 
@@ -93,6 +103,7 @@ extension ContentUpdateService {
         processedUpdateNumber = 0
         totalUpdateCount = 0
         updateStartTime = nil
+        didReportLongUpdate = false
 
         defer {
             appMemory.setLastUpdateAttempt(to: Date.now.iso8601withFractionalSeconds)
@@ -151,6 +162,7 @@ extension ContentUpdateService {
         if updateStartTime == nil {
             updateStartTime = Date()
         }
+        reportLongUpdateIfNeeded()
 
         try await syncUnsuccessful()
         return true
@@ -176,6 +188,7 @@ extension ContentUpdateService {
             if updateStartTime == nil {
                 updateStartTime = Date()
             }
+            reportLongUpdateIfNeeded()
         }
 
         if var serverUpdates = serverUpdates {
@@ -191,6 +204,12 @@ extension ContentUpdateService {
             }
         }
         return count
+    }
+
+    private func reportLongUpdateIfNeeded() {
+        guard !didReportLongUpdate, totalUpdateCount >= Self.longUpdateThreshold else { return }
+        didReportLongUpdate = true
+        onLongUpdateDetected?()
     }
 
     private func retrieveUnsuccessfulLocalUpdates() async throws -> Int {

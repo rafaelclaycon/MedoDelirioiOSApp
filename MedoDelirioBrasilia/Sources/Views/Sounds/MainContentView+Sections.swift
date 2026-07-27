@@ -31,7 +31,8 @@ extension MainContentView {
                     LongUpdateBanner(
                         completedNumber: viewModel.contentUpdateService.processedUpdateNumber,
                         totalUpdateCount: viewModel.contentUpdateService.totalUpdateCount,
-                        estimatedSecondsRemaining: viewModel.contentUpdateService.estimatedSecondsRemaining
+                        estimatedSecondsRemaining: viewModel.contentUpdateService.estimatedSecondsRemaining,
+                        continuesInBackground: ContentUpdateContinuation.isBackgroundContinuationGranted
                     )
                 }
 

@@ -22,6 +22,7 @@
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>com.rafaelschmitt.MedoDelirioBrasilia.contentRefresh</string>
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER).contentUpdate.*</string>
 	</array>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
@@ -29,6 +30,7 @@
 	<array>
 		<string>remote-notification</string>
 		<string>fetch</string>
+		<string>processing</string>
 		<string>audio</string>
 	</array>
 	<key>UILaunchScreen</key>
