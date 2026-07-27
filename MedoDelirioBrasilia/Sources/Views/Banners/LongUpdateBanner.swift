@@ -20,7 +20,7 @@ struct LongUpdateBanner: View {
     /// for systems without background continuation nudges instead of forbidding.
     private var instructionText: LocalizedStringKey {
         if continuesInBackground {
-            return "Novidades estão sendo baixadas. Você pode **sair do app**, a atualização continua."
+            return "Novidades estão sendo baixadas. Você **pode sair do app**, a atualização continua."
         } else {
             return "Novidades estão sendo baixadas. Deixe o **app aberto** para terminar mais rápido."
         }

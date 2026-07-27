@@ -69,6 +69,14 @@ enum ContentUpdateContinuation {
 
         guard #available(iOS 26.0, *) else { return }
         guard !isContinuedTaskRunning else { return }
+        // Continued-processing tasks exist for work the user is watching. A long update
+        // detected during a background wake (silent push, scheduled refresh) must not
+        // summon progress UI for a sync nobody initiated — those runs already have their
+        // own budget, and whatever they can't finish resumes on next open.
+        guard UIApplication.shared.applicationState != .background else {
+            BackgroundContentSync.log("🏝️ Continuação não solicitada (app em segundo plano)")
+            return
+        }
         // Submitting without a registered handler aborts the process rather than throwing.
         guard isHandlerRegistered else {
             BackgroundContentSync.log("🏝️ Continuação indisponível: handler não registrado")
@@ -127,7 +135,8 @@ enum ContentUpdateContinuation {
 
     private static func subtitle(processed: Int, total: Int) -> String {
         guard total > 0 else { return "Preparando..." }
-        return "\(processed) de \(total)"
+        let percentage = Int((Double(processed) / Double(total)) * 100)
+        return "\(percentage)% completado"
     }
 
     /// Mirrors the update's progress onto the task for as long as it runs. The system
@@ -140,28 +149,52 @@ enum ContentUpdateContinuation {
         didExpire = false
         defer {
             isContinuedTaskRunning = false
+            // Once the task ends the banner must stop promising background continuation.
+            isBackgroundContinuationGranted = false
         }
 
+        // The user tapping the system UI's stop control and the system reclaiming
+        // resources both arrive here — there's no way to tell them apart, and both want
+        // the same response: stop the sync at the next event boundary. Whatever wasn't
+        // processed stays queued, and the app resumes it on next open.
         task.expirationHandler = {
             Task { @MainActor in
-                BackgroundContentSync.log("🏝️ Continuação expirada pelo sistema")
+                BackgroundContentSync.log("🏝️ Continuação encerrada (parada pelo usuário ou expirada pelo sistema)")
                 didExpire = true
+                ContentUpdateService.shared.cancelCurrentUpdate()
             }
         }
 
         let service = ContentUpdateService.shared
 
         while service.isUpdating, !didExpire {
+            // The documented stop signal is the expiration handler; the progress object's
+            // cancellation state is watched as well in case the system ever signals only there.
+            if task.progress.isCancelled {
+                didExpire = true
+                service.cancelCurrentUpdate()
+                break
+            }
             report(service: service, to: task)
             try? await Task.sleep(for: .seconds(1))
         }
 
+        let counts = "\(service.processedUpdateNumber)/\(service.totalUpdateCount)"
+
         if didExpire {
+            // User stop and system expiration are indistinguishable, hence one outcome name.
+            BackgroundSyncMetrics.record("continuation_ended(stopped, \(counts))")
             task.setTaskCompleted(success: false)
         } else {
             report(service: service, to: task)
             task.progress.completedUnitCount = task.progress.totalUnitCount
-            task.setTaskCompleted(success: service.lastUpdateStatus == .done)
+
+            let succeeded = service.lastUpdateStatus == .done && !service.lastRunWasInterrupted
+            if succeeded {
+                task.updateTitle("Atualização concluída", subtitle: "Aproveite as suas vírgulas.")
+            }
+            BackgroundSyncMetrics.record("continuation_ended(\(succeeded ? "completed" : "failed"), \(counts))")
+            task.setTaskCompleted(success: succeeded)
         }
 
         BackgroundContentSync.log("🏝️ Continuação encerrada")

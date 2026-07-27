@@ -326,8 +326,19 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         }
 
         Task { @MainActor in
-            let result = await BackgroundContentSync.run()
+            // Background wakes get ~30 s and no expiration callback; wind the sync down
+            // before the watchdog does. A push landing while active has no deadline.
+            let budget: TimeInterval? = application.applicationState == .active ? nil : 25
+            let result = await BackgroundContentSync.run(budgetSeconds: budget)
             BackgroundContentSync.log("🔔 Sync via push concluído: \(result.debugLabel)")
+
+            let service = ContentUpdateService.shared
+            BackgroundSyncMetrics.record("push_sync(\(result.debugLabel), \(service.processedUpdateNumber)/\(service.totalUpdateCount))")
+
+            // Cold background launches never post didEnterBackground, so the refresh
+            // chain is (re)armed here too. Resubmitting replaces any pending request.
+            BackgroundContentSync.scheduleRefresh()
+
             completionHandler(result)
         }
     }

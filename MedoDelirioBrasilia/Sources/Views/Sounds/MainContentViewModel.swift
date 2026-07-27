@@ -112,7 +112,11 @@ extension MainContentViewModel {
             if BackgroundContentSync.consumePendingRefresh() {
                 loadContent(clearCache: true)
             }
-            await warmOpenContentUpdate()
+            if contentUpdateService.lastRunWasInterrupted {
+                await resumeInterruptedUpdate()
+            } else {
+                await warmOpenContentUpdate()
+            }
         }
     }
 
@@ -206,6 +210,15 @@ extension MainContentViewModel {
         else { return }
 
         await updateContent(lastAttempt: lastUpdateAttempt)
+    }
+
+    /// Picks an interrupted run back up as soon as the app is visible again, skipping the
+    /// warm-open time gates — the user (or system) stopped a background continuation
+    /// midway, so the remaining events shouldn't wait out a throttling window.
+    private func resumeInterruptedUpdate() async {
+        let didUpdate = await contentUpdateService.update()
+        loadContent(clearCache: didUpdate)
+        syncValues.syncStatus = contentUpdateService.lastUpdateStatus
     }
 
     private func fireAnalytics() async {

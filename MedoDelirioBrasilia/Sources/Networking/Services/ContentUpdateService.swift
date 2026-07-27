@@ -46,6 +46,11 @@ class ContentUpdateService: ContentUpdateServiceProtocol {
     /// this service knowing anything about background tasks.
     public var onLongUpdateDetected: (() -> Void)?
 
+    /// Whether the previous run stopped before processing everything — the user ended the
+    /// background continuation, or the system expired it. The UI uses this to resume
+    /// promptly on return instead of waiting out the usual update-throttling windows.
+    public private(set) var lastRunWasInterrupted: Bool = false
+
     public var estimatedSecondsRemaining: TimeInterval? {
         guard let start = updateStartTime,
               processedUpdateNumber > 0,
@@ -63,6 +68,7 @@ class ContentUpdateService: ContentUpdateServiceProtocol {
     private var localUnsuccessfulUpdates: [UpdateEvent]?
     private var serverUpdates: [UpdateEvent]?
     private var didReportLongUpdate: Bool = false
+    private var isCancellationRequested: Bool = false
 
     // MARK: - Dependencies
 
@@ -93,6 +99,13 @@ class ContentUpdateService: ContentUpdateServiceProtocol {
 
 extension ContentUpdateService {
 
+    /// Asks the in-flight run to stop at the next event boundary. Everything processed so
+    /// far keeps its success mark; the rest stays queued for a later run. No-op when idle.
+    public func cancelCurrentUpdate() {
+        guard isUpdating else { return }
+        isCancellationRequested = true
+    }
+
     /// Performs the content update operation with the server.
     @discardableResult
     public func update() async -> Bool {
@@ -104,6 +117,8 @@ extension ContentUpdateService {
         totalUpdateCount = 0
         updateStartTime = nil
         didReportLongUpdate = false
+        isCancellationRequested = false
+        lastRunWasInterrupted = false
 
         defer {
             appMemory.setLastUpdateAttempt(to: Date.now.iso8601withFractionalSeconds)
@@ -112,6 +127,8 @@ extension ContentUpdateService {
         do {
             let didHaveAnyLocalUpdates = try await retryLocal()
             let didHaveAnyRemoteUpdates = try await syncDataWithServer()
+
+            lastRunWasInterrupted = isCancellationRequested || Task.isCancelled
 
             if didHaveAnyLocalUpdates || didHaveAnyRemoteUpdates {
                 logger.updateSuccess("Atualização concluída com sucesso.")
@@ -123,6 +140,12 @@ extension ContentUpdateService {
             isUpdating = false
             updateStartTime = nil
             return didHaveAnyLocalUpdates || didHaveAnyRemoteUpdates
+        } catch is CancellationError {
+            lastRunWasInterrupted = true
+            lastUpdateStatus = .done
+            isUpdating = false
+            updateStartTime = nil
+            return false
         } catch APIClientError.errorFetchingUpdateEvents(let errorMessage) {
             logger.updateError(errorMessage)
             lastUpdateStatus = .updateError
@@ -221,7 +244,7 @@ extension ContentUpdateService {
         guard let serverUpdates = serverUpdates, !serverUpdates.isEmpty else { return }
 
         for update in serverUpdates {
-            guard !Task.isCancelled else { break }
+            guard !Task.isCancelled, !isCancellationRequested else { break }
             await process(updateEvent: update)
             processedUpdateNumber += 1
         }
@@ -231,7 +254,7 @@ extension ContentUpdateService {
         guard let localUnsuccessfulUpdates = localUnsuccessfulUpdates, !localUnsuccessfulUpdates.isEmpty else { return }
 
         for update in localUnsuccessfulUpdates {
-            guard !Task.isCancelled else { break }
+            guard !Task.isCancelled, !isCancellationRequested else { break }
             await process(updateEvent: update)
             processedUpdateNumber += 1
         }

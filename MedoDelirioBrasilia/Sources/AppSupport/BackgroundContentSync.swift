@@ -53,6 +53,16 @@ enum BackgroundContentSync {
                 ContentUpdateContinuation.appDidEnterBackground()
             }
         }
+
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            Task { @MainActor in
+                BackgroundSyncMetrics.flush()
+            }
+        }
     }
 
     /// Asks the system for a future refresh. The date is a floor, not a promise —
@@ -71,12 +81,28 @@ enum BackgroundContentSync {
 
     /// Runs a content update and maps the outcome to a background fetch result.
     /// Safe to call while a foreground update is in flight — it just reports no data.
-    static func run() async -> UIBackgroundFetchResult {
+    ///
+    /// `budgetSeconds` caps the run for callers on a system deadline (silent push wakes
+    /// get ~30 s and no expiration callback): the sync is asked to stop at the next event
+    /// boundary in time to report back, and the remainder is picked up by a later run.
+    static func run(budgetSeconds: TimeInterval? = nil) async -> UIBackgroundFetchResult {
         let service = ContentUpdateService.shared
         guard !service.isUpdating else {
             log("🔄 BG sync: atualização já em andamento, pulando")
             return .noData
         }
+
+        var budgetTask: Task<Void, Never>?
+        if let budgetSeconds {
+            budgetTask = Task { @MainActor in
+                try? await Task.sleep(for: .seconds(budgetSeconds))
+                guard !Task.isCancelled else { return }
+                log("🔄 BG sync: orçamento de \(Int(budgetSeconds)) s esgotado, interrompendo")
+                BackgroundSyncMetrics.record("sync_budget_exhausted(\(service.processedUpdateNumber)/\(service.totalUpdateCount))")
+                service.cancelCurrentUpdate()
+            }
+        }
+        defer { budgetTask?.cancel() }
 
         log("🔄 BG sync: iniciando atualização de conteúdo")
         let didUpdate = await service.update()
@@ -97,6 +123,8 @@ enum BackgroundContentSync {
         let updateTask = Task { @MainActor in
             let result = await run()
             log("⏰ BGAppRefresh: concluído: \(result.debugLabel)")
+            let service = ContentUpdateService.shared
+            BackgroundSyncMetrics.record("refresh_sync(\(result.debugLabel), \(service.processedUpdateNumber)/\(service.totalUpdateCount))")
             task.setTaskCompleted(success: result != .failed)
         }
 
