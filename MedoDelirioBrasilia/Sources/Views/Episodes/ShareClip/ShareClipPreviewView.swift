@@ -19,15 +19,19 @@ struct ShareClipPreviewView: View {
     @State private var generationPhase: ShareClipGenerator.GenerationPhase?
     @State private var error: Error?
     @State private var generationTask: Task<Void, Never>?
+    @State private var isMuted: Bool = true
+    @State private var loopObserver: NSObjectProtocol?
 
     var body: some View {
         Group {
             if let player {
                 videoPreview(player: player)
+                    .transition(.opacity.combined(with: .scale(scale: 0.94)))
             } else if let error {
                 errorView(error: error)
             } else {
                 loadingView
+                    .transition(.opacity)
             }
         }
         .navigationTitle("Exportar Clipe")
@@ -39,28 +43,82 @@ struct ShareClipPreviewView: View {
             generationTask?.cancel()
             generationTask = nil
             player?.pause()
+            if let loopObserver {
+                NotificationCenter.default.removeObserver(loopObserver)
+            }
         }
     }
 
     // MARK: - Subviews
 
+    /// Mirrors the confirm screen's structure — scrollable content with the
+    /// action pinned as a bottom safe-area inset — so the two feel consistent.
     private func videoPreview(player: AVPlayer) -> some View {
         let videoSize = config.shareMode.videoSize ?? CGSize(width: 9, height: 16)
         let aspectRatio = videoSize.width / videoSize.height
 
-        return VStack(spacing: .spacing(.xxLarge)) {
-            Spacer()
+        return ScrollView {
+            VStack(spacing: .spacing(.xxLarge)) {
+                Text("Seu clipe está pronto! 🎉")
+                    .font(.title3)
+                    .fontWeight(.semibold)
 
-            VideoPlayer(player: player)
-                .aspectRatio(aspectRatio, contentMode: .fit)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                VStack(spacing: .spacing(.small)) {
+                    VideoPlayer(player: player)
+                        .aspectRatio(aspectRatio, contentMode: .fit)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .overlay(alignment: .topTrailing) { muteButton }
 
-            shareButton
-
-            Spacer()
+                    if let clipDetails {
+                        Text(clipDetails)
+                            .font(.footnote)
+                            .foregroundStyle(.gray)
+                            .monospacedDigit()
+                    }
+                }
+            }
+            .padding(.horizontal, .spacing(.xLarge))
+            .padding(.vertical, .spacing(.large))
         }
-        .padding(.horizontal, .spacing(.xLarge))
-        .padding(.vertical, .spacing(.large))
+        .safeAreaInset(edge: .bottom) {
+            shareButton
+                .padding(.horizontal, .spacing(.xLarge))
+                .padding(.vertical, .spacing(.small))
+                .background(.bar)
+        }
+    }
+
+    /// The clip auto-plays muted, so this is the one way to hear it here.
+    private var muteButton: some View {
+        Button {
+            isMuted.toggle()
+            player?.isMuted = isMuted
+        } label: {
+            Image(systemName: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.white)
+                .frame(width: 30, height: 30)
+                .background(.black.opacity(0.5), in: Circle())
+                .contentTransition(.symbolEffect(.replace))
+        }
+        .buttonStyle(.plain)
+        .padding(.spacing(.small))
+        .accessibilityLabel(isMuted ? "Ativar som" : "Silenciar")
+    }
+
+    /// Quiet spec line: duration, pixel dimensions, format and file size.
+    private var clipDetails: String? {
+        guard let videoURL else { return nil }
+        var parts: [String] = [NowPlayingView.formatTime(max(config.clipEnd - config.clipStart, 0))]
+        if let size = config.shareMode.videoSize {
+            parts.append("\(Int(size.width))×\(Int(size.height))")
+        }
+        parts.append("MP4")
+        if let attributes = try? FileManager.default.attributesOfItem(atPath: videoURL.path),
+           let bytes = (attributes[.size] as? NSNumber)?.int64Value {
+            parts.append(bytes.formatted(.byteCount(style: .file)))
+        }
+        return parts.joined(separator: " · ")
     }
 
     private func errorView(error: Error) -> some View {
@@ -123,7 +181,26 @@ struct ShareClipPreviewView: View {
                 }
             }
             videoURL = url
-            player = AVPlayer(url: url)
+
+            // Auto-play muted on a loop: the movement makes it obvious this is
+            // a playable video, without blasting audio the user already vetted.
+            let avPlayer = AVPlayer(url: url)
+            avPlayer.isMuted = true
+            isMuted = true
+            loopObserver = NotificationCenter.default.addObserver(
+                forName: .AVPlayerItemDidPlayToEndTime,
+                object: avPlayer.currentItem,
+                queue: .main
+            ) { _ in
+                avPlayer.seek(to: .zero)
+                avPlayer.play()
+            }
+
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            withAnimation(.easeOut(duration: 0.35)) {
+                player = avPlayer
+            }
+            avPlayer.play()
         } catch is CancellationError {
             // Task cancelled
         } catch {

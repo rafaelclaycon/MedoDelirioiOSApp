@@ -26,7 +26,8 @@ struct WaveformView: View {
     private static let barCornerRadius: CGFloat = 2
     private static let viewHeight: CGFloat = 100
     private static let minClipLength: TimeInterval = 5
-    private static let maxClipLength: TimeInterval = 150
+    /// Shared with transcript-based selection so both pick paths enforce the same cap.
+    static let maxClipLength: TimeInterval = 150
 
     private static let edgeHandleWidth: CGFloat = 10
     private static let edgeHandleCornerRadius: CGFloat = 4

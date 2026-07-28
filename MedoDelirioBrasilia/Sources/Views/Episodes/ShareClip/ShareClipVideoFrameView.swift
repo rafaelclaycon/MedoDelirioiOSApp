@@ -90,17 +90,28 @@ struct ShareClipVideoLayout {
     var headerDateFontSize: CGFloat { headerTitleFontSize * 0.85 }
     var headerTextSpacing: CGFloat { headerTitleFontSize * 0.3 }
 
-    /// Text-only header: title (up to two lines) with the date below it.
-    /// Height is fixed to the two-line worst case so the transcript region's
-    /// top edge doesn't shift with title length.
+    /// Modest podcast logo on the header's left, there for branding rather
+    /// than as a hero image.
+    var headerLogoSize: CGFloat { min(videoSize.width, videoSize.height) * 0.12 }
+    /// Gap between the logo and the title/date block beside it.
+    var headerTextGap: CGFloat { videoSize.width * 0.04 }
+
+    /// The header hugs the left edge more tightly than the rest of the frame —
+    /// at the standard padding the logo + text block read as floating too far in.
+    var headerLeadingPadding: CGFloat { videoSize.width * 0.06 }
+
+    /// Header: podcast logo with title (up to two lines) and date beside it.
+    /// Height is fixed to the tallest of logo and two-line text so the
+    /// transcript region's top edge doesn't shift with title length.
     var headerFrame: CGRect {
         let titleLineHeight = headerTitleFontSize * 1.2
         let dateLineHeight = headerDateFontSize * 1.3
+        let textHeight = 2 * titleLineHeight + headerTextSpacing + dateLineHeight
         return CGRect(
-            x: horizontalPadding,
+            x: headerLeadingPadding,
             y: headerTopPadding,
-            width: videoSize.width - 2 * horizontalPadding,
-            height: 2 * titleLineHeight + headerTextSpacing + dateLineHeight
+            width: videoSize.width - headerLeadingPadding - horizontalPadding,
+            height: max(headerLogoSize, textHeight)
         )
     }
 
@@ -206,22 +217,32 @@ struct ShareClipVideoFrameView: View {
         .frame(width: videoSize.width, height: layout.contentAreaHeight)
     }
 
-    /// Transcript layout header: episode title (up to two lines) with the date
-    /// below it, both left-aligned on the top left.
+    /// Transcript layout header: podcast logo for branding, with the episode
+    /// title (up to two lines) and date beside it. The text block vertically
+    /// centers against the logo so one- and two-line titles both sit well.
     private var headerRow: some View {
         let frame = layout.headerFrame
-        return VStack(alignment: .leading, spacing: layout.headerTextSpacing) {
-            Text(episodeTitle)
-                .font(.system(size: layout.headerTitleFontSize, weight: .bold))
-                .foregroundStyle(textColor)
-                .multilineTextAlignment(.leading)
-                .lineLimit(2)
+        return HStack(spacing: layout.headerTextGap) {
+            Image("podcast_logo")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: layout.headerLogoSize, height: layout.headerLogoSize)
 
-            Text(episodeDate, format: .dateTime.day().month(.wide).year())
-                .font(.system(size: layout.headerDateFontSize))
-                .foregroundStyle(textColor.opacity(0.6))
+            VStack(alignment: .leading, spacing: layout.headerTextSpacing) {
+                Text(episodeTitle)
+                    .font(.system(size: layout.headerTitleFontSize, weight: .bold))
+                    .foregroundStyle(textColor)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(2)
+
+                Text(episodeDate, format: .dateTime.day().month(.wide).year())
+                    .font(.system(size: layout.headerDateFontSize))
+                    .foregroundStyle(textColor.opacity(0.6))
+            }
+
+            Spacer(minLength: 0)
         }
-        .frame(width: frame.width, height: frame.height, alignment: .topLeading)
+        .frame(width: frame.width, height: frame.height, alignment: .leading)
         .offset(x: frame.origin.x, y: frame.origin.y)
     }
 

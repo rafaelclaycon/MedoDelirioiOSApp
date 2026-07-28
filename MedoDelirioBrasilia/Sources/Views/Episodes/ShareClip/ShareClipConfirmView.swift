@@ -58,21 +58,28 @@ struct ShareClipConfirmView: View {
     }
 
     var body: some View {
-        VStack(spacing: .spacing(.xxLarge)) {
-            Spacer()
+        ScrollView {
+            VStack(spacing: .spacing(.xxLarge)) {
+                Text("Essa é uma prévia do vídeo que será gerado, para você conferir se capturou o áudio desejado.")
+                    .font(.callout)
+                    .foregroundStyle(.gray)
+                    .multilineTextAlignment(.center)
 
-            framePreview
+                framePreview
 
-            audioControls
+                audioControls
 
-            transcriptToggle
-
-            Spacer()
-
-            generateButton
+                transcriptToggle
+            }
+            .padding(.horizontal, .spacing(.xLarge))
+            .padding(.vertical, .spacing(.large))
         }
-        .padding(.horizontal, .spacing(.xLarge))
-        .padding(.vertical, .spacing(.large))
+        .safeAreaInset(edge: .bottom) {
+            generateButton
+                .padding(.horizontal, .spacing(.xLarge))
+                .padding(.vertical, .spacing(.small))
+                .background(.bar)
+        }
         .navigationTitle("Pré-visualização")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(isPresented: $showGeneration) {
