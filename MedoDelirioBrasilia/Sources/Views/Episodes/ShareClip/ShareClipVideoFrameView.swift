@@ -15,6 +15,10 @@ import SwiftUI
 struct ShareClipVideoLayout {
 
     let videoSize: CGSize
+    /// When true, the frame uses a distinct layout: a compact top-left header
+    /// (artwork with title/date beside it) and a large transcript region in the
+    /// middle. When false, the classic centered layout is used, unchanged.
+    var includesTranscript: Bool = false
 
     private var isPortrait: Bool { videoSize.height > videoSize.width }
     private var isLandscape: Bool { videoSize.width > videoSize.height }
@@ -78,6 +82,48 @@ struct ShareClipVideoLayout {
     /// room up top — the leftover space below (before the track) is what
     /// flexes with shorter or longer titles.
     var contentTopPadding: CGFloat { contentAreaHeight * 0.16 }
+
+    // MARK: - Transcript Layout
+
+    var headerTopPadding: CGFloat { videoSize.height * (isPortrait ? 0.06 : 0.07) }
+    var headerTitleFontSize: CGFloat { titleFontSize * 0.8 }
+    var headerDateFontSize: CGFloat { headerTitleFontSize * 0.85 }
+    var headerTextSpacing: CGFloat { headerTitleFontSize * 0.3 }
+
+    /// Text-only header: title (up to two lines) with the date below it.
+    /// Height is fixed to the two-line worst case so the transcript region's
+    /// top edge doesn't shift with title length.
+    var headerFrame: CGRect {
+        let titleLineHeight = headerTitleFontSize * 1.2
+        let dateLineHeight = headerDateFontSize * 1.3
+        return CGRect(
+            x: horizontalPadding,
+            y: headerTopPadding,
+            width: videoSize.width - 2 * horizontalPadding,
+            height: 2 * titleLineHeight + headerTextSpacing + dateLineHeight
+        )
+    }
+
+    var transcriptFontSize: CGFloat { titleFontSize * 1.25 }
+    var transcriptLineHeight: CGFloat { transcriptFontSize * 1.25 }
+    var transcriptMaxLines: Int {
+        max(Int(transcriptFrame.height / transcriptLineHeight), 1)
+    }
+
+    /// The transcript region: everything between the header and the timestamps.
+    /// Cue text is left-aligned and vertically centered within it (both in the
+    /// SwiftUI preview and in the generator's pre-rendered bitmaps).
+    var transcriptFrame: CGRect {
+        guard includesTranscript else { return .zero }
+        let top = headerFrame.maxY + videoSize.height * 0.04
+        let bottom = timestampY - videoSize.height * 0.012
+        return CGRect(
+            x: horizontalPadding,
+            y: top,
+            width: videoSize.width - 2 * horizontalPadding,
+            height: max(bottom - top, 0)
+        )
+    }
 }
 
 // MARK: - View
@@ -96,49 +142,87 @@ struct ShareClipVideoFrameView: View {
     let clipStart: TimeInterval
     let shareMode: ShareClipShareMode
     let videoSize: CGSize
+    /// Reserves the transcript slot in the layout. The generator's static frame
+    /// enables this while leaving `transcriptText` nil — the animated cue
+    /// bitmaps are composited as `CALayer`s on top of the empty slot.
+    var includesTranscript: Bool = false
+    /// The cue text currently shown in the slot; drives the live preview's crossfade.
+    var transcriptText: String? = nil
 
-    private var layout: ShareClipVideoLayout { .init(videoSize: videoSize) }
+    private var layout: ShareClipVideoLayout {
+        .init(videoSize: videoSize, includesTranscript: includesTranscript)
+    }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
             background
 
-            VStack(spacing: 0) {
-                Spacer()
-                    .frame(height: layout.contentTopPadding)
+            if includesTranscript {
+                headerRow
 
-                Image(uiImage: artwork)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: layout.artworkSize, height: layout.artworkSize)
-                    .clipShape(RoundedRectangle(cornerRadius: layout.artworkCornerRadius))
-
-                Spacer()
-                    .frame(height: layout.titleSpacing)
-
-                Text(episodeTitle)
-                    .font(.system(size: layout.titleFontSize, weight: .bold))
-                    .foregroundStyle(textColor)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(3)
-                    .padding(.horizontal, layout.horizontalPadding)
-
-                Spacer()
-                    .frame(height: layout.dateSpacing)
-
-                Text(episodeDate, format: .dateTime.day().month(.wide).year())
-                    .font(.system(size: layout.dateFontSize))
-                    .foregroundStyle(textColor.opacity(0.6))
-
-                Spacer(minLength: 0)
+                transcriptSlot
+            } else {
+                classicContent
             }
-            .frame(width: videoSize.width, height: layout.contentAreaHeight)
 
             trackBackground
 
             leadingTimestampLabel
         }
         .frame(width: videoSize.width, height: videoSize.height)
+    }
+
+    /// The original centered layout, used when no transcript is included.
+    private var classicContent: some View {
+        VStack(spacing: 0) {
+            Spacer()
+                .frame(height: layout.contentTopPadding)
+
+            Image(uiImage: artwork)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(width: layout.artworkSize, height: layout.artworkSize)
+                .clipShape(RoundedRectangle(cornerRadius: layout.artworkCornerRadius))
+
+            Spacer()
+                .frame(height: layout.titleSpacing)
+
+            Text(episodeTitle)
+                .font(.system(size: layout.titleFontSize, weight: .bold))
+                .foregroundStyle(textColor)
+                .multilineTextAlignment(.center)
+                .lineLimit(3)
+                .padding(.horizontal, layout.horizontalPadding)
+
+            Spacer()
+                .frame(height: layout.dateSpacing)
+
+            Text(episodeDate, format: .dateTime.day().month(.wide).year())
+                .font(.system(size: layout.dateFontSize))
+                .foregroundStyle(textColor.opacity(0.6))
+
+            Spacer(minLength: 0)
+        }
+        .frame(width: videoSize.width, height: layout.contentAreaHeight)
+    }
+
+    /// Transcript layout header: episode title (up to two lines) with the date
+    /// below it, both left-aligned on the top left.
+    private var headerRow: some View {
+        let frame = layout.headerFrame
+        return VStack(alignment: .leading, spacing: layout.headerTextSpacing) {
+            Text(episodeTitle)
+                .font(.system(size: layout.headerTitleFontSize, weight: .bold))
+                .foregroundStyle(textColor)
+                .multilineTextAlignment(.leading)
+                .lineLimit(2)
+
+            Text(episodeDate, format: .dateTime.day().month(.wide).year())
+                .font(.system(size: layout.headerDateFontSize))
+                .foregroundStyle(textColor.opacity(0.6))
+        }
+        .frame(width: frame.width, height: frame.height, alignment: .topLeading)
+        .offset(x: frame.origin.x, y: frame.origin.y)
     }
 
     // MARK: - Subviews
@@ -169,6 +253,30 @@ struct ShareClipVideoFrameView: View {
             .monospacedDigit()
             .frame(width: frame.width, height: frame.height, alignment: .leading)
             .offset(x: frame.origin.x, y: frame.origin.y)
+    }
+
+    /// Mirrors the exported video's cue animation: the current cue crossfades
+    /// in place, Apple Music lyrics style, as playback moves between cues.
+    /// Rendered empty (slot reserved, no text) in the generator's static frame.
+    @ViewBuilder
+    private var transcriptSlot: some View {
+        let frame = layout.transcriptFrame
+        ZStack {
+            if let transcriptText {
+                Text(transcriptText)
+                    .font(.system(size: layout.transcriptFontSize, weight: .semibold))
+                    .foregroundStyle(textColor.opacity(0.95))
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(layout.transcriptMaxLines)
+                    .minimumScaleFactor(0.7)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .id(transcriptText)
+                    .transition(.opacity)
+            }
+        }
+        .frame(width: frame.width, height: frame.height)
+        .animation(.easeInOut(duration: 0.25), value: transcriptText)
+        .offset(x: frame.origin.x, y: frame.origin.y)
     }
 
     private var trackBackground: some View {
@@ -204,6 +312,22 @@ private let previewArtwork: UIImage = UIGraphicsImageRenderer(size: .init(width:
         clipStart: 620,
         shareMode: .square,
         videoSize: .init(width: 1080, height: 1080)
+    )
+    .frame(width: 1080, height: 1080)
+    .scaleEffect(0.35)
+    .frame(width: 378, height: 378)
+}
+
+#Preview("Square – transcript") {
+    ShareClipVideoFrameView(
+        artwork: previewArtwork,
+        episodeTitle: "O Fim do Mandato e as Perspectivas para 2026",
+        episodeDate: .now,
+        clipStart: 620,
+        shareMode: .square,
+        videoSize: .init(width: 1080, height: 1080),
+        includesTranscript: true,
+        transcriptText: "Aí o outro respondeu na mesma hora, no microfone aberto pra todo mundo ouvir, sem medo nenhum de dar ruim."
     )
     .frame(width: 1080, height: 1080)
     .scaleEffect(0.35)

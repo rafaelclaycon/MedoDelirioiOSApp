@@ -21,6 +21,7 @@ struct ShareClipConfirmView: View {
     @State private var showGeneration = false
     @State private var isScrubbing = false
     @State private var scrubValue: TimeInterval = 0
+    @State private var includeTranscript = true
 
     private static let scrubberThumbSize: CGFloat = 14
 
@@ -39,6 +40,23 @@ struct ShareClipConfirmView: View {
         max(0, min(displayedTime - config.clipStart, clipDuration))
     }
 
+    private var hasTranscript: Bool { config.includesTranscript }
+    private var transcriptShown: Bool { hasTranscript && includeTranscript }
+
+    /// The cue under the playhead, shown live in the frame preview.
+    private var currentCueText: String? {
+        guard transcriptShown else { return nil }
+        return config.transcriptCues.first {
+            displayedTime >= $0.startTime && displayedTime < $0.endTime
+        }?.text
+    }
+
+    /// What actually gets exported: the incoming config, minus the transcript
+    /// when the user switches it off.
+    private var effectiveConfig: ShareClipGenerator.Configuration {
+        includeTranscript ? config : config.removingTranscript()
+    }
+
     var body: some View {
         VStack(spacing: .spacing(.xxLarge)) {
             Spacer()
@@ -46,6 +64,8 @@ struct ShareClipConfirmView: View {
             framePreview
 
             audioControls
+
+            transcriptToggle
 
             Spacer()
 
@@ -56,7 +76,7 @@ struct ShareClipConfirmView: View {
         .navigationTitle("Pré-visualização")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(isPresented: $showGeneration) {
-            ShareClipPreviewView(config: config, onExportComplete: onExportComplete)
+            ShareClipPreviewView(config: effectiveConfig, onExportComplete: onExportComplete)
         }
         .task { await setup() }
         .onDisappear {
@@ -76,7 +96,9 @@ struct ShareClipConfirmView: View {
             episodeDate: config.episode.pubDate,
             clipStart: config.clipStart,
             shareMode: config.shareMode,
-            videoSize: .init(width: size, height: size)
+            videoSize: .init(width: size, height: size),
+            includesTranscript: transcriptShown,
+            transcriptText: currentCueText
         )
         .frame(width: size, height: size)
         .scaleEffect(scale)
@@ -155,6 +177,19 @@ struct ShareClipConfirmView: View {
             )
         }
         .frame(height: Self.scrubberThumbSize)
+    }
+
+    /// Only offered when the clip's range actually has transcript cues;
+    /// episodes without a downloaded transcript never show it.
+    @ViewBuilder
+    private var transcriptToggle: some View {
+        if hasTranscript {
+            Toggle(isOn: $includeTranscript.animation(.easeInOut(duration: 0.2))) {
+                Label("Incluir transcrição", systemImage: "text.quote")
+                    .font(.subheadline)
+            }
+            .tint(.orange)
+        }
     }
 
     private var generateButton: some View {

@@ -25,6 +25,7 @@ struct ShareClipView: View {
     @State private var previewCurrentTime: TimeInterval = 0
     @State private var previewTask: Task<Void, Never>?
     @State private var showPreview: Bool = false
+    @State private var transcriptCues: [SRTCue] = []
 
     var body: some View {
         NavigationStack {
@@ -66,6 +67,9 @@ struct ShareClipView: View {
         .task {
             await loadWaveform()
         }
+        .task {
+            loadTranscript()
+        }
         .onChange(of: clipStart) {
             if isPreviewPlaying { pausePreview() }
             previewCurrentTime = clipStart
@@ -87,7 +91,8 @@ struct ShareClipView: View {
             audioFileURL: EpisodePlayer.localFileURL(for: episode),
             clipStart: clipStart,
             clipEnd: clipEnd,
-            shareMode: .square
+            shareMode: .square,
+            transcriptCues: transcriptCues.filter { $0.endTime > clipStart && $0.startTime < clipEnd }
         )
     }
 
@@ -221,6 +226,16 @@ struct ShareClipView: View {
         } catch {
             loadError = error.localizedDescription
         }
+    }
+
+    /// Loads the episode's SRT transcript, if one has been downloaded.
+    /// Missing transcripts are fine — the feature simply isn't offered downstream.
+    private func loadTranscript() {
+        guard
+            let srtURL = TranscriptProvider.findSRTFile(for: episode.id),
+            let content = try? String(contentsOf: srtURL, encoding: .utf8)
+        else { return }
+        transcriptCues = SRTParser.parse(content)
     }
 }
 

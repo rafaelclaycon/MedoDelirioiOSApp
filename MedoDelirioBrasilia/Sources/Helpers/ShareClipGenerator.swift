@@ -17,6 +17,17 @@ enum ShareClipGenerator {
         let clipStart: TimeInterval
         let clipEnd: TimeInterval
         let shareMode: ShareClipShareMode
+        /// Cues overlapping the selected clip range, in episode time.
+        /// Empty when the episode has no transcript or the user opted out.
+        var transcriptCues: [SRTCue] = []
+
+        var includesTranscript: Bool { !transcriptCues.isEmpty }
+
+        func removingTranscript() -> Configuration {
+            var copy = self
+            copy.transcriptCues = []
+            return copy
+        }
     }
 
     enum GenerationPhase: String, Sendable {
@@ -51,7 +62,8 @@ enum ShareClipGenerator {
             artwork: artwork,
             clipStart: config.clipStart,
             shareMode: config.shareMode,
-            videoSize: videoSize
+            videoSize: videoSize,
+            includesTranscript: config.includesTranscript
         )
 
         onPhaseChange?(.writingVideo)
@@ -145,15 +157,20 @@ enum ShareClipGenerator {
         artwork: UIImage,
         clipStart: TimeInterval,
         shareMode: ShareClipShareMode,
-        videoSize: CGSize
+        videoSize: CGSize,
+        includesTranscript: Bool
     ) throws -> UIImage {
+        // Transcript text is deliberately left out of the static frame
+        // (`transcriptText: nil`): the cues are composited as animated
+        // `CALayer` bitmaps on top of the reserved, empty slot.
         let view = ShareClipVideoFrameView(
             artwork: artwork,
             episodeTitle: episode.title,
             episodeDate: episode.pubDate,
             clipStart: clipStart,
             shareMode: shareMode,
-            videoSize: videoSize
+            videoSize: videoSize,
+            includesTranscript: includesTranscript
         )
         let renderer = ImageRenderer(content: view)
         renderer.scale = 1.0
@@ -299,7 +316,8 @@ enum ShareClipGenerator {
             buildVideoComposition(
                 videoSize: videoSize,
                 safeDuration: safeDuration,
-                compVideoTrack: compVideoTrack
+                compVideoTrack: compVideoTrack,
+                config: config
             )
         }
 
@@ -333,9 +351,13 @@ enum ShareClipGenerator {
     private static func buildVideoComposition(
         videoSize: CGSize,
         safeDuration: CMTime,
-        compVideoTrack: AVMutableCompositionTrack
+        compVideoTrack: AVMutableCompositionTrack,
+        config: Configuration
     ) -> AVMutableVideoComposition {
-        let layout = ShareClipVideoLayout(videoSize: videoSize)
+        let layout = ShareClipVideoLayout(
+            videoSize: videoSize,
+            includesTranscript: config.includesTranscript
+        )
         let track = layout.trackFrame
 
         let parentLayer = CALayer()
@@ -366,6 +388,15 @@ enum ShareClipGenerator {
 
         parentLayer.addSublayer(fillLayer)
         parentLayer.addSublayer(countdownLayer(layout: layout, videoSize: videoSize, safeDuration: safeDuration))
+
+        for layer in transcriptCueLayers(
+            config: config,
+            layout: layout,
+            videoSize: videoSize,
+            safeDuration: safeDuration
+        ) {
+            parentLayer.addSublayer(layer)
+        }
 
         let videoComposition = AVMutableVideoComposition()
         videoComposition.renderSize = videoSize
@@ -466,6 +497,135 @@ enum ShareClipGenerator {
         layer.add(countdown, forKey: "countdown")
 
         return layer
+    }
+
+    // MARK: - Transcript Layers
+
+    /// Builds one `CALayer` per transcript cue, each holding a pre-rendered
+    /// bitmap of the cue's text, faded in/out at the cue's boundaries and given
+    /// a subtle upward drift on entry — echoing the lyrics-style transition the
+    /// app uses in Now Playing.
+    ///
+    /// Bitmaps + compositor-level properties (`opacity`, `position`) are used
+    /// for the same reason as the countdown: a `CATextLayer` with an animated
+    /// `string` renders frozen through `AVVideoCompositionCoreAnimationTool`.
+    @MainActor
+    private static func transcriptCueLayers(
+        config: Configuration,
+        layout: ShareClipVideoLayout,
+        videoSize: CGSize,
+        safeDuration: CMTime
+    ) -> [CALayer] {
+        guard config.includesTranscript else { return [] }
+        let duration = CMTimeGetSeconds(safeDuration)
+        guard duration > 0 else { return [] }
+
+        let frame = layout.transcriptFrame
+        // Core Animation uses bottom-left origin; convert the slot's Y.
+        let frameCA = CGRect(
+            x: frame.origin.x,
+            y: videoSize.height - frame.origin.y - frame.height,
+            width: frame.width,
+            height: frame.height
+        )
+        let fade: TimeInterval = 0.25
+        let rise: CGFloat = 14
+
+        return config.transcriptCues.compactMap { cue in
+            let start = min(max(cue.startTime - config.clipStart, 0), duration)
+            let end = min(max(cue.endTime - config.clipStart, 0), duration)
+            guard end - start > 0.1 else { return nil }
+            guard let image = transcriptCueImage(text: cue.text, layout: layout) else { return nil }
+
+            let layer = CALayer()
+            layer.frame = frameCA
+            layer.contentsScale = transcriptRenderScale
+            layer.contents = image
+            layer.opacity = 0
+
+            // Keyframes are normalized over the whole clip so a single
+            // animation per layer covers hidden → fade in → hold → fade out.
+            let fadeInEnd = min(start + fade, end)
+            let fadeOutStart = max(end - fade, fadeInEnd)
+
+            let opacity = CAKeyframeAnimation(keyPath: "opacity")
+            opacity.values = [0, 0, 1, 1, 0, 0] as [Float]
+            opacity.keyTimes = [0, start / duration, fadeInEnd / duration, fadeOutStart / duration, end / duration, 1]
+                .map { NSNumber(value: $0) }
+            opacity.beginTime = AVCoreAnimationBeginTimeAtZero
+            opacity.duration = duration
+            opacity.isRemovedOnCompletion = false
+            opacity.fillMode = .forwards
+            layer.add(opacity, forKey: "cueOpacity")
+
+            // In CA's bottom-left space a smaller Y is lower on screen, so
+            // starting below the resting position and animating up reads as
+            // the incoming line drifting into place.
+            let restingY = frameCA.midY
+            let drift = CAKeyframeAnimation(keyPath: "position.y")
+            drift.values = [restingY - rise, restingY - rise, restingY, restingY]
+            drift.keyTimes = [0, start / duration, fadeInEnd / duration, 1]
+                .map { NSNumber(value: $0) }
+            drift.beginTime = AVCoreAnimationBeginTimeAtZero
+            drift.duration = duration
+            drift.isRemovedOnCompletion = false
+            drift.fillMode = .forwards
+            layer.add(drift, forKey: "cueDrift")
+
+            return layer
+        }
+    }
+
+    private static let transcriptRenderScale: CGFloat = 2
+
+    /// Renders one cue's text into a bitmap sized to the transcript slot,
+    /// left-aligned and vertically centered, shrinking the font (mirroring
+    /// the preview's `minimumScaleFactor(0.7)`) when a long cue would overflow.
+    private static func transcriptCueImage(
+        text: String,
+        layout: ShareClipVideoLayout
+    ) -> CGImage? {
+        let size = layout.transcriptFrame.size
+        guard size.width > 0, size.height > 0 else { return nil }
+
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.alignment = .left
+        paragraphStyle.lineBreakMode = .byWordWrapping
+
+        let baseFontSize = layout.transcriptFontSize
+        var font = UIFont.systemFont(ofSize: baseFontSize, weight: .semibold)
+        var textHeight = size.height
+        for factor in [1.0, 0.85, 0.7] {
+            font = UIFont.systemFont(ofSize: baseFontSize * factor, weight: .semibold)
+            let bounding = (text as NSString).boundingRect(
+                with: CGSize(width: size.width, height: .greatestFiniteMagnitude),
+                options: [.usesLineFragmentOrigin, .usesFontLeading],
+                attributes: [.font: font, .paragraphStyle: paragraphStyle],
+                context: nil
+            )
+            textHeight = ceil(bounding.height)
+            if textHeight <= size.height { break }
+        }
+
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: UIColor.white.withAlphaComponent(0.95),
+            .paragraphStyle: paragraphStyle
+        ]
+
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = transcriptRenderScale
+        format.opaque = false
+        let renderer = UIGraphicsImageRenderer(size: size, format: format)
+
+        let y = max((size.height - textHeight) / 2, 0)
+        let image = renderer.image { _ in
+            (text as NSString).draw(
+                in: CGRect(x: 0, y: y, width: size.width, height: min(textHeight, size.height)),
+                withAttributes: attributes
+            )
+        }
+        return image.cgImage
     }
 
     // MARK: - Helpers
