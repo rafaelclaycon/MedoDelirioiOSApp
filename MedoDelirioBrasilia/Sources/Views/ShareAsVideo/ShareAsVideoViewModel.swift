@@ -22,6 +22,7 @@ class ShareAsVideoViewModel {
     var shouldCloseView = false
     var pathToVideoFile = ""
     var selectedSocialNetwork = IntendedVideoDestination.twitter.rawValue
+    var selectedBackground = ShareAsVideoBackground.green
 
     // Alerts
     var alertTitle: String = ""

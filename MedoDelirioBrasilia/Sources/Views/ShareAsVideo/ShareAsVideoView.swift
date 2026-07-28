@@ -41,6 +41,14 @@ struct ShareAsVideoView: View {
                         )
                         .padding(.top, .spacing(.small))
 
+                    HStack {
+                        Text("Cor de fundo:")
+
+                        Spacer()
+
+                        backgroundPicker
+                    }
+
                     Stepper("Tamanho do texto: \(Int(titleSize))", value: $titleSize, in: 18...38, step: 1)
                         .onChange(of: titleSize) { _, newValue in
                             subtitleSize = newValue - 6
@@ -125,9 +133,36 @@ struct ShareAsVideoView: View {
 
     // MARK: - Subviews
 
+    private var backgroundPicker: some View {
+        HStack(spacing: .spacing(.small)) {
+            ForEach(ShareAsVideoBackground.allCases) { background in
+                Button {
+                    viewModel.selectedBackground = background
+                } label: {
+                    LinearGradient(
+                        colors: background.gradientColors,
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    .frame(width: 32, height: 32)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(
+                                viewModel.selectedBackground == background ? Color.accentColor : Color.secondary.opacity(0.4),
+                                lineWidth: viewModel.selectedBackground == background ? 3 : 1
+                            )
+                    )
+                }
+                .buttonStyle(.plain)
+                .disabled(viewModel.isShowingProcessingView)
+            }
+        }
+    }
+
     private func squareImageView(contentName: String, contentAuthor: String) -> some View {
         ZStack {
-            Image("square_video_background")
+            Image(viewModel.selectedBackground.imageName)
                 .resizable()
                 .frame(width: 350, height: 350)
             
