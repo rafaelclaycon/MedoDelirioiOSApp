@@ -711,12 +711,6 @@ struct MainView: View {
         .sheet(isPresented: $isShowingSupportSheet) {
             StandaloneSupportView()
         }
-        .sheet(isPresented: $showTranscriptsWhatsNew, onDismiss: {
-            AppPersistentMemory.shared.hasSeenTranscriptsWhatsNewScreen(true)
-        }) {
-            IntroducingTranscriptsView(appMemory: AppPersistentMemory.shared)
-                .environment(transcriptDownloadService)
-        }
         .sheet(isPresented: $showShareClipWhatsNew, onDismiss: {
             AppPersistentMemory.shared.hasSeenShareClipWhatsNewScreen(true)
         }) {
