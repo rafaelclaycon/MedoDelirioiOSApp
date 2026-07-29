@@ -16,7 +16,6 @@ enum ShareClipGenerator {
         let audioFileURL: URL
         let clipStart: TimeInterval
         let clipEnd: TimeInterval
-        let shareMode: ShareClipShareMode
         /// Cues overlapping the selected clip range, in episode time.
         /// Empty when the episode has no transcript or the user opted out.
         var transcriptCues: [SRTCue] = []
@@ -30,6 +29,11 @@ enum ShareClipGenerator {
         }
     }
 
+    /// Fixed pixel dimensions for the exported clip. Portrait and landscape
+    /// modes existed at one point but were never shipped — square is the only
+    /// supported output for now.
+    static let videoSize = CGSize(width: 1080, height: 1080)
+
     enum GenerationPhase: String, Sendable {
         case preparingAudio = "Preparando áudio…"
         case renderingFrame = "Renderizando quadro…"
@@ -42,9 +46,6 @@ enum ShareClipGenerator {
         config: Configuration,
         onPhaseChange: (@Sendable (GenerationPhase) -> Void)? = nil
     ) async throws -> URL {
-        guard let videoSize = config.shareMode.videoSize else {
-            throw ShareClipError.unsupportedMode
-        }
         let clipDuration = config.clipEnd - config.clipStart
 
         let artwork = await downloadArtwork(for: config.episode)
@@ -61,7 +62,6 @@ enum ShareClipGenerator {
             episode: config.episode,
             artwork: artwork,
             clipStart: config.clipStart,
-            shareMode: config.shareMode,
             videoSize: videoSize,
             includesTranscript: config.includesTranscript
         )
@@ -156,7 +156,6 @@ enum ShareClipGenerator {
         episode: PodcastEpisode,
         artwork: UIImage,
         clipStart: TimeInterval,
-        shareMode: ShareClipShareMode,
         videoSize: CGSize,
         includesTranscript: Bool
     ) throws -> UIImage {
@@ -168,7 +167,6 @@ enum ShareClipGenerator {
             episodeTitle: episode.title,
             episodeDate: episode.pubDate,
             clipStart: clipStart,
-            shareMode: shareMode,
             videoSize: videoSize,
             includesTranscript: includesTranscript
         )
@@ -668,7 +666,6 @@ enum ShareClipGenerator {
 
 enum ShareClipError: Error, LocalizedError {
 
-    case unsupportedMode
     case audioTrimFailed
     case frameRenderFailed
     case videoWriteFailed
@@ -677,7 +674,6 @@ enum ShareClipError: Error, LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .unsupportedMode: "O modo selecionado não suporta exportação de vídeo."
         case .audioTrimFailed: "Falha ao recortar o áudio."
         case .frameRenderFailed: "Falha ao renderizar o quadro do vídeo."
         case .videoWriteFailed: "Falha ao gravar o vídeo."

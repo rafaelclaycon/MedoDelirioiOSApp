@@ -90,13 +90,19 @@ struct IntroducingShareClipView: View {
                         featureItem(
                             icon: "waveform",
                             title: "Escolha o Trecho",
-                            message: "Selecione o início e o fim do clipe direto na forma de onda do episódio."
+                            message: "Selecione o início e o fim do clipe direto na forma de onda do episódio ou na transcrição."
                         )
 
                         featureItem(
                             icon: "video",
                             title: "Gere um Vídeo",
                             message: "Um vídeo quadrado pronto pra compartilhar, com capa, título e progresso do episódio."
+                        )
+
+                        featureItem(
+                            icon: "text.quote",
+                            title: "Inclua a Transcrição",
+                            message: "Deixe o vídeo mais interessante. O texto aparece no estilo letra de música e é opcional."
                         )
                     }
                     .padding(.top, 16)

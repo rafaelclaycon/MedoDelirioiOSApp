@@ -733,45 +733,17 @@ struct MainView: View {
             memory.setHasSeenEpisodeSupportPrompt(true)
             memory.setLastSupportPromptDate(Date())
         }) {
-            SupportPromptView(
-                onSupport: {
-                    let memory = AppPersistentMemory.shared
-                    memory.setHasSeenEpisodeSupportPrompt(true)
-                    memory.setLastSupportPromptDate(Date())
-                    episodePlayer.showSupportPrompt = false
+            // One screen only: the pitch and the donate buttons together,
+            // instead of the old explainer-prompt-then-support two-step.
+            StandaloneSupportView(context: .episodeCompleted)
+                .onAppear {
                     Task {
                         await AnalyticsService().send(
                             originatingScreen: "SupportPrompt",
-                            action: "support_prompt_tapped(trigger=episodes)"
-                        )
-                    }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        isShowingSupportSheet = true
-                    }
-                },
-                onDismiss: {
-                    let memory = AppPersistentMemory.shared
-                    memory.setHasSeenEpisodeSupportPrompt(true)
-                    memory.setLastSupportPromptDate(Date())
-                    episodePlayer.showSupportPrompt = false
-                    Task {
-                        await AnalyticsService().send(
-                            originatingScreen: "SupportPrompt",
-                            action: "support_prompt_dismissed(trigger=episodes)"
+                            action: "support_sheet_shown(trigger=episodes)"
                         )
                     }
                 }
-            )
-            .presentationDetents([.medium])
-            .presentationDragIndicator(.visible)
-            .onAppear {
-                Task {
-                    await AnalyticsService().send(
-                        originatingScreen: "SupportPrompt",
-                        action: "support_prompt_shown(trigger=episodes)"
-                    )
-                }
-            }
         }
     }
 

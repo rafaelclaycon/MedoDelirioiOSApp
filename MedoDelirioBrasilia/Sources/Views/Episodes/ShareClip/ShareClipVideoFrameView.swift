@@ -151,7 +151,6 @@ struct ShareClipVideoFrameView: View {
     /// Where the clip starts within the full episode. Baked in statically since,
     /// unlike the trailing countdown, it never changes over the clip's duration.
     let clipStart: TimeInterval
-    let shareMode: ShareClipShareMode
     let videoSize: CGSize
     /// Reserves the transcript slot in the layout. The generator's static frame
     /// enables this while leaving `transcriptText` nil — the animated cue
@@ -248,11 +247,11 @@ struct ShareClipVideoFrameView: View {
 
     // MARK: - Subviews
 
-    /// Fills the frame with the mode's designed background image, if it has
-    /// one; falls back to a solid color for modes without dedicated artwork.
+    /// Fills the frame with the square clip's designed background image,
+    /// falling back to a solid color if the asset is ever missing.
     @ViewBuilder
     private var background: some View {
-        if let imageName = shareMode.backgroundImageName, let backgroundImage = UIImage(named: imageName) {
+        if let backgroundImage = UIImage(named: "square_share_clip") {
             Image(uiImage: backgroundImage)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
@@ -331,7 +330,6 @@ private let previewArtwork: UIImage = UIGraphicsImageRenderer(size: .init(width:
         episodeTitle: "O Fim do Mandato e as Perspectivas para 2026",
         episodeDate: .now,
         clipStart: 620,
-        shareMode: .square,
         videoSize: .init(width: 1080, height: 1080)
     )
     .frame(width: 1080, height: 1080)
@@ -345,7 +343,6 @@ private let previewArtwork: UIImage = UIGraphicsImageRenderer(size: .init(width:
         episodeTitle: "O Fim do Mandato e as Perspectivas para 2026",
         episodeDate: .now,
         clipStart: 620,
-        shareMode: .square,
         videoSize: .init(width: 1080, height: 1080),
         includesTranscript: true,
         transcriptText: "Aí o outro respondeu na mesma hora, no microfone aberto pra todo mundo ouvir, sem medo nenhum de dar ruim."
@@ -361,7 +358,6 @@ private let previewArtwork: UIImage = UIGraphicsImageRenderer(size: .init(width:
         episodeTitle: "Eleições 2026: Candidatos, Alianças e o Futuro da Democracia Brasileira",
         episodeDate: .now,
         clipStart: 3725,
-        shareMode: .square,
         videoSize: .init(width: 1080, height: 1080)
     )
     .frame(width: 1080, height: 1080)

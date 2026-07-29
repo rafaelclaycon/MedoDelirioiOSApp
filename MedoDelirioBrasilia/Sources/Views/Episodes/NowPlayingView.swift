@@ -25,6 +25,7 @@ struct NowPlayingView: View {
     @State private var editingBookmark: EpisodeBookmark?
     @State private var bookmarksSortAscending: Bool = true
     @State private var showShareClip: Bool = false
+    @State private var showClipSupportSheet: Bool = false
     @State private var isPreparingShare: Bool = false
     @State private var shareLinkMetadata: LPLinkMetadata?
     @State private var showShareSheet: Bool = false
@@ -106,13 +107,39 @@ struct NowPlayingView: View {
         }
         .sheet(isPresented: $showShareClip) {
             if let episode = player.currentEpisode {
-                ShareClipView(episode: episode) {
+                ShareClipView(episode: episode) { includesTranscript in
                     showShareClip = false
                     toast = Toast(message: Shared.videoSharedSuccessfullyMessage, type: .success)
-                    Task { await AnalyticsService().send(originatingScreen: "ShareClip", action: "clip_shared") }
+                    Task {
+                        await AnalyticsService().send(
+                            originatingScreen: "ShareClip",
+                            action: "clip_shared(transcript=\(includesTranscript))"
+                        )
+                    }
+
+                    // The user just experienced the app's value end to end —
+                    // the moment to ask for support, capped by the shared cooldown.
+                    if AppPersistentMemory.shared.shouldShowShareClipSupportPrompt() {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                            showClipSupportSheet = true
+                        }
+                    }
                 }
                 .environment(player)
             }
+        }
+        .sheet(isPresented: $showClipSupportSheet, onDismiss: {
+            AppPersistentMemory.shared.setLastSupportPromptDate(Date())
+        }) {
+            StandaloneSupportView(context: .shareClip)
+                .onAppear {
+                    Task {
+                        await AnalyticsService().send(
+                            originatingScreen: "SupportPrompt",
+                            action: "support_sheet_shown(trigger=share_clip)"
+                        )
+                    }
+                }
         }
         .onAppear {
             if player.pendingRemoteBookmark {

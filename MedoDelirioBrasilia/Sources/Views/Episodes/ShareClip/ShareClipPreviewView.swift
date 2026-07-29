@@ -12,7 +12,9 @@ import UIKit
 struct ShareClipPreviewView: View {
 
     let config: ShareClipGenerator.Configuration
-    var onExportComplete: () -> Void = {}
+    /// Passes whether the exported clip included a transcript, so callers can
+    /// reflect that in analytics without reaching back into this view's state.
+    var onExportComplete: (Bool) -> Void = { _ in }
 
     @State private var videoURL: URL?
     @State private var player: AVPlayer?
@@ -54,7 +56,7 @@ struct ShareClipPreviewView: View {
     /// Mirrors the confirm screen's structure — scrollable content with the
     /// action pinned as a bottom safe-area inset — so the two feel consistent.
     private func videoPreview(player: AVPlayer) -> some View {
-        let videoSize = config.shareMode.videoSize ?? CGSize(width: 9, height: 16)
+        let videoSize = ShareClipGenerator.videoSize
         let aspectRatio = videoSize.width / videoSize.height
 
         return ScrollView {
@@ -109,10 +111,9 @@ struct ShareClipPreviewView: View {
     /// Quiet spec line: duration, pixel dimensions, format and file size.
     private var clipDetails: String? {
         guard let videoURL else { return nil }
+        let size = ShareClipGenerator.videoSize
         var parts: [String] = [NowPlayingView.formatTime(max(config.clipEnd - config.clipStart, 0))]
-        if let size = config.shareMode.videoSize {
-            parts.append("\(Int(size.width))×\(Int(size.height))")
-        }
+        parts.append("\(Int(size.width))×\(Int(size.height))")
         parts.append("MP4")
         if let attributes = try? FileManager.default.attributesOfItem(atPath: videoURL.path),
            let bytes = (attributes[.size] as? NSNumber)?.int64Value {
@@ -206,7 +207,12 @@ struct ShareClipPreviewView: View {
         } catch {
             guard !Task.isCancelled else { return }
             self.error = error
-            Task { await AnalyticsService().send(originatingScreen: "ShareClip", action: "clip_generation_failed(\(error.localizedDescription))") }
+            Task {
+                await AnalyticsService().send(
+                    originatingScreen: "ShareClip",
+                    action: "clip_generation_failed(transcript=\(config.includesTranscript), error=\(error.localizedDescription))"
+                )
+            }
         }
     }
 
@@ -233,9 +239,9 @@ struct ShareClipPreviewView: View {
             popover.sourceRect = CGRect(x: top.view.bounds.midX, y: top.view.bounds.midY, width: 0, height: 0)
             popover.permittedArrowDirections = []
         }
-        activityVC.completionWithItemsHandler = { [onExportComplete] _, completed, _, _ in
+        activityVC.completionWithItemsHandler = { [onExportComplete, config] _, completed, _, _ in
             guard completed else { return }
-            onExportComplete()
+            onExportComplete(config.includesTranscript)
         }
         top.present(activityVC, animated: true)
     }

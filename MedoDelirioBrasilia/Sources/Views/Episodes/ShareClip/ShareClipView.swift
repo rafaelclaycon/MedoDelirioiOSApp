@@ -11,7 +11,7 @@ import SwiftUI
 struct ShareClipView: View {
 
     let episode: PodcastEpisode
-    var onExportComplete: () -> Void = {}
+    var onExportComplete: (Bool) -> Void = { _ in }
 
     @Environment(EpisodePlayer.self) private var player
     @Environment(TranscriptDownloadService.self) private var transcriptDownloadService
@@ -142,7 +142,6 @@ struct ShareClipView: View {
             audioFileURL: EpisodePlayer.localFileURL(for: episode),
             clipStart: activeClipStart,
             clipEnd: activeClipEnd,
-            shareMode: .square,
             transcriptCues: transcriptCues.filter { $0.endTime > activeClipStart && $0.startTime < activeClipEnd }
         )
     }
@@ -524,95 +523,6 @@ struct ShareClipView: View {
             transcriptComingSoon = isComingSoon
         case .idle:
             break
-        }
-    }
-}
-
-// MARK: - Subviews
-
-extension ShareClipView {
-
-    struct ShareModeButton: View {
-
-        let mode: ShareClipShareMode
-        let isSelected: Bool
-        let action: () -> Void
-
-        @Environment(\.colorScheme) private var colorScheme
-
-        var body: some View {
-            if #available(iOS 26, *) {
-                buttonContent
-                    .padding(.vertical, .spacing(.small))
-                    .padding(.horizontal, .spacing(.small))
-                    .glassEffect(
-                        .regular.tint(
-                            isSelected ? Color.orange.opacity(colorScheme == .dark ? 0.3 : 0.5) : nil
-                        ).interactive()
-                    )
-                    .onTapGesture { action() }
-            } else {
-                Button(action: action) {
-                    buttonContent
-                        .padding(.vertical, .spacing(.small))
-                        .padding(.horizontal, .spacing(.small))
-                        .background {
-                            RoundedRectangle(cornerRadius: .spacing(.huge))
-                                .fill(isSelected ? Color.orange.opacity(0.2) : Color.gray.opacity(0.1))
-                        }
-                }
-                .buttonStyle(.plain)
-            }
-        }
-
-        private var buttonContent: some View {
-            Image(systemName: mode.symbol)
-                .font(.title3)
-                .foregroundStyle(isSelected ? .orange : .secondary)
-                .frame(maxWidth: .infinity)
-        }
-    }
-
-    struct BrandingButton: View {
-
-        let branding: ShareClipBranding
-        let isSelected: Bool
-        let action: () -> Void
-
-        @Environment(\.colorScheme) private var colorScheme
-
-        var body: some View {
-            if #available(iOS 26, *) {
-                Button { action() } label: {
-                    buttonContent
-                        .padding(.vertical, .spacing(.small))
-                        .padding(.horizontal, .spacing(.small))
-                        .glassEffect(
-                            .regular.tint(
-                                isSelected ? Color.orange.opacity(colorScheme == .dark ? 0.3 : 0.5) : nil
-                            ).interactive()
-                        )
-//                        .onTapGesture { action() }
-                }
-            } else {
-                Button(action: action) {
-                    buttonContent
-                        .padding(.vertical, .spacing(.small))
-                        .padding(.horizontal, .spacing(.small))
-                        .background {
-                            RoundedRectangle(cornerRadius: .spacing(.huge))
-                                .fill(isSelected ? Color.orange.opacity(0.2) : Color.gray.opacity(0.1))
-                        }
-                }
-                .buttonStyle(.plain)
-            }
-        }
-
-        private var buttonContent: some View {
-            Image(systemName: branding.symbol)
-                .font(.title3)
-                .foregroundStyle(isSelected ? .orange : .secondary)
-                .frame(maxWidth: .infinity)
         }
     }
 }

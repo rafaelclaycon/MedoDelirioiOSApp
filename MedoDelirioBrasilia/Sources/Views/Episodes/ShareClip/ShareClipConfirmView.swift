@@ -11,7 +11,7 @@ import SwiftUI
 struct ShareClipConfirmView: View {
 
     let config: ShareClipGenerator.Configuration
-    var onExportComplete: () -> Void = {}
+    var onExportComplete: (Bool) -> Void = { _ in }
 
     @State private var artwork: UIImage = ShareClipGenerator.placeholderArtwork
     @State private var audioPlayer: AVAudioPlayer?
@@ -27,7 +27,7 @@ struct ShareClipConfirmView: View {
 
     init(
         config: ShareClipGenerator.Configuration,
-        onExportComplete: @escaping () -> Void = {}
+        onExportComplete: @escaping (Bool) -> Void = { _ in }
     ) {
         self.config = config
         self.onExportComplete = onExportComplete
@@ -102,7 +102,6 @@ struct ShareClipConfirmView: View {
             episodeTitle: config.episode.title,
             episodeDate: config.episode.pubDate,
             clipStart: config.clipStart,
-            shareMode: config.shareMode,
             videoSize: .init(width: size, height: size),
             includesTranscript: transcriptShown,
             transcriptText: currentCueText

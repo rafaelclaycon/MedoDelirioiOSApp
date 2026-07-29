@@ -288,6 +288,17 @@ extension AppPersistentMemory {
         return true
     }
 
+    /// Sharing a clip is a moment where the app just proved its value, so the
+    /// ask can repeat — but it shares the 7-day cooldown with every other
+    /// support prompt so exporting several clips doesn't turn into nagging.
+    func shouldShowShareClipSupportPrompt() -> Bool {
+        if let lastDate = getLastSupportPromptDate(),
+           Date().timeIntervalSince(lastDate) < 7 * 24 * 3600 {
+            return false
+        }
+        return true
+    }
+
     // MARK: Episodes Tab Badge
 
     func getEpisodesTabLastVisitedAt() -> Date? {
@@ -428,6 +439,13 @@ extension AppPersistentMemory {
 
     func setLastSupportPromptDate(_ newValue: Date) {
         userDefaults.set(newValue.timeIntervalSince1970, forKey: "lastSupportPromptDate")
+    }
+
+    /// Dev-only: clears the seen flag and the 7-day cooldown so the support
+    /// sheet triggers (episodes and clip export) can be retested.
+    func resetSupportPromptMemory() {
+        userDefaults.set(false, forKey: "hasSeenEpisodeSupportPrompt")
+        userDefaults.removeObject(forKey: "lastSupportPromptDate")
     }
 
     // MARK: Episodes Tab Badge

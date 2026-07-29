@@ -316,6 +316,8 @@ struct DevOptionsView: View {
     @Binding var showTranscriptsWhatsNewPreview: Bool
     @Binding var showShareClipWhatsNewPreview: Bool
 
+    @State private var supportSheetPreviewContext: StandaloneSupportView.Context?
+
     var body: some View {
         Form {
             FeatureFlagsSettingsView()
@@ -332,9 +334,22 @@ struct DevOptionsView: View {
                 Button("Reexibir ShareClip What's New") {
                     showShareClipWhatsNewPreview = true
                 }
+
+                Menu("Exibir Tela de Apoio") {
+                    Button("Genérico") { supportSheetPreviewContext = .generic }
+                    Button("Fim de Episódio") { supportSheetPreviewContext = .episodeCompleted }
+                    Button("Exportar Clipe") { supportSheetPreviewContext = .shareClip }
+                }
+
+                Button("Resetar Prompt de Apoio") {
+                    AppPersistentMemory.shared.resetSupportPromptMemory()
+                }
             }
         }
         .navigationTitle("Dev Options")
+        .sheet(item: $supportSheetPreviewContext) { context in
+            StandaloneSupportView(context: context)
+        }
     }
 }
 
