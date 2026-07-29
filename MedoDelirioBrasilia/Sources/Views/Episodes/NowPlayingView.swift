@@ -13,7 +13,7 @@ import Kingfisher
 struct NowPlayingView: View {
 
     enum CanvasMode: Int {
-        case coverArt, transcription, bookmarks
+        case coverArt, transcription, bookmarks, chapters
     }
 
     @Environment(EpisodePlayer.self) private var player
@@ -32,6 +32,7 @@ struct NowPlayingView: View {
     @State private var transcriptProvider: TranscriptProvider
     @State private var hasSentTranscriptViewedAnalytics: Bool = false
     @State private var showFullTranscript: Bool = false
+    @State private var chapterProvider = ChapterProvider()
     @AppStorage("nowPlayingCanvasMode") private var currentCanvasMode: CanvasMode = .coverArt
 
     @Environment(\.colorScheme) private var colorScheme
@@ -50,11 +51,26 @@ struct NowPlayingView: View {
         vSizeClass == .compact ? .infinity : nil
     }
 
+    /// Falls back to cover art when the stored mode is no longer selectable — the
+    /// chapters canvas is behind a flag, and `@AppStorage` remembers it even after
+    /// the flag is turned back off.
+    private var effectiveCanvasMode: CanvasMode {
+        if currentCanvasMode == .chapters, !FeatureFlag.isEnabled(.episodeChapters) {
+            return .coverArt
+        }
+        return currentCanvasMode
+    }
+
+    /// Canvases that lay out a list from the top rather than centring their content.
+    private var canvasIsTopAligned: Bool {
+        effectiveCanvasMode == .bookmarks || effectiveCanvasMode == .chapters
+    }
+
     var body: some View {
         NavigationStack {
             AdaptiveStack(spacing: 0) {
                 GeometryReader { geometry in
-                    if currentCanvasMode == .coverArt {
+                    if effectiveCanvasMode == .coverArt {
                         content
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
@@ -62,7 +78,7 @@ struct NowPlayingView: View {
                             content
                                 .frame(
                                     minHeight: geometry.size.height,
-                                    alignment: currentCanvasMode == .bookmarks ? .top : .center
+                                    alignment: canvasIsTopAligned ? .top : .center
                                 )
                         }
                         .scrollBounceBehavior(.basedOnSize)
@@ -87,8 +103,13 @@ struct NowPlayingView: View {
             // intermittently disappear/misalign).
             .background {
                 PlaybackTimeObserver(player: player) { time in
-                    if currentCanvasMode == .transcription {
+                    switch effectiveCanvasMode {
+                    case .transcription:
                         transcriptProvider.update(currentTime: time)
+                    case .chapters:
+                        chapterProvider.update(currentTime: time)
+                    case .coverArt, .bookmarks:
+                        break
                     }
                 }
             }
@@ -149,10 +170,18 @@ struct NowPlayingView: View {
             if transcriptDownloadService.transcriptsDownloaded, case .idle = transcriptProvider.state {
                 transcriptProvider.load(episodeId: player.currentEpisode?.id, pubDate: player.currentEpisode?.pubDate)
             }
+            if FeatureFlag.isEnabled(.episodeChapters), case .idle = chapterProvider.state {
+                chapterProvider.load(episodeId: player.currentEpisode?.id)
+                chapterProvider.update(currentTime: player.currentTime)
+            }
         }
         .onChange(of: player.currentEpisode?.id) {
             if transcriptDownloadService.transcriptsDownloaded {
                 transcriptProvider.load(episodeId: player.currentEpisode?.id, pubDate: player.currentEpisode?.pubDate)
+            }
+            if FeatureFlag.isEnabled(.episodeChapters) {
+                chapterProvider.load(episodeId: player.currentEpisode?.id)
+                chapterProvider.update(currentTime: player.currentTime)
             }
         }
         .onChange(of: transcriptDownloadService.transcriptsDownloaded) {
@@ -161,6 +190,9 @@ struct NowPlayingView: View {
             }
         }
         .onChange(of: currentCanvasMode) {
+            if currentCanvasMode == .chapters {
+                chapterProvider.update(currentTime: player.currentTime)
+            }
             if currentCanvasMode == .transcription {
                 transcriptProvider.update(currentTime: player.currentTime)
                 if !hasSentTranscriptViewedAnalytics {
@@ -210,13 +242,16 @@ struct NowPlayingView: View {
 
     @ViewBuilder
     private var topContent: some View {
-        switch currentCanvasMode {
+        switch effectiveCanvasMode {
         case .coverArt:
             artwork
         case .transcription:
             transcriptContent
         case .bookmarks:
             bookmarksContent
+        case .chapters:
+            ChapterCanvas(chapterProvider: chapterProvider)
+                .environment(player)
         }
     }
 
@@ -304,6 +339,11 @@ struct NowPlayingView: View {
                 .tag(CanvasMode.transcription)
             Label("Marcadores", systemImage: "bookmark")
                 .tag(CanvasMode.bookmarks)
+
+            if FeatureFlag.isEnabled(.episodeChapters) {
+                Label("Capítulos", systemImage: "list.bullet.indent")
+                    .tag(CanvasMode.chapters)
+            }
         }
         .pickerStyle(.segmented)
         .frame(maxWidth: 400)
