@@ -120,7 +120,7 @@ enum BackgroundContentSync {
         log("⏰ BGAppRefresh: sistema acordou o app para atualizar")
         scheduleRefresh() // Keep the chain going for the next opportunity.
 
-        let updateTask = Task { @MainActor in
+        Task { @MainActor in
             let result = await run()
             log("⏰ BGAppRefresh: concluído: \(result.debugLabel)")
             let service = ContentUpdateService.shared
@@ -128,11 +128,15 @@ enum BackgroundContentSync {
             task.setTaskCompleted(success: result != .failed)
         }
 
-        // If time runs out, cancellation makes the update loop stop at the next event;
-        // unfinished events stay marked unsuccessful and are retried on the next run.
+        // When time runs out the sync is asked to stop at the next event boundary. Task
+        // cancellation is deliberately not used: the sync runs unstructured so that view
+        // lifecycle can't kill it, which means it only answers to this explicit request.
+        // Unfinished events stay marked unsuccessful and are retried on the next run.
         task.expirationHandler = {
-            log("⏰ BGAppRefresh: tempo esgotado, cancelando")
-            updateTask.cancel()
+            Task { @MainActor in
+                log("⏰ BGAppRefresh: tempo esgotado, interrompendo")
+                ContentUpdateService.shared.cancelCurrentUpdate()
+            }
         }
     }
 }

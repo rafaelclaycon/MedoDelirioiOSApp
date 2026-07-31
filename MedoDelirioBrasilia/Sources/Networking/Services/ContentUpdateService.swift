@@ -120,6 +120,17 @@ extension ContentUpdateService {
         isCancellationRequested = false
         lastRunWasInterrupted = false
 
+        // Deliberately unstructured. The content list starts updates from a SwiftUI
+        // `.task`, which SwiftUI cancels as soon as that view goes away — switching tabs
+        // included. A sync has to outlive the view that happened to kick it off, so it
+        // ends only when `cancelCurrentUpdate()` asks it to.
+        let run = Task {
+            await self.performUpdate()
+        }
+        return await run.value
+    }
+
+    private func performUpdate() async -> Bool {
         defer {
             appMemory.setLastUpdateAttempt(to: Date.now.iso8601withFractionalSeconds)
         }
@@ -128,7 +139,7 @@ extension ContentUpdateService {
             let didHaveAnyLocalUpdates = try await retryLocal()
             let didHaveAnyRemoteUpdates = try await syncDataWithServer()
 
-            lastRunWasInterrupted = isCancellationRequested || Task.isCancelled
+            lastRunWasInterrupted = isCancellationRequested
 
             if didHaveAnyLocalUpdates || didHaveAnyRemoteUpdates {
                 logger.updateSuccess("Atualização concluída com sucesso.")
@@ -244,7 +255,7 @@ extension ContentUpdateService {
         guard let serverUpdates = serverUpdates, !serverUpdates.isEmpty else { return }
 
         for update in serverUpdates {
-            guard !Task.isCancelled, !isCancellationRequested else { break }
+            guard !isCancellationRequested else { break }
             await process(updateEvent: update)
             processedUpdateNumber += 1
         }
@@ -254,7 +265,7 @@ extension ContentUpdateService {
         guard let localUnsuccessfulUpdates = localUnsuccessfulUpdates, !localUnsuccessfulUpdates.isEmpty else { return }
 
         for update in localUnsuccessfulUpdates {
-            guard !Task.isCancelled, !isCancellationRequested else { break }
+            guard !isCancellationRequested else { break }
             await process(updateEvent: update)
             processedUpdateNumber += 1
         }
