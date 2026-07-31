@@ -169,6 +169,14 @@ struct Shared {
             static let suggestChangesSubject = "Sugerir Mudanças nas Reações v\(Versioneer.appVersion) (\(UIDevice.current.systemName) \(UIDevice.current.systemVersion))"
             static let suggestChangesBody = "O que você gostaria de adicionar, remover ou mudar?"
         }
+
+        struct ChapterIssue {
+
+            static let subject = "Problema com capítulos no app v\(Versioneer.appVersion) (\(UIDevice.current.systemName) \(UIDevice.current.systemVersion))"
+
+            /// Prefilled with the episode so a report arrives already identifiable.
+            static let body = "Episódio: %@\n\nQual o problema? (nome de capítulo errado, tempo fora de lugar, capítulo faltando, etc.)\n\n"
+        }
     }
     
     struct ShareAsVideo {

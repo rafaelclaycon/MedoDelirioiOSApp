@@ -21,6 +21,9 @@ struct SettingsView: View {
     @State private var showShareClipWhatsNewPreview: Bool = false
     @State private var toast: Toast?
     @State private var donors: [Donor]? = nil
+    /// Written from the chapter list's "Ocultar capítulos" action; this is the
+    /// only way back once a user hides them.
+    @AppStorage("episodeChaptersHidden") private var chaptersHidden: Bool = false
 
     private let apiClient: APIClientProtocol
 
@@ -51,6 +54,20 @@ struct SettingsView: View {
                         }
                 } footer: {
                     Text("Alguns conteúdos contam com muitos palavrões. Ao marcar essa opção, você concorda que tem mais de 18 anos e que deseja ver esses conteúdos.")
+                }
+
+                if FeatureFlag.isEnabled(.episodeChapters) {
+                    Section {
+                        Toggle(
+                            "Mostrar capítulos",
+                            isOn: Binding(
+                                get: { !chaptersHidden },
+                                set: { chaptersHidden = !$0 }
+                            )
+                        )
+                    } footer: {
+                        Text("Capítulos são gerados por IA a partir das transcrições e podem conter erros.")
+                    }
                 }
 
                 if CommandLine.arguments.contains("-SHOW_MORE_DEV_OPTIONS") {

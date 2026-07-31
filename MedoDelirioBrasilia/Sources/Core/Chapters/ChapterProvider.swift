@@ -28,6 +28,10 @@ final class ChapterProvider {
     /// times per episode instead of on every playback tick.
     private(set) var currentChapter: EpisodeChapter?
 
+    /// Position of `currentChapter` in the loaded list, for "N de M" displays.
+    /// Updates on the same coarse cadence as `currentChapter`.
+    private(set) var currentChapterIndex: Int?
+
     // MARK: - Private
 
     @ObservationIgnored private var chapters: [EpisodeChapter] = []
@@ -39,18 +43,19 @@ final class ChapterProvider {
         chapters = []
         lastChapterIndex = nil
         currentChapter = nil
+        currentChapterIndex = nil
 
         guard let episodeId, !episodeId.isEmpty else {
             state = .notAvailable(reason: "Nenhum episódio selecionado.")
             return
         }
 
-        guard let data = try? Data(contentsOf: Self.chaptersFileURL()) else {
+        guard FileManager.default.fileExists(atPath: ChapterDownloadService.chaptersFileURL().path) else {
             state = .notAvailable(reason: "Nenhum capítulo disponível ainda.")
             return
         }
 
-        guard let file = try? JSONDecoder().decode(EpisodeChaptersFile.self, from: data) else {
+        guard let file = Self.decodedFile() else {
             state = .notAvailable(reason: "Não foi possível ler o arquivo de capítulos.")
             return
         }
@@ -82,6 +87,47 @@ final class ChapterProvider {
         lastChapterIndex = index
 
         currentChapter = index.map { chapters[$0] }
+        currentChapterIndex = index
+    }
+
+    /// Whether this episode has usable chapters. Reads `state`, so it only
+    /// invalidates on load — safe to check from a parent view's body.
+    var hasChapters: Bool {
+        if case .loaded = state { return true }
+        return false
+    }
+
+    // MARK: - Navigation
+
+    /// Where the chapter at `index` ends — the next chapter's start, or the end
+    /// of the episode for the last one.
+    func end(ofChapterAt index: Int, episodeDuration: TimeInterval) -> TimeInterval? {
+        guard chapters.indices.contains(index) else { return nil }
+
+        if index < chapters.count - 1 {
+            return chapters[index + 1].start
+        }
+        return episodeDuration > chapters[index].start ? episodeDuration : nil
+    }
+
+    /// Start of the chapter to jump back to from `currentTime`.
+    ///
+    /// Restarts the current chapter unless playback is still near its beginning,
+    /// in which case it steps back one — the familiar track-back behaviour.
+    func previousChapterStart(from currentTime: TimeInterval, restartThreshold: TimeInterval = 3) -> TimeInterval? {
+        guard let index = lastChapterIndex else { return chapters.first?.start }
+
+        let start = chapters[index].start
+        if currentTime - start > restartThreshold {
+            return start
+        }
+        return index > 0 ? chapters[index - 1].start : start
+    }
+
+    /// Start of the next chapter, or nil when the last one is playing.
+    func nextChapterStart() -> TimeInterval? {
+        guard let index = lastChapterIndex, index < chapters.count - 1 else { return nil }
+        return chapters[index + 1].start
     }
 
     // MARK: - Binary Search
@@ -122,12 +168,48 @@ final class ChapterProvider {
             .filter { seenSeconds.insert(Int($0.start)).inserted }
     }
 
-    // MARK: - File Path
+    // MARK: - File Cache
 
-    static func chaptersFileURL() -> URL {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-            .appendingPathComponent(InternalFolderNames.chapters)
-            .appendingPathComponent("chapters.json")
+    private struct DecodedFile {
+        let modified: Date
+        let size: Int
+        let file: EpisodeChaptersFile
+    }
+
+    /// Shared across provider instances. Chapters ship as one bundled file for the
+    /// whole catalog, so decoding it per episode change — or once per provider —
+    /// would mean parsing hundreds of KB to look up a single entry.
+    ///
+    /// Only touched from `load(episodeId:)`, which views call on the main actor.
+    nonisolated(unsafe) private static var cached: DecodedFile?
+
+    /// Decodes `chapters.json`, reusing the last decode while the file on disk is
+    /// unchanged. Keyed on modification date and size so a sync that replaces the
+    /// file invalidates the cache without any notification plumbing.
+    private static func decodedFile() -> EpisodeChaptersFile? {
+        let url = ChapterDownloadService.chaptersFileURL()
+
+        guard
+            let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+            let modified = attributes[.modificationDate] as? Date,
+            let size = attributes[.size] as? Int
+        else {
+            return nil
+        }
+
+        if let cached, cached.modified == modified, cached.size == size {
+            return cached.file
+        }
+
+        guard
+            let data = try? Data(contentsOf: url),
+            let file = try? JSONDecoder().decode(EpisodeChaptersFile.self, from: data)
+        else {
+            return nil
+        }
+
+        cached = DecodedFile(modified: modified, size: size, file: file)
+        return file
     }
 }
 
@@ -148,6 +230,7 @@ extension ChapterProvider {
         provider.chapters = mockChapters
         provider.state = .loaded(chapters: mockChapters)
         provider.currentChapter = mockChapters[1]
+        provider.currentChapterIndex = 1
         provider.lastChapterIndex = 1
         return provider
     }

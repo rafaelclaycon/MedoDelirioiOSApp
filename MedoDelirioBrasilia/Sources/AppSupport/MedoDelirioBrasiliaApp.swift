@@ -22,6 +22,7 @@ struct MedoDelirioBrasiliaApp: App {
 
     @State private var helper = PlayRandomSoundHelper()
     @State private var transcriptDownloadService = TranscriptDownloadService()
+    @State private var chapterDownloadService = ChapterDownloadService()
     @State private var deepLinkHandler = DeepLinkHandler()
 
     private let contentRepository = ContentRepository(database: LocalDatabase.shared)
@@ -49,6 +50,7 @@ struct MedoDelirioBrasiliaApp: App {
             }
             .environment(helper)
             .environment(transcriptDownloadService)
+            .environment(chapterDownloadService)
             .environment(deepLinkHandler)
         }
     }

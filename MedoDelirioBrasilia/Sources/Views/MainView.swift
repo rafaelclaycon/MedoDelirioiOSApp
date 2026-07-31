@@ -15,6 +15,7 @@ struct MainView: View {
 
     @Environment(\.scenePhase) private var scenePhase
     @Environment(TranscriptDownloadService.self) private var transcriptDownloadService
+    @Environment(ChapterDownloadService.self) private var chapterDownloadService
     @Environment(DeepLinkHandler.self) private var deepLinkHandler
 
     private var tabSelection: Binding<PhoneTab>
@@ -670,6 +671,12 @@ struct MainView: View {
             Task {
                 await transcriptDownloadService.syncNewTranscriptsIfNeeded()
             }
+
+            // Not gated on any opt-in: the whole catalog's chapters are a couple
+            // hundred KB, so every user gets them.
+            Task {
+                await chapterDownloadService.syncIfNeeded()
+            }
         }
         .onChange(of: scenePhase) { _, newPhase in
             episodePlayer.setSceneActive(newPhase == .active)
@@ -971,4 +978,6 @@ private struct NowPlayingBarContainer: View {
         contentRepository: ContentRepository(database: LocalDatabase.shared)
     )
     .environment(EpisodePlayer())
+    .environment(TranscriptDownloadService())
+    .environment(ChapterDownloadService())
 }
