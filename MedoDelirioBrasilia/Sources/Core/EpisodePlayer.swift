@@ -70,6 +70,9 @@ final class EpisodePlayer {
     @ObservationIgnored private var audioPlayer: AVAudioPlayer?
     @ObservationIgnored private var playbackDelegate: PlaybackDelegate?
     @ObservationIgnored private var timer: Timer?
+    /// Separate from `timer`, which is stopped when the app backgrounds.
+    @ObservationIgnored private var chapterTimer: Timer?
+    @ObservationIgnored private let chapterProvider = ChapterProvider()
     @ObservationIgnored private var activeDownloadTask: URLSessionDownloadTask?
     @ObservationIgnored private var downloadingEpisodeId: String?
     @ObservationIgnored private var playGeneration: Int = 0
@@ -366,6 +369,7 @@ final class EpisodePlayer {
         player.enableRate = true
         currentEpisode = episode
         duration = player.duration
+        loadChapters(for: episode)
 
         if let saved = progressStore?.progress(for: episode.id),
            saved.currentTime > 0, saved.currentTime < player.duration {
@@ -658,10 +662,88 @@ final class EpisodePlayer {
         guard let episode = currentEpisode else { return }
 
         var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [String: Any]()
-        info[MPMediaItemPropertyTitle] = episode.title
+
+        // With chapters, the chapter name is the more useful headline and the
+        // episode title moves to the artist line so it isn't lost.
+        if let chapterTitle = activeChapterTitle() {
+            info[MPMediaItemPropertyTitle] = chapterTitle
+            info[MPMediaItemPropertyArtist] = episode.title
+        } else {
+            info[MPMediaItemPropertyTitle] = episode.title
+            info[MPMediaItemPropertyArtist] = nil
+        }
+
         info[MPMediaItemPropertyPlaybackDuration] = duration
         info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentPlaybackTime()
         info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? Double(playbackSpeed) : 0.0
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+
+        syncChapterTimer()
+    }
+
+    // MARK: - Chapters
+
+    /// Title of the chapter covering the current position, or nil when chapters are
+    /// unavailable or switched off.
+    @MainActor
+    private func activeChapterTitle() -> String? {
+        guard ChapterPreferences.isEnabled else { return nil }
+        return chapterProvider.currentChapter?.title
+    }
+
+    @MainActor
+    private func loadChapters(for episode: PodcastEpisode) {
+        guard ChapterPreferences.isEnabled else { return }
+        chapterProvider.load(episodeId: episode.id)
+        chapterProvider.update(currentTime: currentPlaybackTime())
+    }
+
+    /// Runs while playing — including in the background, unlike the UI timer, since
+    /// the lock screen is exactly where a stale chapter title would show.
+    ///
+    /// Polling rather than scheduling one fire per boundary: a scheduled fire would
+    /// have to be recomputed on every seek and speed change, and this costs a binary
+    /// search over a few dozen entries once a second.
+    @MainActor
+    private func syncChapterTimer() {
+        guard ChapterPreferences.isEnabled, isPlaying, chapterProvider.hasChapters else {
+            stopChapterTimer()
+            return
+        }
+        guard chapterTimer == nil else { return }
+
+        chapterTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.refreshActiveChapter()
+            }
+        }
+    }
+
+    @MainActor
+    private func stopChapterTimer() {
+        chapterTimer?.invalidate()
+        chapterTimer = nil
+    }
+
+    /// Pushes a new title to the system player only when a boundary was crossed —
+    /// `ChapterProvider` returns early otherwise.
+    @MainActor
+    private func refreshActiveChapter() {
+        guard let player = audioPlayer else { return }
+
+        let previous = chapterProvider.currentChapter
+        chapterProvider.update(currentTime: player.currentTime)
+        guard chapterProvider.currentChapter != previous else { return }
+
+        guard let episode = currentEpisode else { return }
+        var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [String: Any]()
+        if let chapterTitle = activeChapterTitle() {
+            info[MPMediaItemPropertyTitle] = chapterTitle
+            info[MPMediaItemPropertyArtist] = episode.title
+        } else {
+            info[MPMediaItemPropertyTitle] = episode.title
+            info[MPMediaItemPropertyArtist] = nil
+        }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
 
@@ -670,7 +752,9 @@ final class EpisodePlayer {
         audioPlayer?.currentTime ?? currentTime
     }
 
+    @MainActor
     private func clearNowPlayingInfo() {
+        stopChapterTimer()
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
     }
 

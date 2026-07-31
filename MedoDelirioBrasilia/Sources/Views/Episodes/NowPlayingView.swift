@@ -46,7 +46,7 @@ struct NowPlayingView: View {
     @State private var chapterProvider = ChapterProvider()
     @AppStorage("nowPlayingCanvasMode") private var currentCanvasMode: CanvasMode = .coverArt
     /// Set from the chapter list's "Ocultar capítulos" action.
-    @AppStorage("episodeChaptersHidden") private var chaptersHidden: Bool = false
+    @AppStorage(ChapterPreferences.hiddenKey) private var chaptersHidden: Bool = false
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.horizontalSizeClass) private var hSizeClass

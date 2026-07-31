@@ -39,7 +39,34 @@ struct ChapterCanvas: View {
         let currentChapterID = chapterProvider.currentChapter?.id
         let episodeDuration = player.duration
 
-        return VStack(alignment: .leading, spacing: 0) {
+        // Scrolls the enclosing scroll view in `NowPlayingView`, which is what
+        // actually moves — this list is rendered as its canvas content.
+        return ScrollViewReader { proxy in
+            list(chapters, currentChapterID: currentChapterID, episodeDuration: episodeDuration)
+                .onAppear {
+                    scrollToCurrentChapter(using: proxy)
+                }
+        }
+    }
+
+    /// Brings the playing chapter into view when the list appears — opening a
+    /// 25-chapter list scrolled to the top hides where you actually are.
+    private func scrollToCurrentChapter(using proxy: ScrollViewProxy) {
+        guard let id = chapterProvider.currentChapter?.id else { return }
+
+        // One runloop hop: on the first `onAppear` the rows aren't laid out yet,
+        // and `scrollTo` silently does nothing for an id it can't resolve.
+        DispatchQueue.main.async {
+            proxy.scrollTo(id, anchor: .center)
+        }
+    }
+
+    private func list(
+        _ chapters: [EpisodeChapter],
+        currentChapterID: Int?,
+        episodeDuration: TimeInterval
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: .spacing(.small)) {
                 Text("Gerados por IA. Pode conter erros.")
                     .font(.footnote)
@@ -109,10 +136,12 @@ struct ChapterCanvas: View {
                     }
                 }
                 .buttonStyle(.plain)
+                .id(chapter.id)
 
-                if index < chapters.count - 1 {
-                    Divider()
-                }
+                // Kept in the tree and hidden rather than omitted, so every element
+                // contributes the same number of views.
+                Divider()
+                    .opacity(index < chapters.count - 1 ? 1 : 0)
             }
         }
     }

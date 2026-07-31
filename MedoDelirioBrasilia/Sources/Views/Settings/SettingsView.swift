@@ -23,7 +23,7 @@ struct SettingsView: View {
     @State private var donors: [Donor]? = nil
     /// Written from the chapter list's "Ocultar capítulos" action; this is the
     /// only way back once a user hides them.
-    @AppStorage("episodeChaptersHidden") private var chaptersHidden: Bool = false
+    @AppStorage(ChapterPreferences.hiddenKey) private var chaptersHidden: Bool = false
 
     private let apiClient: APIClientProtocol
 
