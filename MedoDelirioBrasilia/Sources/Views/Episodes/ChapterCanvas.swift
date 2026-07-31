@@ -40,20 +40,8 @@ struct ChapterCanvas: View {
         let episodeDuration = player.duration
 
         return VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text("Capítulos")
-                    .font(.headline)
-
-                Spacer()
-
-                Text("\(chapters.count)")
-                    .font(.subheadline)
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-            }
-
-            HStack(alignment: .firstTextBaseline, spacing: .spacing(.xSmall)) {
-                Text("Capítulos gerados por IA. Pode conter erros.")
+            HStack(alignment: .firstTextBaseline, spacing: .spacing(.small)) {
+                Text("Gerados por IA. Pode conter erros.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -74,14 +62,13 @@ struct ChapterCanvas: View {
                     Image(systemName: "info.circle")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
-                        .frame(width: 28, height: 28)
+                        .frame(width: 32, height: 32)
                         .contentShape(Circle())
                 }
                 .accessibilityLabel("Sobre os capítulos")
 
                 Spacer(minLength: 0)
             }
-            .padding(.top, .spacing(.xxxSmall))
             .padding(.bottom, .spacing(.small))
             .confirmationDialog(
                 "Ocultar capítulos?",

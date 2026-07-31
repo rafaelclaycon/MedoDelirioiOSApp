@@ -98,10 +98,13 @@ struct NowPlayingView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                Spacer()
+                    .frame(height: UIDevice.deviceType == .iPhone ? .spacing(.medium) : 0)
+
                 // Sits above the adaptive stack so it spans the full sheet width in
                 // every layout, rather than riding along one column in landscape.
                 toggleRow
-                    .padding(.top, .spacing(.xSmall))
+                    .padding(.top, UIDevice.deviceType == .iPhone ? .spacing(.xSmall) : 0)
                     .padding(.bottom, .spacing(.medium))
                     .padding(.horizontal, .spacing(.xLarge))
 
@@ -125,6 +128,7 @@ struct NowPlayingView: View {
                     bottomControls
                         .frame(maxWidth: bottomControlsMaxWidth)
                         .padding(.bottom, UIDevice.deviceType == .iPhone ? 0 : .spacing(.medium))
+                        //.border(.red)
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -135,41 +139,6 @@ struct NowPlayingView: View {
             }
             .toolbar {
                 toolbarControls
-            }
-            .toolbar {
-                ToolbarItem(placement: .bottomBar) {
-                    Button {
-                        guard let episodeId = player.currentEpisode?.id else { return }
-                        bookmarkStore.addBookmark(episodeId: episodeId, timestamp: player.currentTime)
-                        toast = Toast(message: "Marcador Adicionado", type: .success)
-                    } label: {
-                        Image(systemName: "bookmark")
-                    }
-                }
-
-                ToolbarItem(placement: .bottomBar) {
-                    Button {
-                        if player.isPlaying {
-                            player.togglePlayPause()
-                        }
-                        showShareClip = true
-                        Task { await AnalyticsService().send(originatingScreen: "NowPlaying", action: "didTapShareClip") }
-                    } label: {
-                        Image(systemName: "scissors")
-                    }
-                }
-
-                ToolbarItem(id: "favorite", placement: .bottomBar) {
-                    favoriteButton
-                }
-
-                ToolbarItem(id: "share", placement: .bottomBar) {
-                    shareButton
-                }
-
-                ToolbarItem(id: "transcript", placement: .bottomBar) {
-                    transcriptButton
-                }
             }
             // Observe `currentTime` in an isolated child so the toolbar's host view
             // doesn't re-evaluate on every playback tick (which made toolbar items
@@ -190,7 +159,7 @@ struct NowPlayingView: View {
             }
         }
         .presentationDragIndicator(.visible)
-        .topToast($toast)
+        .toast($toast)
         .sheet(item: $editingBookmark) { bookmark in
             BookmarkEditView(bookmark: bookmark)
                 .environment(bookmarkStore)
@@ -321,9 +290,7 @@ struct NowPlayingView: View {
             playbackControls
 
             Spacer()
-                .frame(height: .spacing(.xxLarge))
-
-            //actionButtons
+                .frame(height: .spacing(.medium))
         }
         .padding(.horizontal, .spacing(.xLarge))
     }
@@ -480,27 +447,41 @@ struct NowPlayingView: View {
             }
         }
 
-//        ToolbarItem(id: "favorite", placement: .primaryAction) {
-//            favoriteButton
-//        }
-//
-//        if #available(iOS 26.0, *) {
-//            ToolbarSpacer(.fixed)
-//        }
-//
-//        ToolbarItem(id: "share", placement: .primaryAction) {
-//            shareButton
-//        }
-//
-//        if FeatureFlag.isEnabled(.transcriptFullView) {
-//            if #available(iOS 26.0, *) {
-//                ToolbarSpacer(.fixed)
-//            }
-//
-//            ToolbarItem(id: "transcript", placement: .primaryAction) {
-//                transcriptButton
-//            }
-//        }
+        ToolbarItem(id: "bookmark", placement: .bottomBar) {
+            Button {
+                guard let episodeId = player.currentEpisode?.id else { return }
+                bookmarkStore.addBookmark(episodeId: episodeId, timestamp: player.currentTime)
+                toast = Toast(message: "Marcador Adicionado", type: .success)
+            } label: {
+                Image(systemName: "bookmark")
+            }
+        }
+
+        ToolbarItem(id: "shareClip", placement: .bottomBar) {
+            Button {
+                if player.isPlaying {
+                    player.togglePlayPause()
+                }
+                showShareClip = true
+                Task { await AnalyticsService().send(originatingScreen: "NowPlaying", action: "didTapShareClip") }
+            } label: {
+                Image(systemName: "scissors")
+            }
+        }
+
+        ToolbarItem(id: "favorite", placement: .bottomBar) {
+            favoriteButton
+        }
+
+        ToolbarItem(id: "share", placement: .bottomBar) {
+            shareButton
+        }
+
+        if FeatureFlag.isEnabled(.transcriptFullView) {
+            ToolbarItem(id: "transcript", placement: .bottomBar) {
+                transcriptButton
+            }
+        }
     }
 
     // MARK: - Chapter Actions
