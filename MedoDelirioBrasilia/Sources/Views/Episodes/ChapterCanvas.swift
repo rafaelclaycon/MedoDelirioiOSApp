@@ -15,6 +15,10 @@ struct ChapterCanvas: View {
 
     @Environment(EpisodePlayer.self) private var player
     let chapterProvider: ChapterProvider
+    let onHideChapters: () -> Void
+    let onReportIssue: () -> Void
+
+    @State private var showHideConfirmation: Bool = false
 
     var body: some View {
         switch chapterProvider.state {
@@ -47,21 +51,75 @@ struct ChapterCanvas: View {
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
             }
+
+            HStack(alignment: .firstTextBaseline, spacing: .spacing(.xSmall)) {
+                Text("Capítulos gerados por IA. Pode conter erros.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Menu {
+                    Button {
+                        onReportIssue()
+                    } label: {
+                        Label("Relatar um problema", systemImage: "exclamationmark.bubble")
+                    }
+
+                    Button(role: .destructive) {
+                        showHideConfirmation = true
+                    } label: {
+                        Label("Ocultar capítulos", systemImage: "eye.slash")
+                    }
+                } label: {
+                    Image(systemName: "info.circle")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 28, height: 28)
+                        .contentShape(Circle())
+                }
+                .accessibilityLabel("Sobre os capítulos")
+
+                Spacer(minLength: 0)
+            }
+            .padding(.top, .spacing(.xxxSmall))
             .padding(.bottom, .spacing(.small))
+            .confirmationDialog(
+                "Ocultar capítulos?",
+                isPresented: $showHideConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Ocultar", role: .destructive) {
+                    onHideChapters()
+                }
+                Button("Cancelar", role: .cancel) {}
+            } message: {
+                Text("Os capítulos deixam de aparecer no player. Você pode reativá-los nos Ajustes.")
+            }
 
             ForEach(Array(chapters.enumerated()), id: \.element.id) { index, chapter in
+                let length = Self.length(at: index, in: chapters, episodeDuration: episodeDuration)
+                let isCurrent = chapter.id == currentChapterID
+
                 Button {
                     player.seek(to: chapter.start)
                 } label: {
-                    ChapterRow(
-                        chapter: chapter,
-                        length: Self.length(
-                            at: index,
-                            in: chapters,
-                            episodeDuration: episodeDuration
-                        ),
-                        isCurrent: chapter.id == currentChapterID
-                    )
+                    // Only the playing row reads `currentTime`, so the rest of the
+                    // list isn't invalidated on every playback tick.
+                    if isCurrent {
+                        PlayingChapterRow(
+                            player: player,
+                            number: index + 1,
+                            chapter: chapter,
+                            length: length
+                        )
+                    } else {
+                        ChapterRow(
+                            number: index + 1,
+                            chapter: chapter,
+                            length: length,
+                            isCurrent: false
+                        )
+                    }
                 }
                 .buttonStyle(.plain)
 
@@ -116,17 +174,24 @@ struct ChapterCanvas: View {
 /// `Button` owns the tap action.
 private struct ChapterRow: View {
 
+    let number: Int
     let chapter: EpisodeChapter
     let length: TimeInterval?
     let isCurrent: Bool
 
+    static let cornerRadius: CGFloat = 10
+
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: .spacing(.small)) {
-            Text(chapter.formattedStart)
-                .font(.caption)
+        // `.center` rather than `.firstTextBaseline`: the number and length stay
+        // centred against a title that wraps to two lines instead of riding up to
+        // align with its first line.
+        HStack(alignment: .center, spacing: .spacing(.medium)) {
+            Text("\(number)")
+                .font(.subheadline)
+                .fontWeight(isCurrent ? .bold : .medium)
                 .monospacedDigit()
                 .foregroundStyle(isCurrent ? Color.darkerGreen : .secondary)
-                .frame(width: 52, alignment: .leading)
+                .frame(width: 28, alignment: .leading)
 
             Text(chapter.title)
                 .font(.body)
@@ -141,7 +206,8 @@ private struct ChapterRow: View {
                     .foregroundStyle(.tertiary)
             }
         }
-        .padding(.vertical, .spacing(.xSmall))
+        .padding(.vertical, .spacing(.small))
+        .padding(.horizontal, .spacing(.small))
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
@@ -149,7 +215,7 @@ private struct ChapterRow: View {
     }
 
     private var accessibilityLabel: String {
-        var label = "\(chapter.title), começa em \(chapter.formattedStart)"
+        var label = "Capítulo \(number): \(chapter.title), começa em \(chapter.formattedStart)"
         if isCurrent {
             label += ", capítulo atual"
         }
@@ -161,6 +227,45 @@ private struct ChapterRow: View {
     private static func formattedLength(_ length: TimeInterval) -> String {
         let minutes = Int((length / 60).rounded())
         return minutes < 1 ? "<1 min" : "\(minutes) min"
+    }
+}
+
+// MARK: - Playing Row
+
+/// The row for the chapter currently playing, with progress filling its
+/// background. Isolated from the rest of the list because it reads
+/// `player.currentTime` and so redraws on every playback tick.
+private struct PlayingChapterRow: View {
+
+    let player: EpisodePlayer
+    let number: Int
+    let chapter: EpisodeChapter
+    let length: TimeInterval?
+
+    var body: some View {
+        ChapterRow(number: number, chapter: chapter, length: length, isCurrent: true)
+            .background(progressBackground)
+    }
+
+    private var progress: CGFloat {
+        guard let length, length > 0 else { return 0 }
+        return min(max(CGFloat((player.currentTime - chapter.start) / length), 0), 1)
+    }
+
+    private var progressBackground: some View {
+        GeometryReader { geometry in
+            // Both grays are semantic, so the bar stays subtle in dark mode instead
+            // of becoming a bright band behind the title.
+            ZStack(alignment: .leading) {
+                Rectangle()
+                    .fill(Color(.systemGray6))
+
+                Rectangle()
+                    .fill(Color(.systemGray4))
+                    .frame(width: geometry.size.width * progress)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: ChapterRow.cornerRadius))
+        }
     }
 }
 
@@ -178,9 +283,13 @@ private struct ChapterRow: View {
 
         var body: some View {
             ScrollView {
-                ChapterCanvas(chapterProvider: .mockLoaded())
-                    .padding(.horizontal, .spacing(.xLarge))
-                    .environment(player)
+                ChapterCanvas(
+                    chapterProvider: .mockLoaded(),
+                    onHideChapters: {},
+                    onReportIssue: {}
+                )
+                .padding(.horizontal, .spacing(.xLarge))
+                .environment(player)
             }
         }
     }
@@ -188,6 +297,10 @@ private struct ChapterRow: View {
 }
 
 #Preview("Sem capítulos") {
-    ChapterCanvas(chapterProvider: .mockNotAvailable())
-        .environment(EpisodePlayer())
+    ChapterCanvas(
+        chapterProvider: .mockNotAvailable(),
+        onHideChapters: {},
+        onReportIssue: {}
+    )
+    .environment(EpisodePlayer())
 }

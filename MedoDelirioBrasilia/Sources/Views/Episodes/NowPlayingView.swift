@@ -12,8 +12,19 @@ import Kingfisher
 /// Full now-playing screen presented as a sheet from the bottom accessory.
 struct NowPlayingView: View {
 
+    /// Case order is load-bearing — the raw values are persisted in `@AppStorage`,
+    /// so new modes go on the end. Display order is `displayedCanvasModes`.
     enum CanvasMode: Int {
         case coverArt, transcription, bookmarks, chapters
+
+        var title: String {
+            switch self {
+            case .coverArt: "Capa"
+            case .transcription: "Transcrição"
+            case .bookmarks: "Marcadores"
+            case .chapters: "Capítulos"
+            }
+        }
     }
 
     @Environment(EpisodePlayer.self) private var player
@@ -34,6 +45,8 @@ struct NowPlayingView: View {
     @State private var showFullTranscript: Bool = false
     @State private var chapterProvider = ChapterProvider()
     @AppStorage("nowPlayingCanvasMode") private var currentCanvasMode: CanvasMode = .coverArt
+    /// Set from the chapter list's "Ocultar capítulos" action.
+    @AppStorage("episodeChaptersHidden") private var chaptersHidden: Bool = false
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.horizontalSizeClass) private var hSizeClass
@@ -51,14 +64,30 @@ struct NowPlayingView: View {
         vSizeClass == .compact ? .infinity : nil
     }
 
-    /// Falls back to cover art when the stored mode is no longer selectable — the
-    /// chapters canvas is behind a flag, and `@AppStorage` remembers it even after
-    /// the flag is turned back off.
+    /// Chapters are behind a feature flag and can also be switched off by the user
+    /// from the chapter list. Both gates are checked in one place.
+    private var chaptersEnabled: Bool {
+        FeatureFlag.isEnabled(.episodeChapters) && !chaptersHidden
+    }
+
+    /// Falls back to cover art when the stored mode is no longer selectable —
+    /// `@AppStorage` remembers the chapters canvas even after the flag is turned
+    /// off or the user hides chapters.
     private var effectiveCanvasMode: CanvasMode {
-        if currentCanvasMode == .chapters, !FeatureFlag.isEnabled(.episodeChapters) {
+        if currentCanvasMode == .chapters, !chaptersEnabled {
             return .coverArt
         }
         return currentCanvasMode
+    }
+
+    /// Modes offered in the picker, in the order they're shown.
+    private var displayedCanvasModes: [CanvasMode] {
+        var modes: [CanvasMode] = [.coverArt]
+        if chaptersEnabled {
+            modes.append(.chapters)
+        }
+        modes.append(contentsOf: [.transcription, .bookmarks])
+        return modes
     }
 
     /// Canvases that lay out a list from the top rather than centring their content.
@@ -68,26 +97,35 @@ struct NowPlayingView: View {
 
     var body: some View {
         NavigationStack {
-            AdaptiveStack(spacing: 0) {
-                GeometryReader { geometry in
-                    if effectiveCanvasMode == .coverArt {
-                        content
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else {
-                        ScrollView {
-                            content
-                                .frame(
-                                    minHeight: geometry.size.height,
-                                    alignment: canvasIsTopAligned ? .top : .center
-                                )
-                        }
-                        .scrollBounceBehavior(.basedOnSize)
-                    }
-                }
+            VStack(spacing: 0) {
+                // Sits above the adaptive stack so it spans the full sheet width in
+                // every layout, rather than riding along one column in landscape.
+                toggleRow
+                    .padding(.top, .spacing(.xSmall))
+                    .padding(.bottom, .spacing(.medium))
+                    .padding(.horizontal, .spacing(.xLarge))
 
-                bottomControls
-                    .frame(maxWidth: bottomControlsMaxWidth)
-                    .padding(.bottom, UIDevice.deviceType == .iPhone ? 0 : .spacing(.medium))
+                AdaptiveStack(spacing: 0) {
+                    GeometryReader { geometry in
+                        if effectiveCanvasMode == .coverArt {
+                            content
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else {
+                            ScrollView {
+                                content
+                                    .frame(
+                                        minHeight: geometry.size.height,
+                                        alignment: canvasIsTopAligned ? .top : .center
+                                    )
+                            }
+                            .scrollBounceBehavior(.basedOnSize)
+                        }
+                    }
+
+                    bottomControls
+                        .frame(maxWidth: bottomControlsMaxWidth)
+                        .padding(.bottom, UIDevice.deviceType == .iPhone ? 0 : .spacing(.medium))
+                }
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
@@ -98,18 +136,55 @@ struct NowPlayingView: View {
             .toolbar {
                 toolbarControls
             }
+            .toolbar {
+                ToolbarItem(placement: .bottomBar) {
+                    Button {
+                        guard let episodeId = player.currentEpisode?.id else { return }
+                        bookmarkStore.addBookmark(episodeId: episodeId, timestamp: player.currentTime)
+                        toast = Toast(message: "Marcador Adicionado", type: .success)
+                    } label: {
+                        Image(systemName: "bookmark")
+                    }
+                }
+
+                ToolbarItem(placement: .bottomBar) {
+                    Button {
+                        if player.isPlaying {
+                            player.togglePlayPause()
+                        }
+                        showShareClip = true
+                        Task { await AnalyticsService().send(originatingScreen: "NowPlaying", action: "didTapShareClip") }
+                    } label: {
+                        Image(systemName: "scissors")
+                    }
+                }
+
+                ToolbarItem(id: "favorite", placement: .bottomBar) {
+                    favoriteButton
+                }
+
+                ToolbarItem(id: "share", placement: .bottomBar) {
+                    shareButton
+                }
+
+                ToolbarItem(id: "transcript", placement: .bottomBar) {
+                    transcriptButton
+                }
+            }
             // Observe `currentTime` in an isolated child so the toolbar's host view
             // doesn't re-evaluate on every playback tick (which made toolbar items
             // intermittently disappear/misalign).
             .background {
                 PlaybackTimeObserver(player: player) { time in
-                    switch effectiveCanvasMode {
-                    case .transcription:
-                        transcriptProvider.update(currentTime: time)
-                    case .chapters:
+                    // Chapters drive the control under the episode title, which is
+                    // visible in every canvas mode — so this can't be gated on the
+                    // mode the way the transcript is. It's a binary search that
+                    // returns early unless a boundary was crossed.
+                    if chaptersEnabled {
                         chapterProvider.update(currentTime: time)
-                    case .coverArt, .bookmarks:
-                        break
+                    }
+                    if effectiveCanvasMode == .transcription {
+                        transcriptProvider.update(currentTime: time)
                     }
                 }
             }
@@ -170,7 +245,7 @@ struct NowPlayingView: View {
             if transcriptDownloadService.transcriptsDownloaded, case .idle = transcriptProvider.state {
                 transcriptProvider.load(episodeId: player.currentEpisode?.id, pubDate: player.currentEpisode?.pubDate)
             }
-            if FeatureFlag.isEnabled(.episodeChapters), case .idle = chapterProvider.state {
+            if chaptersEnabled, case .idle = chapterProvider.state {
                 chapterProvider.load(episodeId: player.currentEpisode?.id)
                 chapterProvider.update(currentTime: player.currentTime)
             }
@@ -179,7 +254,7 @@ struct NowPlayingView: View {
             if transcriptDownloadService.transcriptsDownloaded {
                 transcriptProvider.load(episodeId: player.currentEpisode?.id, pubDate: player.currentEpisode?.pubDate)
             }
-            if FeatureFlag.isEnabled(.episodeChapters) {
+            if chaptersEnabled {
                 chapterProvider.load(episodeId: player.currentEpisode?.id)
                 chapterProvider.update(currentTime: player.currentTime)
             }
@@ -188,6 +263,13 @@ struct NowPlayingView: View {
             if transcriptDownloadService.transcriptsDownloaded {
                 transcriptProvider.load(episodeId: player.currentEpisode?.id, pubDate: player.currentEpisode?.pubDate)
             }
+        }
+        // A sync landing while this screen is open would otherwise go unnoticed
+        // until the next episode change.
+        .onReceive(NotificationCenter.default.publisher(for: ChapterDownloadService.chaptersDidUpdate)) { _ in
+            guard chaptersEnabled else { return }
+            chapterProvider.load(episodeId: player.currentEpisode?.id)
+            chapterProvider.update(currentTime: player.currentTime)
         }
         .onChange(of: currentCanvasMode) {
             if currentCanvasMode == .chapters {
@@ -215,10 +297,18 @@ struct NowPlayingView: View {
 
     private var bottomControls: some View {
         VStack(spacing: 0) {
-            toggleRow
-                .padding(.vertical, .spacing(.xLarge))
-
-            episodeInfo
+            // With chapters available the control stands in for the episode
+            // title and date — the chapter name is the more useful label while
+            // you're mid-episode.
+            if chaptersEnabled, chapterProvider.hasChapters {
+                ChapterControlView(
+                    player: player,
+                    chapterProvider: chapterProvider,
+                    onTapTitle: { currentCanvasMode = .chapters }
+                )
+            } else {
+                episodeInfo
+            }
 
             Spacer()
                 .frame(height: .spacing(.medium))
@@ -233,7 +323,7 @@ struct NowPlayingView: View {
             Spacer()
                 .frame(height: .spacing(.xxLarge))
 
-            actionButtons
+            //actionButtons
         }
         .padding(.horizontal, .spacing(.xLarge))
     }
@@ -250,8 +340,12 @@ struct NowPlayingView: View {
         case .bookmarks:
             bookmarksContent
         case .chapters:
-            ChapterCanvas(chapterProvider: chapterProvider)
-                .environment(player)
+            ChapterCanvas(
+                chapterProvider: chapterProvider,
+                onHideChapters: hideChapters,
+                onReportIssue: reportChapterIssue
+            )
+            .environment(player)
         }
     }
 
@@ -332,21 +426,43 @@ struct NowPlayingView: View {
     }
 
     private var toggleRow: some View {
-        Picker("Modo", selection: $currentCanvasMode) {
-            Label("Capa", systemImage: "square")
-                .tag(CanvasMode.coverArt)
-            Label("Transcrição", systemImage: "text.quote")
-                .tag(CanvasMode.transcription)
-            Label("Marcadores", systemImage: "bookmark")
-                .tag(CanvasMode.bookmarks)
-
-            if FeatureFlag.isEnabled(.episodeChapters) {
-                Label("Capítulos", systemImage: "list.bullet.indent")
-                    .tag(CanvasMode.chapters)
+        ScrollView(.horizontal) {
+            HStack(spacing: .spacing(.xSmall)) {
+                ForEach(displayedCanvasModes, id: \.self) { mode in
+                    canvasPill(mode)
+                }
             }
+            // Restores the screen inset the negative padding below strips off, so
+            // pills sit correctly at rest but can scroll edge to edge.
+            .padding(.horizontal, .spacing(.xLarge))
         }
-        .pickerStyle(.segmented)
-        .frame(maxWidth: 400)
+        .scrollIndicators(.hidden)
+        .scrollBounceBehavior(.basedOnSize)
+        .padding(.horizontal, -.spacing(.xLarge))
+        .animation(.snappy(duration: 0.2), value: currentCanvasMode)
+    }
+
+    private func canvasPill(_ mode: CanvasMode) -> some View {
+        let isSelected = effectiveCanvasMode == mode
+
+        return Button {
+            currentCanvasMode = mode
+        } label: {
+            Text(mode.title)
+                .font(.subheadline)
+                .fontWeight(isSelected ? .semibold : .regular)
+                .foregroundStyle(isSelected ? Color.primary : Color.secondary)
+                .padding(.horizontal, .spacing(.medium))
+                .padding(.vertical, .spacing(.xSmall))
+                .background {
+                    if isSelected {
+                        Capsule().fill(.quaternary)
+                    }
+                }
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 
     /// A single, structurally-stable toolbar tree. The view's `body` re-evaluates
@@ -364,26 +480,48 @@ struct NowPlayingView: View {
             }
         }
 
-        ToolbarItem(id: "favorite", placement: .primaryAction) {
-            favoriteButton
+//        ToolbarItem(id: "favorite", placement: .primaryAction) {
+//            favoriteButton
+//        }
+//
+//        if #available(iOS 26.0, *) {
+//            ToolbarSpacer(.fixed)
+//        }
+//
+//        ToolbarItem(id: "share", placement: .primaryAction) {
+//            shareButton
+//        }
+//
+//        if FeatureFlag.isEnabled(.transcriptFullView) {
+//            if #available(iOS 26.0, *) {
+//                ToolbarSpacer(.fixed)
+//            }
+//
+//            ToolbarItem(id: "transcript", placement: .primaryAction) {
+//                transcriptButton
+//            }
+//        }
+    }
+
+    // MARK: - Chapter Actions
+
+    private func hideChapters() {
+        chaptersHidden = true
+        currentCanvasMode = .coverArt
+        toast = Toast(message: "Capítulos ocultados. Reative nos Ajustes.", type: .success)
+        Task {
+            await AnalyticsService().send(originatingScreen: "NowPlaying", action: "chapters_hidden")
         }
+    }
 
-        if #available(iOS 26.0, *) {
-            ToolbarSpacer(.fixed)
-        }
-
-        ToolbarItem(id: "share", placement: .primaryAction) {
-            shareButton
-        }
-
-        if FeatureFlag.isEnabled(.transcriptFullView) {
-            if #available(iOS 26.0, *) {
-                ToolbarSpacer(.fixed)
-            }
-
-            ToolbarItem(id: "transcript", placement: .primaryAction) {
-                transcriptButton
-            }
+    private func reportChapterIssue() {
+        let episodeTitle = player.currentEpisode?.title ?? "(episódio desconhecido)"
+        Task {
+            await Mailman.openDefaultEmailApp(
+                subject: Shared.Email.ChapterIssue.subject,
+                body: String(format: Shared.Email.ChapterIssue.body, episodeTitle)
+            )
+            await AnalyticsService().send(originatingScreen: "NowPlaying", action: "chapter_issue_reported")
         }
     }
 
@@ -525,7 +663,7 @@ struct NowPlayingView: View {
                     player.togglePlayPause()
                 } label: {
                     Image(systemName: player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                        .font(.system(size: 64))
+                        .font(.system(size: 74))
                         .contentTransition(.symbolEffect(.replace.wholeSymbol))
                 }
                 .buttonStyle(.plain)
