@@ -18,6 +18,12 @@ struct ChapterVersion: Codable {
     let size: Int
     let episodeCount: Int
     let chapterCount: Int
+
+    /// Earliest episode publication date covered, as `yyyy-MM-dd`.
+    ///
+    /// Optional so a client that ships before the server starts publishing it
+    /// still decodes — it falls back to `ChapterPreferences.defaultCoverageStart`.
+    let coverageStart: String?
 }
 
 // MARK: - Service
@@ -60,6 +66,13 @@ final class ChapterDownloadService {
 
         do {
             let remote = try await fetchVersion()
+
+            // Persisted before the up-to-date check below, so a coverage change
+            // lands even when chapters.json itself is unchanged.
+            if let coverageStart = remote.coverageStart,
+               ChapterPreferences.coverageDate(from: coverageStart) != nil {
+                UserDefaults.standard.set(coverageStart, forKey: ChapterPreferences.coverageStartKey)
+            }
 
             if remote.hash == UserDefaults.standard.string(forKey: storedHashKey),
                FileManager.default.fileExists(atPath: Self.chaptersFileURL().path) {

@@ -10,7 +10,7 @@ import Foundation
 enum ChapterState: Equatable {
 
     case idle
-    case notAvailable(reason: String)
+    case notAvailable(reason: String, showsCoverageNotice: Bool = false)
     case loaded(chapters: [EpisodeChapter])
 }
 
@@ -51,7 +51,7 @@ final class ChapterProvider {
         }
 
         guard FileManager.default.fileExists(atPath: ChapterDownloadService.chaptersFileURL().path) else {
-            state = .notAvailable(reason: "Nenhum capítulo disponível ainda.")
+            state = .notAvailable(reason: "Nenhum capítulo disponível ainda.", showsCoverageNotice: true)
             return
         }
 
@@ -61,7 +61,7 @@ final class ChapterProvider {
         }
 
         guard let entry = file.episodes[episodeId] else {
-            state = .notAvailable(reason: "Esse episódio ainda não tem capítulos.")
+            state = .notAvailable(reason: "Esse episódio ainda não tem capítulos.", showsCoverageNotice: true)
             return
         }
 
@@ -237,7 +237,7 @@ extension ChapterProvider {
 
     static func mockNotAvailable() -> ChapterProvider {
         let provider = ChapterProvider()
-        provider.state = .notAvailable(reason: "Esse episódio ainda não tem capítulos.")
+        provider.state = .notAvailable(reason: "Esse episódio ainda não tem capítulos.", showsCoverageNotice: true)
         return provider
     }
 }
