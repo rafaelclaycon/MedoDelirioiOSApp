@@ -96,3 +96,7 @@ scripts/.env
 
 # AI, of course
 .claude
+
+# Python
+__pycache__/
+*.pyc
