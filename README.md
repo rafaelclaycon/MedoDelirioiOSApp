@@ -35,11 +35,11 @@ Prefer to do it in Reais? [Here you go](https://apoia.se/app-medo-delirio-ios).
 1. **Listen to Episodes:** Educate yourself and keep tabs with Brasil through the integrated audio player, episode feed, episode favoriting and moment bookmarking.
 1. **Find the Quote:** Search the full transcripts of all episodes to revisit arguments, verify claims, or check if a topic was ever covered.
 1. **React with Ease:** Find perfect responses for group chats in the **Reactions** tab, featuring sounds categorized by emotions, famous characters, and current events.
+1. **Jump to Topics That Interest You:** With auto-generated chapters, jump around in an episode's length to listen to the topics that interest you the most.
+1. **Share Meaningful Episode Moments:** Create shareable videoclips of an interesting episode moment that is easy to post on social media or WhatsApp, so friends and followers can enjoy it too.
 1. **Discover Trends:** Explore the audience's top 10 most-shared sounds and songs across various timeframes in the **Trends** screen.
-1. **Favorites Made Easy:** Save and access your favorite sounds quickly.
-1. **Multi-Sound Actions:** Select multiple sounds at once to add them to Favorites or organize into Folders.
 1. **Folders for Organization:** Group sounds into folders for easy access—just like tagging!
-1. **Social Media Sharing:** Create and share videos for your socials, perfect for meme-worthy replies.
+1. **Social Media Sharing:** Create and share videos from vírgulas (the podcast's sound bites) for your socials, perfect for meme-worthy replies.
 1. **Fast, Private Content Delivery:** Enjoy fast updates and total privacy with our custom-built content delivery system designed entirely in Swift.
 
 ## History
