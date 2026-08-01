@@ -143,6 +143,9 @@ struct ChapterCanvas: View {
                 Divider()
                     .opacity(index < chapters.count - 1 ? 1 : 0)
             }
+
+            Spacer()
+                .frame(height: .spacing(.small))
         }
     }
 

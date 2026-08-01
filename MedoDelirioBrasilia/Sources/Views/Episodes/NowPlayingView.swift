@@ -99,14 +99,15 @@ struct NowPlayingView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 Spacer()
-                    .frame(height: UIDevice.deviceType == .iPhone ? .spacing(.medium) : 0)
+                    .frame(height: UIDevice.deviceType == .iPhone ? .spacing(.xxLarge) : 0)
 
                 // Sits above the adaptive stack so it spans the full sheet width in
                 // every layout, rather than riding along one column in landscape.
                 toggleRow
-                    .padding(.top, UIDevice.deviceType == .iPhone ? .spacing(.xSmall) : 0)
-                    .padding(.bottom, .spacing(.medium))
                     .padding(.horizontal, .spacing(.xLarge))
+
+                Spacer()
+                    .frame(height: .spacing(.small))
 
                 AdaptiveStack(spacing: 0) {
                     GeometryReader { geometry in
