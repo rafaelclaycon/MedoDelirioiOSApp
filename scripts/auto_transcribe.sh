@@ -11,6 +11,7 @@
 #   ./auto_transcribe.sh --force                # run immediately, ignoring the time window
 #   ./auto_transcribe.sh --list-recent [N]      # list IDs of the N most recent episodes (default 10)
 #   ./auto_transcribe.sh --retranscribe <id>    # re-download, re-transcribe, and re-upload a specific episode
+#   ./auto_transcribe.sh --no-chapters          # transcripts only, skip chapter generation
 #
 set -euo pipefail
 
@@ -22,11 +23,13 @@ FORCE_RUN=false
 LIST_RECENT=false
 LIST_RECENT_N=10
 RETRANSCRIBE_ID=""
+SKIP_CHAPTERS=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run)       DRY_RUN=true; shift ;;
         --force)         FORCE_RUN=true; shift ;;
+        --no-chapters)   SKIP_CHAPTERS=true; shift ;;
         --list-recent)
             LIST_RECENT=true
             if [[ $# -gt 1 && "$2" =~ ^[0-9]+$ ]]; then
@@ -56,6 +59,19 @@ MIRROR_DIR="/Users/rafaelschmitt/MedoDelirioTranscripts"
 WORK_DIR="${MIRROR_DIR}/work"
 LOG_DIR="${MIRROR_DIR}/logs"
 MANIFEST_URL="https://api.medodelirioios.com/transcripts/v1/manifest.json"
+
+# Chapters — generated after transcripts are published, and entirely optional.
+# Every failure here is non-fatal: the transcript run has already succeeded by
+# the time chapters run, and the app treats a missing chapter entry as
+# "this episode has no chapters yet".
+CHAPTERS_DIR="/Users/rafaelschmitt/MedoDelirioChapters"
+CHAPTERS_FILE="${CHAPTERS_DIR}/chapters.json"
+CHAPTERS_VERSION_URL="https://api.medodelirioios.com/chapters/v1/version.json"
+# Must be a Python with the `anthropic` and `pydantic` packages installed.
+# launchd does not inherit your shell, so a venv path is the safe choice.
+CHAPTERS_PYTHON="${CHAPTERS_PYTHON:-python3}"
+# Exit code chapters_from_srt.py uses for an exhausted credit balance.
+CHAPTERS_EXIT_NO_CREDIT=2
 
 # Pedro Daltro name-fix pairs (wrong=correct)
 NAME_FIX_PAIRS=(
@@ -470,6 +486,7 @@ mkdir -p "${WORK_DIR}/audio" "${WORK_DIR}/srt" "${WORK_DIR}/fixed"
 PROCESSED=0
 FAILED=0
 NEW_SRT_FILES=()
+NEW_EPISODE_IDS=()
 
 while IFS=$'\t' read -r EP_ID AUDIO_URL TITLE; do
     log "--- Processing episode: $EP_ID ($TITLE) ---"
@@ -532,6 +549,7 @@ while IFS=$'\t' read -r EP_ID AUDIO_URL TITLE; do
 
     cp "$FIXED_SRT" "${MIRROR_DIR}/${EP_ID}.srt"
     NEW_SRT_FILES+=("${EP_ID}.srt")
+    NEW_EPISODE_IDS+=("${EP_ID}")
     PROCESSED=$((PROCESSED + 1))
     log "Episode $EP_ID transcribed and copied to mirror."
 
@@ -579,7 +597,135 @@ else
     log "Warning: could not verify manifest. Check manually."
 fi
 
-# Step 9: Summary
+# ---------------------------------------------------------------------------
+# Step 9: Generate chapters for the new episodes
+#
+# Best-effort by design. Transcripts are already uploaded and verified above, so
+# nothing below is allowed to fail the run — every command is guarded, and the
+# worst case is that these episodes simply have no chapters until someone
+# generates them by hand.
+# ---------------------------------------------------------------------------
+CHAPTERS_MADE=0
+CHAPTERS_NOTE=""
+
+chapters_step() {
+    if [[ "$SKIP_CHAPTERS" == true ]]; then
+        CHAPTERS_NOTE="skipped (--no-chapters)"
+        return 0
+    fi
+
+    local script="${SCRIPT_DIR}/chapters_from_srt.py"
+    if [[ ! -f "$script" ]]; then
+        CHAPTERS_NOTE="skipped (chapters_from_srt.py not found)"
+        return 0
+    fi
+    if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
+        CHAPTERS_NOTE="skipped (ANTHROPIC_API_KEY not set in .env)"
+        return 0
+    fi
+    if [[ -z "${CHAPTERS_REMOTE_DIR:-}" ]]; then
+        CHAPTERS_NOTE="skipped (CHAPTERS_REMOTE_DIR not set in .env)"
+        return 0
+    fi
+    # launchd runs with a bare PATH, so a Python without the SDK is the most
+    # likely misconfiguration here. Check once rather than per episode.
+    if ! "$CHAPTERS_PYTHON" -c "import anthropic, pydantic" >/dev/null 2>&1; then
+        CHAPTERS_NOTE="skipped (${CHAPTERS_PYTHON} lacks anthropic/pydantic)"
+        return 0
+    fi
+
+    mkdir -p "$CHAPTERS_DIR"
+
+    local ep_id srt_path rc out_of_credit=false
+    for ep_id in "${NEW_EPISODE_IDS[@]}"; do
+        srt_path="${MIRROR_DIR}/${ep_id}.srt"
+        if [[ ! -f "$srt_path" ]]; then
+            log "Chapters: no SRT for $ep_id, skipping"
+            continue
+        fi
+
+        log "Chapters: generating for $ep_id..."
+        rc=0
+        "$CHAPTERS_PYTHON" "$script" "$srt_path" "$ep_id" "$CHAPTERS_FILE" >>"$LOG_FILE" 2>&1 || rc=$?
+
+        if [[ $rc -eq 0 ]]; then
+            CHAPTERS_MADE=$((CHAPTERS_MADE + 1))
+        elif [[ $rc -eq $CHAPTERS_EXIT_NO_CREDIT ]]; then
+            # Every later episode would fail the same way — stop asking.
+            log "Chapters: out of API credit, stopping"
+            notify_error "Out of Claude API credit — chapters not generated"
+            out_of_credit=true
+            break
+        else
+            log "Chapters: failed for $ep_id (exit $rc), continuing"
+        fi
+    done
+
+    if [[ $CHAPTERS_MADE -eq 0 ]]; then
+        if [[ "$out_of_credit" == true ]]; then
+            CHAPTERS_NOTE="none (out of credit)"
+        else
+            CHAPTERS_NOTE="none generated"
+        fi
+        return 0
+    fi
+
+    log "Chapters: regenerating version.json..."
+    if ! "$CHAPTERS_PYTHON" "${SCRIPT_DIR}/generate_chapters_version.py" "$CHAPTERS_DIR" >>"$LOG_FILE" 2>&1; then
+        # Validation failed — publishing now would break chapters for everyone,
+        # since there is only one file for the whole catalogue.
+        log "Chapters: version.json generation failed, not uploading"
+        notify_error "chapters.json failed validation — not uploaded"
+        CHAPTERS_NOTE="${CHAPTERS_MADE} generated, upload skipped (validation failed)"
+        return 0
+    fi
+
+    # chapters.json must land before version.json: the app verifies the file's
+    # hash against the version file, so the reverse order leaves every client
+    # that syncs in the gap failing verification.
+    log "Chapters: uploading..."
+    local batch
+    batch=$(mktemp)
+    {
+        echo "cd ${CHAPTERS_REMOTE_DIR}"
+        echo "put ${CHAPTERS_FILE}"
+        echo "put ${CHAPTERS_DIR}/version.json"
+        echo "bye"
+    } >"$batch"
+
+    if ! sftp -b "$batch" -i "${SFTP_KEY}" -P "${SFTP_PORT}" "${SFTP_USER}@${SFTP_HOST}" >>"$LOG_FILE" 2>&1; then
+        rm -f "$batch"
+        log "Chapters: SFTP upload failed"
+        notify_error "Chapters upload failed"
+        CHAPTERS_NOTE="${CHAPTERS_MADE} generated, upload failed"
+        return 0
+    fi
+    rm -f "$batch"
+
+    sleep 3
+    if curl -sf "$CHAPTERS_VERSION_URL" \
+        | "$CHAPTERS_PYTHON" -c "import json,sys; v=json.load(sys.stdin); print(f'Chapters OK: {v[\"episodeCount\"]} episode(s), {v[\"chapterCount\"]} chapter(s)')" 2>/dev/null
+    then
+        log "Chapters: verification passed."
+    else
+        log "Chapters: warning — could not verify version.json. Check manually."
+    fi
+
+    CHAPTERS_NOTE="${CHAPTERS_MADE} generated and uploaded"
+    return 0
+}
+
+chapters_step || {
+    log "Chapters: unexpected error, continuing (transcripts already published)"
+    CHAPTERS_NOTE="error"
+}
+
+# Step 10: Summary
 log "=== Auto Transcribe complete ==="
 log "Processed: $PROCESSED | Failed: $FAILED | New files: ${NEW_SRT_FILES[*]}"
-notify_success "Transcribed $PROCESSED new episode(s)"
+log "Chapters: ${CHAPTERS_NOTE}"
+if [[ $CHAPTERS_MADE -gt 0 ]]; then
+    notify_success "Transcribed $PROCESSED episode(s), $CHAPTERS_MADE with chapters"
+else
+    notify_success "Transcribed $PROCESSED new episode(s)"
+fi

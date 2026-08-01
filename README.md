@@ -62,6 +62,16 @@ If you've got a Mac with the software above, clone the repo, open the project's 
 
 To fully test and play with the Reactions and Trends screens, clone and run the [medo-delirio-api](https://github.com/rafaelclaycon/medo-delirio-api) Vapor project locally.
 
+### Episode Transcripts and Chapters
+
+If you're looking to fully reproduce this project end to end, be aware that these two Episodes features depend on more than just the app binary and a server.
+
+Episode Transcripts are generated locally on this developer's Mac using [whisper.cpp](https://github.com/ggml-org/whisper.cpp). The model of choice is _ggml-large-v3-turbo_.
+
+Episode Chapters require an [Anthropic API](https://platform.claude.com/) account, key and credits. The model used is Opus 5.
+
+For more details on how this workflow operates, refer to `scripts/README.md`.
+
 ## Android version
 
 Check out [Sidronio Lima's Android app](https://play.google.com/store/apps/details?id=br.com.sidroniolima.medo_e_delirio_app).
