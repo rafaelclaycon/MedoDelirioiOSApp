@@ -66,7 +66,22 @@ def main() -> int:
         description="Generate a version.json describing the chapters.json in a folder.",
     )
     parser.add_argument("folder", type=Path, help="Folder containing chapters.json.")
+    parser.add_argument(
+        "--coverage-start",
+        default="2026-01-01",
+        help=(
+            "Earliest episode publication date covered, YYYY-MM-DD. Shown in the "
+            "app's Episódios settings. Widen it as older episodes are backfilled "
+            "(default: 2026-01-01)."
+        ),
+    )
     args = parser.parse_args()
+
+    try:
+        datetime.strptime(args.coverage_start, "%Y-%m-%d")
+    except ValueError:
+        print("Error: --coverage-start must be YYYY-MM-DD.", file=sys.stderr)
+        return 1
 
     folder: Path = args.folder.expanduser().resolve()
     if not folder.is_dir():
@@ -86,6 +101,7 @@ def main() -> int:
         "size": chapters_path.stat().st_size,
         "episodeCount": episode_count,
         "chapterCount": chapter_count,
+        "coverageStart": args.coverage_start,
         "generatedAt": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
 
