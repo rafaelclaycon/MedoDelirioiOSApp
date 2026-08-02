@@ -145,6 +145,16 @@ struct NowPlayingView: View {
             .toolbar {
                 toolbarControls
             }
+            // iOS 18's native `.bottomBar` renders plain and accent-tinted;
+            // `legacyBottomBar` replaces it there. Attached after `.toolbar`
+            // (which is a no-op bottom bar-wise pre-26, see `toolbarControls`)
+            // so it reserves the same bottom space a native bar would, and
+            // `.toast` above stays nested above it.
+            .safeAreaInset(edge: .bottom) {
+                if !UIDevice.isIOS26OrLater {
+                    legacyBottomBar
+                }
+            }
             // Observe `currentTime` in an isolated child so the toolbar's host view
             // doesn't re-evaluate on every playback tick (which made toolbar items
             // intermittently disappear/misalign).
@@ -451,41 +461,60 @@ struct NowPlayingView: View {
             }
         }
 
-        ToolbarItem(id: "bookmark", placement: .bottomBar) {
-            Button {
-                guard let episodeId = player.currentEpisode?.id else { return }
-                bookmarkStore.addBookmark(episodeId: episodeId, timestamp: player.currentTime)
-                toast = Toast(message: "Marcador Adicionado", type: .success)
-            } label: {
-                Image(systemName: "bookmark")
+        // iOS 26 gets the native Liquid Glass bottom bar; iOS 18 renders its
+        // own bar instead (see `legacyBottomBar`), since the plain, tinted
+        // pre-26 `.bottomBar` chrome doesn't fit the rest of the screen.
+        if UIDevice.isIOS26OrLater {
+            ToolbarItem(id: "bookmark", placement: .bottomBar) {
+                bookmarkButton
             }
-        }
 
-        ToolbarItem(id: "shareClip", placement: .bottomBar) {
-            Button {
-                if player.isPlaying {
-                    player.togglePlayPause()
+            ToolbarItem(id: "shareClip", placement: .bottomBar) {
+                shareClipButton
+            }
+
+            ToolbarItem(id: "favorite", placement: .bottomBar) {
+                favoriteButton
+            }
+
+            ToolbarItem(id: "share", placement: .bottomBar) {
+                shareButton
+            }
+
+            if FeatureFlag.isEnabled(.transcriptFullView) {
+                ToolbarItem(id: "transcript", placement: .bottomBar) {
+                    transcriptButton
                 }
-                showShareClip = true
-                Task { await AnalyticsService().send(originatingScreen: "NowPlaying", action: "didTapShareClip") }
-            } label: {
-                Image(systemName: "scissors")
             }
         }
+    }
 
-        ToolbarItem(id: "favorite", placement: .bottomBar) {
+    /// Reproduces `toolbarControls`'s bottom-bar actions in a neutral gray,
+    /// rounded bar for iOS < 26, which otherwise gets a plain, accent-tinted
+    /// `.bottomBar`. Attached via `safeAreaInset` after `.toolbar` so it
+    /// reserves the same space a native bottom bar would.
+    private var legacyBottomBar: some View {
+        HStack(spacing: .spacing(.xxLarge)) {
+            bookmarkButton
+
+            shareClipButton
+
             favoriteButton
-        }
 
-        ToolbarItem(id: "share", placement: .bottomBar) {
             shareButton
-        }
 
-        if FeatureFlag.isEnabled(.transcriptFullView) {
-            ToolbarItem(id: "transcript", placement: .bottomBar) {
+            if FeatureFlag.isEnabled(.transcriptFullView) {
                 transcriptButton
             }
         }
+        .font(.body)
+        .foregroundStyle(.primary)
+        .buttonStyle(.plain)
+        .padding(.horizontal, .spacing(.xLarge))
+        .padding(.vertical, .spacing(.medium))
+        .background(Color(.systemGray5), in: RoundedRectangle(cornerRadius: .spacing(.huge), style: .continuous))
+        .padding(.horizontal, .spacing(.medium))
+        .padding(.bottom, .spacing(.xSmall))
     }
 
     // MARK: - Chapter Actions
@@ -515,6 +544,28 @@ struct NowPlayingView: View {
             dismiss()
         } label: {
             Image(systemName: "xmark")
+        }
+    }
+
+    private var bookmarkButton: some View {
+        Button {
+            guard let episodeId = player.currentEpisode?.id else { return }
+            bookmarkStore.addBookmark(episodeId: episodeId, timestamp: player.currentTime)
+            toast = Toast(message: "Marcador Adicionado", type: .success)
+        } label: {
+            Image(systemName: "bookmark")
+        }
+    }
+
+    private var shareClipButton: some View {
+        Button {
+            if player.isPlaying {
+                player.togglePlayPause()
+            }
+            showShareClip = true
+            Task { await AnalyticsService().send(originatingScreen: "NowPlaying", action: "didTapShareClip") }
+        } label: {
+            Image(systemName: "scissors")
         }
     }
 
