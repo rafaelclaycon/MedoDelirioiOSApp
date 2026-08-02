@@ -129,7 +129,6 @@ struct NowPlayingView: View {
                     bottomControls
                         .frame(maxWidth: bottomControlsMaxWidth)
                         .padding(.bottom, UIDevice.deviceType == .iPhone ? 0 : .spacing(.medium))
-                        //.border(.red)
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -682,7 +681,7 @@ struct NowPlayingView: View {
 
     private var playbackControls: some View {
         ZStack {
-            HStack(spacing: .spacing(.xLarge)) {
+            HStack(spacing: .spacing(.large)) {
                 Button {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     player.skipBackward()
