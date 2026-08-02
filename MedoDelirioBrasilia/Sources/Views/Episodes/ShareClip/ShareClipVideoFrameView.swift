@@ -267,7 +267,7 @@ struct ShareClipVideoFrameView: View {
     /// video generation, the same way the progress fill is.
     private var leadingTimestampLabel: some View {
         let frame = layout.leadingTimestampFrame
-        return Text(NowPlayingView.formatTime(clipStart))
+        return Text(clipStart.asPlaybackTime)
             .font(.system(size: layout.timestampFontSize, weight: .semibold))
             .foregroundStyle(textColor.opacity(0.85))
             .monospacedDigit()

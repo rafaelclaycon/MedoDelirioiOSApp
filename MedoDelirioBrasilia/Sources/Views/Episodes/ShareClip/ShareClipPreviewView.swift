@@ -112,7 +112,7 @@ struct ShareClipPreviewView: View {
     private var clipDetails: String? {
         guard let videoURL else { return nil }
         let size = ShareClipGenerator.videoSize
-        var parts: [String] = [NowPlayingView.formatTime(max(config.clipEnd - config.clipStart, 0))]
+        var parts: [String] = [(max(config.clipEnd - config.clipStart, 0)).asPlaybackTime]
         parts.append("\(Int(size.width))×\(Int(size.height))")
         parts.append("MP4")
         if let attributes = try? FileManager.default.attributesOfItem(atPath: videoURL.path),

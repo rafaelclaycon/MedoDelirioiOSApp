@@ -409,18 +409,18 @@ struct ShareClipView: View {
             .disabled(previewPlayer == nil)
 
             Label(
-                NowPlayingView.formatTime(activeClipStart),
+                activeClipStart.asPlaybackTime,
                 systemImage: "scissors"
             )
 
             Text("–")
 
-            Text(NowPlayingView.formatTime(activeClipEnd))
+            Text(activeClipEnd.asPlaybackTime)
 
             Text("·")
 
             Label(
-                NowPlayingView.formatTime(max(activeClipEnd - activeClipStart, 0)),
+                (max(activeClipEnd - activeClipStart, 0)).asPlaybackTime,
                 systemImage: "timer"
             )
         }

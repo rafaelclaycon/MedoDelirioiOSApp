@@ -70,7 +70,7 @@ struct TranscriptFullView: View {
             Button {
                 player.seek(to: cue.startTime)
             } label: {
-                Text(Self.formatTime(cue.startTime))
+                Text(cue.startTime.asPlaybackTime)
                     .font(.caption)
                     .foregroundStyle(Color.darkerGreen)
                     .monospacedDigit()
@@ -94,14 +94,14 @@ struct TranscriptFullView: View {
                 .padding(.horizontal, .spacing(.xLarge))
 
             HStack {
-                Text(Self.formatTime(isScrubbing ? scrubValue : player.currentTime))
+                Text((isScrubbing ? scrubValue : player.currentTime).asPlaybackTime)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
 
                 Spacer()
 
-                Text("-" + Self.formatTime(player.duration - (isScrubbing ? scrubValue : player.currentTime)))
+                Text("-" + (player.duration - (isScrubbing ? scrubValue : player.currentTime)).asPlaybackTime)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
@@ -232,19 +232,6 @@ struct TranscriptFullView: View {
         .foregroundStyle(.primary)
     }
 
-    // MARK: - Helpers
-
-    static func formatTime(_ time: TimeInterval) -> String {
-        let totalSeconds = max(Int(time), 0)
-        let hours = totalSeconds / 3600
-        let minutes = (totalSeconds % 3600) / 60
-        let seconds = totalSeconds % 60
-        if hours > 0 {
-            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
-        } else {
-            return String(format: "%d:%02d", minutes, seconds)
-        }
-    }
 }
 
 // MARK: - Preview

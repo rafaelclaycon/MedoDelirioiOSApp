@@ -118,7 +118,7 @@ struct ShareClipConfirmView: View {
             scrubber
 
             HStack {
-                Text(NowPlayingView.formatTime(elapsedInClip))
+                Text(elapsedInClip.asPlaybackTime)
                     .frame(minWidth: 40, alignment: .leading)
 
                 Spacer()
@@ -138,7 +138,7 @@ struct ShareClipConfirmView: View {
 
                 Spacer()
 
-                Text(NowPlayingView.formatTime(clipDuration))
+                Text(clipDuration.asPlaybackTime)
                     .frame(minWidth: 40, alignment: .trailing)
             }
             .font(.subheadline)

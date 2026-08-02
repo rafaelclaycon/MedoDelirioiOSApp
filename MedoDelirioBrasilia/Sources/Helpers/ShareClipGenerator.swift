@@ -466,7 +466,7 @@ enum ShareClipGenerator {
 
         let images: [CGImage] = (0..<stepCount).map { i in
             let remaining = totalSeconds - i
-            let text = ("-" + NowPlayingView.formatTime(TimeInterval(remaining))) as NSString
+            let text = ("-" + (TimeInterval(remaining)).asPlaybackTime) as NSString
             let image = renderer.image { _ in
                 let y = (frame.height - font.lineHeight) / 2
                 text.draw(
@@ -656,7 +656,7 @@ enum ShareClipGenerator {
         let maxTitleLength = 60
         let title = sanitizedTitle.isEmpty ? "Clipe" : String(sanitizedTitle.prefix(maxTitleLength))
 
-        let clipStartTag = NowPlayingView.formatTime(config.clipStart).replacingOccurrences(of: ":", with: "-")
+        let clipStartTag = config.clipStart.asPlaybackTime.replacingOccurrences(of: ":", with: "-")
 
         return "\(title) - \(clipStartTag).mp4"
     }
