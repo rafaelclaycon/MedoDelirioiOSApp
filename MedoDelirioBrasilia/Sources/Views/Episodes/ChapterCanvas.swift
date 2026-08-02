@@ -150,23 +150,19 @@ struct ChapterCanvas: View {
     }
 
     private func unavailableView(reason: String, showsCoverageNotice: Bool) -> some View {
-        VStack(spacing: .spacing(.small)) {
+        VStack(spacing: .spacing(.medium)) {
             Image(systemName: "list.bullet.indent")
                 .font(.system(size: 36))
                 .foregroundStyle(.secondary)
 
-            Text(reason)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-
-            if showsCoverageNotice {
-                Text("Capítulos estão disponíveis para episódios a partir de \(ChapterPreferences.formattedCoverageStart).")
-                    .font(.footnote)
-                    .foregroundStyle(.tertiary)
-                    .multilineTextAlignment(.center)
-                    .padding(.top, .spacing(.small))
-            }
+            Text(
+                showsCoverageNotice ?
+                    "\(reason)\n\nCapítulos estão disponíveis para episódios a partir de \(ChapterPreferences.formattedCoverageStart)." :
+                    reason
+            )
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, .spacing(.large))
