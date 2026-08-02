@@ -15,7 +15,7 @@ struct NowPlayingView: View {
     /// Case order is load-bearing — the raw values are persisted in `@AppStorage`,
     /// so new modes go on the end. Display order is `displayedCanvasModes`.
     enum CanvasMode: Int {
-        case coverArt, transcription, bookmarks, chapters
+        case coverArt, transcription, bookmarks, chapters, details
 
         var title: String {
             switch self {
@@ -23,6 +23,7 @@ struct NowPlayingView: View {
             case .transcription: "Transcrição"
             case .bookmarks: "Marcadores"
             case .chapters: "Capítulos"
+            case .details: "Detalhes"
             }
         }
     }
@@ -86,13 +87,13 @@ struct NowPlayingView: View {
         if chaptersEnabled {
             modes.append(.chapters)
         }
-        modes.append(contentsOf: [.transcription, .bookmarks])
+        modes.append(contentsOf: [.transcription, .bookmarks, .details])
         return modes
     }
 
     /// Canvases that lay out a list from the top rather than centring their content.
     private var canvasIsTopAligned: Bool {
-        effectiveCanvasMode == .bookmarks || effectiveCanvasMode == .chapters
+        effectiveCanvasMode == .bookmarks || effectiveCanvasMode == .chapters || effectiveCanvasMode == .details
     }
 
     var body: some View {
@@ -122,6 +123,11 @@ struct NowPlayingView: View {
                                         alignment: canvasIsTopAligned ? .top : .center
                                     )
                             }
+                            // Without this, switching canvases reuses the same
+                            // ScrollView instance and keeps whatever offset the
+                            // previous canvas (e.g. a long-scrolled Capítulos
+                            // list) was left at, instead of starting at the top.
+                            .id(effectiveCanvasMode)
                             .scrollBounceBehavior(.basedOnSize)
                         }
                     }
@@ -319,6 +325,8 @@ struct NowPlayingView: View {
             transcriptContent
         case .bookmarks:
             bookmarksContent
+        case .details:
+            detailsContent
         case .chapters:
             ChapterCanvas(
                 chapterProvider: chapterProvider,
@@ -392,6 +400,50 @@ struct NowPlayingView: View {
         }
     }
 
+    /// Title, release date, running time and description for the current
+    /// episode — the same fields `EpisodeDetailView`'s header shows, minus
+    /// its playback and delete-download controls, which belong to the
+    /// episode list rather than a screen already dedicated to playback.
+    @ViewBuilder
+    private var detailsContent: some View {
+        if let episode = player.currentEpisode {
+            VStack(alignment: .leading, spacing: .spacing(.medium)) {
+                VStack(alignment: .leading, spacing: .spacing(.xSmall)) {
+                    Text(episode.title)
+                        .font(.title2)
+                        .fontDesign(.serif)
+
+                    HStack(spacing: .spacing(.medium)) {
+                        Label {
+                            Text(episode.pubDate, format: .dateTime.day(.twoDigits).month(.twoDigits).year())
+                        } icon: {
+                            Image(systemName: "calendar")
+                        }
+
+                        if let formattedDuration = episode.formattedDuration {
+                            Label {
+                                Text(formattedDuration)
+                            } icon: {
+                                Image(systemName: "clock")
+                            }
+                        }
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+
+                Divider()
+
+                if let plainText = episode.plainTextDescription {
+                    Text(plainText)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.bottom, .spacing(.xLarge))
+        }
+    }
+
     private var emptyBookmarksView: some View {
         VStack(spacing: .spacing(.small)) {
             Image(systemName: "bookmark")
@@ -406,20 +458,32 @@ struct NowPlayingView: View {
     }
 
     private var toggleRow: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: .spacing(.xSmall)) {
-                ForEach(displayedCanvasModes, id: \.self) { mode in
-                    canvasPill(mode)
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal) {
+                HStack(spacing: .spacing(.xSmall)) {
+                    ForEach(displayedCanvasModes, id: \.self) { mode in
+                        canvasPill(mode)
+                            .id(mode)
+                    }
+                }
+                // Restores the screen inset the negative padding below strips off, so
+                // pills sit correctly at rest but can scroll edge to edge.
+                .padding(.horizontal, .spacing(.xLarge))
+            }
+            .scrollIndicators(.hidden)
+            .scrollBounceBehavior(.basedOnSize)
+            .padding(.horizontal, -.spacing(.xLarge))
+            .animation(.snappy(duration: 0.2), value: currentCanvasMode)
+            .onAppear {
+                // The persisted mode (e.g. Detalhes, scrolled off-screen) needs
+                // to be brought into view on first appearance — without a delay
+                // this runs before the ScrollView has its content laid out and
+                // silently does nothing.
+                DispatchQueue.main.async {
+                    proxy.scrollTo(effectiveCanvasMode, anchor: .center)
                 }
             }
-            // Restores the screen inset the negative padding below strips off, so
-            // pills sit correctly at rest but can scroll edge to edge.
-            .padding(.horizontal, .spacing(.xLarge))
         }
-        .scrollIndicators(.hidden)
-        .scrollBounceBehavior(.basedOnSize)
-        .padding(.horizontal, -.spacing(.xLarge))
-        .animation(.snappy(duration: 0.2), value: currentCanvasMode)
     }
 
     private func canvasPill(_ mode: CanvasMode) -> some View {
