@@ -120,17 +120,29 @@ struct ChapterControlView: View {
     // MARK: - Previous
 
     private var previousButton: some View {
-        Button(action: goBack) {
-            Image(systemName: "chevron.left")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(.primary)
-                .frame(width: Self.buttonSize, height: Self.buttonSize)
-                .background(Circle().fill(.quaternary))
-                .frame(width: Self.tapTarget, height: Self.tapTarget)
-                .contentShape(Circle())
+        // Matches `ChapterAdvanceButton`'s button-plus-caption structure so
+        // both columns are the same height and their circles land on the
+        // same line under the HStack's center alignment — otherwise the
+        // forward button's remaining-time caption pushes its circle above
+        // center, leaving this one looking low by comparison.
+        VStack(spacing: .spacing(.xxxSmall)) {
+            Button(action: goBack) {
+                Image(systemName: "chevron.left")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: Self.buttonSize, height: Self.buttonSize)
+                    .background(Circle().fill(.quaternary))
+                    .frame(width: Self.tapTarget, height: Self.tapTarget)
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Capítulo anterior")
+
+            Text(" ")
+                .font(.caption)
+                .hidden()
+                .accessibilityHidden(true)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Capítulo anterior")
     }
 
     // MARK: - Actions
