@@ -138,6 +138,10 @@ struct NowPlayingView: View {
                 TranscriptFullView(transcriptProvider: transcriptProvider)
                     .environment(player)
             }
+            // Attached before `.toolbar` so the toast's safe-area inset is
+            // established inside the content the bottom-bar toolbar already
+            // makes room for — otherwise the toast overlaps the bottom bar.
+            .toast($toast)
             .toolbar {
                 toolbarControls
             }
@@ -160,7 +164,6 @@ struct NowPlayingView: View {
             }
         }
         .presentationDragIndicator(.visible)
-        .toast($toast)
         .sheet(item: $editingBookmark) { bookmark in
             BookmarkEditView(bookmark: bookmark)
                 .environment(bookmarkStore)

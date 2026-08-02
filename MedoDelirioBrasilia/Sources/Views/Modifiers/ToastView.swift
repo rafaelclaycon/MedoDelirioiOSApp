@@ -150,7 +150,13 @@ extension ToastView {
 
 public extension View {
 
-    /// Adds a `ToastView` to the view's safe area inset.
+    /// Adds a bottom-aligned, dark-mode-aware toast overlay.
+    ///
+    /// Renders as an overlay rather than a safe-area inset so it doesn't
+    /// reflow surrounding layout when it appears. Attach it to content that
+    /// already sits above any bottom-bar toolbar (e.g. before `.toolbar` in
+    /// the modifier chain) so the overlay's bottom edge lands above the bar
+    /// instead of underneath it.
     /// - Parameters:
     ///   - toast: Binding to a toast to display. When nil, toast is not presented.
     func toast(_ toast: Binding<Toast?>) -> some View {
