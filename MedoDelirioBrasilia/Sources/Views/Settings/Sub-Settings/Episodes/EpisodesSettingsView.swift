@@ -16,10 +16,6 @@ struct EpisodesSettingsView: View {
     private var coverageStartRaw: String = ChapterPreferences.defaultCoverageStart
     @State private var autoDeletePlayed: Bool = UserSettings().getAutoDeletePlayedEpisodes()
 
-    private var chaptersAvailable: Bool {
-        FeatureFlag.isEnabled(.episodeChapters)
-    }
-
     /// Parsed from the synced `yyyy-MM-dd` value and rendered in the device's
     /// locale. Falls back to the raw string if the server ever sends something
     /// unparseable, so the row degrades instead of going blank.
@@ -41,9 +37,7 @@ struct EpisodesSettingsView: View {
                 Text("Quando ativado, o arquivo de cada episódio será apagado automaticamente após ser ouvido por completo.")
             }
 
-            if chaptersAvailable {
-                chaptersSection
-            }
+            chaptersSection
 
             Section {
                 // Resolves against the destination declared on the settings stack,

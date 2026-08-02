@@ -21,9 +21,8 @@ enum ChapterPreferences {
         UserDefaults.standard.bool(forKey: hiddenKey)
     }
 
-    /// Chapters are behind a feature flag *and* a user preference.
     static var isEnabled: Bool {
-        FeatureFlag.isEnabled(.episodeChapters) && !isHidden
+        !isHidden
     }
 
     // MARK: - Chapter Coverage

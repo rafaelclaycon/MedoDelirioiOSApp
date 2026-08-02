@@ -68,15 +68,14 @@ struct NowPlayingView: View {
         vSizeClass == .compact ? .infinity : nil
     }
 
-    /// Chapters are behind a feature flag and can also be switched off by the user
-    /// from the chapter list. Both gates are checked in one place.
+    /// Chapters can be switched off by the user from the chapter list.
     private var chaptersEnabled: Bool {
-        FeatureFlag.isEnabled(.episodeChapters) && !chaptersHidden
+        !chaptersHidden
     }
 
     /// Falls back to cover art when the stored mode is no longer selectable —
-    /// `@AppStorage` remembers the chapters canvas even after the flag is turned
-    /// off or the user hides chapters.
+    /// `@AppStorage` remembers the chapters canvas even after the user hides
+    /// chapters.
     private var effectiveCanvasMode: CanvasMode {
         if currentCanvasMode == .chapters, !chaptersEnabled {
             return .coverArt
