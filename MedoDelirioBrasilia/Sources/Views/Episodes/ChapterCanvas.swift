@@ -18,6 +18,7 @@ struct ChapterCanvas: View {
     let onHideChapters: () -> Void
     let onReportIssue: () -> Void
 
+    @State private var showChapterOptions: Bool = false
     @State private var showHideConfirmation: Bool = false
 
     var body: some View {
@@ -73,38 +74,41 @@ struct ChapterCanvas: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Menu {
-                    Button {
-                        onReportIssue()
-                    } label: {
-                        Label("Relatar um problema", systemImage: "exclamationmark.bubble")
-                    }
+                Spacer()
 
-                    Button(role: .destructive) {
-                        showHideConfirmation = true
-                    } label: {
-                        Label("Ocultar capítulos", systemImage: "eye.slash")
-                    }
+                Button {
+                    showChapterOptions = true
                 } label: {
-                    Image(systemName: "info.circle")
+                    Image(systemName: "ellipsis")
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.accentColor)
                         .frame(width: 32, height: 32)
+                        .background(Circle().fill(Color.accentColor.opacity(0.15)))
                         .contentShape(Circle())
                 }
+                .buttonStyle(.plain)
                 .accessibilityLabel("Sobre os capítulos")
-
-                Spacer(minLength: 0)
             }
-            .padding(.bottom, .spacing(.small))
-            .confirmationDialog(
-                "Ocultar capítulos?",
-                isPresented: $showHideConfirmation,
-                titleVisibility: .visible
-            ) {
+            .padding(.bottom, .spacing(.xSmall))
+            .alert("Capítulos", isPresented: $showChapterOptions) {
+                Button("Relatar um problema") {
+                    onReportIssue()
+                }
+
+                // Doesn't hide anything on its own — hands off to the
+                // confirmation alert below, since this one is reachable by
+                // accident and the choice is easy to mistap.
+                Button("Ocultar capítulos", role: .destructive) {
+                    showHideConfirmation = true
+                }
+
+                Button("Cancelar", role: .cancel) {}
+            }
+            .alert("Ocultar capítulos?", isPresented: $showHideConfirmation) {
                 Button("Ocultar", role: .destructive) {
                     onHideChapters()
                 }
+
                 Button("Cancelar", role: .cancel) {}
             } message: {
                 Text("Os capítulos deixam de aparecer no player. Você pode reativá-los nos Ajustes.")
