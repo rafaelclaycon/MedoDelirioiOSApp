@@ -23,6 +23,8 @@ struct EpisodeDetailView: View {
     @State private var editingBookmark: EpisodeBookmark?
     @State private var bookmarksSortAscending: Bool = true
     @State private var showDeleteConfirmation: Bool = false
+    @State private var chapterProvider = ChapterProvider()
+    @State private var pendingChapterID: Int?
 
     // Share
     @State private var isPreparingShare: Bool = false
@@ -65,6 +67,8 @@ struct EpisodeDetailView: View {
                 }
 
                 linksSection
+
+                chaptersSection
 
                 bookmarkSection
             }
@@ -115,6 +119,16 @@ struct EpisodeDetailView: View {
             Text("O arquivo local deste episódio será removido. Você poderá baixá-lo novamente.")
         }
         .background(EpisodeDetailPlayerAlerts(player: episodePlayer))
+        .onAppear {
+            if ChapterPreferences.isEnabled {
+                chapterProvider.load(episodeId: episode.id)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: ChapterDownloadService.chaptersDidUpdate)) { _ in
+            if ChapterPreferences.isEnabled {
+                chapterProvider.load(episodeId: episode.id)
+            }
+        }
     }
 
     // MARK: - Share
@@ -326,6 +340,121 @@ struct EpisodeDetailView: View {
             .aspectRatio(contentMode: .fit)
             .frame(width: 28, height: 28)
             .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+
+    // MARK: - Chapters
+
+    @ViewBuilder
+    private var chaptersSection: some View {
+        if case .loaded(let chapters) = chapterProvider.state {
+            Divider()
+
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Capítulos")
+                    .font(.headline)
+                    .padding(.bottom, .spacing(.small))
+
+                ForEach(Array(chapters.enumerated()), id: \.element.id) { index, chapter in
+                    detailChapterRow(number: index + 1, chapter: chapter, length: chapterLength(at: index, in: chapters))
+
+                    if index < chapters.count - 1 {
+                        Divider()
+                    }
+                }
+            }
+        }
+    }
+
+    /// How long a chapter runs — the gap to the next one, or to the end of the
+    /// episode for the last chapter. Returns nil when the episode duration isn't
+    /// known, so the row simply omits the length.
+    private func chapterLength(at index: Int, in chapters: [EpisodeChapter]) -> TimeInterval? {
+        let end: TimeInterval
+        if index < chapters.count - 1 {
+            end = chapters[index + 1].start
+        } else {
+            guard let duration = episode.duration, duration > 0 else { return nil }
+            end = duration
+        }
+
+        let length = end - chapters[index].start
+        return length > 0 ? length : nil
+    }
+
+    private func detailChapterRow(number: Int, chapter: EpisodeChapter, length: TimeInterval?) -> some View {
+        // `isPendingRow` is driven solely by local state set synchronously on tap,
+        // not by `episodePlayer`'s busy flags — those live on a separate
+        // `@Observable` object and can update a render late relative to `@State`,
+        // which previously left every row showing neither the spinner nor a
+        // resolved idle state. Blocking other rows only needs to know *something*
+        // is in flight, which `pendingChapterID != nil` already tells us.
+        let isPendingRow = pendingChapterID == chapter.id
+        let isBlocked = pendingChapterID != nil && !isPendingRow
+
+        return Button {
+            guard pendingChapterID == nil else { return }
+            pendingChapterID = chapter.id
+            Task {
+                await episodePlayer.play(episode: episode)
+                episodePlayer.seek(to: chapter.start)
+                if pendingChapterID == chapter.id {
+                    pendingChapterID = nil
+                }
+            }
+        } label: {
+            HStack(alignment: .center, spacing: .spacing(.medium)) {
+                chapterLeadingIndicator(number: number, isPendingRow: isPendingRow)
+
+                Text(chapter.title)
+                    .font(.body)
+                    .multilineTextAlignment(.leading)
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                if let length {
+                    Text(Self.formattedChapterLength(length))
+                        .font(.caption2)
+                        .monospacedDigit()
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .padding(.vertical, .spacing(.small))
+            .contentShape(Rectangle())
+            .opacity(isBlocked ? 0.4 : 1)
+        }
+        .buttonStyle(.plain)
+        .disabled(isBlocked)
+        .accessibilityLabel("Capítulo \(number): \(chapter.title), começa em \(chapter.formattedStart)")
+    }
+
+    @ViewBuilder
+    private func chapterLeadingIndicator(number: Int, isPendingRow: Bool) -> some View {
+        if isPendingRow && episodePlayer.isDownloading(episode) {
+            ProgressView(value: episodePlayer.downloadProgress[episode.id] ?? 0)
+                .progressViewStyle(.circular)
+                .tint(.primary)
+                .frame(width: 28, alignment: .leading)
+        } else if isPendingRow && (episodePlayer.isPreparing(episode) || !episodePlayer.isCurrentEpisode(episode)) {
+            // Covers the preparing phase and the gap between tap and the
+            // player's flags updating — an in-flight row always shows *some*
+            // indicator rather than briefly looking untapped.
+            ProgressView()
+                .frame(width: 28, alignment: .leading)
+        } else {
+            Text("\(number)")
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .frame(width: 28, alignment: .leading)
+        }
+    }
+
+    /// Rounded to the nearest minute — chapter lengths are a glanceable signal of
+    /// pacing, not something worth reading to the second.
+    private static func formattedChapterLength(_ length: TimeInterval) -> String {
+        let minutes = Int((length / 60).rounded())
+        return minutes < 1 ? "<1 min" : "\(minutes) min"
     }
 
     // MARK: - Bookmarks
