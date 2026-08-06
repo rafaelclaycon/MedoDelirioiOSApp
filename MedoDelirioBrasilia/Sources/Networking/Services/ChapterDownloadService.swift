@@ -46,9 +46,18 @@ final class ChapterDownloadService {
 
     private(set) var state: State = .idle
 
+    /// How stale a check has to be before a throttled caller is allowed another one.
+    /// Callers that recheck opportunistically — every foreground, every poll while an
+    /// episode plays — pass this so overlapping triggers cost a single round trip.
+    static let minimumCheckInterval: TimeInterval = 5 * 60
+
     private var isSyncing = false
     private let session = URLSession(configuration: .default)
     private let storedHashKey = "chaptersFileHash"
+
+    /// In-memory on purpose: a fresh process always syncs on launch, so there is
+    /// nothing to remember across them.
+    @ObservationIgnored private var lastVersionCheck: Date?
 
     /// Posted only when the file on disk actually changed, so observers can reload
     /// without being woken by no-op syncs.
@@ -56,9 +65,18 @@ final class ChapterDownloadService {
 
     // MARK: - Public
 
+    /// - Parameter minimumInterval: skips the round trip when the last successful check
+    ///   is more recent than this. Zero — the launch sync — always checks.
     @MainActor
-    func syncIfNeeded() async {
+    func syncIfNeeded(minimumInterval: TimeInterval = 0) async {
         guard !isSyncing else { return }
+
+        if minimumInterval > 0,
+           let lastVersionCheck,
+           Date().timeIntervalSince(lastVersionCheck) < minimumInterval {
+            return
+        }
+
         isSyncing = true
         state = .syncing
 
@@ -66,6 +84,10 @@ final class ChapterDownloadService {
 
         do {
             let remote = try await fetchVersion()
+
+            // Only a check that reached the server counts as fresh, so being offline
+            // for a while doesn't leave the next online trigger throttled out.
+            lastVersionCheck = Date()
 
             // Persisted before the up-to-date check below, so a coverage change
             // lands even when chapters.json itself is unchanged.

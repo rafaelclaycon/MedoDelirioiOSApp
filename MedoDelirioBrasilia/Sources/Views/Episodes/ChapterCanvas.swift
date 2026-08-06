@@ -159,17 +159,27 @@ struct ChapterCanvas: View {
                 .font(.system(size: 36))
                 .foregroundStyle(.secondary)
 
-            Text(
-                showsCoverageNotice ?
-                    "\(reason)\n\nCapítulos estão disponíveis para episódios a partir de \(ChapterPreferences.formattedCoverageStart)." :
-                    reason
-            )
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
-            .multilineTextAlignment(.center)
+            Text(unavailableMessage(reason: reason, showsCoverageNotice: showsCoverageNotice))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, .spacing(.large))
+    }
+
+    /// While chapters for this episode are still expected, the provider's reason is
+    /// accurate but reads as final, and the coverage notice points at a date that
+    /// isn't why they're missing — the episode is well past it. Say what's actually
+    /// going on instead.
+    private func unavailableMessage(reason: String, showsCoverageNotice: Bool) -> String {
+        if player.chaptersMayStillArrive {
+            return "Os capítulos deste episódio ainda estão sendo gerados.\n\nEles aparecem aqui assim que ficarem prontos."
+        }
+
+        guard showsCoverageNotice else { return reason }
+
+        return "\(reason)\n\nCapítulos estão disponíveis para episódios a partir de \(ChapterPreferences.formattedCoverageStart)."
     }
 
     // MARK: - Helpers
@@ -330,4 +340,17 @@ private struct PlayingChapterRow: View {
         onReportIssue: {}
     )
     .environment(EpisodePlayer())
+}
+
+#Preview("Capítulos a caminho") {
+    let player = EpisodePlayer()
+    player.currentEpisode = .mockRecent
+    player.chaptersMayStillArrive = true
+
+    return ChapterCanvas(
+        chapterProvider: .mockNotAvailable(),
+        onHideChapters: {},
+        onReportIssue: {}
+    )
+    .environment(player)
 }

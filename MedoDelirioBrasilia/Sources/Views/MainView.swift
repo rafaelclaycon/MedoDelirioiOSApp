@@ -641,6 +641,7 @@ struct MainView: View {
             episodePlayer.listenStore = episodeListenStore
             episodePlayer.playedStore = episodePlayedStore
             episodePlayer.analyticsService = AnalyticsService()
+            episodePlayer.chapterDownloadService = chapterDownloadService
             episodeBookmarkStore.analyticsService = AnalyticsService()
             logger.debug("MainView appeared")
             sendUserPersonalTrendsToServerIfEnabled()
@@ -682,6 +683,14 @@ struct MainView: View {
             episodePlayer.setSceneActive(newPhase == .active)
             if newPhase == .active {
                 episodesBadgeStore.recompute()
+
+                // `onAppear` above only runs once per launch, which used to mean an app
+                // kept in the background for days never saw newly generated chapters.
+                Task {
+                    await chapterDownloadService.syncIfNeeded(
+                        minimumInterval: ChapterDownloadService.minimumCheckInterval
+                    )
+                }
             }
         }
         .sheet(isPresented: $showingModalView) {

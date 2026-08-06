@@ -50,6 +50,16 @@ final class EpisodePlayer {
 
     private static let cellularDownloadThreshold: Int64 = 100 * 1024 * 1024
 
+    /// How often to recheck for chapters while an episode plays without them.
+    /// Longer than `ChapterDownloadService.minimumCheckInterval` so a scheduled poll
+    /// is never thrown away by that throttle.
+    private static let chapterFetchInterval: TimeInterval = 10 * 60
+
+    /// Only episodes this recent are watched. An older episode with no chapters has a
+    /// permanent gap — generation happens within hours of publication — so polling for
+    /// it would never resolve.
+    private static let chapterWatchWindow: TimeInterval = 7 * 24 * 60 * 60
+
     // MARK: - Dependencies
 
     @ObservationIgnored var progressStore: EpisodeProgressStore?
@@ -57,6 +67,7 @@ final class EpisodePlayer {
     @ObservationIgnored var listenStore: EpisodeListenStore?
     @ObservationIgnored var playedStore: EpisodePlayedStore?
     @ObservationIgnored var analyticsService: AnalyticsServiceProtocol?
+    @ObservationIgnored var chapterDownloadService: ChapterDownloadService?
 
     /// Set to `true` when a bookmark is added from the lock screen remote command.
     /// Observed by `MainView` to auto-open the Now Playing screen.
@@ -65,6 +76,12 @@ final class EpisodePlayer {
     var showSupportPrompt: Bool = false
     var dismissNowPlaying: Bool = false
 
+    /// Whether the current episode's chapters are still expected to arrive. Owned by
+    /// `syncChapterFetchTimer`; read by the now-playing chapter canvas, whose empty
+    /// state would otherwise flatly say the episode has none while we're still
+    /// waiting on them.
+    var chaptersMayStillArrive: Bool = false
+
     // MARK: - Private State
 
     @ObservationIgnored private var audioPlayer: AVAudioPlayer?
@@ -72,7 +89,10 @@ final class EpisodePlayer {
     @ObservationIgnored private var timer: Timer?
     /// Separate from `timer`, which is stopped when the app backgrounds.
     @ObservationIgnored private var chapterTimer: Timer?
+    /// Rechecks the server while a recent episode plays without chapters yet.
+    @ObservationIgnored private var chapterFetchTimer: Timer?
     @ObservationIgnored private let chapterProvider = ChapterProvider()
+    @ObservationIgnored private var chapterObserverConfigured = false
     @ObservationIgnored private var activeDownloadTask: URLSessionDownloadTask?
     @ObservationIgnored private var downloadingEpisodeId: String?
     @ObservationIgnored private var playGeneration: Int = 0
@@ -385,6 +405,7 @@ final class EpisodePlayer {
         beginSession()
         configureRemoteCommands()
         configureAudioSessionObservers()
+        configureChapterObserver()
         updateNowPlayingInfo()
         loadArtwork(for: episode)
         if isSceneActive {
@@ -679,6 +700,7 @@ final class EpisodePlayer {
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
 
         syncChapterTimer()
+        syncChapterFetchTimer()
     }
 
     // MARK: - Chapters
@@ -696,6 +718,89 @@ final class EpisodePlayer {
         guard ChapterPreferences.isEnabled else { return }
         chapterProvider.load(episodeId: episode.id)
         chapterProvider.update(currentTime: currentPlaybackTime())
+    }
+
+    /// Picks up a sync that landed mid-playback. Views watching the same notification
+    /// have their own providers; this one backs the lock screen, so without it a
+    /// chapter file arriving now wouldn't reach the system player until the next play.
+    private func configureChapterObserver() {
+        guard !chapterObserverConfigured else { return }
+        chapterObserverConfigured = true
+
+        NotificationCenter.default.addObserver(
+            forName: ChapterDownloadService.chaptersDidUpdate,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self, let episode = self.currentEpisode else { return }
+                self.loadChapters(for: episode)
+                self.updateNowPlayingInfo()
+            }
+        }
+    }
+
+    // MARK: - Chapter Watch
+
+    /// Whether the current episode is one whose chapters could still show up.
+    ///
+    /// Chapters are generated from the transcript some time after an episode goes out,
+    /// so someone who starts listening right away begins with none. Recent enough that
+    /// generation is plausibly still pending, with none loaded yet, means "not here
+    /// *yet*" rather than "never".
+    @MainActor
+    private var isRecentEpisodeWithoutChapters: Bool {
+        guard ChapterPreferences.isEnabled, !chapterProvider.hasChapters else { return false }
+        guard let episode = currentEpisode else { return false }
+        return Date().timeIntervalSince(episode.pubDate) < Self.chapterWatchWindow
+    }
+
+    /// Keeps the recheck timer running for exactly as long as it's worth rechecking.
+    /// Called from `updateNowPlayingInfo`, so every playback state change — including
+    /// the chapter reload above, which flips `hasChapters` — re-evaluates it.
+    @MainActor
+    private func syncChapterFetchTimer() {
+        chaptersMayStillArrive = isRecentEpisodeWithoutChapters
+
+        // The timer, unlike the flag, also stops when playback does — there's no lock
+        // screen title to keep current for an episode that isn't playing. Resuming
+        // restarts it, since this runs on every playback state change.
+        guard chaptersMayStillArrive, isPlaying else {
+            stopChapterFetchTimer()
+            return
+        }
+        guard chapterFetchTimer == nil else { return }
+
+        // The local file can already be stale at this point — it was last checked when
+        // the app launched, possibly before this episode existed.
+        checkForNewChapters()
+
+        chapterFetchTimer = Timer.scheduledTimer(
+            withTimeInterval: Self.chapterFetchInterval,
+            repeats: true
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.checkForNewChapters()
+            }
+        }
+    }
+
+    @MainActor
+    private func stopChapterFetchTimer() {
+        chapterFetchTimer?.invalidate()
+        chapterFetchTimer = nil
+    }
+
+    /// Costs a few hundred bytes unless the catalog actually changed. A sync that does
+    /// bring in a new file posts `chaptersDidUpdate`, which loads it and stops this timer.
+    @MainActor
+    private func checkForNewChapters() {
+        guard let chapterDownloadService else { return }
+        Task {
+            await chapterDownloadService.syncIfNeeded(
+                minimumInterval: ChapterDownloadService.minimumCheckInterval
+            )
+        }
     }
 
     /// Runs while playing — including in the background, unlike the UI timer, since
@@ -755,6 +860,8 @@ final class EpisodePlayer {
     @MainActor
     private func clearNowPlayingInfo() {
         stopChapterTimer()
+        stopChapterFetchTimer()
+        chaptersMayStillArrive = false
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
     }
 
