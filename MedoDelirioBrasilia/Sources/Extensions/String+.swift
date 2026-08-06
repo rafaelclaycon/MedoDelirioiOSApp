@@ -2,6 +2,16 @@ import SwiftUI
 
 extension String {
 
+    private static let htmlEntities: [(String, String)] = [
+        ("&amp;", "&"),
+        ("&lt;", "<"),
+        ("&gt;", ">"),
+        ("&quot;", "\""),
+        ("&apos;", "'"),
+        ("&#39;", "'"),
+        ("&nbsp;", " "),
+    ]
+
     /// Strips HTML tags, converts `<br>` variants to newlines, and decodes common HTML entities.
     func strippingHTML() -> String {
         var result = self
@@ -11,25 +21,7 @@ extension String {
             with: "\n",
             options: .regularExpression
         )
-        // Strip all remaining HTML tags
-        result = result.replacingOccurrences(
-            of: "<[^>]+>",
-            with: "",
-            options: .regularExpression
-        )
-        // Decode common HTML entities
-        let entities: [(String, String)] = [
-            ("&amp;", "&"),
-            ("&lt;", "<"),
-            ("&gt;", ">"),
-            ("&quot;", "\""),
-            ("&apos;", "'"),
-            ("&#39;", "'"),
-            ("&nbsp;", " "),
-        ]
-        for (entity, replacement) in entities {
-            result = result.replacingOccurrences(of: entity, with: replacement)
-        }
+        result = result.strippingTagsAndDecodingEntities()
         // Collapse multiple consecutive newlines into at most two
         result = result.replacingOccurrences(
             of: "\\n{3,}",
@@ -37,6 +29,21 @@ extension String {
             options: .regularExpression
         )
         return result.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Strips remaining HTML tags and decodes common HTML entities, without
+    /// touching whitespace or newlines — used on individual segments where
+    /// trimming would eat spacing intentionally left between them.
+    func strippingTagsAndDecodingEntities() -> String {
+        var result = self.replacingOccurrences(
+            of: "<[^>]+>",
+            with: "",
+            options: .regularExpression
+        )
+        for (entity, replacement) in Self.htmlEntities {
+            result = result.replacingOccurrences(of: entity, with: replacement)
+        }
+        return result
     }
 
     func withoutDiacritics() -> String {

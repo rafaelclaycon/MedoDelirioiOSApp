@@ -44,8 +44,8 @@ struct NowPlayingDetailsCanvas: View {
 
                 Divider()
 
-                if let plainText = episode.plainTextDescription {
-                    Text(plainText)
+                if let attributedDescription = episode.descriptionAttributedString {
+                    Text(attributedDescription)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }

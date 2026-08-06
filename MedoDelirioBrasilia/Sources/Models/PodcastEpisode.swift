@@ -37,53 +37,93 @@ struct PodcastEpisode: Identifiable, Equatable, Hashable {
         }
     }
 
-    /// URLs and email addresses extracted from the episode description.
-    /// Combines `href` values from HTML `<a>` tags with bare links detected in plain text.
-    var extractedLinks: [URL] {
-        var seen = Set<String>()
-        var results = [URL]()
+    /// The episode description as an `AttributedString`, with `<a href>` links and
+    /// bare URLs in the text preserved as tappable `.link` runs — so `Text` can
+    /// render the description with its links highlighted in place, instead of
+    /// needing a separate extracted-links list.
+    var descriptionAttributedString: AttributedString? {
+        guard let html = description else { return nil }
 
-        func normalizedKey(for url: URL) -> String {
-            var key = url.absoluteString.lowercased()
-            if url.scheme != "mailto" {
-                key = key
-                    .replacingOccurrences(of: "https://", with: "")
-                    .replacingOccurrences(of: "http://", with: "")
-                while key.hasSuffix("/") { key.removeLast() }
+        let normalized = html
+            .replacingOccurrences(of: "<br\\s*/?>", with: "\n", options: .regularExpression)
+            .replacingOccurrences(of: "\\n{3,}", with: "\n\n", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard let linkRegex = try? NSRegularExpression(
+            pattern: "<a\\s+[^>]*href=\"([^\"]+)\"[^>]*>(.*?)</a>",
+            options: [.caseInsensitive, .dotMatchesLineSeparators]
+        ) else {
+            return AttributedString(normalized.strippingTagsAndDecodingEntities())
+        }
+
+        var result = AttributedString()
+        var lastEnd = normalized.startIndex
+        let nsRange = NSRange(normalized.startIndex..., in: normalized)
+
+        linkRegex.enumerateMatches(in: normalized, range: nsRange) { match, _, _ in
+            guard let match,
+                  let matchRange = Range(match.range, in: normalized),
+                  let hrefRange = Range(match.range(at: 1), in: normalized),
+                  let textRange = Range(match.range(at: 2), in: normalized) else { return }
+
+            if lastEnd < matchRange.lowerBound {
+                let plain = String(normalized[lastEnd..<matchRange.lowerBound]).strippingTagsAndDecodingEntities()
+                result += Self.linkifyingBareURLs(in: plain)
             }
-            return key
-        }
 
-        func addIfNew(_ url: URL) {
-            let key = normalizedKey(for: url)
-            guard !seen.contains(key) else { return }
-            seen.insert(key)
-            results.append(url)
-        }
-
-        if let html = description {
-            if let regex = try? NSRegularExpression(pattern: "href=\"([^\"]+)\"", options: .caseInsensitive) {
-                let range = NSRange(html.startIndex..., in: html)
-                for match in regex.matches(in: html, range: range) {
-                    if let urlRange = Range(match.range(at: 1), in: html),
-                       let url = URL(string: String(html[urlRange])) {
-                        addIfNew(url)
-                    }
-                }
+            let linkText = String(normalized[textRange]).strippingTagsAndDecodingEntities()
+            if !linkText.isEmpty, let url = URL(string: String(normalized[hrefRange])) {
+                var linkRun = AttributedString(linkText)
+                linkRun.link = url
+                result += linkRun
+            } else {
+                result += AttributedString(linkText)
             }
+
+            lastEnd = matchRange.upperBound
         }
 
-        if let plainText = plainTextDescription {
-            let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
-            let range = NSRange(plainText.startIndex..., in: plainText)
-            detector?.enumerateMatches(in: plainText, range: range) { match, _, _ in
-                if let url = match?.url {
-                    addIfNew(url)
-                }
+        if lastEnd < normalized.endIndex {
+            let trailing = String(normalized[lastEnd...]).strippingTagsAndDecodingEntities()
+            result += Self.linkifyingBareURLs(in: trailing)
+        }
+
+        return result
+    }
+
+    /// Turns bare URLs found in already-tag-stripped text into tappable `.link`
+    /// runs — covers links the feed left as plain text instead of an `<a>` tag.
+    private static func linkifyingBareURLs(in plainText: String) -> AttributedString {
+        guard !plainText.isEmpty,
+              let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else {
+            return AttributedString(plainText)
+        }
+
+        var result = AttributedString()
+        var lastEnd = plainText.startIndex
+        let range = NSRange(plainText.startIndex..., in: plainText)
+
+        detector.enumerateMatches(in: plainText, range: range) { match, _, _ in
+            guard let match,
+                  let matchRange = Range(match.range, in: plainText),
+                  let url = match.url else { return }
+
+            if lastEnd < matchRange.lowerBound {
+                result += AttributedString(String(plainText[lastEnd..<matchRange.lowerBound]))
             }
+
+            var linkRun = AttributedString(String(plainText[matchRange]))
+            linkRun.link = url
+            result += linkRun
+
+            lastEnd = matchRange.upperBound
         }
 
-        return results
+        if lastEnd < plainText.endIndex {
+            result += AttributedString(String(plainText[lastEnd...]))
+        }
+
+        return result
     }
 
     var formattedDuration: String? {
