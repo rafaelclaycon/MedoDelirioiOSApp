@@ -52,27 +52,40 @@ final class ChapterProvider {
 
         guard FileManager.default.fileExists(atPath: ChapterDownloadService.chaptersFileURL().path) else {
             state = .notAvailable(reason: "Nenhum capítulo disponível ainda.", showsCoverageNotice: true)
+            reportLoadFailure(episodeId: episodeId, reason: "file_missing")
             return
         }
 
         guard let file = Self.decodedFile() else {
             state = .notAvailable(reason: "Não foi possível ler o arquivo de capítulos.")
+            reportLoadFailure(episodeId: episodeId, reason: "decode_failed")
             return
         }
 
         guard let entry = file.episodes[episodeId] else {
             state = .notAvailable(reason: "Esse episódio ainda não tem capítulos.", showsCoverageNotice: true)
+            reportLoadFailure(episodeId: episodeId, reason: "no_entry")
             return
         }
 
         let normalized = Self.normalized(entry.chapters)
         guard !normalized.isEmpty else {
             state = .notAvailable(reason: "A lista de capítulos está vazia.")
+            reportLoadFailure(episodeId: episodeId, reason: "empty_list")
             return
         }
 
         chapters = normalized
         state = .loaded(chapters: normalized)
+        Task {
+            await AnalyticsService().send(originatingScreen: "NowPlaying", action: "chapters_loaded(\(episodeId))")
+        }
+    }
+
+    private func reportLoadFailure(episodeId: String, reason: String) {
+        Task {
+            await AnalyticsService().send(originatingScreen: "NowPlaying", action: "chapters_load_failed(\(episodeId), \(reason))")
+        }
     }
 
     // MARK: - Time Update

@@ -120,6 +120,9 @@ struct ChapterCanvas: View {
 
                 Button {
                     player.seek(to: chapter.start)
+                    Task {
+                        await AnalyticsService().send(originatingScreen: "NowPlaying", action: "didTapChapter(\(chapter.id), \(chapter.title))")
+                    }
                 } label: {
                     // Only the playing row reads `currentTime`, so the rest of the
                     // list isn't invalidated on every playback tick.

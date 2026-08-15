@@ -150,11 +150,13 @@ struct ChapterControlView: View {
     private func goBack() {
         guard let target = chapterProvider.previousChapterStart(from: player.currentTime) else { return }
         seek(to: target)
+        Task { await AnalyticsService().send(originatingScreen: "NowPlaying", action: "chapter_previous") }
     }
 
     private func advance() {
         guard let target = chapterProvider.nextChapterStart() else { return }
         seek(to: target)
+        Task { await AnalyticsService().send(originatingScreen: "NowPlaying", action: "chapter_next") }
     }
 
     private func seek(to time: TimeInterval) {

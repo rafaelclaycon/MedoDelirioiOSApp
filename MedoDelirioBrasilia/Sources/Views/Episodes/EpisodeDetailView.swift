@@ -306,6 +306,7 @@ struct EpisodeDetailView: View {
                 if pendingChapterID == chapter.id {
                     pendingChapterID = nil
                 }
+                await AnalyticsService().send(originatingScreen: "EpisodeDetail", action: "didTapChapter(\(chapter.id), \(chapter.title))")
             }
         } label: {
             HStack(alignment: .center, spacing: .spacing(.medium)) {
