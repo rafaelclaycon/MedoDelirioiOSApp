@@ -395,7 +395,7 @@ if [[ -n "$RETRANSCRIBE_ID" ]]; then
     done
 
     log "Applying name fixes..."
-    python3 "${PROJECT_DIR}/scripts/fix_srt_names.py" \
+    python3 "${PROJECT_DIR}/scripts/transcripts/fix_srt_names.py" \
         "${WORK_DIR}/srt" \
         -o "${WORK_DIR}/fixed" \
         "${FIX_ARGS[@]}" 2>&1 || {
@@ -413,7 +413,7 @@ if [[ -n "$RETRANSCRIBE_ID" ]]; then
     log "SRT written to mirror."
 
     log "Regenerating manifest.json..."
-    python3 "${PROJECT_DIR}/scripts/generate_manifest.py" "$MIRROR_DIR" || {
+    python3 "${PROJECT_DIR}/scripts/transcripts/generate_manifest.py" "$MIRROR_DIR" || {
         notify_error "Failed to generate manifest"
         exit 1
     }
@@ -532,7 +532,7 @@ while IFS=$'\t' read -r EP_ID AUDIO_URL TITLE; do
     done
 
     log "Applying name fixes..."
-    python3 "${PROJECT_DIR}/scripts/fix_srt_names.py" \
+    python3 "${PROJECT_DIR}/scripts/transcripts/fix_srt_names.py" \
         "${WORK_DIR}/srt" \
         -o "${WORK_DIR}/fixed" \
         "${FIX_ARGS[@]}" 2>&1 || {
@@ -565,7 +565,7 @@ fi
 
 # Step 6: Regenerate manifest
 log "Regenerating manifest.json..."
-python3 "${PROJECT_DIR}/scripts/generate_manifest.py" "$MIRROR_DIR" || {
+python3 "${PROJECT_DIR}/scripts/transcripts/generate_manifest.py" "$MIRROR_DIR" || {
     notify_error "Failed to generate manifest"
     exit 1
 }
@@ -614,7 +614,7 @@ chapters_step() {
         return 0
     fi
 
-    local script="${SCRIPT_DIR}/chapters_from_srt.py"
+    local script="${SCRIPT_DIR}/chapters/chapters_from_srt.py"
     if [[ ! -f "$script" ]]; then
         CHAPTERS_NOTE="skipped (chapters_from_srt.py not found)"
         return 0
@@ -671,7 +671,7 @@ chapters_step() {
     fi
 
     log "Chapters: regenerating version.json..."
-    if ! "$CHAPTERS_PYTHON" "${SCRIPT_DIR}/generate_chapters_version.py" "$CHAPTERS_DIR" >>"$LOG_FILE" 2>&1; then
+    if ! "$CHAPTERS_PYTHON" "${SCRIPT_DIR}/chapters/generate_chapters_version.py" "$CHAPTERS_DIR" >>"$LOG_FILE" 2>&1; then
         # Validation failed — publishing now would break chapters for everyone,
         # since there is only one file for the whole catalogue.
         log "Chapters: version.json generation failed, not uploading"

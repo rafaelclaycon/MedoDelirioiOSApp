@@ -209,7 +209,7 @@ The app fetches this, compares hashes against what it has, and downloads only th
 files that changed.
 
 ```bash
-python3 generate_manifest.py ~/MedoDelirioTranscripts
+python3 transcripts/generate_manifest.py ~/MedoDelirioTranscripts
 ```
 
 Called automatically by `auto_transcribe.sh`. You only run it by hand if you added
@@ -235,15 +235,15 @@ export ANTHROPIC_API_KEY='...'
 pip install anthropic          # the only dependency
 
 # 1. Preview: what would run, and what it would cost. No API call, no spend.
-python3 batch_generate_chapters.py submit --since 2026-01-01 \
+python3 chapters/batch_generate_chapters.py submit --since 2026-01-01 \
     --srt-dir ~/MedoDelirioTranscripts --dry-run
 
 # 2. Submit. Writes batch-state.json and exits — the work continues server-side.
-python3 batch_generate_chapters.py submit --since 2026-01-01 \
+python3 chapters/batch_generate_chapters.py submit --since 2026-01-01 \
     --srt-dir ~/MedoDelirioTranscripts
 
 # 3. Collect. Polls until the batch ends, then merges into chapters.json.
-python3 batch_generate_chapters.py fetch --srt-dir ~/MedoDelirioTranscripts
+python3 chapters/batch_generate_chapters.py fetch --srt-dir ~/MedoDelirioTranscripts
 ```
 
 **Always `--dry-run` first.** It prints the episode list and a cost estimate
@@ -287,8 +287,8 @@ returns in a minute or so instead of going through a batch.
 export ANTHROPIC_API_KEY='...'
 pip install anthropic pydantic
 
-python3 chapters_from_srt.py 70769288.srt 70769288 chapters.json --dry-run
-python3 chapters_from_srt.py 70769288.srt 70769288 chapters.json
+python3 chapters/chapters_from_srt.py 70769288.srt 70769288 chapters.json --dry-run
+python3 chapters/chapters_from_srt.py 70769288.srt 70769288 chapters.json
 ```
 
 Arguments are positional: the SRT file, the episode ID, and the `chapters.json`
@@ -314,8 +314,8 @@ on every launch — if its hash matches what the client already has, the client 
 downloading the much larger `chapters.json`.
 
 ```bash
-python3 generate_chapters_version.py /path/to/chapters/v1
-python3 generate_chapters_version.py /path/to/chapters/v1 --coverage-start 2024-06-01
+python3 chapters/generate_chapters_version.py /path/to/chapters/v1
+python3 chapters/generate_chapters_version.py /path/to/chapters/v1 --coverage-start 2024-06-01
 ```
 
 It **validates `chapters.json` before writing** — non-integer timestamps, empty
@@ -336,7 +336,7 @@ You only publish by hand after a **backfill**, since `batch_generate_chapters.py
 writes `chapters.json` but doesn't upload it:
 
 ```bash
-python3 generate_chapters_version.py ~/MedoDelirioChapters
+python3 chapters/generate_chapters_version.py ~/MedoDelirioChapters
 # then SFTP chapters.json first, version.json second
 ```
 
@@ -360,9 +360,12 @@ order or an upload failed — re-upload both, in order.
 
 ## Reaction suggestions
 
-Unlike transcripts and chapters, this is a **one-off tool you run by hand**, not
-part of any automated pipeline — there's no server-side state and nothing is
-ever published without you looking at it first.
+Lives in `reactions/`. Unlike transcripts and chapters, this is a **one-off
+tool you run by hand**, not part of any automated pipeline — there's no
+server-side state and nothing is ever published without you looking at it
+first. Drop `reactions_export.json` into `reactions/` too — that's also where
+`suggestions.json` and `reactions_approved.json` end up, and where
+`reactions_review.html` looks for them.
 
 ### `generate_reactions.py`
 
@@ -373,8 +376,8 @@ Alheia") from the app's sound catalog, using the Claude API.
 export ANTHROPIC_API_KEY='...'
 pip install anthropic pydantic
 
-python3 generate_reactions.py reactions_export.json suggestions.json --dry-run
-python3 generate_reactions.py reactions_export.json suggestions.json --count 15
+python3 reactions/generate_reactions.py reactions_export.json suggestions.json --dry-run
+python3 reactions/generate_reactions.py reactions_export.json suggestions.json --count 15
 ```
 
 `reactions_export.json` comes from the app: **Settings → Dev Options →
@@ -409,7 +412,7 @@ the same shape, ready to hand to the content manager app.
 
 ## Transcript maintenance utilities
 
-Occasional cleanup tools, not part of any automated flow.
+Occasional cleanup tools, not part of any automated flow. Live in `transcripts/`.
 
 ### `check_srt_repeats.py`
 
@@ -418,7 +421,7 @@ the same line repeated over and over, or a short A-B-A-B cycle. Worth running af
 a batch of new transcripts.
 
 ```bash
-python3 check_srt_repeats.py ~/MedoDelirioTranscripts
+python3 transcripts/check_srt_repeats.py ~/MedoDelirioTranscripts
 ```
 
 Exits 0 if clean, 1 if it finds anything. A flagged episode is usually best fixed
@@ -430,7 +433,7 @@ Replaces misspelled proper nouns across `.srt` files — whisper reliably mangle
 certain Brazilian political names.
 
 ```bash
-python3 fix_srt_names.py ~/MedoDelirioTranscripts --fix "Bolsonáro=Bolsonaro"
+python3 transcripts/fix_srt_names.py ~/MedoDelirioTranscripts --fix "Bolsonáro=Bolsonaro"
 ```
 
 `auto_transcribe.sh` calls this automatically on new transcripts; run it by hand
@@ -438,7 +441,7 @@ when you want to correct existing ones.
 
 ### `batch_rename.py` and `batch_rename_query.py`
 
-One-off filename cleanups from earlier migrations. `batch_rename.py` strips
+Live in `maintenance/`. One-off filename cleanups from earlier migrations. `batch_rename.py` strips
 everything after the first `-` in a filename; `batch_rename_query.py` strips a
 `?p=` fragment. Both default to a dry run and need `--apply` to actually rename.
 
@@ -487,7 +490,7 @@ in your shell instead. Keys are managed at https://platform.claude.com.
 see whether it detects the episode at all. Remember it does nothing between 8 AM
 and 6 PM without `--force`.
 
-**A transcript is garbled or loops.** `python3 check_srt_repeats.py` to confirm,
+**A transcript is garbled or loops.** `python3 transcripts/check_srt_repeats.py` to confirm,
 then `./auto_transcribe.sh --retranscribe <episode-id>`.
 
 **New episodes get transcripts but no chapters.** The chapter step logs why it
