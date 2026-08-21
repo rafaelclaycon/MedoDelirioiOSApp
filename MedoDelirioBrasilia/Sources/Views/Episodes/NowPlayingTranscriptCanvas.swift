@@ -65,6 +65,7 @@ private struct LoadedOverlay: View {
             Text("Transcrição gerada por IA. Pode conter erros.")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
+                .padding(.bottom, .spacing(.large))
         }
     }
 }
