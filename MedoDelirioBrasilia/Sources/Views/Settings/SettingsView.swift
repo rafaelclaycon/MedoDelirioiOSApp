@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import TipKit
 
 struct SettingsView: View {
 
@@ -333,6 +334,7 @@ struct DevOptionsView: View {
     @Binding var showShareClipWhatsNewPreview: Bool
 
     @State private var supportSheetPreviewContext: StandaloneSupportView.Context?
+    @State private var showTipsResetConfirmation: Bool = false
 
     var body: some View {
         Form {
@@ -360,11 +362,25 @@ struct DevOptionsView: View {
                 Button("Resetar Prompt de Apoio") {
                     AppPersistentMemory.shared.resetSupportPromptMemory()
                 }
+
+                Button("Resetar Todos os Tips (TipKit)") {
+                    // Must run before the next `Tips.configure()`, which already
+                    // happened at this launch — the datastore clears immediately,
+                    // but tips only re-evaluate their eligibility on the next
+                    // configure(), hence the relaunch ask below.
+                    try? Tips.resetDatastore()
+                    showTipsResetConfirmation = true
+                }
             }
         }
         .navigationTitle("Dev Options")
         .sheet(item: $supportSheetPreviewContext) { context in
             StandaloneSupportView(context: context)
+        }
+        .alert("Tips resetados", isPresented: $showTipsResetConfirmation) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Feche o app completamente e abra de novo para ver os tips outra vez.")
         }
     }
 }

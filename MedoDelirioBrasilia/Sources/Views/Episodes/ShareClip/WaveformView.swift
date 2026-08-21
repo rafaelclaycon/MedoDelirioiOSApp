@@ -27,7 +27,8 @@ struct WaveformView: View {
     private static let viewHeight: CGFloat = 100
     private static let minClipLength: TimeInterval = 5
     /// Shared with transcript-based selection so both pick paths enforce the same cap.
-    static let maxClipLength: TimeInterval = 150
+    /// Matches the longest length the target networks accept — see `SocialVideoLimit`.
+    static let maxClipLength: TimeInterval = 180
 
     private static let edgeHandleWidth: CGFloat = 10
     private static let edgeHandleCornerRadius: CGFloat = 4

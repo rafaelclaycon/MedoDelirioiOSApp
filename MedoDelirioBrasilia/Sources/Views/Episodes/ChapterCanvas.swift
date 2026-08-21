@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import TipKit
 
 /// Chapter list for the now-playing canvas.
 ///
@@ -17,9 +18,13 @@ struct ChapterCanvas: View {
     let chapterProvider: ChapterProvider
     let onHideChapters: () -> Void
     let onReportIssue: () -> Void
+    /// Second argument is where the chapter ends, or nil while the episode's
+    /// duration is still unknown — the clip screen falls back to its own cap.
+    let onShareChapterClip: (EpisodeChapter, TimeInterval?) -> Void
 
     @State private var showChapterOptions: Bool = false
     @State private var showHideConfirmation: Bool = false
+    private let shareChapterTip = ChapterShareTip()
 
     var body: some View {
         switch chapterProvider.state {
@@ -118,7 +123,7 @@ struct ChapterCanvas: View {
                 let length = Self.length(at: index, in: chapters, episodeDuration: episodeDuration)
                 let isCurrent = chapter.id == currentChapterID
 
-                Button {
+                let row = Button {
                     player.seek(to: chapter.start)
                     Task {
                         await AnalyticsService().send(originatingScreen: "NowPlaying", action: "didTapChapter(\(chapter.id), \(chapter.title))")
@@ -143,7 +148,30 @@ struct ChapterCanvas: View {
                     }
                 }
                 .buttonStyle(.plain)
+                // Matches `PlayingChapterRow`'s rounded progress fill, which the
+                // row's own square content shape would otherwise clip against.
+                .contentShape(
+                    .contextMenuPreview,
+                    RoundedRectangle(cornerRadius: ChapterRow.cornerRadius, style: .continuous)
+                )
+                .contextMenu {
+                    Button {
+                        onShareChapterClip(chapter, length.map { chapter.start + $0 })
+                    } label: {
+                        Label("Compartilhar Trecho", systemImage: "scissors")
+                    }
+                }
                 .id(chapter.id)
+
+                // Only the first row teaches the long-press — repeating it on
+                // every chapter would be noise, not a hint.
+                if index == 0 {
+                    row
+                        .popoverTip(shareChapterTip)
+                        .tipViewStyle(PrimaryImageTipViewStyle(tip: shareChapterTip))
+                } else {
+                    row
+                }
 
                 // Kept in the tree and hidden rather than omitted, so every element
                 // contributes the same number of views.
@@ -248,6 +276,16 @@ private struct ChapterRow: View {
         }
         .padding(.vertical, .spacing(.small))
         .padding(.horizontal, .spacing(.small))
+        // Matches the screen behind it, so the list looks unchanged — but gives
+        // the context menu something opaque to lift. Without it the long-press
+        // shows its own shadow straight through the row, behind the text.
+        // The playing row brings its own opaque progress fill.
+        .background {
+            if !isCurrent {
+                RoundedRectangle(cornerRadius: Self.cornerRadius)
+                    .fill(Color(.systemBackground))
+            }
+        }
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
@@ -326,7 +364,8 @@ private struct PlayingChapterRow: View {
                 ChapterCanvas(
                     chapterProvider: .mockLoaded(),
                     onHideChapters: {},
-                    onReportIssue: {}
+                    onReportIssue: {},
+                    onShareChapterClip: { _, _ in }
                 )
                 .padding(.horizontal, .spacing(.xLarge))
                 .environment(player)
@@ -340,7 +379,8 @@ private struct PlayingChapterRow: View {
     ChapterCanvas(
         chapterProvider: .mockNotAvailable(),
         onHideChapters: {},
-        onReportIssue: {}
+        onReportIssue: {},
+        onShareChapterClip: { _, _ in }
     )
     .environment(EpisodePlayer())
 }
@@ -353,7 +393,8 @@ private struct PlayingChapterRow: View {
     return ChapterCanvas(
         chapterProvider: .mockNotAvailable(),
         onHideChapters: {},
-        onReportIssue: {}
+        onReportIssue: {},
+        onShareChapterClip: { _, _ in }
     )
     .environment(player)
 }

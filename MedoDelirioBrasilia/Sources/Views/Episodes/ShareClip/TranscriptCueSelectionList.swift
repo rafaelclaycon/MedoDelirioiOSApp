@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import TipKit
 
 /// Scrollable list of an episode's transcript lines where the user picks the
 /// clip's range by tapping a starting line and an ending line. The selected
@@ -16,17 +17,48 @@ struct TranscriptCueSelectionList: View {
     let cues: [SRTCue]
     let startIndex: Int?
     let endIndex: Int?
+    /// The list split by chapter. The pinned titles mark where chapters change
+    /// so users can find the stretch they want, and tapping one selects that
+    /// whole chapter. Empty means an unsectioned list.
+    var chapterSections: [TranscriptChapterSection] = []
     let onTap: (Int) -> Void
+    /// Tapping a chapter header selects that chapter's full cue range.
+    var onTapChapterHeader: (TranscriptChapterSection) -> Void = { _ in }
+
+    /// Falls back to a single titleless section so the list renders the same way
+    /// whether or not the episode has chapters.
+    private var sections: [TranscriptChapterSection] {
+        guard chapterSections.isEmpty else { return chapterSections }
+        return [.init(id: 0, title: nil, cueIndices: cues.indices)]
+    }
+
+    /// The one header that teaches tap-to-select — the first titled section,
+    /// since a tip on every header would just be noise.
+    private var firstTitledSectionID: Int? {
+        sections.first { $0.title != nil }?.id
+    }
 
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 0) {
-                    ForEach(Array(cues.enumerated()), id: \.element.id) { index, cue in
-                        TranscriptSelectionRow(text: cue.text, role: role(for: index))
-                            .contentShape(Rectangle())
-                            .onTapGesture { onTap(index) }
-                            .id(cue.id)
+                LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                    ForEach(sections) { section in
+                        Section {
+                            ForEach(section.cueIndices, id: \.self) { index in
+                                TranscriptSelectionRow(text: cues[index].text, role: role(for: index))
+                                    .contentShape(Rectangle())
+                                    .onTapGesture { onTap(index) }
+                                    .id(cues[index].id)
+                            }
+                        } header: {
+                            if section.title != nil {
+                                ChapterSeparator(
+                                    section: section,
+                                    onTap: onTapChapterHeader,
+                                    showsTip: section.id == firstTitledSectionID
+                                )
+                            }
+                        }
                     }
                 }
                 .padding(.horizontal, .spacing(.xLarge))
@@ -49,6 +81,69 @@ struct TranscriptCueSelectionList: View {
         if index > startIndex, index < endIndex { return .middle }
         return .unselected
     }
+
+}
+
+// MARK: - Section
+
+/// One chapter's worth of transcript lines. Built once by the host rather than
+/// derived in `body`, which re-runs on every selection change.
+struct TranscriptChapterSection: Identifiable {
+
+    /// Index of the section's first cue, which is unique across sections.
+    let id: Int
+    /// Nil for the lines that play before the first chapter starts.
+    let title: String?
+    let cueIndices: Range<Int>
+}
+
+// MARK: - Chapter Separator
+
+/// Chapter title pinned to the top of the list while its lines are on screen.
+/// Doubles as a button: tapping it selects the whole chapter at once, so a
+/// long chapter doesn't have to be picked line by line.
+private struct ChapterSeparator: View {
+
+    let section: TranscriptChapterSection
+    let onTap: (TranscriptChapterSection) -> Void
+    var showsTip: Bool = false
+
+    private let tip = ChapterHeaderTapTip()
+
+    var body: some View {
+        Button {
+            onTap(section)
+        } label: {
+            HStack {
+                Text(section.title ?? "")
+                    .font(.caption2)
+                    .fontWeight(.semibold)
+                    .textCase(.uppercase)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+
+                Spacer(minLength: 0)
+            }
+            // Aligned with the cue text rather than the gutter, so the title
+            // reads as a label for the lines under it.
+            .padding(.leading, TranscriptSelectionRow.gutterWidth + .spacing(.medium))
+            .padding(.vertical, .spacing(.xSmall))
+            .padding(.horizontal, .spacing(.small))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .background {
+            // Pinned headers sit over scrolling content, so this has to be
+            // opaque — and has to bleed past the list's own horizontal
+            // padding, or lines would show through in the side margins.
+            Color(.systemBackground)
+                .padding(.horizontal, -.spacing(.xLarge))
+        }
+        .accessibilityAddTraits(.isHeader)
+        .accessibilityHint("Toque para selecionar este capítulo inteiro")
+        .popoverTip(showsTip ? tip : nil)
+        .tipViewStyle(PrimaryImageTipViewStyle(tip: tip))
+    }
 }
 
 // MARK: - Row
@@ -70,7 +165,8 @@ struct TranscriptSelectionRow: View {
         var isSelected: Bool { self != .unselected }
     }
 
-    private static let gutterWidth: CGFloat = 28
+    /// Shared with `ChapterSeparator` so its title lines up with the cue text.
+    fileprivate static let gutterWidth: CGFloat = 28
     private static let lineWidth: CGFloat = 2
     private static let cornerRadius: CGFloat = 12
 
@@ -192,9 +288,17 @@ struct TranscriptSelectionRow: View {
                 cues: cues,
                 startIndex: start,
                 endIndex: end,
+                chapterSections: [
+                    .init(id: 0, title: "Abertura", cueIndices: 0..<3),
+                    .init(id: 3, title: "A sessão do Congresso", cueIndices: 3..<6),
+                ],
                 onTap: { index in
                     start = index
                     end = max(index, end ?? index)
+                },
+                onTapChapterHeader: { section in
+                    start = section.cueIndices.lowerBound
+                    end = section.cueIndices.upperBound - 1
                 }
             )
         }

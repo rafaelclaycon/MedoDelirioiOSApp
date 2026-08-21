@@ -41,7 +41,11 @@ struct NowPlayingView: View {
     /// Held here rather than in `NowPlayingBookmarksCanvas` so it survives the
     /// canvas being rebuilt when the user switches tabs.
     @State private var bookmarksSortAscending: Bool = true
-    @State private var showShareClip: Bool = false
+    /// Drives the clip sheet. `Identifiable` via a fresh `UUID` per presentation so
+    /// `.sheet(item:)` always builds `ShareClipView` from this exact payload —
+    /// tying the chapter selection to the trigger atomically avoids the sheet
+    /// ever picking up a stale/missing selection from a preceding presentation.
+    @State private var shareClipPresentation: ShareClipPresentation?
     @State private var showClipSupportSheet: Bool = false
     @State private var isPreparingShare: Bool = false
     @State private var shareLinkMetadata: LPLinkMetadata?
@@ -201,10 +205,10 @@ struct NowPlayingView: View {
                     .presentationDetents([.medium, .large])
             }
         }
-        .sheet(isPresented: $showShareClip) {
+        .sheet(item: $shareClipPresentation) { presentation in
             if let episode = player.currentEpisode {
-                ShareClipView(episode: episode) { includesTranscript in
-                    showShareClip = false
+                ShareClipView(episode: episode, initialChapterSelection: presentation.chapterSelection) { includesTranscript in
+                    shareClipPresentation = nil
                     toast = Toast(message: Shared.videoSharedSuccessfullyMessage, type: .success)
                     Task {
                         await AnalyticsService().send(
@@ -306,7 +310,8 @@ struct NowPlayingView: View {
                 ChapterCanvas(
                     chapterProvider: chapterProvider,
                     onHideChapters: hideChapters,
-                    onReportIssue: reportChapterIssue
+                    onReportIssue: reportChapterIssue,
+                    onShareChapterClip: shareChapterClip
                 )
             }
         }
@@ -425,8 +430,22 @@ struct NowPlayingView: View {
         if player.isPlaying {
             player.togglePlayPause()
         }
-        showShareClip = true
+        shareClipPresentation = .init(chapterSelection: nil)
         Task { await AnalyticsService().send(originatingScreen: "NowPlaying", action: "didTapShareClip") }
+    }
+
+    /// Opens the clip sheet already covering `chapter`, from its long-press menu.
+    private func shareChapterClip(_ chapter: EpisodeChapter, end: TimeInterval?) {
+        if player.isPlaying {
+            player.togglePlayPause()
+        }
+        shareClipPresentation = .init(chapterSelection: .init(start: chapter.start, end: end))
+        Task {
+            await AnalyticsService().send(
+                originatingScreen: "NowPlaying",
+                action: "didTapShareChapterClip(\(chapter.id), \(chapter.title))"
+            )
+        }
     }
 
     private func hideChapters() {
@@ -473,6 +492,15 @@ struct NowPlayingView: View {
             showShareSheet = true
         }
     }
+}
+
+// MARK: - Share Clip Presentation
+
+/// What to open the clip sheet with. A fresh `id` per presentation is what makes
+/// `.sheet(item:)` treat each one as a distinct, atomically-delivered payload.
+private struct ShareClipPresentation: Identifiable {
+    let id = UUID()
+    let chapterSelection: ShareClipView.InitialChapterSelection?
 }
 
 // MARK: - Playback Time Observer
