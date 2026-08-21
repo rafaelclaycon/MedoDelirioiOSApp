@@ -196,6 +196,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 
     private func collectTelemetry() async {
         await sendDeviceModelNameToServer()
+        await sendWatchPairingStatusToServer()
         await sendStillAliveSignalToServer()
     }
 
@@ -209,6 +210,33 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             AppPersistentMemory.shared.setHasSentDeviceModelToServer(to: true)
         } catch {
             print("Erro enviando device model para o servidor:")
+            debugPrint(error)
+        }
+    }
+
+    /// Sent once per install, same reasoning as the device model above: it's an
+    /// analytics snapshot, not a live status, so a change in pairing later in the
+    /// install's life just isn't reflected.
+    private func sendWatchPairingStatusToServer() async {
+        guard AppPersistentMemory.shared.getHasSentWatchPairingStatusToServer() == false else {
+            return
+        }
+        guard let isPaired = await WatchPairingChecker.isWatchPaired() else {
+            // Not applicable on this platform (iPad, Mac) — nothing to report, and
+            // nothing that will change on a future launch, so don't keep asking.
+            AppPersistentMemory.shared.setHasSentWatchPairingStatusToServer(to: true)
+            return
+        }
+        let info = ClientDeviceInfo(
+            installId: AppPersistentMemory.shared.customInstallId,
+            modelName: UIDevice.modelName,
+            isWatchPaired: isPaired
+        )
+        do {
+            try await APIClient.shared.post(clientDeviceInfo: info)
+            AppPersistentMemory.shared.setHasSentWatchPairingStatusToServer(to: true)
+        } catch {
+            print("Erro enviando status do Apple Watch para o servidor:")
             debugPrint(error)
         }
     }

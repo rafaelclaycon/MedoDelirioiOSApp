@@ -76,6 +76,16 @@ extension AppPersistentMemory {
         return Bool(value as! Bool)
     }
 
+    /// Separate from `hasSentDeviceModelToServer` on purpose: that flag is already
+    /// `true` for every existing install, so gating watch status behind it would mean
+    /// no install that predates this field ever sends it.
+    func getHasSentWatchPairingStatusToServer() -> Bool {
+        guard let value = userDefaults.object(forKey: "hasSentWatchPairingStatusToServer") else {
+            return false
+        }
+        return Bool(value as! Bool)
+    }
+
     func getLastSendDateOfUserPersonalTrendsToServer() -> Date? {
         guard let value = userDefaults.object(forKey: "lastSendDateOfUserPersonalTrendsToServer") else {
             return nil
@@ -315,6 +325,10 @@ extension AppPersistentMemory {
 
     func setHasSentDeviceModelToServer(to newValue: Bool) {
         userDefaults.set(newValue, forKey: "hasSentDeviceModelToServer")
+    }
+
+    func setHasSentWatchPairingStatusToServer(to newValue: Bool) {
+        userDefaults.set(newValue, forKey: "hasSentWatchPairingStatusToServer")
     }
     
     func setLastSendDateOfUserPersonalTrendsToServer(to newValue: Date) {
