@@ -691,6 +691,14 @@ struct MainView: View {
                         minimumInterval: ChapterDownloadService.minimumCheckInterval
                     )
                 }
+
+                // Same reasoning for transcripts, which are likewise generated hours
+                // after an episode goes out.
+                Task {
+                    await transcriptDownloadService.syncNewTranscriptsIfNeeded(
+                        minimumInterval: TranscriptDownloadService.minimumCheckInterval
+                    )
+                }
             }
         }
         .sheet(isPresented: $showingModalView) {

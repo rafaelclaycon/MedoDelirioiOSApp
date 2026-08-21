@@ -77,6 +77,22 @@ struct NowPlayingView: View {
         !chaptersHidden
     }
 
+    /// How long to wait between rechecks for a transcript still being generated.
+    /// Generation takes hours, so this is about not making the user reopen the screen
+    /// rather than about catching the file the second it appears.
+    private static let transcriptRecheckInterval: TimeInterval = 5 * 60
+
+    /// The episode whose transcript is worth waiting for, or nil when there's nothing to
+    /// wait on. `isComingSoon` is already the provider's answer to "recent enough that
+    /// generation is plausibly still pending", which also bounds how long this can run.
+    private var awaitedTranscriptEpisodeId: String? {
+        guard transcriptDownloadService.transcriptsDownloaded else { return nil }
+        guard case .notAvailable(_, let isComingSoon) = transcriptProvider.state, isComingSoon else {
+            return nil
+        }
+        return player.currentEpisode?.id
+    }
+
     /// Falls back to cover art when the stored mode is no longer selectable —
     /// `@AppStorage` remembers the chapters canvas even after the user hides
     /// chapters.
@@ -274,6 +290,36 @@ struct NowPlayingView: View {
             guard chaptersEnabled else { return }
             chapterProvider.load(episodeId: player.currentEpisode?.id)
             chapterProvider.update(currentTime: player.currentTime)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: TranscriptDownloadService.transcriptsDidUpdate)) { _ in
+            guard transcriptDownloadService.transcriptsDownloaded else { return }
+            // A sync usually brings in *other* episodes' files, which can't change one
+            // that's already parsed — and reparsing re-reads the SRT and rebuilds every
+            // cue, tens of milliseconds on a long episode. Only reload when there's
+            // actually something to gain.
+            if case .loaded = transcriptProvider.state { return }
+            transcriptProvider.load(episodeId: player.currentEpisode?.id, pubDate: player.currentEpisode?.pubDate)
+            transcriptProvider.update(currentTime: player.currentTime)
+        }
+        // Rechecks while the "a caminho" notice is on screen, so a transcript finishing
+        // generation mid-episode appears without the user having to leave and come back.
+        .task(id: awaitedTranscriptEpisodeId) {
+            guard let episodeId = awaitedTranscriptEpisodeId else { return }
+
+            while !Task.isCancelled {
+                // Checked before the first wait, not after: what the provider read was the
+                // local folder, last filled at launch — possibly before this episode's
+                // transcript existed. It also makes closing and reopening this screen a
+                // way to ask again, rather than a way to restart the wait.
+                //
+                // A hit posts `transcriptsDidUpdate`, which the observer above turns into
+                // a reload — that flips the state off `.notAvailable` and cancels this.
+                if await transcriptDownloadService.fetchTranscriptIfReady(episodeId: episodeId) {
+                    return
+                }
+
+                try? await Task.sleep(for: .seconds(Self.transcriptRecheckInterval))
+            }
         }
         .onChange(of: currentCanvasMode) {
             if currentCanvasMode == .chapters {
