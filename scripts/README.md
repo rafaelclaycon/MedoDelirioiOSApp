@@ -358,6 +358,55 @@ order or an upload failed — re-upload both, in order.
 
 ---
 
+## Reaction suggestions
+
+Unlike transcripts and chapters, this is a **one-off tool you run by hand**, not
+part of any automated pipeline — there's no server-side state and nothing is
+ever published without you looking at it first.
+
+### `generate_reactions.py`
+
+Suggests new Reactions (themed micro-playlists of sounds, e.g. "Vergonha
+Alheia") from the app's sound catalog, using the Claude API.
+
+```bash
+export ANTHROPIC_API_KEY='...'
+pip install anthropic pydantic
+
+python3 generate_reactions.py reactions_export.json suggestions.json --dry-run
+python3 generate_reactions.py reactions_export.json suggestions.json --count 15
+```
+
+`reactions_export.json` comes from the app: **Settings → Dev Options →
+Reactions → Exportar Dados para Sugestão de Reactions**, then share/save the
+file here. It contains the full sound catalog (id, title, author), the titles
+of existing Reactions (so the model doesn't repeat them), and a handful of
+real Reactions with their sound lists as few-shot examples of tone and sizing.
+
+`suggestions.json` is written for human review — nothing is uploaded or
+published by this script. Suggestions referencing unknown sound ids, left with
+fewer than 3 sounds after cleanup, or duplicating an existing title are
+dropped automatically and reported on stderr.
+
+**Idea not yet implemented: topical Reactions.** Some real Reactions key off
+current political events rather than a timeless theme. `chapters.json` (see
+Chapters above) already summarizes what each recent episode covered, cheaply
+— far fewer tokens than feeding raw transcripts. A future version could pass
+the last N episodes' chapter titles alongside the sound catalog so the model
+can suggest Reactions tied to what the show has actually been covering
+lately, instead of only evergreen groupings.
+
+### `reactions_review.html`
+
+A static, no-build viewer for `suggestions.json` — open it in a browser (it
+auto-loads `suggestions.json` from the same folder if served over http(s), or
+use the file picker if opening it directly as a local file). Accept or discard
+each suggestion; decisions persist in the browser across reloads. "Exportar
+aceitas" downloads `reactions_approved.json` with only the kept Reactions, in
+the same shape, ready to hand to the content manager app.
+
+---
+
 ## Transcript maintenance utilities
 
 Occasional cleanup tools, not part of any automated flow.

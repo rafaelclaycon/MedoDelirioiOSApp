@@ -335,6 +335,10 @@ struct DevOptionsView: View {
 
     @State private var supportSheetPreviewContext: StandaloneSupportView.Context?
     @State private var showTipsResetConfirmation: Bool = false
+    @State private var isGeneratingReactionsExport: Bool = false
+    @State private var reactionsExportURL: URL?
+    @State private var reactionsExportError: String?
+    @State private var reactionsExportResultMessage: String?
 
     var body: some View {
         Form {
@@ -372,6 +376,29 @@ struct DevOptionsView: View {
                     showTipsResetConfirmation = true
                 }
             }
+
+            Section("Reactions") {
+                Button {
+                    Task {
+                        isGeneratingReactionsExport = true
+                        do {
+                            reactionsExportURL = try await ReactionsExportGenerator.generate()
+                        } catch {
+                            reactionsExportError = error.localizedDescription
+                        }
+                        isGeneratingReactionsExport = false
+                    }
+                } label: {
+                    HStack {
+                        Text("Exportar Dados para Sugestão de Reactions")
+                        if isGeneratingReactionsExport {
+                            Spacer()
+                            ProgressView()
+                        }
+                    }
+                }
+                .disabled(isGeneratingReactionsExport)
+            }
         }
         .navigationTitle("Dev Options")
         .sheet(item: $supportSheetPreviewContext) { context in
@@ -381,6 +408,30 @@ struct DevOptionsView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text("Feche o app completamente e abra de novo para ver os tips outra vez.")
+        }
+        .alert("Erro ao Exportar", isPresented: .constant(reactionsExportError != nil)) {
+            Button("OK", role: .cancel) { reactionsExportError = nil }
+        } message: {
+            Text(reactionsExportError ?? "")
+        }
+        .sheet(isPresented: Binding(
+            get: { reactionsExportURL != nil },
+            set: { isPresented in
+                if !isPresented { reactionsExportURL = nil }
+            }
+        )) {
+            if let reactionsExportURL {
+                ActivityViewController(activityItems: [reactionsExportURL]) { _, completed, _, _ in
+                    reactionsExportResultMessage = completed
+                        ? "Reactions exportadas com sucesso."
+                        : "Exportação cancelada."
+                }
+            }
+        }
+        .alert("Exportação", isPresented: .constant(reactionsExportResultMessage != nil)) {
+            Button("OK", role: .cancel) { reactionsExportResultMessage = nil }
+        } message: {
+            Text(reactionsExportResultMessage ?? "")
         }
     }
 }

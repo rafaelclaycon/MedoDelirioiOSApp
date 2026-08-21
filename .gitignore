@@ -94,6 +94,11 @@ iOSInjectionProject/
 # Auto-transcribe secrets
 scripts/.env
 
+# Reaction suggestion pipeline — generated/downloaded per run, not shared state
+scripts/reactions_export.json
+scripts/suggestions.json
+scripts/reactions_approved.json
+
 # AI, of course
 .claude
 

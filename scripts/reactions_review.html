@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Revisão de Reactions Sugeridas</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f5f5f7;
+    --card-bg: #ffffff;
+    --text: #1c1c1e;
+    --muted: #6e6e73;
+    --border: #d8d8dc;
+    --keep: #1f9d55;
+    --keep-bg: #e8f8ee;
+    --discard: #c93a3a;
+    --discard-bg: #fbe9e9;
+    --accent: #3a6df0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1e;
+      --card-bg: #2c2c2e;
+      --text: #f2f2f7;
+      --muted: #9a9aa0;
+      --border: #48484a;
+      --keep: #34c759;
+      --keep-bg: #14301f;
+      --discard: #ff6961;
+      --discard-bg: #331616;
+      --accent: #6d9dff;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 2rem 1.25rem 6rem;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  h1 {
+    font-size: 1.4rem;
+    margin: 0 0 0.25rem;
+  }
+  .subtitle {
+    color: var(--muted);
+    margin: 0 0 1.5rem;
+    font-size: 0.9rem;
+  }
+  .status {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.9rem;
+    color: var(--muted);
+  }
+  .status strong { color: var(--text); }
+  .toolbar {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+  button {
+    font: inherit;
+    cursor: pointer;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--text);
+    padding: 0.5rem 0.9rem;
+  }
+  button:hover { border-color: var(--accent); }
+  #cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    transition: opacity 0.15s;
+  }
+  .card.discarded { opacity: 0.45; }
+  .card-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 0;
+  }
+  .sound-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+  .sound-list li {
+    font-size: 0.88rem;
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .sound-title { color: var(--text); }
+  .sound-author { color: var(--muted); white-space: nowrap; }
+  .card-actions {
+    margin-top: auto;
+    display: flex;
+    gap: 0.5rem;
+    padding-top: 0.4rem;
+  }
+  .card-actions button {
+    flex: 1;
+    font-size: 0.85rem;
+    padding: 0.45rem 0;
+  }
+  .btn-keep.active {
+    background: var(--keep-bg);
+    border-color: var(--keep);
+    color: var(--keep);
+  }
+  .btn-discard.active {
+    background: var(--discard-bg);
+    border-color: var(--discard);
+    color: var(--discard);
+  }
+  #empty, #loadError {
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+  #loadError { color: var(--discard); }
+  #exportBar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--card-bg);
+    border-top: 1px solid var(--border);
+    padding: 0.9rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  #exportBar button {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+
+<h1>Revisão de Reactions Sugeridas</h1>
+<p class="subtitle">Gerado por <code>generate_reactions.py</code>. Marque cada sugestão como aceita ou descartada, depois exporte as aceitas para importar no gerenciador de conteúdo.</p>
+
+<div class="status">
+  <span><strong id="countTotal">0</strong> sugestões</span>
+  <span><strong id="countKept">0</strong> aceitas</span>
+  <span><strong id="countDiscarded">0</strong> descartadas</span>
+</div>
+
+<div class="toolbar">
+  <button id="keepAllBtn">Aceitar todas</button>
+  <button id="discardAllBtn">Descartar todas</button>
+  <button id="resetBtn">Limpar decisões</button>
+  <label style="display:flex;align-items:center;gap:0.4rem;color:var(--muted);font-size:0.85rem;">
+    <span>ou carregue outro arquivo:</span>
+    <input type="file" id="fileInput" accept="application/json">
+  </label>
+</div>
+
+<div id="empty" style="display:none;">Nenhuma sugestão carregada ainda.</div>
+<div id="loadError" style="display:none;"></div>
+<div id="cards"></div>
+
+<div id="exportBar">
+  <span id="exportHint" style="color:var(--muted); font-size:0.85rem;">As aceitas serão exportadas no mesmo formato de <code>suggestions.json</code>.</span>
+  <button id="exportBtn">Exportar aceitas (JSON)</button>
+</div>
+
+<script>
+const STORAGE_KEY = 'reactionsReviewDecisions';
+
+let reactions = [];       // [{title, sounds:[{id,title,authorName}]}]
+let decisions = {};       // title -> 'keep' | 'discard'
+
+function loadDecisions() {
+  try {
+    decisions = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  } catch {
+    decisions = {};
+  }
+}
+
+function saveDecisions() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(decisions));
+}
+
+function render() {
+  const cardsEl = document.getElementById('cards');
+  const emptyEl = document.getElementById('empty');
+  cardsEl.innerHTML = '';
+
+  emptyEl.style.display = reactions.length === 0 ? 'block' : 'none';
+
+  let kept = 0, discarded = 0;
+
+  reactions.forEach((reaction) => {
+    const decision = decisions[reaction.title];
+    if (decision === 'keep') kept++;
+    if (decision === 'discard') discarded++;
+
+    const card = document.createElement('div');
+    card.className = 'card' + (decision === 'discard' ? ' discarded' : '');
+
+    const title = document.createElement('p');
+    title.className = 'card-title';
+    title.textContent = reaction.title;
+    card.appendChild(title);
+
+    const list = document.createElement('ul');
+    list.className = 'sound-list';
+    reaction.sounds.forEach((sound) => {
+      const li = document.createElement('li');
+      const t = document.createElement('span');
+      t.className = 'sound-title';
+      t.textContent = sound.title;
+      const a = document.createElement('span');
+      a.className = 'sound-author';
+      a.textContent = sound.authorName || '';
+      li.appendChild(t);
+      li.appendChild(a);
+      list.appendChild(li);
+    });
+    card.appendChild(list);
+
+    const actions = document.createElement('div');
+    actions.className = 'card-actions';
+
+    const keepBtn = document.createElement('button');
+    keepBtn.className = 'btn-keep' + (decision === 'keep' ? ' active' : '');
+    keepBtn.textContent = '✓ Aceitar';
+    keepBtn.onclick = () => {
+      decisions[reaction.title] = decision === 'keep' ? undefined : 'keep';
+      if (!decisions[reaction.title]) delete decisions[reaction.title];
+      saveDecisions();
+      render();
+    };
+
+    const discardBtn = document.createElement('button');
+    discardBtn.className = 'btn-discard' + (decision === 'discard' ? ' active' : '');
+    discardBtn.textContent = '✕ Descartar';
+    discardBtn.onclick = () => {
+      decisions[reaction.title] = decision === 'discard' ? undefined : 'discard';
+      if (!decisions[reaction.title]) delete decisions[reaction.title];
+      saveDecisions();
+      render();
+    };
+
+    actions.appendChild(keepBtn);
+    actions.appendChild(discardBtn);
+    card.appendChild(actions);
+
+    cardsEl.appendChild(card);
+  });
+
+  document.getElementById('countTotal').textContent = reactions.length;
+  document.getElementById('countKept').textContent = kept;
+  document.getElementById('countDiscarded').textContent = discarded;
+}
+
+function loadData(json) {
+  reactions = json.reactions || [];
+  loadDecisions();
+  render();
+}
+
+function showError(message) {
+  const el = document.getElementById('loadError');
+  el.textContent = message;
+  el.style.display = 'block';
+}
+
+// Auto-load suggestions.json if this page is served over http(s); silently
+// falls through to the file picker when opened directly via file:// (fetch
+// of a sibling file is blocked by the browser in that case).
+fetch('./suggestions.json')
+  .then((r) => { if (!r.ok) throw new Error('not found'); return r.json(); })
+  .then(loadData)
+  .catch(() => {
+    if (location.protocol === 'file:') {
+      showError('Abrindo como arquivo local: use "carregue outro arquivo" abaixo para selecionar suggestions.json.');
+    }
+  });
+
+document.getElementById('fileInput').addEventListener('change', (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  file.text().then((text) => {
+    document.getElementById('loadError').style.display = 'none';
+    loadData(JSON.parse(text));
+  }).catch((error) => showError('Arquivo inválido: ' + error.message));
+});
+
+document.getElementById('keepAllBtn').onclick = () => {
+  reactions.forEach((r) => decisions[r.title] = 'keep');
+  saveDecisions();
+  render();
+};
+
+document.getElementById('discardAllBtn').onclick = () => {
+  reactions.forEach((r) => decisions[r.title] = 'discard');
+  saveDecisions();
+  render();
+};
+
+document.getElementById('resetBtn').onclick = () => {
+  decisions = {};
+  saveDecisions();
+  render();
+};
+
+document.getElementById('exportBtn').onclick = () => {
+  const kept = reactions.filter((r) => decisions[r.title] === 'keep');
+  if (kept.length === 0) {
+    alert('Nenhuma Reaction aceita ainda.');
+    return;
+  }
+  const blob = new Blob([JSON.stringify({ reactions: kept }, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'reactions_approved.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+};
+
+render();
+</script>
+
+</body>
+</html>
