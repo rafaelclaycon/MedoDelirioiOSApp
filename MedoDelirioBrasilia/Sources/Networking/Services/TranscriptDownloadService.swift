@@ -397,10 +397,20 @@ final class TranscriptDownloadService {
             .appendingPathComponent("transcript_log.json")
     }
 
+    /// Entries older than this are dropped on every append, so the file this rewrites
+    /// on each call stays bounded instead of growing for as long as the app is used.
+    private static let logRetention: TimeInterval = 30 * 24 * 60 * 60
+
     private func appendLog(_ message: String) {
         let entry = TranscriptLogEntry(date: .now, message: message)
         operationLog.append(entry)
+        operationLog = Self.trimmed(operationLog)
         Self.persistLog(operationLog)
+    }
+
+    nonisolated private static func trimmed(_ entries: [TranscriptLogEntry]) -> [TranscriptLogEntry] {
+        let cutoff = Date(timeIntervalSinceNow: -logRetention)
+        return entries.filter { $0.date >= cutoff }
     }
 
     nonisolated private static func persistLog(_ entries: [TranscriptLogEntry]) {
@@ -415,7 +425,15 @@ final class TranscriptDownloadService {
         guard let data = try? Data(contentsOf: url) else { return [] }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        return (try? decoder.decode([TranscriptLogEntry].self, from: data)) ?? []
+        let entries = (try? decoder.decode([TranscriptLogEntry].self, from: data)) ?? []
+
+        // Old entries accumulated before this cap existed shouldn't wait for the next
+        // sync to be swept out — trim once at load, same as every append does.
+        let fresh = trimmed(entries)
+        if fresh.count != entries.count {
+            persistLog(fresh)
+        }
+        return fresh
     }
 }
 
