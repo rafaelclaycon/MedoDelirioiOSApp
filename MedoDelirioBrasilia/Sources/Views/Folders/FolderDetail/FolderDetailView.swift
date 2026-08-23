@@ -12,7 +12,10 @@ struct FolderDetailView: View {
     @State private var viewModel: FolderDetailViewModel
     @State private var contentGridViewModel: ContentGridViewModel
 
-    let folder: UserFolder
+    /// `@State`, not `let`: editing the folder's name/emoji/color happens in a sheet
+    /// that owns its own copy (`FolderInfoEditingView.ViewModel`), so this has to be
+    /// re-fetched after the sheet closes rather than mutated in place.
+    @State private var folder: UserFolder
 
     private var currentContentListMode: Binding<ContentGridMode>
     @State private var showingFolderInfoEditingView = false
@@ -53,7 +56,7 @@ struct FolderDetailView: View {
         floatingOptions: Binding<FloatingContentOptions?>,
         contentRepository: ContentRepositoryProtocol
     ) {
-        self.folder = folder
+        _folder = State(initialValue: folder)
 
         self.viewModel = viewModel
         self.currentContentListMode = currentContentListMode
@@ -82,21 +85,19 @@ struct FolderDetailView: View {
                 ScrollView {
                     detailView(size: geometry.size)
                         .toolbar {
-                            ToolbarItem {
+                            ToolbarItem(id: "play-stop-button", placement: .topBarTrailing) {
                                 if currentContentListMode.wrappedValue == .regular {
                                     playStopButton()
                                 } else {
                                     selectionControls
                                 }
                             }
-                            ToolbarSpacer(.fixed)
-                            if currentContentListMode.wrappedValue == .regular {
-                                ToolbarItem {
-                                    multiselectButton
-                                }
+
+                            ToolbarSpacer(.fixed, placement: .topBarTrailing)
+
+                            ToolbarItem(id: "options-menu", placement: .topBarTrailing) {
+                                optionsMenu()
                             }
-                            ToolbarSpacer(.fixed)
-                            ToolbarItem { multiselectAndSortMenu() }
                         }
                 }
                 .edgesIgnoringSafeArea(.top)
@@ -107,14 +108,15 @@ struct FolderDetailView: View {
                 ScrollView {
                     detailView(size: geometry.size)
                         .toolbar {
-                            HStack(spacing: 16) {
+                            ToolbarItem(placement: .topBarLeading) {
+                                optionsMenu()
+                            }
+                            ToolbarItem(placement: .topBarTrailing) {
                                 if currentContentListMode.wrappedValue == .regular {
                                     playStopButton()
                                 } else {
                                     selectionControls
                                 }
-
-                                multiselectAndSortMenu()
                             }
                         }
                 }
@@ -178,10 +180,24 @@ struct FolderDetailView: View {
                 folderRepository: UserFolderRepository(database: LocalDatabase.shared),
                 dismissSheet: {
                     showingFolderInfoEditingView = false
+                    Task { await reloadFolder() }
                 }
             )
         }
         .toolbar(contentGridViewModel.tabBarVisibility, for: .tabBar)
+    }
+
+    /// Picks up name/emoji/color changes made in the editing sheet. The sheet edits
+    /// its own copy and only persists it to the repository on save, so this is the
+    /// only way this view finds out — including finding out nothing changed, on
+    /// cancel, which is harmless to re-fetch anyway.
+    private func reloadFolder() async {
+        let repository = UserFolderRepository(database: LocalDatabase.shared)
+        guard let folders = try? await repository.allFolders(),
+              let updated = folders.first(where: { $0.id == folder.id }) else {
+            return
+        }
+        folder = updated
     }
 
     @ViewBuilder func playStopButton() -> some View {
@@ -193,23 +209,22 @@ struct FolderDetailView: View {
         .disabled(viewModel.contentCount == 0)
     }
     
-    @ViewBuilder func multiselectAndSortMenu() -> some View {
+    @ViewBuilder func optionsMenu() -> some View {
         Menu {
-//            Section {
-//                Button {
-//                    contentGridViewModel.onEnterMultiSelectModeSelected(
-//                        loadedContent: loadedContent,
-//                        isFavoritesOnlyView: false
-//                    )
-//                } label: {
-//                    Label(
-//                        currentContentListMode.wrappedValue == .selection ? "Cancelar Seleção" : "Selecionar",
-//                        systemImage: currentContentListMode.wrappedValue == .selection ? "xmark.circle" : "checkmark.circle"
-//                    )
-//                }
-//            }
+            if currentContentListMode.wrappedValue == .regular {
+                Section {
+                    Button {
+                        contentGridViewModel.onEnterMultiSelectModeSelected(
+                            loadedContent: loadedContent,
+                            isFavoritesOnlyView: false
+                        )
+                    } label: {
+                        Label("Selecionar", systemImage: "checkmark.circle")
+                    }
+                }
+            }
 
-            //Section {
+            Section {
                 Picker("Ordenação", selection: $viewModel.contentSortOption) {
                     Text("Título")
                         .tag(0)
@@ -227,30 +242,20 @@ struct FolderDetailView: View {
                     viewModel.onContentSortOptionChanged()
                 }
                 .disabled(viewModel.contentCount == 0)
-            //}
+            }
 
-            //                    Section {
-            //                        Button {
-            //                            showingFolderInfoEditingView = true
-            //                        } label: {
-            //                            Label("Editar Pasta", systemImage: "pencil")
-            //                        }
-            //
-            //                        Button(role: .destructive, action: {
-            //                            //viewModel.dummyCall()
-            //                        }, label: {
-            //                            HStack {
-            //                                Text("Apagar Pasta")
-            //                                Image(systemName: "trash")
-            //                            }
-            //                        })
-            //                    }
+            Section {
+                Button {
+                    showingFolderInfoEditingView = true
+                } label: {
+                    Label("Editar Pasta", systemImage: "pencil")
+                }
+            }
         } label: {
-            Image(systemName: "arrow.up.arrow.down")
+            Image(systemName: "ellipsis")
         }
-        .disabled(contentGridViewModel.isPlayingPlaylist || (viewModel.contentCount == 0))
     }
-    
+
     var selectionControls: some View {
         Button {
             currentContentListMode.wrappedValue = .regular
@@ -259,76 +264,54 @@ struct FolderDetailView: View {
             Text("Cancelar")
         }
     }
-
-    var multiselectButton: some View {
-        Button {
-            contentGridViewModel.onEnterMultiSelectModeSelected(
-                loadedContent: loadedContent,
-                isFavoritesOnlyView: false
-            )
-        } label: {
-            Text("Selecionar")
-        }
-    }
 }
 
 // MARK: - Subviews
 
 extension FolderDetailView {
 
+    /// Same stretch-on-pull technique as `AuthorHeaderView.StickyPhotoView`: grows
+    /// upward into the overscroll gap on pull-down, scrolls normally otherwise.
     struct StickyFolderBackgroundView: View {
 
         let color: Color
         let height: CGFloat
 
-        // MARK: - Computed Properties
-
-        private func scrollOffset(_ geometry: GeometryProxy) -> CGFloat {
-            geometry.frame(in: .global).minY
-        }
-
-        private func getOffsetForHeaderImage(_ geometry: GeometryProxy) -> CGFloat {
-            let offset = scrollOffset(geometry)
-            // Image was pulled down
-            if offset > 0 {
-                return -offset
-            }
-            return 0
-        }
-
-        private func getHeightForHeaderImage(_ geometry: GeometryProxy) -> CGFloat {
-            let offset = scrollOffset(geometry)
-            let imageHeight = geometry.size.height
-            if offset > 0 {
-                return imageHeight + offset
-            }
-            return imageHeight
-        }
-
         // MARK: - View Body
 
         var body: some View {
             GeometryReader { proxy in
-                if #available(iOS 26.0, *) {
-                    colorfulRectangle(proxy: proxy)
-                        .backgroundExtensionEffect()
-                } else {
-                    colorfulRectangle(proxy: proxy)
-                }
+                let offset = proxy.frame(in: .global).minY
+                // Only stretch when the scroll view is pulled down past the top.
+                let extraHeight = max(0, offset)
+
+                Color.clear
+                    .frame(width: proxy.size.width, height: height + extraHeight)
+                    .background {
+                        // The background-extension effect must wrap the *fill*, not
+                        // the grow/offset transform. On iOS 26 applying it after the
+                        // offset pins the fill and kills the stretch.
+                        if #available(iOS 26.0, *) {
+                            colorfulFill
+                                .backgroundExtensionEffect()
+                        } else {
+                            colorfulFill
+                        }
+                    }
+                    .clipped()
+                    .offset(y: -extraHeight)
             }
             .frame(height: height)
+            // Clip the bottom (so the fill / background-extension effect can't leak
+            // into the content below) while leaving the top open, so the fill can
+            // still stretch upward to fill the overscroll gap on pull.
+            .clipShape(TopOpenRectangle())
         }
 
-        @ViewBuilder
-        func colorfulRectangle(proxy: GeometryProxy) -> some View {
+        private var colorfulFill: some View {
             Rectangle()
                 .fill(color)
                 .overlay { FolderView.SpeckleOverlay() }
-                .frame(
-                    width: proxy.size.width,
-                    height: getHeightForHeaderImage(proxy)
-                )
-                .offset(x: 0, y: getOffsetForHeaderImage(proxy))
         }
     }
 
@@ -337,32 +320,58 @@ extension FolderDetailView {
         let folder: UserFolder
         let itemCountText: String
 
+        /// Status bar / notch / Dynamic Island inset. The header ignores the top safe
+        /// area (`FolderDetailView.body`) so its background can bleed under the status
+        /// bar, which means nothing here does this accounting automatically anymore —
+        /// the emoji/title block has to steer clear of that region itself.
+        private var topSafeAreaInset: CGFloat {
+            guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                  let window = windowScene.windows.first else {
+                return 0
+            }
+            return window.safeAreaInsets.top
+        }
+
+        /// Standard navigation bar height, on top of the safe area inset above — the
+        /// floating toolbar (back button, play, Selecionar, sort) occupies this too.
+        private let toolbarHeight: CGFloat = 44
+
         var body: some View {
-            VStack(alignment: .leading, spacing: .spacing(.medium)) {
-                StickyFolderBackgroundView(
-                    color: folder.backgroundColor.toPastelColor(),
-                    height: 200
-                )
-                .overlay(alignment: .bottomLeading) {
-                    VStack(alignment: .leading, spacing: .spacing(.xxSmall)) {
-                        Text(folder.symbol)
-                            .font(.largeTitle)
+            StickyFolderBackgroundView(
+                color: folder.backgroundColor.toPastelColor(),
+                height: 230
+            )
+            .overlay {
+                VStack(spacing: .zero) {
+                    // Fixed, not part of the centering: reserves the toolbar's own
+                    // space so the two flexible spacers below center the text in
+                    // what's actually left over, not the header's full height.
+                    Spacer()
+                        .frame(height: topSafeAreaInset + toolbarHeight)
 
-                        Text(folder.name)
-                            .font(.title)
-                            .bold()
-                            .foregroundStyle(.black)
-                            .multilineTextAlignment(.leading)
-                            .lineLimit(1)
+                    Spacer()
+
+                    VStack(spacing: .spacing(.xxSmall)) {
+                        HStack(spacing: .spacing(.xSmall)) {
+                            Text(folder.symbol)
+                                .font(.largeTitle)
+
+                            Text(folder.name)
+                                .font(.title)
+                                .bold()
+                                .foregroundStyle(.black)
+                                .multilineTextAlignment(.center)
+                                .lineLimit(1)
+                        }
+
+                        Text(itemCountText)
+                            .font(.footnote)
+                            .foregroundStyle(.black.opacity(0.45))
                     }
-                    .padding(.all, .spacing(.large))
-                }
+                    .padding(.horizontal, .spacing(.large))
 
-                Text(itemCountText)
-                    .font(.callout)
-                    .foregroundColor(.gray)
-                    .bold()
-                    .padding(.leading, .spacing(.medium))
+                    Spacer()
+                }
             }
         }
     }
