@@ -53,7 +53,13 @@ extension FolderGridViewModel {
     private func loadContent() async {
         state = .loading
         do {
-            state = .loaded(try await userFolderRepository.allFolders())
+            let folders = try await userFolderRepository.allFolders()
+            // Most recently created first. `creationDate` is nil for folders made
+            // before the field existed — treated as the oldest possible date so
+            // they sink to the bottom rather than sort unpredictably.
+            state = .loaded(folders.sorted {
+                ($0.creationDate ?? .distantPast) > ($1.creationDate ?? .distantPast)
+            })
         } catch {
             state = .error(error.localizedDescription)
         }
