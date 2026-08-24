@@ -198,6 +198,11 @@ struct FolderDetailView: View {
     /// its own copy and only persists it to the repository on save, so this is the
     /// only way this view finds out — including finding out nothing changed, on
     /// cancel, which is harmless to re-fetch anyway.
+    ///
+    /// Updates `contentGridViewModel.folder` too, not just this view's own `folder` —
+    /// it keeps an independent copy captured once at init, and its folder-removal
+    /// paths persist that whole copy back to the repository. Leaving it stale meant
+    /// removing a sound right after an edit silently reverted the edit.
     private func reloadFolder() async {
         let repository = UserFolderRepository(database: LocalDatabase.shared)
         guard let folders = try? await repository.allFolders(),
@@ -205,6 +210,7 @@ struct FolderDetailView: View {
             return
         }
         folder = updated
+        contentGridViewModel.folder = updated
     }
 
     @ViewBuilder func playStopButton() -> some View {

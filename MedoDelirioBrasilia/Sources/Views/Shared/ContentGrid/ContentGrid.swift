@@ -132,39 +132,36 @@ struct ContentGrid<
                         }
                     }
                 }
-                // Grid-specific alerts (folder operations)
-                .alert(isPresented: $viewModel.showAlert) {
-                    switch viewModel.alertType {
-                    case .issueExportingManySounds, .issueRemovingContentFromFolder:
-                        return Alert(
-                            title: Text(viewModel.alertTitle),
-                            message: Text(viewModel.alertMessage),
-                            dismissButton: .default(Text("OK"))
-                        )
+                // Grid-specific alerts (folder operations). Uses the
+                // title/isPresented/actions/message form, not the older
+                // isPresented-returning-Alert(...) form it deprecated — that form
+                // stopped presenting reliably on iOS 26, the same regression already
+                // hit and fixed for tab-bar visibility elsewhere in this app.
+                .alert(
+                    viewModel.alertTitle,
+                    isPresented: $viewModel.showAlert,
+                    actions: {
+                        switch viewModel.alertType {
+                        case .issueExportingManySounds, .issueRemovingContentFromFolder:
+                            Button("OK") {}
 
-                    case .removeSingleContent:
-                        return Alert(
-                            title: Text(viewModel.alertTitle),
-                            message: Text(viewModel.alertMessage),
-                            primaryButton: .destructive(
-                                Text("Remover"),
-                                action: { viewModel.onRemoveSingleContentSelected() }
-                            ),
-                            secondaryButton: .cancel(Text("Cancelar"))
-                        )
+                        case .removeSingleContent:
+                            Button("Remover", role: .destructive) {
+                                viewModel.onRemoveSingleContentSelected()
+                            }
+                            Button("Cancelar", role: .cancel) {}
 
-                    case .removeMultipleContent:
-                        return Alert(
-                            title: Text(viewModel.alertTitle),
-                            message: Text(viewModel.alertMessage),
-                            primaryButton: .destructive(
-                                Text("Remover"),
-                                action: { Task { await viewModel.onRemoveMultipleContentSelected() } }
-                            ),
-                            secondaryButton: .cancel(Text("Cancelar"))
-                        )
+                        case .removeMultipleContent:
+                            Button("Remover", role: .destructive) {
+                                Task { await viewModel.onRemoveMultipleContentSelected() }
+                            }
+                            Button("Cancelar", role: .cancel) {}
+                        }
+                    },
+                    message: {
+                        Text(viewModel.alertMessage)
                     }
-                }
+                )
                 // Playable content UI (alerts for content not found, sheets for share/detail)
                 .playableContentUI(
                     state: viewModel.playable,
