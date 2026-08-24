@@ -36,9 +36,12 @@ struct FolderInfoEditingView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: .spacing(.medium)) {
-                    Spacer()
-
+                // Trimmed from .medium, and the old top/bottom Spacer()s dropped:
+                // both were fine at rest, but with the emoji keyboard up, iOS
+                // auto-scrolls to keep the focused EmojiField visible — pushing
+                // everything below it, including NameField, further down. Every
+                // point saved here is a point more likely to keep NameField reachable.
+                VStack(spacing: .spacing(.small)) {
                     EmojiField(
                         symbol: $viewModel.folder.symbol,
                         backgroundColor: viewModel.folder.backgroundColor.toPastelColor()
@@ -61,9 +64,8 @@ struct FolderInfoEditingView: View {
 
                     NameField(name: $viewModel.folder.name)
                         .focused($focusedField, equals: .folderName)
-
-                    Spacer()
                 }
+                .padding(.vertical, .spacing(.medium))
                 .padding(.horizontal, .spacing(.medium))
                 .navigationTitle(viewModel.isEditing ? "Editar Pasta" : "Nova Pasta")
                 .navigationBarTitleDisplayMode(.inline)
@@ -151,23 +153,29 @@ extension FolderInfoEditingView {
         @Binding var symbol: String
         let backgroundColor: Color
 
+        /// Smaller than the grid card's own 0.85: this icon is decorative while the
+        /// user is looking at the emoji keyboard, not at it, and every point saved
+        /// here helps keep NameField reachable once the keyboard is up.
+        private let scale: CGFloat = 0.9
+
         var body: some View {
             FolderView.FolderIcon(
                 color: backgroundColor,
                 emoji: "",
-                isEmpty: true
+                isEmpty: true,
+                scale: scale
             )
-            .frame(width: 180)
-            // Matches where FolderIcon (at its default scale of 1) centers its own
-            // emoji: within the flap specifically, not the icon's full height — the
-            // flap is a `.frame(height: 110)` bottom overlay offset down by 3, not
-            // the vertical center of the whole (taller, tab-included) icon.
+            .frame(width: 180 * scale)
+            // Matches where FolderIcon centers its own emoji at this scale: within
+            // the flap specifically, not the icon's full height — the flap is a
+            // `.frame(height: 110 * scale)` bottom overlay offset down by `3 * scale`,
+            // not the vertical center of the whole (taller, tab-included) icon.
             .overlay(alignment: .bottom) {
                 TextField("", text: $symbol)
-                    .font(.system(size: 44))
+                    .font(.system(size: 44 * scale))
                     .multilineTextAlignment(.center)
-                    .frame(height: 110)
-                    .offset(y: 3)
+                    .frame(height: 110 * scale)
+                    .offset(y: 3 * scale)
                     .onReceive(Just(symbol)) { _ in
                         limitSymbolText(1)
                     }
