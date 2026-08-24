@@ -159,19 +159,12 @@ extension FolderInfoEditingView {
             )
             .frame(width: 180)
             .overlay {
-                HStack {
-                    Spacer()
-
-                    TextField("", text: $symbol)
-                        .font(.system(size: 44))
-                        .padding(.leading, .spacing(.medium))
-                        .multilineTextAlignment(.leading)
-                        .onReceive(Just(symbol)) { _ in
-                            limitSymbolText(1)
-                        }
-
-                    Spacer()
-                }
+                TextField("", text: $symbol)
+                    .font(.system(size: 44))
+                    .multilineTextAlignment(.center)
+                    .onReceive(Just(symbol)) { _ in
+                        limitSymbolText(1)
+                    }
             }
         }
 
