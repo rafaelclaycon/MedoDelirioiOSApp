@@ -158,10 +158,16 @@ extension FolderInfoEditingView {
                 isEmpty: true
             )
             .frame(width: 180)
-            .overlay {
+            // Matches where FolderIcon (at its default scale of 1) centers its own
+            // emoji: within the flap specifically, not the icon's full height — the
+            // flap is a `.frame(height: 110)` bottom overlay offset down by 3, not
+            // the vertical center of the whole (taller, tab-included) icon.
+            .overlay(alignment: .bottom) {
                 TextField("", text: $symbol)
                     .font(.system(size: 44))
                     .multilineTextAlignment(.center)
+                    .frame(height: 110)
+                    .offset(y: 3)
                     .onReceive(Just(symbol)) { _ in
                         limitSymbolText(1)
                     }
