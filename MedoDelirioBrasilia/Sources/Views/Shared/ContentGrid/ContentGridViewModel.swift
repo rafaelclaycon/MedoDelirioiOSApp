@@ -45,7 +45,13 @@ final class ContentGridViewModel {
     var scrollTo: String = ""
 
     // Multi-select
-    var tabBarVisibility: Visibility = .visible
+    ///
+    /// `.automatic` rather than `.visible` when not selecting, and the difference
+    /// matters: a screen that sits at the root of a `NavigationStack` and declares
+    /// `.visible` keeps declaring it after a detail screen is pushed on top, which
+    /// overrides that pushed screen's own attempt to hide the tab bar. `.automatic`
+    /// states no opinion, so whatever is currently on top decides.
+    var tabBarVisibility: Visibility = .automatic
 
     // MARK: - Stored Properties
 
@@ -429,7 +435,7 @@ extension ContentGridViewModel {
             if currentListMode.wrappedValue == .regular {
                 tabBarVisibility = .hidden
             } else {
-                tabBarVisibility = .visible
+                tabBarVisibility = .automatic
             }
         }
 
@@ -467,7 +473,7 @@ extension ContentGridViewModel {
         selectedContentMultiple = nil
         floatingOptions.wrappedValue = nil
         if #available(iOS 26, *) {
-            tabBarVisibility = .visible
+            tabBarVisibility = .automatic
         }
     }
 

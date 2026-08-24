@@ -103,6 +103,10 @@ struct FolderDetailView: View {
                 .edgesIgnoringSafeArea(.top)
                 .toast(contentGridViewModel.toast)
                 .floatingContentOptions(contentGridViewModel.floatingOptions)
+                // `toolbarVisibility`, not the older `toolbar(_:for:)` it deprecated:
+                // the latter silently stops hiding iOS 26's redesigned tab bar, which
+                // then sits on top of the selection options in the bottom bar.
+                .toolbarVisibility(contentGridViewModel.tabBarVisibility, for: .tabBar)
                 .scrollEdgeEffectHidden(true, for: .top)
             } else {
                 ScrollView {
@@ -123,6 +127,10 @@ struct FolderDetailView: View {
                 .edgesIgnoringSafeArea(.top)
                 .toast(contentGridViewModel.toast)
                 .floatingContentOptions(contentGridViewModel.floatingOptions)
+                // `toolbarVisibility`, not the older `toolbar(_:for:)` it deprecated:
+                // the latter silently stops hiding iOS 26's redesigned tab bar, which
+                // then sits on top of the selection options in the bottom bar.
+                .toolbarVisibility(contentGridViewModel.tabBarVisibility, for: .tabBar)
             }
         }
     }
@@ -184,7 +192,6 @@ struct FolderDetailView: View {
                 }
             )
         }
-        .toolbar(contentGridViewModel.tabBarVisibility, for: .tabBar)
     }
 
     /// Picks up name/emoji/color changes made in the editing sheet. The sheet edits
@@ -258,8 +265,11 @@ struct FolderDetailView: View {
 
     var selectionControls: some View {
         Button {
-            currentContentListMode.wrappedValue = .regular
-            contentGridViewModel.selectionKeeper.removeAll()
+            // Rather than clearing the list mode and selection by hand: leaving
+            // selection also has to drop the floating options — the bottom bar is
+            // rendered from them, so it lingers otherwise — along with the pending
+            // multi-selection and the tab bar override.
+            contentGridViewModel.onExitMultiSelectModeSelected()
         } label: {
             Text("Cancelar")
         }

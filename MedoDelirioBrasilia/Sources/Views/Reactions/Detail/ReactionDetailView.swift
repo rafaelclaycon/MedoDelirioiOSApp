@@ -159,7 +159,7 @@ struct ReactionDetailView: View {
             .edgesIgnoringSafeArea(.top)
             .toast(contentGridViewModel.toast)
             .floatingContentOptions(contentGridViewModel.floatingOptions)
-            .toolbar(contentGridViewModel.tabBarVisibility, for: .tabBar)
+            .toolbarVisibility(contentGridViewModel.tabBarVisibility, for: .tabBar)
         }
     }
 }

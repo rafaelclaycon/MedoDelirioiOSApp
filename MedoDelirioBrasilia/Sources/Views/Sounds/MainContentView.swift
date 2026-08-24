@@ -110,7 +110,7 @@ struct MainContentView: View {
             }
             .toast(viewModel.toast)
             .floatingContentOptions(viewModel.floatingOptions)
-            .toolbar(contentGridViewModel.tabBarVisibility, for: .tabBar)
+            .toolbarVisibility(contentGridViewModel.tabBarVisibility, for: .tabBar)
         }
     }
 }
