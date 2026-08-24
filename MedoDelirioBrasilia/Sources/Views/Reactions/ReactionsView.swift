@@ -18,6 +18,10 @@ struct ReactionsView: View {
     @Environment(TrendsHelper.self) private var trendsHelper
     @Environment(\.push) private var push
 
+    /// Takes the user to Vírgulas > Pastas, for the folders promo banner. Reações
+    /// has no notion of the other tab, so MainView supplies the real navigation.
+    var goToFolders: () -> Void = {}
+
     /// Equatable token for the current state, used to drive the crossfade
     /// between loading, loaded and error views.
     private enum ViewPhase {
@@ -69,7 +73,8 @@ struct ReactionsView: View {
                                     Task {
                                         await viewModel.onUnpinReactionSelected(reaction: reaction)
                                     }
-                                }
+                                },
+                                goToFolders: goToFolders
                             )
                             .transition(.opacity)
                             .onAppear {

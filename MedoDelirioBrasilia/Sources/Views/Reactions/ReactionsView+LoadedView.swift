@@ -17,23 +17,37 @@ extension ReactionsView {
         let columns: [GridItem]
         let pinAction: (Reaction) -> Void
         let unpinAction: (Reaction) -> Void
+        let goToFolders: () -> Void
 
         @State private var removedReaction: Reaction?
         @State private var showReactionRemovedAlert = false
         @State private var shouldDisplayPinBanner: Bool = false
+        @State private var shouldDisplayFoldersPromoBanner: Bool = false
 
         @State private var isPreparingShare: Bool = false
         @State private var shareLinkMetadata: LPLinkMetadata?
 
         var body: some View {
             VStack {
-                if shouldDisplayPinBanner {
-                    PinReactionsBanner(
-                        isBeingShown: $shouldDisplayPinBanner
+                if shouldDisplayFoldersPromoBanner {
+                    FoldersPromoBanner(
+                        isBeingShown: $shouldDisplayFoldersPromoBanner,
+                        goToFolders: goToFolders
                     )
                     .layoutPriority(1)
                     .padding(.bottom)
                 }
+
+                // Commented out, not removed: crowded the top of this screen
+                // alongside the folders promo banner. Bring back if the folders
+                // banner becomes permanent-dismiss-only instead of one-time.
+//                if shouldDisplayPinBanner {
+//                    PinReactionsBanner(
+//                        isBeingShown: $shouldDisplayPinBanner
+//                    )
+//                    .layoutPriority(1)
+//                    .padding(.bottom)
+//                }
 
                 if let pinnedReactions, pinnedReactions.count > 0 {
                     LazyVGrid(
@@ -90,6 +104,7 @@ extension ReactionsView {
             .padding()
             .onAppear {
                 shouldDisplayPinBanner = !AppPersistentMemory.shared.hasSeenPinReactionsBanner()
+                shouldDisplayFoldersPromoBanner = !AppPersistentMemory.shared.hasSeenFoldersPromoBanner()
             }
             .sheet(item: $shareLinkMetadata) { metadata in
                 LinkMetadataShareSheet(metadata: metadata)

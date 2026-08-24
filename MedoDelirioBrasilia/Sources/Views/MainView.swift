@@ -152,11 +152,16 @@ struct MainView: View {
 
                         Tab(Shared.TabInfo.name(PhoneTab.reactions), systemImage: Shared.TabInfo.symbol(PhoneTab.reactions), value: .reactions) {
                             NavigationStack(path: $reactionsPath) {
-                                ReactionsView()
-                                    .environment(trendsHelper)
-                                    .navigationDestination(for: GeneralNavigationDestination.self) { screen in
-                                        GeneralRouter(destination: screen, contentRepository: contentRepository)
+                                ReactionsView(
+                                    goToFolders: {
+                                        tabSelection.wrappedValue = .sounds
+                                        trendsHelper.contentModeToGoTo = .folders
                                     }
+                                )
+                                .environment(trendsHelper)
+                                .navigationDestination(for: GeneralNavigationDestination.self) { screen in
+                                    GeneralRouter(destination: screen, contentRepository: contentRepository)
+                                }
                             }
                             .tag(PhoneTab.reactions)
                             .environment(\.push, PushAction { reactionsPath.append($0) })
@@ -271,11 +276,16 @@ struct MainView: View {
                         .environment(\.push, PushAction { soundsPath.append($0) })
 
                         NavigationStack(path: $reactionsPath) {
-                            ReactionsView()
-                                .environment(trendsHelper)
-                                .navigationDestination(for: GeneralNavigationDestination.self) { screen in
-                                    GeneralRouter(destination: screen, contentRepository: contentRepository)
+                            ReactionsView(
+                                goToFolders: {
+                                    tabSelection.wrappedValue = .sounds
+                                    trendsHelper.contentModeToGoTo = .folders
                                 }
+                            )
+                            .environment(trendsHelper)
+                            .navigationDestination(for: GeneralNavigationDestination.self) { screen in
+                                GeneralRouter(destination: screen, contentRepository: contentRepository)
+                            }
                         }
                         .tabItem {
                             Label(Shared.TabInfo.name(PhoneTab.reactions), systemImage: Shared.TabInfo.symbol(PhoneTab.reactions))
@@ -388,11 +398,19 @@ struct MainView: View {
 
                     Tab(Shared.TabInfo.name(PadScreen.reactions), systemImage: Shared.TabInfo.symbol(PadScreen.reactions)) {
                         NavigationStack(path: $reactionsPath) {
-                            ReactionsView()
-                                .environment(trendsHelper)
-                                .navigationDestination(for: GeneralNavigationDestination.self) { screen in
-                                    GeneralRouter(destination: screen, contentRepository: contentRepository)
+                            ReactionsView(
+                                // padSelection isn't wired to this TabView's own
+                                // selection yet, so this currently has no visible
+                                // effect on iPad — set anyway so the folders promo
+                                // banner's button starts working the moment it is.
+                                goToFolders: {
+                                    padSelection.wrappedValue = .allFolders
                                 }
+                            )
+                            .environment(trendsHelper)
+                            .navigationDestination(for: GeneralNavigationDestination.self) { screen in
+                                GeneralRouter(destination: screen, contentRepository: contentRepository)
+                            }
                         }
                         .environment(\.push, PushAction { reactionsPath.append($0) })
                     }
