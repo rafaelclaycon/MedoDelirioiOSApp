@@ -226,7 +226,7 @@ extension AuthorHeaderView {
                 multiSelectAction()
             } label: {
                 if contentListMode == .regular {
-                    Image(systemName: "checklist")
+                    Text("Selecionar")
                 } else {
                     Text("Cancelar")
                 }
