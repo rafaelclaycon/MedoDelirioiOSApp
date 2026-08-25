@@ -15,11 +15,18 @@ extension MainContentView {
         @Binding var toast: Toast?
 
         @State private var dynamicBanner: DynamicBannerData?
+        @State private var promoBanner: PromoBannerData?
         @State private var showAnniversaryBanner: Bool = false
         @State private var showDunBanner = !AppPersistentMemory.shared.hasDismissedDunBanner()
 
         var body: some View {
             VStack {
+                if let promoBanner {
+                    PromoBanner(bannerData: promoBanner)
+                        .padding(.top, .spacing(.xxxSmall))
+                        .padding(.bottom, .spacing(.xSmall))
+                }
+
                 if showAnniversaryBanner {
                     AnniversaryBannerView()
                         .padding(.top, .spacing(.xxxSmall))
@@ -50,6 +57,9 @@ extension MainContentView {
             .onAppear {
                 Task{
                     dynamicBanner = await bannerRepository.dynamicBanner()
+                }
+                Task{
+                    promoBanner = await bannerRepository.promoBanner()
                 }
                 Task{
                     showAnniversaryBanner = await bannerRepository.showAnniversaryBanner()

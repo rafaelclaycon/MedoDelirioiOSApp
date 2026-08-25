@@ -40,6 +40,10 @@ public extension Color {
     // Episodes – Bookmarks
     static let rubyRed = Color(red: 0.8, green: 0.07, blue: 0.14)
     static let darkerOrange = Color(UIColor(red: 0.80, green: 0.45, blue: 0.0, alpha: 1.00))
+
+    /// Fallback for the Promo Banner when the server doesn't send a background color.
+    /// A touch lighter and cooler than `darkestGreen` so white text has more room to breathe.
+    static let promoDarkGreen = Color(UIColor(red: 0.04, green: 0.23, blue: 0.14, alpha: 1.00))
 }
 
 extension Color {
