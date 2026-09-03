@@ -151,6 +151,15 @@ struct ShareClipPreviewView: View {
                 .foregroundStyle(.secondary)
                 .contentTransition(.numericText())
                 .animation(.easeInOut(duration: 0.2), value: generationPhase)
+
+            if max(config.clipEnd - config.clipStart, 0) > 180 {
+                Text("A exportação pode demorar mais devido à longa duração do trecho. Por favor, deixe o app aberto até ela finalizar.")
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, .spacing(.medium))
+                    .padding(.horizontal, .spacing(.large))
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
