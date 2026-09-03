@@ -100,6 +100,14 @@ extension ReactionsView {
                         )
                     }
                 }
+
+                Text("As reações e os conteúdos que as compõem são escolhas editoriais do criador do app, não dos apresentadores nem de qualquer outra pessoa envolvida com o podcast.")
+                    .font(.footnote)
+                    .foregroundStyle(.gray)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 30)
+                    .padding(.horizontal)
             }
             .padding()
             .onAppear {
