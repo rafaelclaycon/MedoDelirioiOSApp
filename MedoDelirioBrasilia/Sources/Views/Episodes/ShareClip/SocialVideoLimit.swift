@@ -26,7 +26,7 @@ struct SocialVideoLimit {
         .init(name: "Stories", fullName: "Instagram Stories", maxDuration: 60),
         .init(name: "X", fullName: "X (contas grátis)", maxDuration: 140),
         .init(name: "Reels", fullName: "Instagram Reels", maxDuration: 180),
-        .init(name: "Bluesky", fullName: "Bluesky", maxDuration: 180),
+        .init(name: "Bluesky", fullName: "Bluesky", maxDuration: 600),
     ]
 
     /// The longest clip any supported network accepts. `WaveformView.maxClipLength`
