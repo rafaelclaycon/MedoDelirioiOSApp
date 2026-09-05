@@ -94,13 +94,15 @@ fi
 
 # ---------------------------------------------------------------------------
 # Time-window guard: exit silently outside 6 PM – 8 AM (skip with --force)
+# TEMPORARILY DISABLED (dedicated machine during vacation) — re-enable by
+# uncommenting the block below.
 # ---------------------------------------------------------------------------
-if [[ "$FORCE_RUN" != true && -z "$RETRANSCRIBE_ID" && "$LIST_RECENT" == false ]]; then
-    hour=$(date +%H)
-    if [ "$hour" -ge 8 ] && [ "$hour" -lt 18 ]; then
-        exit 0
-    fi
-fi
+# if [[ "$FORCE_RUN" != true && -z "$RETRANSCRIBE_ID" && "$LIST_RECENT" == false ]]; then
+#     hour=$(date +%H)
+#     if [ "$hour" -ge 8 ] && [ "$hour" -lt 18 ]; then
+#         exit 0
+#     fi
+# fi
 
 # ---------------------------------------------------------------------------
 # Helpers
