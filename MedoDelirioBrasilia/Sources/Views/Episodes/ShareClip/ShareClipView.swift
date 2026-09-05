@@ -193,9 +193,8 @@ struct ShareClipView: View {
     /// The waveform tab needs its samples loaded; the transcript tab only
     /// needs a picked range — it must not wait on waveform generation.
     private var canProceed: Bool {
-        guard loadError == nil else { return false }
         switch selectionSource {
-        case .waveform: return samples != nil
+        case .waveform: return loadError == nil && samples != nil
         case .transcript: return startCueIndex != nil && endCueIndex != nil
         }
     }
