@@ -44,4 +44,15 @@ struct PromoBannerData: Codable {
     var paragraphs: [String] {
         text ?? []
     }
+
+    /// Identifies a campaign by its content, so a banner the user collapsed stays collapsed
+    /// until the podcast actually promotes something new — at which point the identity
+    /// changes and the banner comes back expanded.
+    ///
+    /// Deliberately not `hashValue`: Swift reseeds that every launch, so it would forget.
+    var identity: String {
+        [imageUrl, buttonUrl, buttonTitle, text?.joined(separator: "|")]
+            .compactMap { $0 }
+            .joined(separator: "\u{1F}")
+    }
 }

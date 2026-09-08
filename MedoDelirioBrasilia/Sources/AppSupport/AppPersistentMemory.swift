@@ -219,6 +219,12 @@ extension AppPersistentMemory {
         return Bool(value as! Bool)
     }
 
+    /// The `PromoBannerData.identity` of the campaign the user last collapsed, if any.
+    /// Storing the identity instead of a flag means a new campaign starts expanded on its own.
+    func collapsedPromoBannerId() -> String? {
+        userDefaults.string(forKey: "collapsedPromoBannerId")
+    }
+
     func hasDismissedDunBanner() -> Bool {
         guard let value = userDefaults.object(forKey: "hasDismissedDunBanner") else {
             return false
@@ -418,6 +424,10 @@ extension AppPersistentMemory {
 
     func setHasSeenFoldersPromoBanner(to newValue: Bool) {
         userDefaults.set(newValue, forKey: "hasSeenFoldersPromoBanner")
+    }
+
+    func setCollapsedPromoBannerId(to newValue: String?) {
+        userDefaults.set(newValue, forKey: "collapsedPromoBannerId")
     }
 
     func setHasDismissedDunBanner(to newValue: Bool) {
