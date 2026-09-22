@@ -34,6 +34,8 @@ struct PrivacySettingsView: View {
                 } label: {
                     Label("Política de Privacidade", systemImage: "doc.text")
                 }
+            } footer: {
+                Text("Inclui detalhes sobre o uso de IA para gerar transcrições e capítulos dos episódios.")
             }
         }
         .navigationTitle("Privacidade")

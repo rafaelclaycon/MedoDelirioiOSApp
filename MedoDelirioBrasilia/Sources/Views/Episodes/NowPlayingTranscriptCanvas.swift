@@ -54,6 +54,8 @@ private struct LoadedOverlay: View {
 
     let transcriptProvider: TranscriptProvider
 
+    @State private var showAIUsageDetails: Bool = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: .spacing(.xSmall)) {
             TranscriptOverlayView(
@@ -62,10 +64,20 @@ private struct LoadedOverlay: View {
                 nextCue: transcriptProvider.nextCue
             )
 
-            Text("Transcrição gerada por IA. Pode conter erros.")
+            HStack(spacing: .spacing(.xSmall)) {
+                Text("Transcrição gerada por IA. Pode conter erros.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+
+                Button("Saiba mais.") {
+                    showAIUsageDetails = true
+                }
                 .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .padding(.bottom, .spacing(.large))
+            }
+            .padding(.bottom, .spacing(.large))
+        }
+        .sheet(isPresented: $showAIUsageDetails) {
+            AIUsageDetailsView()
         }
     }
 }

@@ -24,6 +24,7 @@ struct ChapterCanvas: View {
 
     @State private var showChapterOptions: Bool = false
     @State private var showHideConfirmation: Bool = false
+    @State private var showAIUsageDetails: Bool = false
     private let shareChapterTip = ChapterShareTip()
 
     var body: some View {
@@ -100,6 +101,10 @@ struct ChapterCanvas: View {
                     onReportIssue()
                 }
 
+                Button("Detalhes sobre o uso de IA") {
+                    showAIUsageDetails = true
+                }
+
                 // Doesn't hide anything on its own — hands off to the
                 // confirmation alert below, since this one is reachable by
                 // accident and the choice is easy to mistap.
@@ -117,6 +122,9 @@ struct ChapterCanvas: View {
                 Button("Cancelar", role: .cancel) {}
             } message: {
                 Text("Os capítulos deixam de aparecer no player. Você pode reativá-los nos Ajustes.")
+            }
+            .sheet(isPresented: $showAIUsageDetails) {
+                AIUsageDetailsView()
             }
 
             ForEach(Array(chapters.enumerated()), id: \.element.id) { index, chapter in
