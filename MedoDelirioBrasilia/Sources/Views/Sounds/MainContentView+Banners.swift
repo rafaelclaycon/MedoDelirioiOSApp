@@ -16,11 +16,18 @@ extension MainContentView {
 
         @State private var dynamicBanner: DynamicBannerData?
         @State private var promoBanner: PromoBannerData?
+        @State private var showElectionLiveBanner: Bool = false
         @State private var showAnniversaryBanner: Bool = false
         @State private var showDunBanner = !AppPersistentMemory.shared.hasDismissedDunBanner()
 
         var body: some View {
             VStack {
+                if showElectionLiveBanner {
+                    ElectionLiveBannerView(toast: $toast)
+                        .padding(.top, .spacing(.xxxSmall))
+                        .padding(.bottom, .spacing(.xSmall))
+                }
+
                 if let promoBanner {
                     PromoBanner(bannerData: promoBanner)
                         .padding(.top, .spacing(.xxxSmall))
@@ -63,6 +70,10 @@ extension MainContentView {
                 }
                 Task{
                     showAnniversaryBanner = await bannerRepository.showAnniversaryBanner()
+                }
+                Task{
+                    guard let info = try? await APIClient.shared.electionLiveInfo() else { return }
+                    showElectionLiveBanner = ElectionLiveActivityManager.isAvailable(info)
                 }
             }
         }
