@@ -78,6 +78,7 @@
 		D9E6B3852CA1A6B1002FCB91 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Election/ElectionActivityAttributes.swift,
 				IntentProviders.swift,
 				PlayRandomSoundIntent.swift,
 			);

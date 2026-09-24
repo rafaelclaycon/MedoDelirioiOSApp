@@ -11,6 +11,7 @@ enum FeatureFlag: String, CaseIterable {
 
     case snowLeopard = "featureFlag_snowLeopard"
     case transcriptFullView = "featureFlag_transcriptFullView"
+    case electionLiveActivity = "featureFlag_electionLiveActivity"
 
     var displayName: String {
         switch self {
@@ -18,6 +19,8 @@ enum FeatureFlag: String, CaseIterable {
             return "Snow Leopard"
         case .transcriptFullView:
             return "Transcript Full View"
+        case .electionLiveActivity:
+            return "Election Live Activity"
         }
     }
 
@@ -27,6 +30,8 @@ enum FeatureFlag: String, CaseIterable {
             return "Destaque de episódio popular na tela de sugestões de busca."
         case .transcriptFullView:
             return "Abre a transcrição completa e pesquisável a partir da tela do player."
+        case .electionLiveActivity:
+            return "Libera a Atividade ao Vivo da apuração mesmo com o servidor desligado. Para testar no simulado do TSE."
         }
     }
 
