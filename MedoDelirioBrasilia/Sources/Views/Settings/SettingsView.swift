@@ -333,6 +333,7 @@ struct DevOptionsView: View {
     @Binding var showTranscriptsWhatsNewPreview: Bool
     @Binding var showShareClipWhatsNewPreview: Bool
 
+    @AppStorage("devHideSoundsBanners") private var hideSoundsBanners: Bool = false
     @State private var supportSheetPreviewContext: StandaloneSupportView.Context?
     @State private var showTipsResetConfirmation: Bool = false
     @State private var isGeneratingReactionsExport: Bool = false
@@ -375,6 +376,10 @@ struct DevOptionsView: View {
                     try? Tips.resetDatastore()
                     showTipsResetConfirmation = true
                 }
+            }
+
+            Section("Marketing") {
+                Toggle("Esconder Banners da Aba Vírgulas", isOn: $hideSoundsBanners)
             }
 
             Section("Reactions") {

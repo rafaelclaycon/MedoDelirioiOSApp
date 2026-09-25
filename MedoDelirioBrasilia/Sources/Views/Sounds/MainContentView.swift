@@ -12,6 +12,7 @@ struct MainContentView: View {
 
     @State var viewModel: MainContentViewModel
     @State var contentGridViewModel: ContentGridViewModel
+    @AppStorage("devHideSoundsBanners") var hideSoundsBanners: Bool = false
     var currentContentListMode: Binding<ContentGridMode>
     let openSettingsAction: () -> Void
     let contentRepository: ContentRepositoryProtocol
