@@ -91,6 +91,13 @@ struct MainView: View {
         hSizeClass == .regular && UIDevice.deviceType != .iPhone
     }
 
+    /// Now Playing goes full screen whenever the window is wide, whatever the navigation:
+    /// at regular width a sheet shrinks to a centered card, on an unfolded iPhone Duo as
+    /// much as on iPad. Folding while it's open switches style, so it re-presents.
+    private var presentsNowPlayingFullScreen: Bool {
+        hSizeClass == .regular
+    }
+
     @State private var contentRepository: ContentRepository
     private let trendsService = TrendsService.shared
     @State private var reactionRepository = ReactionRepository()
@@ -773,16 +780,18 @@ struct MainView: View {
         }) {
             IntroducingShareClipView(appMemory: AppPersistentMemory.shared)
         }
-        .sheetOrFullScreenCover(isPresented: $showNowPlaying, fullScreen: usesSidebarLayout) {
-            NowPlayingView()
+        .sheetOrFullScreenCover(isPresented: $showNowPlaying, fullScreen: presentsNowPlayingFullScreen) {
+            NowPlayingView(isFullScreen: presentsNowPlayingFullScreen)
                 .environment(episodePlayer)
                 .environment(episodeBookmarkStore)
                 .environment(transcriptDownloadService)
                 .environment(episodeFavoritesStore)
+                // Sheet only: zooming into a full-screen cover flashes the background
+                // mid-transition (seen on an unfolded iPhone Duo, and on iPad before).
                 .if_zoomNavigationTransition(
                     sourceID: "nowPlaying",
                     in: nowPlayingTransition,
-                    isEnabled: !usesSidebarLayout
+                    isEnabled: !presentsNowPlayingFullScreen
                 )
         }
         .sheet(isPresented: $episodePlayer.showSupportPrompt, onDismiss: {

@@ -19,7 +19,8 @@ extension EnvironmentValues {
     ///
     /// Read this, not `horizontalSizeClass`, for anything that has to agree with the
     /// navigation `MainView` is showing: where Settings and Search live, which filters the
-    /// Sounds tab offers, how Now Playing is presented, and help text describing any of it.
+    /// Sounds tab offers, and help text describing any of it. (How Now Playing is presented
+    /// is a width question instead — see `MainView.presentsNowPlayingFullScreen`.)
     /// On iPad a sheet reports a compact size class even while the sidebar is showing
     /// behind it, so reading `horizontalSizeClass` inside one gets it wrong.
     @Entry var usesSidebarLayout: Bool = false

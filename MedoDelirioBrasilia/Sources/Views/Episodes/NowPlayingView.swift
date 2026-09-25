@@ -59,10 +59,14 @@ struct NowPlayingView: View {
     @AppStorage(ChapterPreferences.hiddenKey) private var chaptersHidden: Bool = false
 
     @Environment(\.verticalSizeClass) private var vSizeClass
-    @Environment(\.usesSidebarLayout) private var usesSidebarLayout
     @Environment(\.dismiss) private var dismiss
 
-    init(transcriptProvider: TranscriptProvider = TranscriptProvider()) {
+    /// Whether the presenter chose a full-screen cover over a sheet. Passed in rather
+    /// than inferred, so the chrome below always matches how this was actually presented.
+    private let isFullScreen: Bool
+
+    init(isFullScreen: Bool = false, transcriptProvider: TranscriptProvider = TranscriptProvider()) {
+        self.isFullScreen = isFullScreen
         _transcriptProvider = State(initialValue: transcriptProvider)
     }
 
@@ -123,7 +127,7 @@ struct NowPlayingView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 Spacer()
-                    .frame(height: !usesSidebarLayout ? .spacing(.xxLarge) : 0)
+                    .frame(height: !isFullScreen ? .spacing(.xxLarge) : 0)
 
                 // Sits above the adaptive stack so it spans the full sheet width in
                 // every layout, rather than riding along one column in landscape.
@@ -161,7 +165,7 @@ struct NowPlayingView: View {
                         onTapChapterTitle: { currentCanvasMode = .chapters }
                     )
                     .frame(maxWidth: bottomControlsMaxWidth)
-                    .padding(.bottom, !usesSidebarLayout ? 0 : .spacing(.medium))
+                    .padding(.bottom, !isFullScreen ? 0 : .spacing(.medium))
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -429,10 +433,9 @@ struct NowPlayingView: View {
     /// or misalign items when the labels change (star ⇄ star.fill, share enable/disable).
     @ToolbarContentBuilder
     private var toolbarControls: some ToolbarContent {
-        // The sidebar layout presents this full screen with no swipe-to-dismiss, so
-        // it needs an explicit close button. The tab bar layout keeps the
-        // drag-to-dismiss sheet.
-        if usesSidebarLayout {
+        // Full screen has no swipe-to-dismiss, so it needs an explicit close button.
+        // The sheet keeps drag-to-dismiss.
+        if isFullScreen {
             ToolbarItem(id: "close", placement: .cancellationAction) {
                 NowPlayingActions.Close(onClose: { dismiss() })
             }
