@@ -334,6 +334,7 @@ struct DevOptionsView: View {
     @Binding var showShareClipWhatsNewPreview: Bool
 
     @AppStorage("devHideSoundsBanners") private var hideSoundsBanners: Bool = false
+    @AppStorage("devMockShareClipGeneration") private var mockShareClipGeneration: Bool = false
     @State private var supportSheetPreviewContext: StandaloneSupportView.Context?
     @State private var showTipsResetConfirmation: Bool = false
     @State private var isGeneratingReactionsExport: Bool = false
@@ -376,6 +377,14 @@ struct DevOptionsView: View {
                     try? Tips.resetDatastore()
                     showTipsResetConfirmation = true
                 }
+            }
+
+            Section {
+                Toggle("Simular Geração de Clipe", isOn: $mockShareClipGeneration)
+            } header: {
+                Text("Share Clip")
+            } footer: {
+                Text("Gerar Clipe pula a geração e o compartilhamento e conclui na hora, como se o clipe tivesse sido compartilhado. Para testar o que vem depois no Simulator.")
             }
 
             Section("Marketing") {

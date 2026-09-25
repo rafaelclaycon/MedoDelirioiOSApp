@@ -37,6 +37,12 @@ struct NowPlayingView: View {
     @Environment(TranscriptDownloadService.self) private var transcriptDownloadService
 
     @State private var toast: Toast?
+    /// Where the current toast came from, so the split layout can show it on that side of
+    /// the crease instead of across it.
+    @State private var toastOrigin: ToastOrigin = .toolbar
+    /// The edge the system put the toolbar on as a vertical bar, or nil while it's
+    /// horizontal. Decides which split pane the toolbar's toasts land in.
+    @State private var toolbarVerticalEdge: HorizontalEdge?
     @State private var editingBookmark: EpisodeBookmark?
     /// Held here rather than in `NowPlayingBookmarksCanvas` so it survives the
     /// canvas being rebuilt when the user switches tabs.
@@ -57,6 +63,11 @@ struct NowPlayingView: View {
     @AppStorage("nowPlayingCanvasMode") private var currentCanvasMode: CanvasMode = .coverArt
     /// Set from the chapter list's "Ocultar capítulos" action.
     @AppStorage(ChapterPreferences.hiddenKey) private var chaptersHidden: Bool = false
+    /// Dev option (see `ShareClipConfirmView`): simulated shares skip the analytics event.
+    @AppStorage("devMockShareClipGeneration") private var mockShareClipGeneration: Bool = false
+    /// A display crease runs vertically through the screen (unfolded iPhone Duo in
+    /// landscape): the cover and transport get the pane on one side of it, the tabs the other.
+    @State private var isSplitLayout: Bool = false
 
     @Environment(\.verticalSizeClass) private var vSizeClass
     @Environment(\.dismiss) private var dismiss
@@ -70,12 +81,17 @@ struct NowPlayingView: View {
         _transcriptProvider = State(initialValue: transcriptProvider)
     }
 
-    /// In compact vertical layouts (iPhone landscape) the bottom controls sit
-    /// beside the canvas, so they fill the available width; otherwise they size
-    /// to their content.
-    private var bottomControlsMaxWidth: CGFloat? {
-        vSizeClass == .compact ? .infinity : nil
+    /// In compact vertical layouts (iPhone landscape, folded iPhone Duo) the bottom
+    /// controls sit beside the canvas at a fixed width that fits the transport row, so the
+    /// canvas — chapter titles, transcript lines — gets the rest instead of half the
+    /// screen. Otherwise they span the sheet below the canvas.
+    private var bottomControlsWidth: CGFloat? {
+        vSizeClass == .compact ? Self.landscapeControlsWidth : nil
     }
+
+    /// Room for the speed button beside the tightest transport row in
+    /// `NowPlayingBottomControls`, plus its horizontal padding.
+    private static let landscapeControlsWidth: CGFloat = 320
 
     /// Chapters can be switched off by the user from the chapter list.
     private var chaptersEnabled: Bool {
@@ -98,19 +114,25 @@ struct NowPlayingView: View {
         return player.currentEpisode?.id
     }
 
-    /// Falls back to cover art when the stored mode is no longer selectable —
-    /// `@AppStorage` remembers the chapters canvas even after the user hides
-    /// chapters.
+    /// Falls back when the stored mode is no longer selectable — `@AppStorage` remembers
+    /// the chapters canvas even after the user hides chapters, and the split layout shows
+    /// the cover in its own pane, so its canvas pane starts on the first tab instead. The
+    /// stored mode is left alone, so folding back returns to it.
     private var effectiveCanvasMode: CanvasMode {
-        if currentCanvasMode == .chapters, !chaptersEnabled {
-            return .coverArt
+        var mode = currentCanvasMode
+        if mode == .chapters, !chaptersEnabled {
+            mode = .coverArt
         }
-        return currentCanvasMode
+        if mode == .coverArt, isSplitLayout {
+            mode = displayedCanvasModes.first ?? .transcription
+        }
+        return mode
     }
 
-    /// Modes offered in the picker, in the order they're shown.
+    /// Modes offered in the picker, in the order they're shown. Capa is left out of the
+    /// split layout, where the cover is always on screen.
     private var displayedCanvasModes: [CanvasMode] {
-        var modes: [CanvasMode] = [.coverArt]
+        var modes: [CanvasMode] = isSplitLayout ? [] : [.coverArt]
         if chaptersEnabled {
             modes.append(.chapters)
         }
@@ -125,59 +147,19 @@ struct NowPlayingView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                Spacer()
-                    .frame(height: !isFullScreen ? .spacing(.xxLarge) : 0)
-
-                // Sits above the adaptive stack so it spans the full sheet width in
-                // every layout, rather than riding along one column in landscape.
-                toggleRow
-                    .padding(.horizontal, .spacing(.xLarge))
-
-                Spacer()
-                    .frame(height: .spacing(.small))
-
-                AdaptiveStack(spacing: 0) {
-                    GeometryReader { geometry in
-                        if effectiveCanvasMode == .coverArt {
-                            canvas
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        } else {
-                            ScrollView {
-                                canvas
-                                    .frame(
-                                        minHeight: geometry.size.height,
-                                        alignment: canvasIsTopAligned ? .top : .center
-                                    )
-                            }
-                            // Without this, switching canvases reuses the same
-                            // ScrollView instance and keeps whatever offset the
-                            // previous canvas (e.g. a long-scrolled Capítulos
-                            // list) was left at, instead of starting at the top.
-                            .id(effectiveCanvasMode)
-                            .scrollBounceBehavior(.basedOnSize)
-                        }
-                    }
-
-                    NowPlayingBottomControls(
-                        chapterProvider: chapterProvider,
-                        chaptersEnabled: chaptersEnabled,
-                        onTapChapterTitle: { currentCanvasMode = .chapters }
-                    )
-                    .frame(maxWidth: bottomControlsMaxWidth)
-                    .padding(.bottom, !isFullScreen ? 0 : .spacing(.medium))
-                }
-            }
-            .navigationBarTitleDisplayMode(.inline)
+            layout
+                .onVerticalCreaseChange { isSplitLayout = $0 }
+                .onToolbarVerticalEdgeChange { toolbarVerticalEdge = $0 }
+                .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .navigationDestination(isPresented: $showFullTranscript) {
                 TranscriptFullView(transcriptProvider: transcriptProvider)
                     .environment(player)
             }
-            // Attached before `.toolbar` so the toast's safe-area inset is
-            // established inside the content the bottom-bar toolbar already
-            // makes room for — otherwise the toast overlaps the bottom bar.
-            .toast($toast)
+            // The toast is attached inside `layout` (per pane in the split layout), which
+            // keeps it before `.toolbar`: its safe-area inset is established inside the
+            // content the bottom-bar toolbar already makes room for — otherwise the toast
+            // overlaps the bottom bar.
             .toolbar {
                 toolbarControls
             }
@@ -230,12 +212,14 @@ struct NowPlayingView: View {
             if let episode = player.currentEpisode {
                 ShareClipView(episode: episode, initialChapterSelection: presentation.chapterSelection) { includesTranscript in
                     shareClipPresentation = nil
-                    toast = Toast(message: Shared.videoSharedSuccessfullyMessage, type: .success)
-                    Task {
-                        await AnalyticsService().send(
-                            originatingScreen: "ShareClip",
-                            action: "clip_shared(transcript=\(includesTranscript))"
-                        )
+                    showToast(Toast(message: Shared.videoSharedSuccessfullyMessage, type: .success), from: presentation.toastOrigin)
+                    if !mockShareClipGeneration {
+                        Task {
+                            await AnalyticsService().send(
+                                originatingScreen: "ShareClip",
+                                action: "clip_shared(transcript=\(includesTranscript))"
+                            )
+                        }
                     }
 
                     // The user just experienced the app's value end to end —
@@ -265,7 +249,9 @@ struct NowPlayingView: View {
         .onAppear {
             if player.pendingRemoteBookmark {
                 player.pendingRemoteBookmark = false
-                toast = Toast(message: "Marcador Adicionado", type: .success)
+                // No button started this one (it came from the lock screen); it shows
+                // beside the bookmark button, like the ones that did.
+                showToast(Toast(message: "Marcador Adicionado", type: .success), from: .toolbar)
             }
             if transcriptDownloadService.transcriptsDownloaded, case .idle = transcriptProvider.state {
                 transcriptProvider.load(episodeId: player.currentEpisode?.id, pubDate: player.currentEpisode?.pubDate)
@@ -338,6 +324,154 @@ struct NowPlayingView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Layout
+
+    @ViewBuilder
+    private var layout: some View {
+        // `ArrangementView` is an iOS 27.1 SDK symbol, so it only compiles with the Xcode
+        // that bundles that SDK (same guard as `MainView`). `isSplitLayout` is never true
+        // before 27.1 anyway, since the crease can't be read there.
+        #if compiler(>=6.4)
+        if isSplitLayout, #available(iOS 27.1, *) {
+            splitLayout
+        } else {
+            standardLayout
+        }
+        #else
+        standardLayout
+        #endif
+    }
+
+    /// Tabs across the top, then the canvas and the controls — stacked, or side by side
+    /// in compact vertical layouts (iPhone landscape).
+    private var standardLayout: some View {
+        VStack(spacing: 0) {
+            Spacer()
+                .frame(height: !isFullScreen ? .spacing(.xxLarge) : 0)
+
+            // Sits above the adaptive stack so it spans the full sheet width in
+            // every layout, rather than riding along one column in landscape.
+            toggleRow
+                .padding(.horizontal, .spacing(.xLarge))
+
+            Spacer()
+                .frame(height: .spacing(.small))
+
+            AdaptiveStack(spacing: 0) {
+                canvasArea
+
+                bottomControls(width: bottomControlsWidth)
+            }
+        }
+        .toast($toast)
+    }
+
+    #if compiler(>=6.4)
+    /// Unfolded iPhone Duo in landscape: the cover with the transport under it on one side
+    /// of the crease, the tabs and their canvas on the other. `.split` puts the divider on
+    /// the crease, so nothing here has to know where it is.
+    @available(iOS 27.1, *)
+    private var splitLayout: some View {
+        ArrangementView {
+            VStack(spacing: 0) {
+                NowPlayingArtworkCanvas()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.horizontal, .spacing(.xLarge))
+
+                bottomControls(width: nil)
+            }
+            .toast(toastBinding(for: .primary))
+        } secondary: {
+            VStack(spacing: 0) {
+                toggleRow
+                    .padding(.horizontal, .spacing(.xLarge))
+
+                Spacer()
+                    .frame(height: .spacing(.small))
+
+                canvasArea
+            }
+            .toast(toastBinding(for: .secondary))
+        }
+        .arrangementViewStyle(.split)
+    }
+    #endif
+
+    // MARK: - Toast
+
+    /// Where a toast came from. In the split layout it shows in the pane on that side of
+    /// the crease; elsewhere there's one pane and it doesn't matter.
+    enum ToastOrigin {
+        /// The action bar (bookmark, clip). Its side is wherever the system put the bar.
+        case toolbar
+        /// The tabbed canvas (chapter menu), which the split layout keeps on the trailing side.
+        case canvas
+    }
+
+    private enum SplitPane {
+        case primary, secondary
+    }
+
+    private var toastPane: SplitPane {
+        switch toastOrigin {
+        case .canvas:
+            .secondary
+        case .toolbar:
+            // A horizontal bar (nil) spans the bottom of both panes; the trailing pane
+            // reads as its end, like the vertical bar's usual edge.
+            toolbarVerticalEdge == .leading ? .primary : .secondary
+        }
+    }
+
+    private func showToast(_ newToast: Toast, from origin: ToastOrigin) {
+        toastOrigin = origin
+        toast = newToast
+    }
+
+    /// The shared toast, visible only to the pane it belongs in. Clearing it from either
+    /// pane clears it for good.
+    private func toastBinding(for pane: SplitPane) -> Binding<Toast?> {
+        Binding(
+            get: { toastPane == pane ? toast : nil },
+            set: { toast = $0 }
+        )
+    }
+
+    private var canvasArea: some View {
+        GeometryReader { geometry in
+            if effectiveCanvasMode == .coverArt {
+                canvas
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    canvas
+                        .frame(
+                            minHeight: geometry.size.height,
+                            alignment: canvasIsTopAligned ? .top : .center
+                        )
+                }
+                // Without this, switching canvases reuses the same
+                // ScrollView instance and keeps whatever offset the
+                // previous canvas (e.g. a long-scrolled Capítulos
+                // list) was left at, instead of starting at the top.
+                .id(effectiveCanvasMode)
+                .scrollBounceBehavior(.basedOnSize)
+                // Lets rows use `.swipeActions` outside a `List` (Marcadores).
+                .if_swipeActionsContainer()
+            }
+        }
+    }
+
+    private func bottomControls(width: CGFloat?) -> some View {
+        NowPlayingBottomControls(
+            chapterProvider: chapterProvider,
+            chaptersEnabled: chaptersEnabled,
+            onTapChapterTitle: { currentCanvasMode = .chapters }
+        )
+        .frame(width: width)
+        .padding(.bottom, !isFullScreen ? 0 : .spacing(.medium))
     }
 
     // MARK: - Canvas
@@ -474,14 +608,14 @@ struct NowPlayingView: View {
     private func addBookmark() {
         guard let episodeId = player.currentEpisode?.id else { return }
         bookmarkStore.addBookmark(episodeId: episodeId, timestamp: player.currentTime)
-        toast = Toast(message: "Marcador Adicionado", type: .success)
+        showToast(Toast(message: "Marcador Adicionado", type: .success), from: .toolbar)
     }
 
     private func startShareClip() {
         if player.isPlaying {
             player.togglePlayPause()
         }
-        shareClipPresentation = .init(chapterSelection: nil)
+        shareClipPresentation = .init(chapterSelection: nil, toastOrigin: .toolbar)
         Task { await AnalyticsService().send(originatingScreen: "NowPlaying", action: "didTapShareClip") }
     }
 
@@ -490,7 +624,7 @@ struct NowPlayingView: View {
         if player.isPlaying {
             player.togglePlayPause()
         }
-        shareClipPresentation = .init(chapterSelection: .init(start: chapter.start, end: end))
+        shareClipPresentation = .init(chapterSelection: .init(start: chapter.start, end: end), toastOrigin: .canvas)
         Task {
             await AnalyticsService().send(
                 originatingScreen: "NowPlaying",
@@ -502,7 +636,7 @@ struct NowPlayingView: View {
     private func hideChapters() {
         chaptersHidden = true
         currentCanvasMode = .coverArt
-        toast = Toast(message: "Capítulos ocultados. Reative nos Ajustes.", type: .success)
+        showToast(Toast(message: "Capítulos ocultados. Reative nos Ajustes.", type: .success), from: .canvas)
         Task {
             await AnalyticsService().send(originatingScreen: "NowPlaying", action: "chapters_hidden")
         }
@@ -552,6 +686,9 @@ struct NowPlayingView: View {
 private struct ShareClipPresentation: Identifiable {
     let id = UUID()
     let chapterSelection: ShareClipView.InitialChapterSelection?
+    /// The toolbar's clip button or a chapter's menu in the canvas — where the success
+    /// toast shows in the split layout.
+    let toastOrigin: NowPlayingView.ToastOrigin
 }
 
 // MARK: - Playback Time Observer

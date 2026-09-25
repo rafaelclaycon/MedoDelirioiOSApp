@@ -79,48 +79,77 @@ struct NowPlayingBottomControls: View {
 
     // MARK: - Playback Controls
 
+    /// Widest arrangement first. `ViewThatFits` compares ideal widths, so each candidate
+    /// states the room it really needs — the old `ZStack` overlay only reported the
+    /// transport's width, and in a narrow column (landscape) the speed button slid under
+    /// the 15s button.
     private var playbackControls: some View {
-        ZStack {
-            HStack(spacing: .spacing(.large)) {
-                Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    player.skipBackward()
-                } label: {
-                    Image(systemName: "gobackward.15")
-                        .font(.title)
-                        .fontWeight(.medium)
-                        .padding(.all, .spacing(.small))
-                }
-                .buttonStyle(.plain)
-
-                Button {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    player.togglePlayPause()
-                } label: {
-                    Image(systemName: player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                        .font(.system(size: 74))
-                        .contentTransition(.symbolEffect(.replace.wholeSymbol))
-                }
-                .buttonStyle(.plain)
-
-                Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    player.skipForward()
-                } label: {
-                    Image(systemName: "goforward.30")
-                        .font(.title)
-                        .fontWeight(.medium)
-                        .padding(.all, .spacing(.small))
-                }
-                .buttonStyle(.plain)
+        ViewThatFits(in: .horizontal) {
+            // Transport centred, speed pinned leading. The invisible twin on the trailing
+            // side keeps the centring from running into the speed button.
+            HStack(spacing: 0) {
+                speedButton
+                Spacer(minLength: .spacing(.xSmall))
+                transportButtons(spacing: .spacing(.large))
+                Spacer(minLength: .spacing(.xSmall))
+                speedButton
+                    .hidden()
+                    .accessibilityHidden(true)
             }
 
-            HStack {
+            // Narrower: give up exact centring.
+            HStack(spacing: .spacing(.xSmall)) {
                 speedButton
-                Spacer()
+                Spacer(minLength: 0)
+                transportButtons(spacing: .spacing(.large))
+                Spacer(minLength: 0)
+            }
+
+            // Narrowest: tighten the transport too.
+            HStack(spacing: .spacing(.xSmall)) {
+                speedButton
+                Spacer(minLength: 0)
+                transportButtons(spacing: .spacing(.xSmall))
+                Spacer(minLength: 0)
             }
         }
         .foregroundStyle(.primary)
+    }
+
+    private func transportButtons(spacing: CGFloat) -> some View {
+        HStack(spacing: spacing) {
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                player.skipBackward()
+            } label: {
+                Image(systemName: "gobackward.15")
+                    .font(.title)
+                    .fontWeight(.medium)
+                    .padding(.all, .spacing(.small))
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                player.togglePlayPause()
+            } label: {
+                Image(systemName: player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                    .font(.system(size: 74))
+                    .contentTransition(.symbolEffect(.replace.wholeSymbol))
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                player.skipForward()
+            } label: {
+                Image(systemName: "goforward.30")
+                    .font(.title)
+                    .fontWeight(.medium)
+                    .padding(.all, .spacing(.small))
+            }
+            .buttonStyle(.plain)
+        }
     }
 
     // MARK: - Speed Control

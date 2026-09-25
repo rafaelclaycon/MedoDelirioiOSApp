@@ -83,6 +83,25 @@ extension View {
         }
     }
 
+    /// Marks a scroll view as a `swipeActionsContainer`, so rows inside it can use
+    /// `.swipeActions` without being in a `List`.
+    ///
+    /// Gated to iOS 27; earlier OSes ignore the rows' swipe actions, so keep another way
+    /// to reach them (a context menu).
+    @ViewBuilder func if_swipeActionsContainer() -> some View {
+        // `swipeActionsContainer` is an iOS 27 SDK symbol, so it only compiles with the
+        // Xcode that bundles that SDK (same guard as `MainView`).
+        #if compiler(>=6.4)
+        if #available(iOS 27.0, *) {
+            self.swipeActionsContainer()
+        } else {
+            self
+        }
+        #else
+        self
+        #endif
+    }
+
     /// Presents `content` as a regular sheet, or full screen when `fullScreen` is true —
     /// pass it for regular width, where a default sheet would otherwise appear as a small
     /// centered card.

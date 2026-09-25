@@ -22,6 +22,9 @@ struct ShareClipConfirmView: View {
     @State private var isScrubbing = false
     @State private var scrubValue: TimeInterval = 0
     @State private var includeTranscript = true
+    /// Dev option: skip generation and the share sheet and report the export as done, for
+    /// checking what happens after a share where clips can't be generated (Simulator).
+    @AppStorage("devMockShareClipGeneration") private var mockGeneration: Bool = false
 
     private static let scrubberThumbSize: CGFloat = 14
 
@@ -201,11 +204,15 @@ struct ShareClipConfirmView: View {
     private var generateButton: some View {
         Button {
             pause()
-            showGeneration = true
+            if mockGeneration {
+                onExportComplete(effectiveConfig.includesTranscript)
+            } else {
+                showGeneration = true
+            }
         } label: {
             HStack {
                 Spacer()
-                Label("Gerar Clipe", systemImage: "wand.and.sparkles")
+                Label(mockGeneration ? "Gerar Clipe (simulado)" : "Gerar Clipe", systemImage: "wand.and.sparkles")
                     .font(.headline)
                 Spacer()
             }

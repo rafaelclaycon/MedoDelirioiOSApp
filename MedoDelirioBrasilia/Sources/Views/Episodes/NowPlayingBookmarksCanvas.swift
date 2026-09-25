@@ -109,14 +109,23 @@ struct NowPlayingBookmarksCanvas: View {
         .onTapGesture {
             onEdit(bookmark)
         }
+        // Swipe needs iOS 27 (see `if_swipeActionsContainer` on the canvas's scroll
+        // view); the context menu keeps delete reachable before that.
+        .swipeActions {
+            deleteButton(bookmark)
+        }
         .contextMenu {
-            Button(role: .destructive) {
-                withAnimation {
-                    bookmarkStore.delete(id: bookmark.id, episodeId: bookmark.episodeId)
-                }
-            } label: {
-                Label("Excluir", systemImage: "trash")
+            deleteButton(bookmark)
+        }
+    }
+
+    private func deleteButton(_ bookmark: EpisodeBookmark) -> some View {
+        Button(role: .destructive) {
+            withAnimation {
+                bookmarkStore.delete(id: bookmark.id, episodeId: bookmark.episodeId)
             }
+        } label: {
+            Label("Excluir", systemImage: "trash")
         }
     }
 }
