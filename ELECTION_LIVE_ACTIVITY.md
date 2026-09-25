@@ -171,6 +171,10 @@ Build completo do scheme `MedoDelirio` passando (25/09). **Ainda não rodou em a
 - [ ] Configurar as cores dos candidatos reais.
 - [ ] `{"enabled":true}` e mandar um push normal "a apuração começou" para a base.
 
+### 6. Depois do 2º turno (25/10)
+
+- [ ] Trocar o `APNsBroadcastClient` pela biblioteca. O APNSwift 7.0.0 (jul/2026) já tem broadcast (envio e gestão de canais) e os campos de Live Activity do iOS 18, mas o vapor/apns 5.0.0 só aceita APNSwift abaixo da 7, e o SwiftPM não deixa ter duas versões do mesmo pacote. Então a migração é: tirar o vapor/apns (hoje na 3.0.0, com APNSwift 4.0.1), usar o APNSwift 7 direto (ou o vapor/apns, se já aceitar a 7) e reescrever todos os pushes: novo episódio, destaques da semana, sync de conteúdo em background e o envio manual. Ficou para depois da eleição para não mexer nesses pushes na semana do 1º turno.
+
 ## Decisões em aberto
 
 - Mostrar ou não candidatos anulados ("Anulado sub judice") na Live Activity. Hoje eles aparecem, como no app do TSE.
