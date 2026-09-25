@@ -10,8 +10,9 @@ struct ContentGridSkeletonView: View {
     let containerSize: CGSize
 
     @Environment(\.sizeCategory) private var sizeCategory
+    @Environment(\.horizontalSizeClass) private var hSizeClass
 
-    private var spacing: CGFloat { UIDevice.deviceType == .iPhone ? 9 : 14 }
+    private var spacing: CGFloat { hSizeClass != .regular ? 9 : 14 }
 
     private var columns: [GridItem] {
         GridHelper.adaptableColumns(

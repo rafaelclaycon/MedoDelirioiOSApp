@@ -20,6 +20,7 @@ struct AuthorsGrid: View {
     // MARK: - Environment
 
     @Environment(\.push) var push
+    @Environment(\.horizontalSizeClass) private var hSizeClass
 
     // MARK: - Initializer
 
@@ -51,7 +52,7 @@ struct AuthorsGrid: View {
                     }
                     .padding(.top, .spacing(.xxSmall))
                     .onChange(of: containerWidth) {
-                        viewModel.onContainerWidthChanged(newWidth: containerWidth)
+                        viewModel.onContainerWidthChanged(newWidth: containerWidth, horizontalSizeClass: hSizeClass)
                     }
                     .onChange(of: viewModel.sortOption) {
                         viewModel.onAuthorSortingChanged()
@@ -74,7 +75,7 @@ struct AuthorsGrid: View {
             }
         }
         .onAppear {
-            viewModel.onViewAppeared(viewWidth: containerWidth)
+            viewModel.onViewAppeared(viewWidth: containerWidth, horizontalSizeClass: hSizeClass)
         }
     }
 }

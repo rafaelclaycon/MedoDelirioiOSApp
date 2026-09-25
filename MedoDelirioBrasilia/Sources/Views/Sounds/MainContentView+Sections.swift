@@ -15,9 +15,9 @@ extension MainContentView {
     var contentModePicker: some View {
         if currentContentListMode.wrappedValue == .regular {
             ContentModePicker(
-                options: UIDevice.deviceType == .iPhone ? ContentModeOption.allCases : [.all, .songs],
+                options: !usesSidebarLayout ? ContentModeOption.allCases : [.all, .songs],
                 selected: $viewModel.currentViewMode,
-                allowScrolling: UIDevice.deviceType == .iPhone
+                allowScrolling: !usesSidebarLayout
             )
             .scrollClipDisabled()
         }
@@ -71,7 +71,7 @@ extension MainContentView {
                 !UserSettings().getShowExplicitContent()
             {
                 ExplicitDisabledWarning(
-                    text: UIDevice.deviceType == .iPhone ? Shared.contentFilterMessageForSoundsiPhone : Shared.contentFilterMessageForSoundsiPadMac
+                    text: !usesSidebarLayout ? Shared.contentFilterMessageForSoundsiPhone : Shared.contentFilterMessageForSoundsiPadMac
                 )
                 .padding(.top, explicitOffWarningTopPadding)
             }

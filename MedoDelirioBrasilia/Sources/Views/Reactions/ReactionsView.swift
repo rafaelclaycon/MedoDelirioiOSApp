@@ -14,6 +14,7 @@ struct ReactionsView: View {
     // iPad Grid Layout
     @State private var columns: [GridItem] = []
     @Environment(\.sizeCategory) var sizeCategory
+    @Environment(\.horizontalSizeClass) private var hSizeClass
 
     @Environment(TrendsHelper.self) private var trendsHelper
     @Environment(\.push) private var push
@@ -81,7 +82,7 @@ struct ReactionsView: View {
                                 columns = GridHelper.adaptableColumns(
                                     gridWidth: geometry.size.width,
                                     sizeCategory: sizeCategory,
-                                    spacing: UIDevice.deviceType == .iPhone ? 12 : 20
+                                    spacing: hSizeClass != .regular ? 12 : 20
                                 )
 
                                 Task {
@@ -95,7 +96,7 @@ struct ReactionsView: View {
                                 columns = GridHelper.adaptableColumns(
                                     gridWidth: geometry.size.width,
                                     sizeCategory: sizeCategory,
-                                    spacing: UIDevice.deviceType == .iPhone ? 12 : 20
+                                    spacing: hSizeClass != .regular ? 12 : 20
                                 )
                             }
                         }
@@ -196,8 +197,9 @@ extension ReactionsView {
         let width: CGFloat
 
         @Environment(\.sizeCategory) private var sizeCategory
+        @Environment(\.horizontalSizeClass) private var hSizeClass
 
-        private var spacing: CGFloat { UIDevice.deviceType == .iPhone ? 12 : 20 }
+        private var spacing: CGFloat { hSizeClass != .regular ? 12 : 20 }
 
         private var columns: [GridItem] {
             GridHelper.adaptableColumns(

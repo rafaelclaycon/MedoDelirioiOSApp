@@ -59,6 +59,7 @@ struct NowPlayingView: View {
     @AppStorage(ChapterPreferences.hiddenKey) private var chaptersHidden: Bool = false
 
     @Environment(\.verticalSizeClass) private var vSizeClass
+    @Environment(\.usesSidebarLayout) private var usesSidebarLayout
     @Environment(\.dismiss) private var dismiss
 
     init(transcriptProvider: TranscriptProvider = TranscriptProvider()) {
@@ -122,7 +123,7 @@ struct NowPlayingView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 Spacer()
-                    .frame(height: UIDevice.deviceType == .iPhone ? .spacing(.xxLarge) : 0)
+                    .frame(height: !usesSidebarLayout ? .spacing(.xxLarge) : 0)
 
                 // Sits above the adaptive stack so it spans the full sheet width in
                 // every layout, rather than riding along one column in landscape.
@@ -160,7 +161,7 @@ struct NowPlayingView: View {
                         onTapChapterTitle: { currentCanvasMode = .chapters }
                     )
                     .frame(maxWidth: bottomControlsMaxWidth)
-                    .padding(.bottom, UIDevice.deviceType == .iPhone ? 0 : .spacing(.medium))
+                    .padding(.bottom, !usesSidebarLayout ? 0 : .spacing(.medium))
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -428,9 +429,10 @@ struct NowPlayingView: View {
     /// or misalign items when the labels change (star ⇄ star.fill, share enable/disable).
     @ToolbarContentBuilder
     private var toolbarControls: some ToolbarContent {
-        // iPad/Mac present this full screen with no swipe-to-dismiss, so they
-        // need an explicit close button. iPhone keeps the drag-to-dismiss sheet.
-        if UIDevice.deviceType != .iPhone {
+        // The sidebar layout presents this full screen with no swipe-to-dismiss, so
+        // it needs an explicit close button. The tab bar layout keeps the
+        // drag-to-dismiss sheet.
+        if usesSidebarLayout {
             ToolbarItem(id: "close", placement: .cancellationAction) {
                 NowPlayingActions.Close(onClose: { dismiss() })
             }

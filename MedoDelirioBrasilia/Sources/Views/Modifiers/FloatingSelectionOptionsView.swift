@@ -43,6 +43,8 @@ struct FloatingSelectionOptionsView: ViewModifier {
 
     @Binding private var options: FloatingContentOptions?
 
+    @Environment(\.horizontalSizeClass) private var hSizeClass
+
     public init(_ options: Binding<FloatingContentOptions?>) {
         _options = options
     }
@@ -57,7 +59,7 @@ struct FloatingSelectionOptionsView: ViewModifier {
     private var favoriteTitle: String {
         guard let options else { return "" }
         if options.allSelectedAreFavorites {
-            return UIDevice.deviceType == .iPhone ? "Desfav." : "Desfavoritar"
+            return hSizeClass != .regular ? "Desfav." : "Desfavoritar"
         } else {
             return "Favoritar"
         }
@@ -69,7 +71,7 @@ struct FloatingSelectionOptionsView: ViewModifier {
     }
 
     private var folderTitle: String {
-        if UIDevice.deviceType == .iPhone {
+        if hSizeClass != .regular {
             return "Pasta"
         } else {
             guard let options else { return "" }
@@ -121,7 +123,7 @@ struct FloatingSelectionOptionsView: ViewModifier {
                                     options.shareAction()
                                 } label: {
                                     Label {
-                                        Text(UIDevice.deviceType == .iPhone ? "Comp." : "Compartilhar")
+                                        Text(hSizeClass != .regular ? "Comp." : "Compartilhar")
                                             .bold()
                                     } icon: {
                                         Image(systemName: "square.and.arrow.up")
@@ -172,7 +174,7 @@ struct FloatingSelectionOptionsView: ViewModifier {
                                     options.shareAction()
                                 } label: {
                                     Label {
-                                        Text(UIDevice.deviceType == .iPhone ? "Comp." : "Compartilhar")
+                                        Text(hSizeClass != .regular ? "Comp." : "Compartilhar")
                                             .bold()
                                     } icon: {
                                         Image(systemName: "square.and.arrow.up")

@@ -23,10 +23,12 @@ struct AuthorHeaderView: View {
     let reportIssueAction: () -> Void
     let contentSortChangeAction: () -> Void
 
+    @Environment(\.horizontalSizeClass) private var hSizeClass
+
     // MARK: - View Body
 
     var body: some View {
-        if UIDevice.deviceType == .iPhone {
+        if hSizeClass != .regular {
             PhoneHeader(
                 author: author,
                 title: title,

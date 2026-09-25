@@ -39,16 +39,16 @@ extension AuthorsGrid {
 
 extension AuthorsGrid.ViewModel {
 
-    public func onViewAppeared(viewWidth: CGFloat) {
+    public func onViewAppeared(viewWidth: CGFloat, horizontalSizeClass: UserInterfaceSizeClass?) {
         loadContent()
 
-        updateColumns(newWidth: viewWidth)
+        updateColumns(newWidth: viewWidth, horizontalSizeClass: horizontalSizeClass)
 
         donateActivity()
     }
 
-    public func onContainerWidthChanged(newWidth: CGFloat) {
-        updateColumns(newWidth: newWidth)
+    public func onContainerWidthChanged(newWidth: CGFloat, horizontalSizeClass: UserInterfaceSizeClass?) {
+        updateColumns(newWidth: newWidth, horizontalSizeClass: horizontalSizeClass)
     }
 
     public func onAuthorSortingChanged() {
@@ -77,10 +77,10 @@ extension AuthorsGrid.ViewModel {
         }
     }
 
-    private func updateColumns(newWidth: CGFloat) {
+    private func updateColumns(newWidth: CGFloat, horizontalSizeClass: UserInterfaceSizeClass?) {
         columns = GridHelper.authorColumns(
             gridWidth: newWidth,
-            spacing: UIDevice.deviceType == .iPhone ? .spacing(.small) : .spacing(.large)
+            spacing: horizontalSizeClass != .regular ? .spacing(.small) : .spacing(.large)
         )
     }
 

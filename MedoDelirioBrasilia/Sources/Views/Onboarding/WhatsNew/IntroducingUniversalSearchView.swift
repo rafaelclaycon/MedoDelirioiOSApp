@@ -13,25 +13,18 @@ struct IntroducingUniversalSearchView: View {
 
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.usesSidebarLayout) private var usesSidebarLayout
 
     @State private var glowAnimation = false
     @State private var pulseAnimation = false
     @State private var ringAnimation = false
-
-    private var hasHomeIndicator: Bool {
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let window = windowScene.windows.first else {
-            return false
-        }
-        return window.safeAreaInsets.bottom > 0
-    }
 
     private var currentOSName: String {
         "\(UIDevice.systemMarketingName) 26"
     }
 
     private var searchButtonPlacement: String {
-        if UIDevice.deviceType == .iPhone {
+        if !usesSidebarLayout {
             return "botão dedicado no canto inferior direito"
         } else {
             return "botão dedicado na barra lateral"
@@ -239,7 +232,7 @@ struct IntroducingUniversalSearchView: View {
                     dismissButton
 
                     Spacer()
-                        .frame(height: hasHomeIndicator ? 40 : 16)
+                        .frame(height: 16)
                 }
                 .padding(.vertical, 10)
                 .padding(.horizontal, 20)

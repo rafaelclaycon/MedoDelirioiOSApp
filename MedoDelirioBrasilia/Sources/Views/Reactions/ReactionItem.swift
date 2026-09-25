@@ -12,14 +12,12 @@ struct ReactionItem: View {
 
     let reaction: Reaction
 
+    @Environment(\.horizontalSizeClass) private var hSizeClass
+
     // MARK: - Computed Properties
 
     private var itemHeight: CGFloat {
-        UIDevice.deviceType == .iPhone ? 100 : 120
-    }
-
-    private var reduceTextSize: Bool {
-        UIDevice.isSmallDevice && reaction.title.count > 8
+        hSizeClass != .regular ? 100 : 120
     }
 
     // MARK: - Stored Properties
@@ -35,16 +33,14 @@ struct ReactionItem: View {
             RegularReaction(
                 title: reaction.title,
                 image: URL(string: reaction.image),
-                itemHeight: itemHeight,
-                reduceTextSize: reduceTextSize
+                itemHeight: itemHeight
             )
 
         case .pinnedExisting:
             RegularReaction(
                 title: reaction.title,
                 image: URL(string: reaction.image),
-                itemHeight: itemHeight,
-                reduceTextSize: reduceTextSize
+                itemHeight: itemHeight
             )
             .overlay(alignment: .topLeading) {
                 Pin()
@@ -73,7 +69,6 @@ extension ReactionItem {
         let title: String
         let image: URL?
         let itemHeight: CGFloat
-        let reduceTextSize: Bool
 
         @State private var isLoading: Bool = true
 
@@ -104,7 +99,7 @@ extension ReactionItem {
                 .overlay {
                     Text(title)
                         .foregroundColor(.white)
-                        .font(reduceTextSize ? .title2 : .title)
+                        .font(.title)
                         .bold()
                         .multilineTextAlignment(.center)
                         .shadow(color: .black, radius: 4, y: 4)

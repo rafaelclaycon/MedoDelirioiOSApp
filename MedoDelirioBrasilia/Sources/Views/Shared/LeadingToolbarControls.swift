@@ -13,6 +13,8 @@ struct LeadingToolbarControls: ToolbarContent {
     let cancelAction: () -> Void
     let openSettingsAction: () -> Void
 
+    @Environment(\.usesSidebarLayout) private var usesSidebarLayout
+
     var body: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
             if isSelecting {
@@ -22,7 +24,7 @@ struct LeadingToolbarControls: ToolbarContent {
                     Text("Cancelar")
                         .bold()
                 }
-            } else if UIDevice.deviceType == .iPhone {
+            } else if !usesSidebarLayout {
                 Button {
                     openSettingsAction()
                 } label: {

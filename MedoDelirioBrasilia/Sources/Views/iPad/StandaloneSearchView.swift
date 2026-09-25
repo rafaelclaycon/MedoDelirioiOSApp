@@ -28,6 +28,7 @@ struct StandaloneSearchView: View {
 
     @Environment(TranscriptDownloadService.self) private var transcriptDownloadService
     @Environment(\.push) private var push
+    @Environment(\.horizontalSizeClass) private var hSizeClass
 
     private var searchPrompt: String {
         switch searchMode {
@@ -71,11 +72,11 @@ struct StandaloneSearchView: View {
                                 isSearchingTranscripts: isSearchingTranscripts,
                                 retryLoadReactionsAction: loadReactions
                             )
-                            .padding(.horizontal, UIDevice.deviceType == .iPhone ? .spacing(.xSmall) : 0)
+                            .padding(.horizontal, hSizeClass != .regular ? .spacing(.xSmall) : 0)
                         }
                     }
                 }
-                .padding(.all, UIDevice.deviceType == .iPad ? .spacing(.medium) : .spacing(.xSmall))
+                .padding(.all, hSizeClass == .regular ? .spacing(.medium) : .spacing(.xSmall))
                 .navigationTitle(Text("Buscar"))
                 .searchable(text: $searchText, placement: .navigationBarDrawer, prompt: searchPrompt)
                 .autocorrectionDisabled()

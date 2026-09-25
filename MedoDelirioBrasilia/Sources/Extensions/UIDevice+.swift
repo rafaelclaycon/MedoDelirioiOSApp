@@ -4,14 +4,6 @@ import UIKit
 
 extension UIDevice {
 
-    /// In default non-Display Zoom mode, this applies to SE 2, SE 3, XS, 11 Pro, 12 mini, 13 mini.
-    static var isSmallDevice: Bool {
-        guard UIDevice.deviceType == .iPhone else {
-            return false
-        }
-        return UIScreen.main.bounds.width < 380
-    }
-
     static var isControlCenterAccessibleFromTheTop: Bool {
         guard deviceType != .iPad else { return true }
         return !modelName.contains("SE")
@@ -60,7 +52,13 @@ enum MedoSupportedDevice {
 }
 
 extension UIDevice {
-    
+
+    /// The hardware idiom, fixed for the life of the process. Use it only for decisions
+    /// that are really about the device — input wording, device names, per-device
+    /// workarounds — never for layout: an unfolded iPhone Duo is still `.iPhone` at iPad
+    /// widths, and an iPad in Split View is still `.iPad` at iPhone widths. For layout, read
+    /// `horizontalSizeClass`; for anything tied to the navigation `MainView` shows, read
+    /// `\.usesSidebarLayout`.
     static var deviceType: MedoSupportedDevice {
         if current.userInterfaceIdiom == .phone {
             return .iPhone

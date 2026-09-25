@@ -13,6 +13,8 @@ struct HelpView: View {
     @State private var isEpisodesExpanded: Bool = false
     @State private var isDifferentiatorsExpanded: Bool = true
 
+    @Environment(\.usesSidebarLayout) private var usesSidebarLayout
+
     var body: some View {
         VStack {
             ScrollView {
@@ -159,24 +161,22 @@ extension HelpView {
 
     private var toSearchInstruction: String {
         let appendix = "A pesquisa inclui todos os conteúdos do app e é tolerante a alguns erros de escrita."
-        switch UIDevice.deviceType {
-        case .iPhone:
-            return "Para pesquisar, toque na lupa no canto inferior direito da tela a qualquer momento.\n\n\(appendix)"
-        case .iPad:
-            return "Para pesquisar por conteúdos, toque em Buscar na barra lateral.\n\n\(appendix)"
-        case .mac:
+        if UIDevice.deviceType == .mac {
             return "Para pesquisar por conteúdos, selecione Buscar na barra lateral.\n\n\(appendix)"
+        } else if usesSidebarLayout {
+            return "Para pesquisar por conteúdos, toque em Buscar na barra lateral.\n\n\(appendix)"
+        } else {
+            return "Para pesquisar, toque na lupa no canto inferior direito da tela a qualquer momento.\n\n\(appendix)"
         }
     }
 
     private var favoritesInstruction: String {
-        switch UIDevice.deviceType {
-        case .iPhone:
-            "Para favoritar, segure o conteúdo e escolha Favoritar.\n\nPara ver apenas as favoritas, toque no coração nos filtros da parte superior da tela."
-        case .iPad:
-            "Para favoritar, segure o conteúdo e escolha Favoritar.\n\nPara ver apenas as favoritas, toque em Favoritas na barra lateral."
-        case .mac:
+        if UIDevice.deviceType == .mac {
             "Para favoritar, clique com o botão direito em um conteúdo e escolha Favoritar.\n\nPara ver apenas as favoritas, clique em Favoritas na barra lateral."
+        } else if usesSidebarLayout {
+            "Para favoritar, segure o conteúdo e escolha Favoritar.\n\nPara ver apenas as favoritas, toque em Favoritas na barra lateral."
+        } else {
+            "Para favoritar, segure o conteúdo e escolha Favoritar.\n\nPara ver apenas as favoritas, toque no coração nos filtros da parte superior da tela."
         }
     }
     // MARK: - Episodes

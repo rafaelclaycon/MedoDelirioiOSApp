@@ -14,6 +14,7 @@ private let logger = os.Logger(subsystem: "com.rafaelschmitt.MedoDelirioBrasilia
 struct MainView: View {
 
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.horizontalSizeClass) private var hSizeClass
     @Environment(TranscriptDownloadService.self) private var transcriptDownloadService
     @Environment(ChapterDownloadService.self) private var chapterDownloadService
     @Environment(DeepLinkHandler.self) private var deepLinkHandler
@@ -77,6 +78,19 @@ struct MainView: View {
         if #available(iOS 26.0, *) { return true } else { return false }
     }
 
+    /// Sidebar layout on iPad at regular width, tab bar otherwise — so it switches live
+    /// when an iPad enters or leaves Split View. Published to the subtree as
+    /// `\.usesSidebarLayout`; the navigation paths are shared `@State`, so pushed screens
+    /// survive the switch.
+    ///
+    /// The idiom check is deliberate: `.sidebarAdaptable` only draws a sidebar on iPad. On
+    /// iPhone — including an unfolded iPhone Duo at regular width — it falls back to a
+    /// bottom tab bar holding every iPad tab, so the Duo keeps the iPhone layout and gets
+    /// its extra room through the size-class-driven grids instead.
+    private var usesSidebarLayout: Bool {
+        hSizeClass == .regular && UIDevice.deviceType != .iPhone
+    }
+
     @State private var contentRepository: ContentRepository
     private let trendsService = TrendsService.shared
     @State private var reactionRepository = ReactionRepository()
@@ -112,7 +126,7 @@ struct MainView: View {
 
     var body: some View {
         ZStack {
-            if UIDevice.deviceType == .iPhone {
+            if !usesSidebarLayout {
                 if #available(iOS 26.0, *) {
                     TabView(selection: tabSelection) {
                         Tab(Shared.TabInfo.name(.sounds), systemImage: Shared.TabInfo.symbol(.sounds), value: .sounds) {
@@ -535,10 +549,10 @@ struct MainView: View {
                     isEnabled: episodePlayer.currentEpisode != nil
                 ) {
                     if #available(iOS 26.0, *) {
-                        // No `matchedTransitionSource` here: on iPad the Now Playing
-                        // sheet presents as a centered card and the zoom morph from a
-                        // bottom-bar accessory misbehaves, so iPad uses the standard
-                        // sheet animation (see `if_zoomNavigationTransition`).
+                        // No `matchedTransitionSource` here: in the sidebar layout Now
+                        // Playing presents full screen and the zoom morph from a
+                        // bottom-bar accessory misbehaves, so this layout uses the
+                        // standard animation (see `if_zoomNavigationTransition`).
                         NowPlayingAccessoryView(
                             episode: episodePlayer.currentEpisode,
                             player: episodePlayer,
@@ -579,6 +593,7 @@ struct MainView: View {
                 }
             }
         }
+        .environment(\.usesSidebarLayout, usesSidebarLayout)
         .environment(transcriptDownloadService)
         .environment(syncValues)
         .environment(episodePlayer)
@@ -728,7 +743,7 @@ struct MainView: View {
 
             case .onboarding:
                 OnboardingView()
-                    .interactiveDismissDisabled(UIDevice.deviceType == .iPhone)
+                    .interactiveDismissDisabled(!usesSidebarLayout)
 
             case .retrospective, .whatsNew:
                 EmptyView()
@@ -758,7 +773,7 @@ struct MainView: View {
         }) {
             IntroducingShareClipView(appMemory: AppPersistentMemory.shared)
         }
-        .sheetOrFullScreenCover(isPresented: $showNowPlaying) {
+        .sheetOrFullScreenCover(isPresented: $showNowPlaying, fullScreen: usesSidebarLayout) {
             NowPlayingView()
                 .environment(episodePlayer)
                 .environment(episodeBookmarkStore)
@@ -767,7 +782,7 @@ struct MainView: View {
                 .if_zoomNavigationTransition(
                     sourceID: "nowPlaying",
                     in: nowPlayingTransition,
-                    isEnabled: UIDevice.deviceType == .iPhone
+                    isEnabled: !usesSidebarLayout
                 )
         }
         .sheet(isPresented: $episodePlayer.showSupportPrompt, onDismiss: {

@@ -32,6 +32,7 @@ struct FolderGrid: View {
 
     @Environment(DeleteFolderViewAide.self) private var deleteFolderAide
     @Environment(\.sizeCategory) private var sizeCategory
+    @Environment(\.horizontalSizeClass) private var hSizeClass
 
     // MARK: - View Body
 
@@ -143,7 +144,7 @@ struct FolderGrid: View {
         columns = GridHelper.adaptableColumns(
             gridWidth: containerSize.width,
             sizeCategory: sizeCategory,
-            spacing: UIDevice.deviceType == .iPhone ? phoneItemSpacing : padItemSpacing
+            spacing: hSizeClass != .regular ? phoneItemSpacing : padItemSpacing
         )
     }
 }
