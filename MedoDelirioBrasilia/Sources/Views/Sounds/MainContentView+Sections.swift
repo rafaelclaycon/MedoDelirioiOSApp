@@ -36,7 +36,7 @@ extension MainContentView {
                     )
                 }
 
-                if viewModel.currentViewMode == .all {
+                if viewModel.currentViewMode == .all && !hideSoundsBanners {
                     BannersView(
                         bannerRepository: bannerRepository,
                         toast: viewModel.toast
