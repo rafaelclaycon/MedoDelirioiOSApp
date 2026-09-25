@@ -36,8 +36,14 @@ final class ElectionLiveActivityManager {
 
     private init() { }
 
+    /// Ended activities stay in `activities` while their result is still on the Lock Screen,
+    /// but they no longer update, so they don't count.
+    private var liveActivities: [Activity<ElectionActivityAttributes>] {
+        Activity<ElectionActivityAttributes>.activities.filter { $0.activityState == .active || $0.activityState == .stale }
+    }
+
     var isRunning: Bool {
-        !Activity<ElectionActivityAttributes>.activities.isEmpty
+        !liveActivities.isEmpty
     }
 
     var areActivitiesEnabled: Bool {
@@ -59,7 +65,7 @@ final class ElectionLiveActivityManager {
         guard let state = info.state else { throw StartError.missingState }
 
         // A second tap shouldn't stack a duplicate activity for the same round.
-        if Activity<ElectionActivityAttributes>.activities.contains(where: { $0.attributes.round == info.round }) {
+        if liveActivities.contains(where: { $0.attributes.round == info.round }) {
             return
         }
 

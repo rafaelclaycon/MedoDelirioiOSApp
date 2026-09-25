@@ -12,7 +12,8 @@ struct ElectionLiveInfo: Codable {
 
     /// Remote switch for the whole feature.
     let enabled: Bool
-    /// APNs broadcast channel the Live Activity subscribes to.
+    /// APNs broadcast channel the Live Activity subscribes to. Beta and production have
+    /// different channels, hence the bundle ID in the request.
     let channelId: String?
     let round: Int
     /// Nil before the first TSE file is available.
@@ -22,7 +23,10 @@ struct ElectionLiveInfo: Codable {
 extension APIClient {
 
     func electionLiveInfo() async throws -> ElectionLiveInfo {
-        let url = URL(string: serverPath + "v4/election/live")!
-        return try await get(from: url)
+        var components = URLComponents(string: serverPath + "v4/election/live")!
+        if let bundleId = Bundle.main.bundleIdentifier {
+            components.queryItems = [URLQueryItem(name: "bundleId", value: bundleId)]
+        }
+        return try await get(from: components.url!)
     }
 }
