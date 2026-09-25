@@ -4,14 +4,6 @@ import UIKit
 
 extension UIDevice {
 
-    /// In default non-Display Zoom mode, this applies to SE 2, SE 3, XS, 11 Pro, 12 mini, 13 mini.
-    static var isSmallDevice: Bool {
-        guard UIDevice.deviceType == .iPhone else {
-            return false
-        }
-        return UIScreen.main.bounds.width < 380
-    }
-
     static var isControlCenterAccessibleFromTheTop: Bool {
         guard deviceType != .iPad else { return true }
         return !modelName.contains("SE")
@@ -60,7 +52,13 @@ enum MedoSupportedDevice {
 }
 
 extension UIDevice {
-    
+
+    /// The hardware idiom, fixed for the life of the process. Use it only for decisions
+    /// that are really about the device — input wording, device names, per-device
+    /// workarounds — never for layout: an unfolded iPhone Duo is still `.iPhone` at iPad
+    /// widths, and an iPad in Split View is still `.iPad` at iPhone widths. For layout, read
+    /// `horizontalSizeClass`; for anything tied to the navigation `MainView` shows, read
+    /// `\.usesSidebarLayout`.
     static var deviceType: MedoSupportedDevice {
         if current.userInterfaceIdiom == .phone {
             return .iPhone
@@ -150,6 +148,9 @@ public extension UIDevice {
             case "iPhone18,3":                                     return "iPhone 17" // 2025 - A19 (4E,2P) - 8 GB
             case "iPhone18,4":                                     return "iPhone Air" // 2025 - A19 Pro (4E,2P) - 12 GB
             case "iPhone18,5":                                     return "iPhone 17e" // 2026 - A19 (4E,2P) - 8 GB
+            case "iPhone19,2":                                     return "iPhone 18 Pro" // 2026 - A20 Pro (4E,2P) - 12 GB
+            case "iPhone19,3":                                     return "iPhone 18 Pro Max" // 2026 - A20 Pro (4E,2P) - 12 GB
+            case "iPhone19,4":                                     return "iPhone Duo" // 2026 - A20 Pro (4E,2P) - 12 GB
 
             case "iPad7,5", "iPad7,6":                             return "iPad (6th generation)" // 2018 - A10 (2E,2P) - 2 GB
             case "iPad7,11", "iPad7,12":                           return "iPad (7th generation)" // 2019 - A10 - 3 GB

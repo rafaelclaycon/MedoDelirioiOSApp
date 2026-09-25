@@ -100,14 +100,6 @@ extension OnboardingView {
         @State private var pulseAnimation = false
         @State private var ringAnimation = false
 
-        private var hasHomeIndicator: Bool {
-            guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                  let window = windowScene.windows.first else {
-                return false
-            }
-            return window.safeAreaInsets.bottom > 0
-        }
-
         private var gradientColors: [Color] {
             if colorScheme == .dark {
                 return [
@@ -286,7 +278,7 @@ extension OnboardingView {
                     )
 
                     Spacer()
-                        .frame(height: hasHomeIndicator ? 40 : 16)
+                        .frame(height: 16)
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 10)
@@ -519,6 +511,7 @@ extension OnboardingView {
         @State private var selectedOption: ContentDownloadChoice? = nil
 
         @Environment(\.colorScheme) private var colorScheme
+        @Environment(\.usesSidebarLayout) private var usesSidebarLayout
 
         var body: some View {
             ScrollView {
@@ -586,7 +579,7 @@ extension OnboardingView {
                     .disabled(selectedOption == nil)
                     .opacity(selectedOption == nil ? 0.5 : 1.0)
 
-                    if UIDevice.deviceType != .iPhone {
+                    if usesSidebarLayout {
                         Text("Caso a tela não feche automaticamente, toque fora dela (na área apagada).")
                             .multilineTextAlignment(.center)
                             .padding(.horizontal)

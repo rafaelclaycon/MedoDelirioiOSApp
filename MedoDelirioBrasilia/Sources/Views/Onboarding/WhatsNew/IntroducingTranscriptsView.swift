@@ -15,14 +15,6 @@ struct IntroducingTranscriptsView: View {
     @Environment(\.colorScheme) var colorScheme
     @Environment(TranscriptDownloadService.self) private var transcriptDownloadService
 
-    private var hasHomeIndicator: Bool {
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let window = windowScene.windows.first else {
-            return false
-        }
-        return window.safeAreaInsets.bottom > 0
-    }
-
     private var gradientColors: [Color] {
         if colorScheme == .dark {
             return [
@@ -131,7 +123,7 @@ struct IntroducingTranscriptsView: View {
                     bottomButtons
 
                     Spacer()
-                        .frame(height: hasHomeIndicator ? 40 : 16)
+                        .frame(height: 16)
                 }
                 .padding(.top, 10)
                 .padding(.horizontal, 20)

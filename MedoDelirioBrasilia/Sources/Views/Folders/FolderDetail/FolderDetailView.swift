@@ -83,7 +83,7 @@ struct FolderDetailView: View {
         GeometryReader { geometry in
             if #available(iOS 26.0, *) {
                 ScrollView {
-                    detailView(size: geometry.size)
+                    detailView(size: geometry.size, topInset: geometry.safeAreaInsets.top)
                         .toolbar {
                             ToolbarItem(id: "play-stop-button", placement: .topBarTrailing) {
                                 if currentContentListMode.wrappedValue == .regular {
@@ -110,7 +110,7 @@ struct FolderDetailView: View {
                 .scrollEdgeEffectHidden(true, for: .top)
             } else {
                 ScrollView {
-                    detailView(size: geometry.size)
+                    detailView(size: geometry.size, topInset: geometry.safeAreaInsets.top)
                         .toolbar {
                             ToolbarItem(placement: .topBarLeading) {
                                 optionsMenu()
@@ -138,11 +138,12 @@ struct FolderDetailView: View {
     // MARK: - Subviews
 
     @ViewBuilder
-    func detailView(size: CGSize) -> some View {
+    func detailView(size: CGSize, topInset: CGFloat) -> some View {
         VStack(spacing: .spacing(.medium)) {
             HeaderView(
                 folder: folder,
-                itemCountText: viewModel.contentCountText
+                itemCountText: viewModel.contentCountText,
+                topInset: topInset
             )
 
             ContentGrid(
@@ -336,21 +337,14 @@ extension FolderDetailView {
         let folder: UserFolder
         let itemCountText: String
 
-        /// Status bar / notch / Dynamic Island inset. The header ignores the top safe
-        /// area (`FolderDetailView.body`) so its background can bleed under the status
-        /// bar, which means nothing here does this accounting automatically anymore —
-        /// the emoji/title block has to steer clear of that region itself.
-        private var topSafeAreaInset: CGFloat {
-            guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                  let window = windowScene.windows.first else {
-                return 0
-            }
-            return window.safeAreaInsets.top
-        }
-
-        /// Standard navigation bar height, on top of the safe area inset above — the
-        /// floating toolbar (back button, play, Selecionar, sort) occupies this too.
-        private let toolbarHeight: CGFloat = 44
+        /// The folder view's own top safe area inset: status bar / Dynamic Island plus the
+        /// floating toolbar (back button, play, Selecionar, sort). The header ignores the
+        /// top safe area (`FolderDetailView.body`) so its background can bleed under the
+        /// status bar, which means nothing here does this accounting automatically
+        /// anymore — the emoji/title block has to steer clear of that region itself.
+        /// Read by the caller outside the ignoring scroll view, so it tracks the live
+        /// geometry instead of a window's.
+        let topInset: CGFloat
 
         var body: some View {
             StickyFolderBackgroundView(
@@ -363,7 +357,7 @@ extension FolderDetailView {
                     // space so the two flexible spacers below center the text in
                     // what's actually left over, not the header's full height.
                     Spacer()
-                        .frame(height: topSafeAreaInset + toolbarHeight)
+                        .frame(height: topInset)
 
                     Spacer()
 

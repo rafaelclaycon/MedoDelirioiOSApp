@@ -16,6 +16,8 @@ extension ContentDetailView {
         let suggestAction: () -> Void
         let reloadAction: () -> Void
 
+        @Environment(\.horizontalSizeClass) private var hSizeClass
+
         private var showSuggestOnTop: Bool {
             guard case .loaded(let reactions) = state else { return false }
             return reactions.count > 0
@@ -50,7 +52,7 @@ extension ContentDetailView {
                             HStack(spacing: 15) {
                                 ForEach(reactions) { reaction in
                                     ReactionItem(reaction: reaction)
-                                        .frame(width: UIDevice.deviceType == .iPhone ? 180 : 200)
+                                        .frame(width: hSizeClass != .regular ? 180 : 200)
                                         .onTapGesture {
                                             openReactionAction(reaction)
                                         }

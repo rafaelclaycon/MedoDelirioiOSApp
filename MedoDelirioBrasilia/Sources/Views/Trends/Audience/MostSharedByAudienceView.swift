@@ -14,6 +14,7 @@ struct MostSharedByAudienceView: View {
     @Binding var activePadScreen: PadScreen?
     @Environment(TrendsHelper.self) private var trendsHelper
     @Environment(\.scenePhase) var scenePhase
+    @Environment(\.usesSidebarLayout) private var usesSidebarLayout
 
     private let timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
@@ -109,7 +110,7 @@ struct MostSharedByAudienceView: View {
     }
 
     private func navigateTo(content contentId: String) {
-        if UIDevice.deviceType == .iPhone {
+        if !usesSidebarLayout {
             tabSelection = .sounds
         } else {
             activePadScreen = .allSounds
@@ -118,7 +119,7 @@ struct MostSharedByAudienceView: View {
     }
 
     private func navigateTo(reaction reactionId: String) {
-        if UIDevice.deviceType == .iPhone {
+        if !usesSidebarLayout {
             tabSelection = .reactions
         } else {
             activePadScreen = .reactions
@@ -146,6 +147,8 @@ extension MostSharedByAudienceView {
 
         private let columns = [GridItem(.flexible())]
         private let columnsMac = [GridItem(.fixed(500))]
+
+        @Environment(\.usesSidebarLayout) private var usesSidebarLayout
 
         private var dropDownText: String {
             switch timeIntervalOption {
@@ -210,7 +213,7 @@ extension MostSharedByAudienceView {
                                             navigateToAction(item.contentId)
                                         }
                                         .contextMenu {
-                                            if UIDevice.deviceType == .iPhone {
+                                            if !usesSidebarLayout {
                                                 Button {
                                                     navigateToAction(item.contentId)
                                                 } label: {
@@ -301,6 +304,7 @@ extension MostSharedByAudienceView {
         let reloadAction: () -> Void
 
         @State private var columns: [GridItem] = [GridItem(.flexible()), GridItem(.flexible())]
+        @Environment(\.horizontalSizeClass) private var hSizeClass
         //@Environment(\.sizeCategory) var sizeCategory
 
         var body: some View {
@@ -320,7 +324,7 @@ extension MostSharedByAudienceView {
                     VStack(spacing: .spacing(.xxxSmall)) {
                         LazyVGrid(
                             columns: columns,
-                            spacing: UIDevice.deviceType == .iPhone ? .spacing(.small) : .spacing(.large)
+                            spacing: hSizeClass == .regular ? .spacing(.large) : .spacing(.small)
                         ) {
                             ForEach(items) { item in
                                 RankedReactionItem(

@@ -8,15 +8,16 @@
 import SwiftUI
 
 struct NoFoldersView: View {
+
+    @Environment(\.usesSidebarLayout) private var usesSidebarLayout
     
     private var text: String {
-        switch UIDevice.deviceType {
-        case .iPhone:
-            "Toque no + no canto superior direito para criar uma nova pasta."
-        case .iPad:
-            "Toque em Nova Pasta acima para criar uma nova pasta."
-        case .mac:
+        if UIDevice.deviceType == .mac {
             "Clique em Nova Pasta acima para criar uma nova pasta."
+        } else if usesSidebarLayout {
+            "Toque em Nova Pasta acima para criar uma nova pasta."
+        } else {
+            "Toque no + no canto superior direito para criar uma nova pasta."
         }
     }
 

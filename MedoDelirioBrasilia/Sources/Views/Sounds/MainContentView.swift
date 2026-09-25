@@ -41,6 +41,7 @@ struct MainContentView: View {
     @Environment(SettingsHelper.self) var settingsHelper
     @Environment(PlayRandomSoundHelper.self) var playRandomSoundHelper
     @Environment(\.push) var push
+    @Environment(\.usesSidebarLayout) var usesSidebarLayout
 
     // MARK: - Computed Properties
 

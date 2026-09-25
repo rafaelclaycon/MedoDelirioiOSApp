@@ -52,6 +52,7 @@ struct ContentGrid<
     // MARK: - Environment
 
     @Environment(\.sizeCategory) private var sizeCategory
+    @Environment(\.horizontalSizeClass) private var hSizeClass
     @Environment(\.push) private var push
 
     // MARK: - Initializer
@@ -97,7 +98,7 @@ struct ContentGrid<
             if loadedContent.isEmpty {
                 emptyStateView
             } else {
-                LazyVGrid(columns: columns, spacing: UIDevice.deviceType == .iPhone ? phoneItemSpacing : padItemSpacing) {
+                LazyVGrid(columns: columns, spacing: hSizeClass != .regular ? phoneItemSpacing : padItemSpacing) {
                     ForEach(loadedContent) { content in
                         ModernContent.Button(
                             content: content,
@@ -265,7 +266,7 @@ struct ContentGrid<
         columns = GridHelper.adaptableColumns(
             gridWidth: containerSize.width,
             sizeCategory: sizeCategory,
-            spacing: UIDevice.deviceType == .iPhone ? phoneItemSpacing : padItemSpacing
+            spacing: hSizeClass != .regular ? phoneItemSpacing : padItemSpacing
         )
     }
 }

@@ -10,6 +10,8 @@ import SwiftUI
 struct LargeCreatorView: View {
     
     @Binding var showLargeCreatorImage: Bool
+
+    @Environment(\.horizontalSizeClass) private var hSizeClass
     
     var body: some View {
         ZStack {
@@ -28,7 +30,7 @@ struct LargeCreatorView: View {
                     .resizable()
                     .scaledToFit()
                     .clipShape(Circle())
-                    .frame(maxWidth: UIDevice.deviceType == .iPhone ? .infinity : 500)
+                    .frame(maxWidth: hSizeClass != .regular ? .infinity : 500)
                     .onTapGesture {
                         withAnimation {
                             showLargeCreatorImage = false

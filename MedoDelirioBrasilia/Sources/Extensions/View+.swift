@@ -83,15 +83,16 @@ extension View {
         }
     }
 
-    /// Presents `content` as a regular sheet on iPhone, but full screen on
-    /// iPad and Mac — where a default sheet would otherwise appear as a small
+    /// Presents `content` as a regular sheet, or full screen when `fullScreen` is true —
+    /// pass it for regular width, where a default sheet would otherwise appear as a small
     /// centered card.
     @ViewBuilder func sheetOrFullScreenCover<C: View>(
         isPresented: Binding<Bool>,
+        fullScreen: Bool,
         onDismiss: (() -> Void)? = nil,
         @ViewBuilder content: @escaping () -> C
     ) -> some View {
-        if UIDevice.deviceType == .iPhone {
+        if !fullScreen {
             self.sheet(isPresented: isPresented, onDismiss: onDismiss, content: content)
         } else {
             self.fullScreenCover(isPresented: isPresented, onDismiss: onDismiss, content: content)

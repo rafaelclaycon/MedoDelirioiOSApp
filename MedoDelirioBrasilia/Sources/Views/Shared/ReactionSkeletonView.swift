@@ -13,9 +13,10 @@ import SwiftUI
 struct ReactionSkeletonView: View {
 
     @State private var isAnimating = false
+    @Environment(\.horizontalSizeClass) private var hSizeClass
 
     private var itemHeight: CGFloat {
-        UIDevice.deviceType == .iPhone ? 100 : 120
+        hSizeClass != .regular ? 100 : 120
     }
 
     var body: some View {
