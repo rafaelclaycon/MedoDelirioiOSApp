@@ -13,6 +13,7 @@ struct MedoDelirioWidgetBundle: WidgetBundle {
 
     var body: some Widget {
         PlayRandomSoundControl()
+        ElectionLiveActivity()
 #if DAILY_SOUND_WIDGET_ENABLED
         DailySoundWidget()
 #endif

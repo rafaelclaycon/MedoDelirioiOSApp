@@ -26,6 +26,10 @@
 	</array>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>NSSupportsLiveActivitiesFrequentUpdates</key>
+	<true/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
