@@ -150,6 +150,9 @@ public extension UIDevice {
             case "iPhone18,3":                                     return "iPhone 17" // 2025 - A19 (4E,2P) - 8 GB
             case "iPhone18,4":                                     return "iPhone Air" // 2025 - A19 Pro (4E,2P) - 12 GB
             case "iPhone18,5":                                     return "iPhone 17e" // 2026 - A19 (4E,2P) - 8 GB
+            case "iPhone19,2":                                     return "iPhone 18 Pro" // 2026 - A20 Pro (4E,2P) - 12 GB
+            case "iPhone19,3":                                     return "iPhone 18 Pro Max" // 2026 - A20 Pro (4E,2P) - 12 GB
+            case "iPhone19,4":                                     return "iPhone Duo" // 2026 - A20 Pro (4E,2P) - 12 GB
 
             case "iPad7,5", "iPad7,6":                             return "iPad (6th generation)" // 2018 - A10 (2E,2P) - 2 GB
             case "iPad7,11", "iPad7,12":                           return "iPad (7th generation)" // 2019 - A10 - 3 GB
