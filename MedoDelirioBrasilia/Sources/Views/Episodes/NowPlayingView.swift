@@ -536,26 +536,9 @@ struct NowPlayingView: View {
     }
 
     private func canvasPill(_ mode: CanvasMode) -> some View {
-        let isSelected = effectiveCanvasMode == mode
-
-        return Button {
+        EpisodePillTab(title: mode.title, isSelected: effectiveCanvasMode == mode) {
             currentCanvasMode = mode
-        } label: {
-            Text(mode.title)
-                .font(.subheadline)
-                .fontWeight(isSelected ? .semibold : .regular)
-                .foregroundStyle(isSelected ? Color.primary : Color.secondary)
-                .padding(.horizontal, .spacing(.medium))
-                .padding(.vertical, .spacing(.xSmall))
-                .background {
-                    if isSelected {
-                        Capsule().fill(.quaternary)
-                    }
-                }
-                .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 
     // MARK: - Toolbar
@@ -799,4 +782,34 @@ private struct PlaybackTimeObserver: View {
     }
 
     return SheetHost()
+}
+
+
+// MARK: - Pill Tab
+
+/// One tab of the pill selector shared by Now Playing and the split episode detail.
+struct EpisodePillTab: View {
+
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.subheadline)
+                .fontWeight(isSelected ? .semibold : .regular)
+                .foregroundStyle(isSelected ? Color.primary : Color.secondary)
+                .padding(.horizontal, .spacing(.medium))
+                .padding(.vertical, .spacing(.xSmall))
+                .background {
+                    if isSelected {
+                        Capsule().fill(.quaternary)
+                    }
+                }
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+    }
 }

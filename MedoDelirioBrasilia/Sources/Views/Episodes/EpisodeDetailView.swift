@@ -24,8 +24,20 @@ struct EpisodeDetailView: View {
     @State private var pendingChapterID: Int?
     @State private var showSupportSheet: Bool = false
     /// A display crease runs vertically through the screen (unfolded iPhone Duo in
-    /// landscape): chapters get the pane on the trailing side of it.
+    /// landscape): chapters and bookmarks get the pane on the trailing side of it.
     @State private var isSplitLayout: Bool = false
+    @State private var splitTab: SplitTab = .chapters
+
+    enum SplitTab {
+        case chapters, bookmarks
+
+        var title: String {
+            switch self {
+            case .chapters: "Capítulos"
+            case .bookmarks: "Marcadores"
+            }
+        }
+    }
 
     // Share
     @State private var isPreparingShare: Bool = false
@@ -139,7 +151,7 @@ struct EpisodeDetailView: View {
         // that bundles that SDK (same guard as `MainView`). `isSplitLayout` is never true
         // before 27.1 anyway, since the crease can't be read there.
         #if compiler(>=6.4)
-        if isSplitLayout, hasChaptersContent, #available(iOS 27.1, *) {
+        if isSplitLayout, #available(iOS 27.1, *) {
             splitLayout
         } else {
             standardLayout
@@ -151,32 +163,67 @@ struct EpisodeDetailView: View {
 
     private var standardLayout: some View {
         ScrollView {
-            detailColumn(includesChapters: true)
+            detailColumn(includesTrailingSections: true)
         }
     }
 
     #if compiler(>=6.4)
-    /// Unfolded iPhone Duo in landscape, for an episode with chapters (or their empty state): the details on one
-    /// side of the crease and the chapters on the other, each scrolling on its own.
+    /// Unfolded iPhone Duo in landscape: the details on one side of the crease and, on the
+    /// other, chapters and bookmarks behind the same pill tabs as Now Playing, each side
+    /// scrolling on its own.
     /// `.split` puts the divider on the crease, as in `NowPlayingView`.
     @available(iOS 27.1, *)
     private var splitLayout: some View {
         ArrangementView {
             ScrollView {
-                detailColumn(includesChapters: false)
+                detailColumn(includesTrailingSections: false)
             }
         } secondary: {
-            ScrollView {
-                chaptersPane
+            VStack(spacing: 0) {
+                if splitTabs.count > 1 {
+                    splitTabPicker
+                        .padding(.horizontal, .spacing(.medium))
+                        .padding(.vertical, .spacing(.small))
+                }
+
+                ScrollView {
+                    Group {
+                        switch effectiveSplitTab {
+                        case .chapters: chaptersPane
+                        case .bookmarks: bookmarksPane
+                        }
+                    }
                     .padding(.horizontal, .spacing(.medium))
                     .padding(.vertical, .spacing(.small))
+                }
             }
         }
         .arrangementViewStyle(.split)
     }
     #endif
 
-    private func detailColumn(includesChapters: Bool) -> some View {
+    /// Chapters only get a tab when there's something to show for them.
+    private var splitTabs: [SplitTab] {
+        hasChaptersContent ? [.chapters, .bookmarks] : [.bookmarks]
+    }
+
+    private var effectiveSplitTab: SplitTab {
+        splitTabs.contains(splitTab) ? splitTab : .bookmarks
+    }
+
+    private var splitTabPicker: some View {
+        HStack(spacing: .spacing(.xSmall)) {
+            ForEach(splitTabs, id: \.self) { tab in
+                EpisodePillTab(title: tab.title, isSelected: effectiveSplitTab == tab) {
+                    splitTab = tab
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .animation(.snappy(duration: 0.2), value: splitTab)
+    }
+
+    private func detailColumn(includesTrailingSections: Bool) -> some View {
         VStack(alignment: .leading, spacing: .spacing(.medium)) {
             header
 
@@ -188,11 +235,11 @@ struct EpisodeDetailView: View {
                     .foregroundStyle(.secondary)
             }
 
-            if includesChapters {
+            if includesTrailingSections {
                 chaptersSection
-            }
 
-            bookmarkSection
+                bookmarkSection
+            }
         }
         .padding(.horizontal, .spacing(.medium))
         .padding(.vertical, .spacing(.small))
@@ -485,10 +532,24 @@ struct EpisodeDetailView: View {
 
     @ViewBuilder
     private var bookmarkSection: some View {
-        let bookmarks = sortedBookmarks
-        if !bookmarks.isEmpty {
+        if !sortedBookmarks.isEmpty {
             Divider()
 
+            bookmarksPane
+        }
+    }
+
+    /// The bookmarks list with its own heading, or a short note when there are none
+    /// (the split layout shows this pane even then; the standard one skips the section).
+    @ViewBuilder
+    private var bookmarksPane: some View {
+        let bookmarks = sortedBookmarks
+        if bookmarks.isEmpty {
+            Text("Você ainda não marcou nada neste episódio.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
                     Text("Meus Marcadores")
