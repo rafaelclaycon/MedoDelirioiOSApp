@@ -26,6 +26,8 @@ extension ReactionsView {
 
         @State private var isPreparingShare: Bool = false
         @State private var shareLinkMetadata: LPLinkMetadata?
+        /// The reaction being shared, whose card the share sheet anchors to.
+        @State private var sharingReactionId: String?
 
         @Environment(\.horizontalSizeClass) private var hSizeClass
 
@@ -100,6 +102,7 @@ extension ReactionsView {
                             },
                             reactionRemovedAction: { _ in }
                         )
+                        .shareSheet(item: shareLinkMetadataBinding(for: reaction)) { [LinkMetadataItemSource(metadata: $0)] }
                     }
                 }
 
@@ -115,10 +118,6 @@ extension ReactionsView {
             .onAppear {
                 shouldDisplayPinBanner = !AppPersistentMemory.shared.hasSeenPinReactionsBanner()
                 shouldDisplayFoldersPromoBanner = !AppPersistentMemory.shared.hasSeenFoldersPromoBanner()
-            }
-            .sheet(item: $shareLinkMetadata) { metadata in
-                LinkMetadataShareSheet(metadata: metadata)
-                    .presentationDetents([.medium, .large])
             }
             .alert(
                 "A Reação \"\(removedReaction?.title ?? "")\" Foi Removida",
@@ -139,6 +138,7 @@ extension ReactionsView {
             guard !isPreparingShare else { return }
             guard let shareURL = URL(string: APIConfig.baseLinkURL + "reacao/\(reaction.id)") else { return }
             isPreparingShare = true
+            sharingReactionId = reaction.id
 
             Task {
                 let meta = LPLinkMetadata()
@@ -154,6 +154,19 @@ extension ReactionsView {
                 shareLinkMetadata = meta
                 isPreparingShare = false
             }
+        }
+
+        /// The share preview, as seen by one reaction's card: non-nil only for the card
+        /// being shared, so only that card presents (and anchors) the share sheet.
+        private func shareLinkMetadataBinding(for reaction: Reaction) -> Binding<LPLinkMetadata?> {
+            Binding(
+                get: { sharingReactionId == reaction.id ? shareLinkMetadata : nil },
+                set: { newValue in
+                    guard newValue == nil else { return }
+                    shareLinkMetadata = nil
+                    sharingReactionId = nil
+                }
+            )
         }
     }
 

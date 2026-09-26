@@ -5,7 +5,6 @@
 //  Created by Rafael Claycon Schmitt on 17/02/26.
 //
 
-import LinkPresentation
 import SwiftUI
 
 struct EpisodeDetailView: View {
@@ -39,10 +38,8 @@ struct EpisodeDetailView: View {
         }
     }
 
-    // Share
-    @State private var isPreparingShare: Bool = false
-    @State private var shareLinkMetadata: LPLinkMetadata?
-    @State private var showShareSheet: Bool = false
+    /// The share preview's image, loaded when the screen appears so sharing is instant.
+    @State private var shareImage: Image?
 
     private var isPlayed: Bool {
         playedStore.isPlayed(episode.id)
@@ -90,17 +87,19 @@ struct EpisodeDetailView: View {
             BookmarkEditView(bookmark: bookmark)
         }
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button(action: prepareShare) {
-                    if isPreparingShare {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        Image(systemName: "square.and.arrow.up")
-                    }
+            if let shareURL {
+                ToolbarItem(placement: .topBarTrailing) {
+                    LinkShareButton(
+                        url: shareURL,
+                        title: episode.title,
+                        image: shareImage,
+                        placeholderSymbol: "radio",
+                        accessibilityLabel: "Compartilhar episódio",
+                        onShared: { [id = episode.id] in
+                            Task { await AnalyticsService().send(originatingScreen: "EpisodeDetail", action: "didShareLink(\(id))") }
+                        }
+                    )
                 }
-                .disabled(isPreparingShare)
-                .accessibilityLabel("Compartilhar episódio")
             }
 
             ToolbarItem(placement: .topBarTrailing) {
@@ -111,12 +110,6 @@ struct EpisodeDetailView: View {
                         .foregroundStyle(favoritesStore.isFavorite(episode.id) ? .yellow : .primary)
                 }
                 .accessibilityLabel(favoritesStore.isFavorite(episode.id) ? "Remover dos favoritos" : "Adicionar aos favoritos")
-            }
-        }
-        .sheet(isPresented: $showShareSheet) {
-            if let metadata = shareLinkMetadata {
-                LinkMetadataShareSheet(metadata: metadata)
-                    .presentationDetents([.medium, .large])
             }
         }
         .alert("Apagar Download", isPresented: $showDeleteConfirmation) {
@@ -131,6 +124,9 @@ struct EpisodeDetailView: View {
             StandaloneSupportView(context: .episodeChapters)
         }
         .background(EpisodeDetailPlayerAlerts(player: episodePlayer))
+        .task(id: episode.id) {
+            shareImage = await LinkShareButton.loadImage(from: episode.imageURL)
+        }
         .onAppear {
             if ChapterPreferences.isEnabled {
                 chapterProvider.load(episodeId: episode.id)
@@ -247,31 +243,8 @@ struct EpisodeDetailView: View {
 
     // MARK: - Share
 
-    private func prepareShare() {
-        guard !isPreparingShare else { return }
-        guard let shareURL = URL(string: APIConfig.baseLinkURL + "episodio/\(episode.id)") else {
-            return
-        }
-        isPreparingShare = true
-        Task { await AnalyticsService().send(originatingScreen: "EpisodeDetail", action: "didTapShare(\(episode.id))") }
-
-        Task {
-            let meta = LPLinkMetadata()
-            meta.url = shareURL
-            meta.title = episode.title
-
-            // Download the episode thumbnail ourselves so iOS never falls back
-            // to the server's apple-touch-icon.
-            if let imageURL = episode.imageURL,
-               let (data, _) = try? await URLSession.shared.data(from: imageURL),
-               let image = UIImage(data: data) {
-                meta.imageProvider = NSItemProvider(object: image)
-            }
-
-            shareLinkMetadata = meta
-            isPreparingShare = false
-            showShareSheet = true
-        }
+    private var shareURL: URL? {
+        URL(string: APIConfig.baseLinkURL + "episodio/\(episode.id)")
     }
 
     // MARK: - Header

@@ -56,16 +56,26 @@ enum NowPlayingActions {
         }
     }
 
+    /// Shares the episode's link. `image` is the preview image, loaded by the screen ahead
+    /// of time (see `LinkShareButton`).
     struct Share: View {
 
-        let isPreparing: Bool
-        let onShare: () -> Void
+        let episode: PodcastEpisode?
+        let image: Image?
 
         var body: some View {
-            Button(action: onShare) {
-                Image(systemName: "square.and.arrow.up")
+            if let episode, let url = URL(string: APIConfig.baseLinkURL + "episodio/\(episode.id)") {
+                LinkShareButton(
+                    url: url,
+                    title: episode.title,
+                    image: image,
+                    placeholderSymbol: "radio",
+                    accessibilityLabel: "Compartilhar episódio",
+                    onShared: { [id = episode.id] in
+                        Task { await AnalyticsService().send(originatingScreen: "NowPlaying", action: "didShareLink(\(id))") }
+                    }
+                )
             }
-            .disabled(isPreparing)
         }
     }
 
@@ -102,10 +112,10 @@ enum NowPlayingActions {
 /// native bottom bar would.
 struct NowPlayingLegacyBottomBar: View {
 
-    let isPreparingShare: Bool
+    let episode: PodcastEpisode?
+    let shareImage: Image?
     let onAddBookmark: () -> Void
     let onShareClip: () -> Void
-    let onShare: () -> Void
     let onOpenTranscript: () -> Void
 
     var body: some View {
@@ -116,7 +126,7 @@ struct NowPlayingLegacyBottomBar: View {
 
             NowPlayingActions.Favorite()
 
-            NowPlayingActions.Share(isPreparing: isPreparingShare, onShare: onShare)
+            NowPlayingActions.Share(episode: episode, image: shareImage)
 
             if FeatureFlag.isEnabled(.transcriptFullView) {
                 NowPlayingActions.Transcript(onOpen: onOpenTranscript)

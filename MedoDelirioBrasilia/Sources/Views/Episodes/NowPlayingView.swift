@@ -5,7 +5,6 @@
 //  Created by Rafael Claycon Schmitt on 17/02/26.
 //
 
-import LinkPresentation
 import SwiftUI
 
 /// Full now-playing screen presented as a sheet from the bottom accessory.
@@ -53,9 +52,8 @@ struct NowPlayingView: View {
     /// ever picking up a stale/missing selection from a preceding presentation.
     @State private var shareClipPresentation: ShareClipPresentation?
     @State private var showClipSupportSheet: Bool = false
-    @State private var isPreparingShare: Bool = false
-    @State private var shareLinkMetadata: LPLinkMetadata?
-    @State private var showShareSheet: Bool = false
+    /// The share preview's image, loaded per episode ahead of time so sharing is instant.
+    @State private var shareImage: Image?
     @State private var transcriptProvider: TranscriptProvider
     @State private var hasSentTranscriptViewedAnalytics: Bool = false
     @State private var showFullTranscript: Bool = false
@@ -171,10 +169,10 @@ struct NowPlayingView: View {
             .safeAreaInset(edge: .bottom) {
                 if !UIDevice.isIOS26OrLater {
                     NowPlayingLegacyBottomBar(
-                        isPreparingShare: isPreparingShare,
+                        episode: player.currentEpisode,
+                        shareImage: shareImage,
                         onAddBookmark: addBookmark,
                         onShareClip: startShareClip,
-                        onShare: prepareShare,
                         onOpenTranscript: { showFullTranscript = true }
                     )
                 }
@@ -201,12 +199,6 @@ struct NowPlayingView: View {
         .sheet(item: $editingBookmark) { bookmark in
             BookmarkEditView(bookmark: bookmark)
                 .environment(bookmarkStore)
-        }
-        .sheet(isPresented: $showShareSheet) {
-            if let metadata = shareLinkMetadata {
-                LinkMetadataShareSheet(metadata: metadata)
-                    .presentationDetents([.medium, .large])
-            }
         }
         .sheet(item: $shareClipPresentation) { presentation in
             if let episode = player.currentEpisode {
@@ -260,6 +252,9 @@ struct NowPlayingView: View {
                 chapterProvider.load(episodeId: player.currentEpisode?.id)
                 chapterProvider.update(currentTime: player.currentTime)
             }
+        }
+        .task(id: player.currentEpisode?.id) {
+            shareImage = await LinkShareButton.loadImage(from: player.currentEpisode?.imageURL)
         }
         .onChange(of: player.currentEpisode?.id) {
             if transcriptDownloadService.transcriptsDownloaded {
@@ -575,7 +570,7 @@ struct NowPlayingView: View {
             }
 
             ToolbarItem(id: "share", placement: .bottomBar) {
-                NowPlayingActions.Share(isPreparing: isPreparingShare, onShare: prepareShare)
+                NowPlayingActions.Share(episode: player.currentEpisode, image: shareImage)
             }
 
             if FeatureFlag.isEnabled(.transcriptFullView) {
@@ -636,30 +631,6 @@ struct NowPlayingView: View {
         }
     }
 
-    // MARK: - Share
-
-    private func prepareShare() {
-        guard !isPreparingShare, let episode = player.currentEpisode else { return }
-        guard let shareURL = URL(string: APIConfig.baseLinkURL + "episodio/\(episode.id)") else { return }
-        isPreparingShare = true
-        Task { await AnalyticsService().send(originatingScreen: "NowPlaying", action: "didTapShare(\(episode.id))") }
-
-        Task {
-            let meta = LPLinkMetadata()
-            meta.url = shareURL
-            meta.title = episode.title
-
-            if let imageURL = episode.imageURL,
-               let (data, _) = try? await URLSession.shared.data(from: imageURL),
-               let image = UIImage(data: data) {
-                meta.imageProvider = NSItemProvider(object: image)
-            }
-
-            shareLinkMetadata = meta
-            isPreparingShare = false
-            showShareSheet = true
-        }
-    }
 }
 
 // MARK: - Share Clip Presentation

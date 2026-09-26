@@ -5,7 +5,6 @@
 //  Created by Rafael Claycon Schmitt on 28/06/22.
 //
 
-import LinkPresentation
 import SwiftUI
 import TipKit
 
@@ -15,9 +14,8 @@ struct ReactionDetailView: View {
     @State private var contentGridViewModel: ContentGridViewModel
 
     @State private var columns: [GridItem] = [GridItem(.flexible()), GridItem(.flexible())]
-    @State private var isPreparingShare: Bool = false
-    @State private var shareLinkMetadata: LPLinkMetadata?
-    @State private var showShareSheet = false
+    /// The share preview's image, loaded when the screen appears so sharing is instant.
+    @State private var shareImage: Image?
 
     private var contentGridMode: Binding<ContentGridMode>
 
@@ -119,7 +117,6 @@ struct ReactionDetailView: View {
                     ToolbarControls(
                         contentSortOption: $viewModel.contentSortOption,
                         playStopAction: { contentGridViewModel.onPlayStopPlaylistSelected(loadedContent: loadedContent) },
-                        shareAction: prepareShare,
                         startSelectingAction: {
                             contentGridViewModel.onEnterMultiSelectModeSelected(
                                 loadedContent: loadedContent,
@@ -129,14 +126,16 @@ struct ReactionDetailView: View {
                         isPlayingPlaylist: contentGridViewModel.isPlayingPlaylist,
                         soundArrayIsEmpty: soundArrayIsEmpty,
                         isSelecting: contentGridMode.wrappedValue == .selection,
-                        isPreparingShare: isPreparingShare
+                        shareURL: shareURL,
+                        shareTitle: shareTitle,
+                        shareImage: shareImage,
+                        onShared: { [id = viewModel.reaction.id] in
+                            Task { await AnalyticsService().send(originatingScreen: "ReactionDetail", action: "didShareLink(\(id))") }
+                        }
                     )
                 }
-                .sheet(isPresented: $showShareSheet) {
-                    if let metadata = shareLinkMetadata {
-                        LinkMetadataShareSheet(metadata: metadata)
-                            .presentationDetents([.medium, .large])
-                    }
+                .task(id: viewModel.reaction.id) {
+                    shareImage = await LinkShareButton.loadImage(from: URL(string: viewModel.reaction.image))
                 }
                 .oneTimeTask {
                     await viewModel.onViewLoaded()
@@ -168,29 +167,12 @@ struct ReactionDetailView: View {
 
 extension ReactionDetailView {
 
-    private func prepareShare() {
-        guard !isPreparingShare else { return }
-        guard let shareURL = URL(string: APIConfig.baseLinkURL + "reacao/\(viewModel.reaction.id)") else {
-            return
-        }
-        isPreparingShare = true
-        Task { await AnalyticsService().send(originatingScreen: "ReactionDetail", action: "didTapShare(\(viewModel.reaction.id))") }
+    private var shareURL: URL? {
+        URL(string: APIConfig.baseLinkURL + "reacao/\(viewModel.reaction.id)")
+    }
 
-        Task {
-            let meta = LPLinkMetadata()
-            meta.url = shareURL
-            meta.title = "Reação \(viewModel.reaction.title.capitalized(with: Locale(identifier: "pt_BR")))"
-
-            if let imageURL = URL(string: viewModel.reaction.image),
-               let (data, _) = try? await URLSession.shared.data(from: imageURL),
-               let image = UIImage(data: data) {
-                meta.imageProvider = NSItemProvider(object: image)
-            }
-
-            shareLinkMetadata = meta
-            isPreparingShare = false
-            showShareSheet = true
-        }
+    private var shareTitle: String {
+        "Reação \(viewModel.reaction.title.capitalized(with: Locale(identifier: "pt_BR")))"
     }
 }
 
@@ -202,14 +184,33 @@ extension ReactionDetailView {
 
         @Binding var contentSortOption: Int
         let playStopAction: () -> Void
-        let shareAction: () -> Void
         let startSelectingAction: () -> Void
         let isPlayingPlaylist: Bool
         let soundArrayIsEmpty: Bool
         let isSelecting: Bool
-        var isPreparingShare: Bool = false
+        let shareURL: URL?
+        let shareTitle: String
+        let shareImage: Image?
+        /// Runs once the link actually reaches an app (see `LinkShareButton`).
+        let onShared: @Sendable () -> Void
 
         private let shareTip = ReactionShareButtonTip()
+
+        @ViewBuilder
+        private var shareButton: some View {
+            if let shareURL {
+                LinkShareButton(
+                    url: shareURL,
+                    title: shareTitle,
+                    image: shareImage,
+                    placeholderSymbol: "theatermasks",
+                    onShared: onShared
+                )
+                .disabled(isSelecting)
+                .popoverTip(shareTip)
+                .tipViewStyle(PrimaryImageTipViewStyle(tip: shareTip))
+            }
+        }
 
         private var playStopIsDisabled: Bool {
             soundArrayIsEmpty || isSelecting
@@ -229,16 +230,7 @@ extension ReactionDetailView {
                 ToolbarSpacer(.fixed)
 
                 ToolbarItem {
-                    Button(action: shareAction) {
-                        if isPreparingShare {
-                            ProgressView().controlSize(.small)
-                        } else {
-                            Image(systemName: "square.and.arrow.up")
-                        }
-                    }
-                    .disabled(isSelecting || isPreparingShare)
-                    .popoverTip(shareTip)
-                    .tipViewStyle(PrimaryImageTipViewStyle(tip: shareTip))
+                    shareButton
                 }
 
                 ToolbarSpacer(.fixed)
@@ -279,16 +271,7 @@ extension ReactionDetailView {
                 }
 
                 ToolbarItem {
-                    Button(action: shareAction) {
-                        if isPreparingShare {
-                            ProgressView().controlSize(.small)
-                        } else {
-                            Image(systemName: "square.and.arrow.up")
-                        }
-                    }
-                    .disabled(isSelecting || isPreparingShare)
-                    .popoverTip(shareTip)
-                    .tipViewStyle(PrimaryImageTipViewStyle(tip: shareTip))
+                    shareButton
                 }
 
                 ToolbarItem {

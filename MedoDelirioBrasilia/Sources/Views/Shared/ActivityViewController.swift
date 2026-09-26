@@ -17,29 +17,11 @@ struct ActivityViewController: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: UIViewControllerRepresentableContext<ActivityViewController>) {}
 }
 
-// MARK: - Rich-preview share sheet
+// MARK: - Rich-preview share item
 
-/// Wraps `UIActivityViewController` with pre-fetched `LPLinkMetadata` so the
-/// share sheet always shows the correct image instead of the server's fallback icon.
-struct LinkMetadataShareSheet: UIViewControllerRepresentable {
-
-    let metadata: LPLinkMetadata
-    @Environment(\.dismiss) private var dismiss
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        let source = LinkMetadataItemSource(metadata: metadata)
-        let vc = UIActivityViewController(activityItems: [source], applicationActivities: nil)
-        vc.completionWithItemsHandler = { _, _, _, _ in dismiss() }
-        return vc
-    }
-
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
-}
-
-extension LPLinkMetadata: @retroactive Identifiable {
-    public var id: URL { url ?? URL(string: "about:blank")! }
-}
-
+/// Hands `UIActivityViewController` pre-fetched `LPLinkMetadata` so the share sheet
+/// always shows the correct image instead of the server's fallback icon. Present it with
+/// `.shareSheet(item:activityItems:)`.
 final class LinkMetadataItemSource: NSObject, UIActivityItemSource {
 
     private let metadata: LPLinkMetadata
