@@ -2,21 +2,6 @@ import LinkPresentation
 import SwiftUI
 import UIKit
 
-struct ActivityViewController: UIViewControllerRepresentable {
-
-    var activityItems: [Any]
-    var completionWithItemsHandler: UIActivityViewController.CompletionWithItemsHandler?
-    var applicationActivities: [UIActivity]? = nil
-
-    func makeUIViewController(context: UIViewControllerRepresentableContext<ActivityViewController>) -> UIActivityViewController {
-        let controller = UIActivityViewController(activityItems: activityItems, applicationActivities: applicationActivities)
-        controller.completionWithItemsHandler = completionWithItemsHandler
-        return controller
-    }
-
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: UIViewControllerRepresentableContext<ActivityViewController>) {}
-}
-
 // MARK: - Rich-preview share item
 
 /// Hands `UIActivityViewController` pre-fetched `LPLinkMetadata` so the share sheet

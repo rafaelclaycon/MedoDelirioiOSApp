@@ -23,6 +23,9 @@ struct ShareClipPreviewView: View {
     @State private var generationTask: Task<Void, Never>?
     @State private var isMuted: Bool = true
     @State private var loopObserver: NSObjectProtocol?
+    /// The clip being shared; the share sheet shows, anchored to the share button, while
+    /// it's non-nil.
+    @State private var sharingURL: URL?
 
     var body: some View {
         Group {
@@ -164,10 +167,13 @@ struct ShareClipPreviewView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    /// The share sheet presents via UIKit (`.shareSheet`), not a SwiftUI `.sheet`: this
+    /// screen lives three sheets deep (Now Playing › Create Clip › this pushed view), where
+    /// a SwiftUI `.sheet` for the activity controller silently fails to present.
     private var shareButton: some View {
         Button {
             guard let videoURL else { return }
-            presentShareSheet(for: videoURL)
+            sharingURL = videoURL
         } label: {
             HStack {
                 Spacer()
@@ -177,6 +183,10 @@ struct ShareClipPreviewView: View {
             }
         }
         .shareClipButtonStyle()
+        .shareSheet(item: $sharingURL, activityItems: { [$0] }) { [onExportComplete, config] _, _, completed in
+            guard completed else { return }
+            onExportComplete(config.includesTranscript)
+        }
     }
 
     // MARK: - Generation
@@ -232,28 +242,6 @@ struct ShareClipPreviewView: View {
         generationTask = Task { await generateClip() }
     }
 
-    // MARK: - Sharing
-
-    /// Presents the share sheet imperatively from the top-most view controller.
-    ///
-    /// This screen lives three sheets deep (Now Playing › Create Clip › this
-    /// pushed view), so a SwiftUI `.sheet` for the activity controller silently
-    /// fails to present. Presenting via UIKit from the top-most VC sidesteps it.
-    @MainActor
-    private func presentShareSheet(for url: URL) {
-        guard let top = UIApplication.shared.topMostViewController else { return }
-        let activityVC = UIActivityViewController(activityItems: [url], applicationActivities: nil)
-        if let popover = activityVC.popoverPresentationController {
-            popover.sourceView = top.view
-            popover.sourceRect = CGRect(x: top.view.bounds.midX, y: top.view.bounds.midY, width: 0, height: 0)
-            popover.permittedArrowDirections = []
-        }
-        activityVC.completionWithItemsHandler = { [onExportComplete, config] _, completed, _, _ in
-            guard completed else { return }
-            onExportComplete(config.includesTranscript)
-        }
-        top.present(activityVC, animated: true)
-    }
 }
 
 // MARK: - Shared Button Style

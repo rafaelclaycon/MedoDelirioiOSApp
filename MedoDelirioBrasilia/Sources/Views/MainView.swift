@@ -70,6 +70,9 @@ struct MainView: View {
     @State private var episodeListenStore = EpisodeListenStore()
     @State private var episodesBadgeStore = EpisodesBadgeStore()
     @State private var showNowPlaying = false
+    /// Set once the Now Playing bar's share preview is ready; the share sheet shows,
+    /// anchored to the bar, while it's non-nil.
+    @State private var accessoryShareMetadata: LPLinkMetadata?
     @Namespace private var nowPlayingTransition
 
     /// Whether the iOS 26 tab bar bottom accessory is available on this OS.
@@ -252,6 +255,7 @@ struct MainView: View {
                             onShare: { shareCurrentEpisode() },
                             onGoToEpisode: { goToCurrentEpisode() }
                         )
+                        .shareSheet(item: $accessoryShareMetadata) { [LinkMetadataItemSource(metadata: $0)] }
                         .onTapGesture {
                             showNowPlaying = true
                         }
@@ -566,6 +570,7 @@ struct MainView: View {
                             onShare: { shareCurrentEpisode() },
                             onGoToEpisode: { goToCurrentEpisode() }
                         )
+                        .shareSheet(item: $accessoryShareMetadata) { [LinkMetadataItemSource(metadata: $0)] }
                         .onTapGesture {
                             showNowPlaying = true
                         }
@@ -826,12 +831,10 @@ struct MainView: View {
 
     // MARK: - Functions
 
-    /// Prepares and presents the share sheet for the currently playing episode.
-    ///
-    /// Presented imperatively rather than via a SwiftUI `.sheet` because the
-    /// accessory menu only appears at regular width (iPad), where a
-    /// `UIActivityViewController` embedded in a sheet renders blank — it needs a
-    /// popover anchor instead.
+    /// Prepares the share preview for the currently playing episode; setting it shows the
+    /// share sheet anchored to the Now Playing bar (`.shareSheet`, not a SwiftUI `.sheet`:
+    /// the bar's share menu appears at regular width, where a `UIActivityViewController`
+    /// embedded in a sheet renders blank or jumps).
     private func shareCurrentEpisode() {
         guard let episode = episodePlayer.currentEpisode else { return }
         guard let shareURL = URL(string: APIConfig.baseLinkURL + "episodio/\(episode.id)") else { return }
@@ -848,40 +851,8 @@ struct MainView: View {
                 meta.imageProvider = NSItemProvider(object: image)
             }
 
-            presentShareSheet(for: meta)
+            accessoryShareMetadata = meta
         }
-    }
-
-    @MainActor
-    private func presentShareSheet(for metadata: LPLinkMetadata) {
-        guard let windowScene = UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene })
-            .first(where: { $0.activationState == .foregroundActive }),
-            let window = windowScene.windows.first(where: { $0.isKeyWindow }) ?? windowScene.windows.first
-        else { return }
-
-        var presenter = window.rootViewController
-        while let presented = presenter?.presentedViewController {
-            presenter = presented
-        }
-        guard let presenter else { return }
-
-        let source = LinkMetadataItemSource(metadata: metadata)
-        let activityVC = UIActivityViewController(activityItems: [source], applicationActivities: nil)
-
-        // iPad requires a popover anchor; center it near the bottom, where the accessory lives.
-        if let popover = activityVC.popoverPresentationController {
-            popover.sourceView = presenter.view
-            popover.sourceRect = CGRect(
-                x: presenter.view.bounds.midX,
-                y: presenter.view.bounds.maxY - 80,
-                width: 0,
-                height: 0
-            )
-            popover.permittedArrowDirections = []
-        }
-
-        presenter.present(activityVC, animated: true)
     }
 
     /// Navigates to the currently playing episode's detail screen on the Episodes tab.

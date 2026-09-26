@@ -13,6 +13,8 @@ public struct FloatingContentOptions {
     public var allSelectedAreFavorites: Bool
     public let folderOperation: FolderOperation
     public var shareIsProcessing: Bool
+    /// Set by the share action to present the share sheet (see `FloatingSelectionOptionsView`).
+    var shareRequest: ShareRequest? = nil
 
     public let favoriteAction: () -> Void
     public let folderAction: () -> Void
@@ -81,9 +83,25 @@ struct FloatingSelectionOptionsView: ViewModifier {
 
     // MARK: - Body
 
+    /// The share sheet can't anchor to the share button itself — on iOS 26 it's a bottom
+    /// toolbar item, where a UIKit anchor turns it into a glitchy custom-view item — so it
+    /// anchors to the content above the bar and points at its bottom-trailing corner,
+    /// where the share button sits.
+    private var shareRequest: Binding<ShareRequest?> {
+        Binding(
+            get: { options?.shareRequest },
+            set: { options?.shareRequest = $0 }
+        )
+    }
+
+    private static func shareButtonRect(in bounds: CGRect) -> CGRect {
+        CGRect(x: bounds.maxX - 44, y: bounds.maxY - 1, width: 1, height: 1)
+    }
+
     public func body(content: Content) -> some View {
         if #available(iOS 26, *) {
             content
+                .shareSheet(request: shareRequest, sourceRect: Self.shareButtonRect(in:))
                 .toolbar {
                     if let options {
                         ToolbarItem(placement: .bottomBar) {
@@ -136,6 +154,7 @@ struct FloatingSelectionOptionsView: ViewModifier {
                 }
         } else {
             content
+                .shareSheet(request: shareRequest, sourceRect: Self.shareButtonRect(in:))
                 .overlay(alignment: .bottom) {
                     if let options {
                         HStack(spacing: 14) {

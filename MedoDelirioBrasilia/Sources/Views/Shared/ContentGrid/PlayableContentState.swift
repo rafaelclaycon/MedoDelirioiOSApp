@@ -27,8 +27,10 @@ final class PlayableContentState {
     var shareAsVideoResult = ShareAsVideoResult(videoFilepath: "", contentId: "", exportMethod: .shareSheet)
 
     // Sharing
-    var iPadShareSheet: ActivityViewController? = nil
-    var isShowingShareSheet: Bool = false
+    /// The share waiting to be presented, anchored to the card of `pendingShareContentId`
+    /// (see `shareRequest(for:)`).
+    var pendingShare: ShareRequest? = nil
+    var pendingShareContentId: String? = nil
 
     // Alerts
     var alertState: PlayableContentAlert? = nil
@@ -121,44 +123,35 @@ extension PlayableContentState {
             return
         }
 
-        if UIDevice.deviceType == .iPhone {
-            do {
-                try SharingUtility.shareSound(
-                    from: content.fileURL(),
-                    andContentId: content.id,
-                    context: contentType
-                ) { didShare in
-                    if didShare {
-                        self.toast.wrappedValue = Toast(message: Shared.soundSharedSuccessfullyMessage, type: .success)
-                    }
-                }
-            } catch {
-                showUnableToGetContentAlert(content.title)
-            }
-        } else {
-            do {
-                let url = try content.fileURL()
-                iPadShareSheet = ActivityViewController(activityItems: [url]) { activity, completed, items, error in
-                    if completed {
-                        self.isShowingShareSheet = false
-
-                        guard let activity = activity else {
-                            return
-                        }
-                        let destination = ShareDestination.translateFrom(activityTypeRawValue: activity.rawValue)
-                        Logger.shared.logShared(contentType, contentId: content.id, destination: destination, destinationBundleId: activity.rawValue)
-
-                        AppStoreReviewSteward.requestReviewBasedOnVersionAndCount()
-
-                        self.toast.wrappedValue = Toast(message: Shared.soundSharedSuccessfullyMessage, type: .success)
-                    }
-                }
-            } catch {
-                showUnableToGetContentAlert(content.title)
-            }
-
-            isShowingShareSheet = true
+        guard let url = try? content.fileURL() else {
+            showUnableToGetContentAlert(content.title)
+            return
         }
+
+        requestShare(of: [url], anchoredTo: content.id) { activity, completed in
+            guard completed, let activity else { return }
+
+            let destination = ShareDestination.translateFrom(activityTypeRawValue: activity.rawValue)
+            Logger.shared.logShared(contentType, contentId: content.id, destination: destination, destinationBundleId: activity.rawValue)
+
+            AppStoreReviewSteward.requestReviewBasedOnVersionAndCount()
+
+            self.toast.wrappedValue = Toast(message: Shared.soundSharedSuccessfullyMessage, type: .success)
+        }
+    }
+
+    /// The pending share as seen by one content card: non-nil only for the card the share
+    /// belongs to, so only that card presents (and anchors) the share sheet. Attach with
+    /// `.shareSheet(request: playable.shareRequest(for: content.id))`.
+    public func shareRequest(for contentId: String) -> Binding<ShareRequest?> {
+        Binding(
+            get: { self.pendingShareContentId == contentId ? self.pendingShare : nil },
+            set: { newValue in
+                guard newValue == nil else { return }
+                self.pendingShare = nil
+                self.pendingShareContentId = nil
+            }
+        )
     }
 
     public func openShareAsVideoModal(for content: AnyEquatableMedoContent) {
@@ -222,8 +215,7 @@ extension PlayableContentState {
         } else {
             shareVideo(
                 withPath: shareAsVideoResult.videoFilepath,
-                andContentId: shareAsVideoResult.contentId,
-                title: selectedContent?.title ?? ""
+                andContentId: shareAsVideoResult.contentId
             )
         }
 
@@ -319,42 +311,21 @@ extension PlayableContentState {
 
     private func shareVideo(
         withPath filepath: String,
-        andContentId contentId: String,
-        title soundTitle: String
+        andContentId contentId: String
     ) {
         let videoType = ContentType.videoShareType(for: selectedContent?.type ?? .sound) ?? .videoFromSound
 
-        if UIDevice.deviceType == .iPhone {
-            do {
-                try SharingUtility.share(
-                    videoType,
-                    withPath: filepath,
-                    andContentId: contentId,
-                    shareSheetDelayInSeconds: 0.6
-                ) { didShareSuccessfully in
-                    if didShareSuccessfully {
-                        self.toast.wrappedValue = Toast(message: Shared.videoSharedSuccessfullyMessage, type: .success)
-                    }
+        guard filepath.isEmpty == false else { return }
 
-                    WallE.deleteAllVideoFilesFromDocumentsDir()
-                }
-            } catch {
-                showUnableToGetContentAlert(soundTitle)
-            }
-        } else {
-            guard filepath.isEmpty == false else {
-                return
-            }
+        let url = URL(fileURLWithPath: filepath)
 
-            let url = URL(fileURLWithPath: filepath)
+        // Gives the Share as Video sheet time to finish dismissing: the share sheet
+        // presents from whatever is on top, and presenting mid-dismissal fails.
+        Task {
+            try? await Task.sleep(for: .seconds(0.6))
 
-            iPadShareSheet = ActivityViewController(activityItems: [url]) { activity, completed, items, error in
-                if completed {
-                    self.isShowingShareSheet = false
-
-                    guard let activity = activity else {
-                        return
-                    }
+            requestShare(of: [url], anchoredTo: contentId) { activity, completed in
+                if completed, let activity {
                     let destination = ShareDestination.translateFrom(activityTypeRawValue: activity.rawValue)
                     Logger.shared.logShared(
                         videoType,
@@ -370,9 +341,17 @@ extension PlayableContentState {
 
                 WallE.deleteAllVideoFilesFromDocumentsDir()
             }
-
-            isShowingShareSheet = true
         }
+    }
+
+    /// Hands a share to the card of `contentId`, which presents it anchored to itself.
+    private func requestShare(
+        of items: [Any],
+        anchoredTo contentId: String,
+        onComplete: @escaping (UIActivity.ActivityType?, Bool) -> Void
+    ) {
+        pendingShareContentId = contentId
+        pendingShare = ShareRequest(items: items, onComplete: onComplete)
     }
 }
 

@@ -31,11 +31,6 @@ struct PlayableContentUIModifier: ViewModifier {
             .sheet(item: $state.activeSheet) { sheet in
                 sheetView(for: sheet)
             }
-            .sheet(isPresented: $state.isShowingShareSheet) {
-                if let shareSheet = state.iPadShareSheet {
-                    shareSheet
-                }
-            }
             .onChange(of: state.shareAsVideoResult.videoFilepath) {
                 state.onDidExitShareAsVideoSheet()
             }

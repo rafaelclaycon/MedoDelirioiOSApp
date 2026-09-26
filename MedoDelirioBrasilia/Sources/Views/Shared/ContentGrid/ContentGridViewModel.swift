@@ -96,16 +96,6 @@ final class ContentGridViewModel {
         set { playable.shareAsVideoResult = newValue }
     }
 
-    var iPadShareSheet: ActivityViewController? {
-        get { playable.iPadShareSheet }
-        set { playable.iPadShareSheet = newValue }
-    }
-
-    var isShowingShareSheet: Bool {
-        get { playable.isShowingShareSheet }
-        set { playable.isShowingShareSheet = newValue }
-    }
-
     var activeSheet: PlayableContentSheet? {
         get { playable.activeSheet }
         set { playable.activeSheet = newValue }
@@ -566,23 +556,36 @@ extension ContentGridViewModel {
         selectedContentMultiple = loadedContent.filter({ selectionKeeper.contains($0.id) })
         guard selectedContentMultiple?.count ?? 0 > 0 else { return }
 
-        let successfulMessage = selectedContentMultiple!.count > 1 ? Shared.soundsExportedSuccessfullyMessage : Shared.soundExportedSuccessfullyMessage
+        let content = selectedContentMultiple!
+        let successfulMessage = content.count > 1 ? Shared.soundsExportedSuccessfullyMessage : Shared.soundExportedSuccessfullyMessage
+        let urls: [URL] = content.compactMap { try? $0.fileURL() }
 
-        do {
-            let hadSuccessSharing = try await SharingUtility.share(content: selectedContentMultiple!)
-            floatingOptions.wrappedValue?.shareIsProcessing = false
-            stopSelecting()
-            if hadSuccessSharing {
-                toast.wrappedValue = Toast(message: successfulMessage, type: .success)
+        // The floating bar presents the request (see `FloatingSelectionOptionsView`) and
+        // reports back once the sheet closes.
+        let hadSuccessSharing = await withCheckedContinuation { continuation in
+            guard floatingOptions.wrappedValue != nil else {
+                return continuation.resume(returning: false)
             }
-        } catch SoundError.fileNotFound(let soundTitle) {
-            floatingOptions.wrappedValue?.shareIsProcessing = false
-            stopSelecting()
-            showUnableToGetSoundAlert(soundTitle)
-        } catch {
-            floatingOptions.wrappedValue?.shareIsProcessing = false
-            stopSelecting()
-            showShareManyIssueAlert(error.localizedDescription)
+            floatingOptions.wrappedValue?.shareRequest = ShareRequest(items: urls) { activity, completed in
+                guard completed else { return continuation.resume(returning: false) }
+                guard let activity else { return continuation.resume(returning: true) }
+
+                let destination = ShareDestination.translateFrom(activityTypeRawValue: activity.rawValue)
+                content.forEach {
+                    guard let contentType = ContentType.shareType(for: $0.type) else { return }
+                    Logger.shared.logShared(contentType, contentId: $0.id, destination: destination, destinationBundleId: activity.rawValue)
+                }
+
+                AppStoreReviewSteward.requestReviewBasedOnVersionAndCount()
+
+                continuation.resume(returning: true)
+            }
+        }
+
+        floatingOptions.wrappedValue?.shareIsProcessing = false
+        stopSelecting()
+        if hadSuccessSharing {
+            toast.wrappedValue = Toast(message: successfulMessage, type: .success)
         }
     }
 }
@@ -624,22 +627,6 @@ extension ContentGridViewModel {
 // MARK: - Alerts
 
 extension ContentGridViewModel {
-
-    private func showUnableToGetSoundAlert(_ soundTitle: String) {
-        HapticFeedback.error()
-        alertType = .issueExportingManySounds
-        alertTitle = Shared.contentNotFoundAlertTitle(soundTitle)
-        alertMessage = Shared.contentNotFoundAlertMessage
-        showAlert = true
-    }
-
-    private func showShareManyIssueAlert(_ localizedError: String) {
-        HapticFeedback.error()
-        alertType = .issueExportingManySounds
-        alertTitle = "Problema ao Tentar Exportar Vários Conteúdos"
-        alertMessage = "Houve um problema desconhecido ao tentar compartilhar vários conteúdos. Por favor, envie um print desse erro para o desenvolvedor (e-mail nas Configurações):\n\n\(localizedError)"
-        showAlert = true
-    }
 
     private func showSoundRemovalConfirmation(soundTitle: String) {
         alertTitle = "Remover \"\(soundTitle)\"?"

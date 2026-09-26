@@ -159,6 +159,8 @@ struct FourthAnniversaryView: View {
                                 .onTapGesture {
                                     viewModel.onContentSelected(mostSharedSound, loadedContent: [mostSharedSound])
                                 }
+                                .shareSheet(request: viewModel.playable.shareRequest(for: mostSharedSound.id))
+                                .shareSheet(item: $shareSheetURL) { [$0.url] }
                                 .contextMenu {
                                     contextMenuOptionsView(
                                         content: mostSharedSound,
@@ -252,10 +254,6 @@ struct FourthAnniversaryView: View {
             state: viewModel.playable,
             toast: .constant(nil)
         )
-        .sheet(item: $shareSheetURL) { wrapper in
-            ActivityView(activityItems: [wrapper.url])
-                .presentationDetents([.medium, .large])
-        }
     }
 
     // MARK: - Most Shared Enablers
@@ -644,17 +642,6 @@ struct URLWrapper: Identifiable {
     var id: String {
         url.absoluteString
     }
-}
-
-struct ActivityView: UIViewControllerRepresentable {
-
-    let activityItems: [Any]
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
-    }
-
-    func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
 }
 
 // MARK: - Shake Detection

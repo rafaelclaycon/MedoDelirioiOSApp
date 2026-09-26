@@ -412,6 +412,11 @@ struct DevOptionsView: View {
                     }
                 }
                 .disabled(isGeneratingReactionsExport)
+                .shareSheet(item: $reactionsExportURL, activityItems: { [$0] }) { _, _, completed in
+                    reactionsExportResultMessage = completed
+                        ? "Reactions exportadas com sucesso."
+                        : "Exportação cancelada."
+                }
             }
         }
         .navigationTitle("Dev Options")
@@ -427,20 +432,6 @@ struct DevOptionsView: View {
             Button("OK", role: .cancel) { reactionsExportError = nil }
         } message: {
             Text(reactionsExportError ?? "")
-        }
-        .sheet(isPresented: Binding(
-            get: { reactionsExportURL != nil },
-            set: { isPresented in
-                if !isPresented { reactionsExportURL = nil }
-            }
-        )) {
-            if let reactionsExportURL {
-                ActivityViewController(activityItems: [reactionsExportURL]) { _, completed, _, _ in
-                    reactionsExportResultMessage = completed
-                        ? "Reactions exportadas com sucesso."
-                        : "Exportação cancelada."
-                }
-            }
         }
         .alert("Exportação", isPresented: .constant(reactionsExportResultMessage != nil)) {
             Button("OK", role: .cancel) { reactionsExportResultMessage = nil }

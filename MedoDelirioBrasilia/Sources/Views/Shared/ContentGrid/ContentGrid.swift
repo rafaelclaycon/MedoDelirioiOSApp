@@ -116,6 +116,7 @@ struct ContentGrid<
                         .onTapGesture {
                             viewModel.onContentSelected(content, loadedContent: loadedContent)
                         }
+                        .shareSheet(request: viewModel.playable.shareRequest(for: content.id))
                         .contextMenu {
                             if viewModel.currentListMode.wrappedValue != .selection {
                                 contextMenuOptionsView(

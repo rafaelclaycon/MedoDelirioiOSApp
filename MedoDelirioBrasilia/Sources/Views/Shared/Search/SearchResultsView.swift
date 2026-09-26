@@ -136,6 +136,7 @@ struct SearchResultsView: View {
                                     .onTapGesture {
                                         onContentSelected(item, loadedContent: soundsMatchingTitle)
                                     }
+                                    .shareSheet(request: playable.shareRequest(for: item.id))
                                     .contextMenu {
                                         contextMenuOptionsView(
                                             content: item,
@@ -195,6 +196,7 @@ struct SearchResultsView: View {
                                     .onTapGesture {
                                         onContentSelected(item, loadedContent: songsMatchingTitle)
                                     }
+                                    .shareSheet(request: playable.shareRequest(for: item.id))
                                     .contextMenu {
                                         contextMenuOptionsView(
                                             content: item,
@@ -423,6 +425,7 @@ struct SearchResultsView: View {
             .onTapGesture {
                 onContentSelected(content, loadedContent: [content])
             }
+            .shareSheet(request: playable.shareRequest(for: content.id))
             .contextMenu {
                 contextMenuOptionsView(
                     content: content,
@@ -689,6 +692,7 @@ extension SearchResultsView {
                         playable.play(content)
                     }
                 }
+                .shareSheet(request: playable.shareRequest(for: content.id))
                 .contextMenu {
                     Section {
                         Button {

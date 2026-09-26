@@ -22,14 +22,67 @@ extension View {
     /// Attach it to the view the share started from, such as the item whose context menu
     /// offered Compartilhar. Not in a toolbar: the UIKit anchor turns the item into a
     /// custom-view item, which glitches there — use `LinkShareButton` instead.
+    ///
+    /// `onComplete` gets the item that was shared, the activity picked (nil when there
+    /// was none), and whether it completed. It also runs, with `completed` false, if the
+    /// sheet couldn't be presented at all.
     func shareSheet<Item>(
         item: Binding<Item?>,
         activityItems: @escaping (Item) -> [Any],
-        onComplete: UIActivityViewController.CompletionWithItemsHandler? = nil
+        onComplete: ((Item, UIActivity.ActivityType?, Bool) -> Void)? = nil
     ) -> some View {
         background(
             ShareSheetAnchor(item: item, activityItems: activityItems, onComplete: onComplete)
         )
+    }
+
+    /// Presents `request` while it's non-nil, anchored to this view — for shares a view
+    /// model starts: it sets the request, and the view the share came from presents it.
+    ///
+    /// If several views see the same request (the same sound shown twice on screen), the
+    /// first to present it claims it and the rest skip it, so it's shown once.
+    ///
+    /// `sourceRect` picks the part of this view the popover points at, from its bounds —
+    /// for when the control the share came from can't carry the anchor itself (a toolbar
+    /// button). By default it points at the whole view.
+    func shareSheet(
+        request: Binding<ShareRequest?>,
+        sourceRect: ((CGRect) -> CGRect)? = nil
+    ) -> some View {
+        background(
+            ShareSheetAnchor(
+                item: request,
+                activityItems: \.items,
+                onComplete: { request, activityType, completed in
+                    request.onComplete(activityType, completed)
+                },
+                claim: { $0.claim() },
+                sourceRect: sourceRect
+            )
+        )
+    }
+}
+
+/// A share a view model wants presented: what to share, and what to do once the sheet
+/// closes. Hand it to the anchoring view through `.shareSheet(request:)`.
+final class ShareRequest {
+
+    let items: [Any]
+    /// The activity picked (nil when there was none) and whether it completed.
+    let onComplete: (UIActivity.ActivityType?, Bool) -> Void
+
+    private var isClaimed = false
+
+    init(items: [Any], onComplete: @escaping (UIActivity.ActivityType?, Bool) -> Void) {
+        self.items = items
+        self.onComplete = onComplete
+    }
+
+    /// True for the first view that asks, false for any other.
+    fileprivate func claim() -> Bool {
+        guard !isClaimed else { return false }
+        isClaimed = true
+        return true
     }
 }
 
@@ -39,7 +92,11 @@ private struct ShareSheetAnchor<Item>: UIViewRepresentable {
 
     @Binding var item: Item?
     let activityItems: (Item) -> [Any]
-    let onComplete: UIActivityViewController.CompletionWithItemsHandler?
+    let onComplete: ((Item, UIActivity.ActivityType?, Bool) -> Void)?
+    /// Whether this view gets to present `item`; see `shareSheet(request:)`.
+    var claim: (Item) -> Bool = { _ in true }
+    /// The part of the anchor the popover points at; the whole anchor when nil.
+    var sourceRect: ((CGRect) -> CGRect)? = nil
 
     final class Coordinator {
         weak var presented: UIActivityViewController?
@@ -60,23 +117,25 @@ private struct ShareSheetAnchor<Item>: UIViewRepresentable {
     func updateUIView(_ anchor: UIView, context: Context) {
         let coordinator = context.coordinator
 
-        if let item, coordinator.presented == nil {
-            present(activityItems(item), from: anchor, coordinator: coordinator)
+        if let item, coordinator.presented == nil, claim(item) {
+            present(item, from: anchor, coordinator: coordinator)
         } else if item == nil, let presented = coordinator.presented {
             coordinator.presented = nil
             presented.dismiss(animated: true)
         }
     }
 
-    private func present(_ items: [Any], from anchor: UIView, coordinator: Coordinator) {
+    private func present(_ item: Item, from anchor: UIView, coordinator: Coordinator) {
         let binding = $item
-        let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        let onComplete = onComplete
+        let sourceRect = sourceRect ?? { $0 }
+        let controller = UIActivityViewController(activityItems: activityItems(item), applicationActivities: nil)
         controller.popoverPresentationController?.sourceView = anchor
-        controller.popoverPresentationController?.sourceRect = anchor.bounds
-        controller.completionWithItemsHandler = { [weak coordinator] activityType, completed, returnedItems, error in
+        controller.popoverPresentationController?.sourceRect = sourceRect(anchor.bounds)
+        controller.completionWithItemsHandler = { [weak coordinator] activityType, completed, _, _ in
             coordinator?.presented = nil
             binding.wrappedValue = nil
-            onComplete?(activityType, completed, returnedItems, error)
+            onComplete?(item, activityType, completed)
         }
         coordinator.presented = controller
 
@@ -86,9 +145,10 @@ private struct ShareSheetAnchor<Item>: UIViewRepresentable {
             guard let presenter = anchor.topMostViewController else {
                 coordinator.presented = nil
                 binding.wrappedValue = nil
+                onComplete?(item, nil, false)
                 return
             }
-            controller.popoverPresentationController?.sourceRect = anchor.bounds
+            controller.popoverPresentationController?.sourceRect = sourceRect(anchor.bounds)
             presenter.present(controller, animated: true)
         }
     }

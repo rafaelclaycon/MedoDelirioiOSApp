@@ -455,6 +455,7 @@ extension SearchSuggestionsView {
                             playable.play(item)
                         }
                     }
+                    .shareSheet(request: playable.shareRequest(for: item.id))
                     .contextMenu {
                         // Sharing
                         Section {
