@@ -58,6 +58,7 @@ extension StandaloneSupportView {
         case generic
         case episodeCompleted
         case shareClip
+        case episodeChapters
 
         var id: String { rawValue }
 
@@ -66,6 +67,7 @@ extension StandaloneSupportView {
             case .generic: "Curtindo o app? Que tal apoiar?"
             case .episodeCompleted: "Curtindo o podcast? Que tal apoiar o app."
             case .shareClip: "Curtiu o seu clipe? Que tal apoiar o app."
+            case .episodeChapters: "Quer capítulos em mais episódios? Apoie o app."
             }
         }
     }

@@ -22,6 +22,10 @@ struct EpisodeDetailView: View {
     @State private var showDeleteConfirmation: Bool = false
     @State private var chapterProvider = ChapterProvider()
     @State private var pendingChapterID: Int?
+    @State private var showSupportSheet: Bool = false
+    /// A display crease runs vertically through the screen (unfolded iPhone Duo in
+    /// landscape): chapters get the pane on the trailing side of it.
+    @State private var isSplitLayout: Bool = false
 
     // Share
     @State private var isPreparingShare: Bool = false
@@ -50,27 +54,25 @@ struct EpisodeDetailView: View {
         return ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
     }
 
+    private var showsChaptersEmptyState: Bool {
+        guard case .notAvailable(_, let showsCoverageNotice) = chapterProvider.state else { return false }
+        return showsCoverageNotice
+    }
+
+    /// Whether there is anything to put in the chapters pane: the list or its empty state.
+    private var hasChaptersContent: Bool {
+        loadedChapters != nil || showsChaptersEmptyState
+    }
+
+    private var loadedChapters: [EpisodeChapter]? {
+        guard case .loaded(let chapters) = chapterProvider.state else { return nil }
+        return chapters
+    }
+
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: .spacing(.medium)) {
-                header
-
-                Divider()
-
-                if let attributedDescription = episode.descriptionAttributedString {
-                    Text(attributedDescription)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-
-                chaptersSection
-
-                bookmarkSection
-            }
-            .padding(.horizontal, .spacing(.medium))
-            .padding(.vertical, .spacing(.small))
-        }
-        .navigationTitle("")
+        layout
+            .onVerticalCreaseChange { isSplitLayout = $0 }
+            .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $editingBookmark) { bookmark in
             BookmarkEditView(bookmark: bookmark)
@@ -113,6 +115,9 @@ struct EpisodeDetailView: View {
         } message: {
             Text("O arquivo local deste episódio será removido. Você poderá baixá-lo novamente.")
         }
+        .sheet(isPresented: $showSupportSheet) {
+            StandaloneSupportView(context: .episodeChapters)
+        }
         .background(EpisodeDetailPlayerAlerts(player: episodePlayer))
         .onAppear {
             if ChapterPreferences.isEnabled {
@@ -124,6 +129,73 @@ struct EpisodeDetailView: View {
                 chapterProvider.load(episodeId: episode.id)
             }
         }
+    }
+
+    // MARK: - Layout
+
+    @ViewBuilder
+    private var layout: some View {
+        // `ArrangementView` is an iOS 27.1 SDK symbol, so it only compiles with the Xcode
+        // that bundles that SDK (same guard as `MainView`). `isSplitLayout` is never true
+        // before 27.1 anyway, since the crease can't be read there.
+        #if compiler(>=6.4)
+        if isSplitLayout, hasChaptersContent, #available(iOS 27.1, *) {
+            splitLayout
+        } else {
+            standardLayout
+        }
+        #else
+        standardLayout
+        #endif
+    }
+
+    private var standardLayout: some View {
+        ScrollView {
+            detailColumn(includesChapters: true)
+        }
+    }
+
+    #if compiler(>=6.4)
+    /// Unfolded iPhone Duo in landscape, for an episode with chapters (or their empty state): the details on one
+    /// side of the crease and the chapters on the other, each scrolling on its own.
+    /// `.split` puts the divider on the crease, as in `NowPlayingView`.
+    @available(iOS 27.1, *)
+    private var splitLayout: some View {
+        ArrangementView {
+            ScrollView {
+                detailColumn(includesChapters: false)
+            }
+        } secondary: {
+            ScrollView {
+                chaptersPane
+                    .padding(.horizontal, .spacing(.medium))
+                    .padding(.vertical, .spacing(.small))
+            }
+        }
+        .arrangementViewStyle(.split)
+    }
+    #endif
+
+    private func detailColumn(includesChapters: Bool) -> some View {
+        VStack(alignment: .leading, spacing: .spacing(.medium)) {
+            header
+
+            Divider()
+
+            if let attributedDescription = episode.descriptionAttributedString {
+                Text(attributedDescription)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            if includesChapters {
+                chaptersSection
+            }
+
+            bookmarkSection
+        }
+        .padding(.horizontal, .spacing(.medium))
+        .padding(.vertical, .spacing(.small))
     }
 
     // MARK: - Share
@@ -252,20 +324,54 @@ struct EpisodeDetailView: View {
 
     @ViewBuilder
     private var chaptersSection: some View {
-        if case .loaded(let chapters) = chapterProvider.state {
+        if hasChaptersContent {
             Divider()
 
-            VStack(alignment: .leading, spacing: 0) {
-                Text("Capítulos")
-                    .font(.headline)
-                    .padding(.bottom, .spacing(.small))
+            chaptersPane
+        }
+    }
 
-                ForEach(Array(chapters.enumerated()), id: \.element.id) { index, chapter in
-                    detailChapterRow(number: index + 1, chapter: chapter, length: chapterLength(at: index, in: chapters))
+    @ViewBuilder
+    private var chaptersPane: some View {
+        if let chapters = loadedChapters {
+            chaptersList(chapters)
+        } else if showsChaptersEmptyState {
+            chaptersEmptyState
+        }
+    }
 
-                    if index < chapters.count - 1 {
-                        Divider()
-                    }
+    /// Chapters are generated with a paid service, so coverage grows with support.
+    private var chaptersEmptyState: some View {
+        VStack(alignment: .leading, spacing: .spacing(.small)) {
+            Text("Capítulos")
+                .font(.headline)
+
+            Text("Gerar capítulos custa dinheiro, por isso eles só existem para alguns episódios. Apoie o app para que mais episódios ganhem capítulos.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            Button {
+                showSupportSheet = true
+            } label: {
+                Label("Apoiar o app", systemImage: "heart.fill")
+            }
+            .buttonStyle(.bordered)
+            .padding(.top, .spacing(.xSmall))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func chaptersList(_ chapters: [EpisodeChapter]) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Capítulos")
+                .font(.headline)
+                .padding(.bottom, .spacing(.small))
+
+            ForEach(Array(chapters.enumerated()), id: \.element.id) { index, chapter in
+                detailChapterRow(number: index + 1, chapter: chapter, length: chapterLength(at: index, in: chapters))
+
+                if index < chapters.count - 1 {
+                    Divider()
                 }
             }
         }
