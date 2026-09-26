@@ -23,7 +23,7 @@ struct ElectionLiveInfo: Codable {
 extension APIClient {
 
     func electionLiveInfo() async throws -> ElectionLiveInfo {
-        var components = URLComponents(string: serverPath + "v4/election/live")!
+        var components = URLComponents(string: APIConfig.electionAPIURL + "v4/election/live")!
         if let bundleId = Bundle.main.bundleIdentifier {
             components.queryItems = [URLQueryItem(name: "bundleId", value: bundleId)]
         }

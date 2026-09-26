@@ -6,7 +6,7 @@ Resumo do trabalho feito até 25/09/2026 (tarde) e do que falta. Objetivo: uma L
 
 | Quando | O quê |
 |---|---|
-| 28 e 29/09, 14h às 16h | Janela de teste no simulado do TSE (a página do TSE só lista as semanas de 15 a 17 e 22 a 24/09; confirmar onde essa foi anunciada) |
+| 28 e 29/09, 14h às 16h | Janela de teste no simulado do TSE ("3ª semana de testes (semana extra)", aba Simulados da página técnica do TSE, conferido em 25/09) |
 | Até 29/09 à noite | Enviar o app para review, com o banner desligado no servidor |
 | 04/10 | 1º turno: trocar a fonte para `official` e ligar `enabled` |
 | 25/10 | 2º turno: trocar `round` para 2 |
@@ -43,7 +43,8 @@ Commits `04a37b1` (parser e replay), `3d3d037` (poller e endpoints) e o broadcas
   - `TSEEndpoint`: endereços do simulado e do oficial, e a montagem das URLs.
   - `TSEResultFile`: os campos do arquivo `-u.json` que usamos.
   - `ElectionSnapshot`: nosso modelo do resultado, com candidatos na ordem `seq` do TSE, status (`counting`, `elected`, `runoff`, `notElected`) e horário de Brasília (com fallback fixo em UTC-3 se o servidor não tiver `tzdata`).
-  - `ElectionReplay`: simula a apuração de 0 a 100% a partir do resultado final, com troca de liderança no caminho.
+  - `ElectionReplay`: simula a apuração de 0 a 100% a partir do resultado final, com troca de liderança no caminho. Avança em saltos de `replayStepSeconds` (padrão 60s, como arquivos novos do TSE), cada salto com o próprio horário de totalização, e numa curva rápida no começo e lenta no fim (metade da apuração em um quarto do tempo).
+  - `ElectionReplayFixture`: o resultado final do simulado (eleição 21270) embutido no servidor. O replay usa esse resultado com `replayOffline: true`, ou sozinho quando o TSE não responde ou não lista o simulado. Um teste garante que ele é idêntico à fixture.
   - `ElectionLiveContentState`: o formato dos dados da activity. Tem que ser **idêntico** ao `ElectionActivityAttributes.ContentState` do app.
   - `ElectionSettings` e `ElectionLiveStore`: configuração em runtime e estado em memória do poller. As configurações decodificam com valores padrão para chaves ausentes, então um campo novo não quebra o JSON já salvo no banco.
   - `ElectionBroadcastPlanner`: decide quando mandar push, com qual prioridade, e monta o payload (ver "Broadcaster" abaixo).
@@ -90,6 +91,9 @@ curl -X POST -H 'Content-Type: application/json' -d '{"enabled":true}' https://<
 # Replay de 15 minutos (recomeça do 0%)
 curl -X POST -H 'Content-Type: application/json' -d '{"source":"replay","replayDurationMinutes":15,"restartReplay":true}' https://<servidor>/api/v4/election/settings/<senha>
 
+# Replay sem o TSE, com um "arquivo novo" a cada 45s
+curl -X POST -H 'Content-Type: application/json' -d '{"source":"replay","replayOffline":true,"replayStepSeconds":45,"replayDurationMinutes":15,"restartReplay":true}' https://<servidor>/api/v4/election/settings/<senha>
+
 # Cores por número de urna
 curl -X POST -H 'Content-Type: application/json' -d '{"candidateColors":{"13":"#D62828","22":"#1D4E89"}}' https://<servidor>/api/v4/election/settings/<senha>
 ```
@@ -108,7 +112,7 @@ curl -X POST -H 'Content-Type: application/json' -d '{"broadcastMode":"live"}' h
 curl -X POST -H 'Content-Type: application/json' -d '{"minPushIntervalSeconds":45}' https://<servidor>/api/v4/election/settings/<senha>
 ```
 
-Campos aceitos: `enabled`, `source` (`simulation`, `official`, `replay`), `round` (1 ou 2), `channelIds` (mapa bundle ID → canal, mesclado; string vazia apaga), `broadcastMode` (`off`, `dryRun`, `live`), `minPushIntervalSeconds`, `candidateColors`, `replayDurationMinutes`, `restartReplay`.
+Campos aceitos: `enabled`, `source` (`simulation`, `official`, `replay`), `round` (1 ou 2), `channelIds` (mapa bundle ID → canal, mesclado; string vazia apaga), `broadcastMode` (`off`, `dryRun`, `live`), `minPushIntervalSeconds`, `candidateColors`, `replayDurationMinutes`, `replayStepSeconds` (0 = avança a cada poll), `replayOffline`, `restartReplay`.
 
 **Rodar localmente** (banco em memória e sem APNs, não precisa das chaves de produção):
 
@@ -117,7 +121,7 @@ cd medo-delirio-api
 ELECTION_POLLING_ENABLED=true ELECTION_PASSWORD=local-test swift run Run serve --env testing --port 8089
 ```
 
-Testado assim contra o simulado real: o poller encontrou a eleição 21270, os 304 funcionaram, e um replay de 3 minutos rodou 18 ciclos de 10s sem erro, com o líder trocando a 93,68%. Em 25/09, um replay de 2 minutos em `dryRun` mostrou o primeiro push, os marcos de 20/50/70% em prioridade 10 e o `end` com alerta no final.
+Testado assim contra o simulado real: o poller encontrou a eleição 21270, os 304 funcionaram, e um replay de 3 minutos rodou 18 ciclos de 10s sem erro, com o líder trocando a 93,68%. Em 25/09, um replay de 2 minutos em `dryRun` mostrou o primeiro push, os marcos de 20/50/70% em prioridade 10 e o `end` com alerta no final. Depois, um replay offline de 3 minutos em saltos de 20s: 10 pushes, um por salto, horário avançando, duas trocas de liderança e o `end`, sem nenhuma chamada ao TSE.
 
 **Toolchain:** se o Xcode ativo for um beta mais novo que o macOS (ex.: Xcode 27.1 beta no macOS 26.7), o `swift test` compila mas falha ao carregar o bundle (`Symbol not found: _swift_initBorrow`). Rodar com o Xcode estável:
 
@@ -135,7 +139,8 @@ Commits `c2e03f5b` (Live Activity e flag) e `f67997c1` (banner).
 - `Sources/Helpers/ElectionLiveActivityManager.swift`: inicia com `pushType: .channel(channelId)`, não duplica activity do mesmo turno, mensagens de erro em português, `endAll()`. Activities já encerradas (que ficam na Tela Bloqueada até a `dismissal-date`) não contam como "acompanhando" nem impedem uma nova, o que importa para repetir o replay.
 - `Sources/Networking/APIClient+Election.swift`: `GET v4/election/live?bundleId=<Bundle.main.bundleIdentifier>`.
 - `Sources/Views/Banners/ElectionLiveBannerView.swift`: banner no topo do `BannersView` com "Acompanhar ao Vivo" e "Parar de Acompanhar", alerta quando as Atividades ao Vivo estão desligadas e eventos de analytics.
-- **Feature flag `electionLiveActivity`** (Dev Options): o banner aparece se o `enabled` do servidor **ou** a flag local estiver ligada. Beta e prod usam o mesmo servidor, então é assim que se testa sem vazar para prod.
+- **Feature flag `electionLiveActivity`** (Dev Options): o banner aparece se o `enabled` do servidor **ou** a flag local estiver ligada.
+- **Servidor da eleição no beta:** o `APIConfig.electionAPIURL` manda só o `v4/election/live` do bundle beta para `api.medodelirioios.club`; o resto do beta continua no servidor de prod. Motivo: o `api_environment` do scheme só vale rodando pelo Xcode, então um build de TestFlight do beta sempre caía no servidor de prod. Assim o servidor de prod só recebe o código da eleição depois do teste no beta. Com `api_environment` ligado no scheme, ele continua mandando.
 
 Build completo do scheme `MedoDelirio` passando (25/09). **Ainda não rodou em aparelho.**
 
@@ -152,18 +157,44 @@ Build completo do scheme `MedoDelirio` passando (25/09). **Ainda não rodou em a
 - [x] Tudo o que estava listado aqui (ver "Broadcaster" acima). O APNSwift 4.0.1 não suporta Live Activity nem broadcast, então é HTTP/2 direto com JWT.
 - [ ] Primeiro envio real: nunca foi testado contra a APNs. Os pontos que só um teste real confirma são a negociação HTTP/2 do `app.client` com a APNs e a aceitação do JWT pela Channel Management API.
 
-### 3. Portal da Apple
+### 3. Teste no beta (servidor `.club`)
 
-- [ ] Ativar a capability de Broadcast Push no App ID de prod e no de beta.
+O servidor de prod (`.com`) não muda nada até este teste passar.
 
-### 4. Deploy e testes
+**Portal da Apple**
 
-- [ ] Deploy no Linode com `ELECTION_PASSWORD` e `ELECTION_POLLING_ENABLED=true`.
-- [ ] `POST election/channels` para criar os canais de prod e beta, e `GET election/channels` para conferir.
-- [ ] Rodar um replay em `dryRun` no Linode e ler o log; depois `{"broadcastMode":"live"}`.
-- [ ] Teste ponta a ponta com replay, via TestFlight (APNs de produção). Um build rodado direto do Xcode usa sandbox e não recebe pushes de um canal de produção.
-- [ ] 28/09: teste no simulado ao vivo. Medir a cadência real dos arquivos e ajustar o throttle.
-- [ ] 29/09: enviar para review com `enabled` desligado.
+- [ ] Identifiers → `com.rafaelschmitt.MedoDelirioBrasilia.beta` → Push Notifications → ligar **Broadcast Capability**.
+
+**Servidor `.club`**
+
+- [ ] Deploy dos commits da eleição.
+- [ ] No `.env`: `ELECTION_PASSWORD=<senha>`, `ELECTION_POLLING_ENABLED=true` e `APNS_ENVIRONMENT` **vazio ou ausente** (produção, que é o que o TestFlight usa). Se hoje estiver `sandbox` para testes pelo Xcode, os outros pushes do `.club` também mudam de ambiente.
+- [ ] `GET election/status/<senha>`: o poller encontrou a eleição do simulado e `lastError` está vazio.
+- [ ] `GET election/channels/<senha>`: primeira conversa com a APNs. Se voltar lista vazia sem `errors`, o JWT e o HTTP/2 estão certos.
+- [ ] `POST election/channels/<senha>?bundleId=com.rafaelschmitt.MedoDelirioBrasilia.beta`: cria só o canal do beta.
+- [ ] Replay de 5 min ainda em `dryRun`; ler as linhas `Election push (dry run)` no log. Com `"replayOffline":true` o teste não depende do TSE.
+
+**App beta**
+
+- [ ] Subir o build number, arquivar o scheme `MedoDelirio - BETA` e enviar para o TestFlight do registro beta. Grupo interno não passa por review.
+- [ ] No aparelho: Dev Options → ligar a flag `electionLiveActivity`. O banner aparece.
+
+**Ponta a ponta**
+
+- [ ] `{"source":"replay","replayOffline":true,"replayDurationMinutes":15,"restartReplay":true,"broadcastMode":"live"}`, e em seguida "Acompanhar ao Vivo" no app. Bloquear o aparelho e acompanhar.
+- [ ] Esperado: marcos de 10% chegam na hora (prioridade 10); os updates de prioridade 5 podem atrasar ou chegar agrupados, porque o iOS os entrega conforme a bateria. No fim: resultado final, alerta "Apuração encerrada" e a activity encerrada.
+- [ ] Conferir `lastBroadcast*` no status durante o teste.
+- [ ] Repetir com `restartReplay` e iniciar de novo pelo banner.
+- [ ] Ao terminar: `{"broadcastMode":"dryRun"}`.
+- [ ] 28/09, 14h às 16h: `{"source":"simulation","broadcastMode":"live"}` e acompanhar o simulado ao vivo. Medir a cadência real dos arquivos e ajustar `minPushIntervalSeconds`.
+
+### 4. Prod
+
+- [ ] Portal: Broadcast Capability no App ID `com.rafaelschmitt.MedoDelirioBrasilia`.
+- [ ] Deploy no servidor de prod (`.com`) com o mesmo `.env` da eleição, em `dryRun`.
+- [ ] `POST election/channels/<senha>?bundleId=com.rafaelschmitt.MedoDelirioBrasilia`.
+- [ ] 29/09: enviar o app para review com `enabled` desligado.
+- [ ] Decidir antes do dia 04/10 o servidor da eleição do beta: deixar os dois servidores configurados iguais no dia (e o `.club` segue servindo os testers), ou tirar o `electionAPIURL` num build novo do beta.
 
 ### 5. No dia 04/10
 

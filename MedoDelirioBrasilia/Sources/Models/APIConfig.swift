@@ -24,6 +24,18 @@ final class APIConfig {
         self.baseServerURL + "api/"
     }
 
+    /// The election Live Activity is tested on the dev server before production gets the
+    /// code, so the beta app asks it for the election state. Only the beta: TestFlight
+    /// builds don't carry the scheme's `api_environment`, which still wins from Xcode.
+    static var electionAPIURL: String {
+        guard ProcessInfo.processInfo.environment["api_environment"] == nil,
+              Bundle.main.bundleIdentifier == "com.rafaelschmitt.MedoDelirioBrasilia.beta"
+        else {
+            return apiURL
+        }
+        return "https://api.medodelirioios.club/api/"
+    }
+
     static var baseLinkURL: String {
         switch ProcessInfo.processInfo.environment["api_environment"] {
         case "dev":
