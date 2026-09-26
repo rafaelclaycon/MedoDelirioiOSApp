@@ -135,46 +135,18 @@ extension AuthorHeaderView {
         let contentSortChangeAction: () -> Void
 
         var body: some View {
-            if #available(iOS 26.0, *) {
-                header
-                    .toolbar {
-                        ToolbarItem {
-                            multiselectButton
-                        }
-
-                        ToolbarSpacer(.fixed)
-
-                        ToolbarItem {
-                            MoreOptionsMenu(
-                                soundCount: soundCount,
-                                contentListMode: contentListMode,
-                                contentSortOption: $contentSortOption,
-                                multiSelectAction: multiSelectAction,
-                                askForSoundAction: askForSoundAction,
-                                reportIssueAction: reportIssueAction,
-                                contentSortChangeAction: contentSortChangeAction
-                            )
-                        }
-                    }
-                    .toolbarVisibility(.hidden, for: .tabBar)
-            } else {
-                header
-                    .toolbar {
-                        HStack(spacing: .spacing(.medium)) {
-                            multiselectButton
-
-                            MoreOptionsMenu(
-                                soundCount: soundCount,
-                                contentListMode: contentListMode,
-                                contentSortOption: $contentSortOption,
-                                multiSelectAction: multiSelectAction,
-                                askForSoundAction: askForSoundAction,
-                                reportIssueAction: reportIssueAction,
-                                contentSortChangeAction: contentSortChangeAction
-                            )
-                        }
-                    }
-            }
+            header
+                .modifier(
+                    HeaderToolbar(
+                        soundCount: soundCount,
+                        contentListMode: contentListMode,
+                        contentSortOption: $contentSortOption,
+                        multiSelectAction: multiSelectAction,
+                        askForSoundAction: askForSoundAction,
+                        reportIssueAction: reportIssueAction,
+                        contentSortChangeAction: contentSortChangeAction
+                    )
+                )
         }
 
         var header: some View {
@@ -220,18 +192,6 @@ extension AuthorHeaderView {
                 .padding(.horizontal, .spacing(.large))
                 .padding(.top, .spacing(.small))
                 .padding(.bottom, .spacing(.xxSmall))
-            }
-        }
-
-        var multiselectButton: some View {
-            Button {
-                multiSelectAction()
-            } label: {
-                if contentListMode == .regular {
-                    Text("Selecionar")
-                } else {
-                    Text("Cancelar")
-                }
             }
         }
     }
@@ -360,28 +320,84 @@ extension AuthorHeaderView {
                                     .foregroundColor(.gray)
                                     .bold()
                             }
-
-                            Spacer()
-
-                            VStack {
-                                MoreOptionsMenu(
-                                    soundCount: soundCount,
-                                    contentListMode: contentListMode,
-                                    contentSortOption: $contentSortOption,
-                                    multiSelectAction: multiSelectAction,
-                                    askForSoundAction: askForSoundAction,
-                                    reportIssueAction: reportIssueAction,
-                                    contentSortChangeAction: contentSortChangeAction
-                                )
-
-                                Spacer()
-                            }
                         }
                         .padding(.top, .spacing(.large))
                         .padding(.trailing, .spacing(.xLarge))
                         .padding(.bottom, .spacing(.small))
                     }
                 }
+                .modifier(
+                    HeaderToolbar(
+                        soundCount: soundCount,
+                        contentListMode: contentListMode,
+                        contentSortOption: $contentSortOption,
+                        multiSelectAction: multiSelectAction,
+                        askForSoundAction: askForSoundAction,
+                        reportIssueAction: reportIssueAction,
+                        contentSortChangeAction: contentSortChangeAction
+                    )
+                )
+            }
+        }
+    }
+
+    /// Selecionar and the options menu in the navigation bar, shared by every header
+    /// layout so the controls stay in one predictable place (and get the glass treatment
+    /// the system gives toolbar items) instead of floating in the header content.
+    struct HeaderToolbar: ViewModifier {
+
+        let soundCount: Int
+        let contentListMode: ContentGridMode
+        @Binding var contentSortOption: Int
+        let multiSelectAction: () -> Void
+        let askForSoundAction: () -> Void
+        let reportIssueAction: () -> Void
+        let contentSortChangeAction: () -> Void
+
+        private var multiselectButton: some View {
+            Button {
+                multiSelectAction()
+            } label: {
+                Text(contentListMode == .regular ? "Selecionar" : "Cancelar")
+            }
+        }
+
+        private var moreOptionsMenu: some View {
+            MoreOptionsMenu(
+                soundCount: soundCount,
+                contentListMode: contentListMode,
+                contentSortOption: $contentSortOption,
+                multiSelectAction: multiSelectAction,
+                askForSoundAction: askForSoundAction,
+                reportIssueAction: reportIssueAction,
+                contentSortChangeAction: contentSortChangeAction
+            )
+        }
+
+        func body(content: Content) -> some View {
+            if #available(iOS 26.0, *) {
+                content
+                    .toolbar {
+                        ToolbarItem {
+                            multiselectButton
+                        }
+
+                        ToolbarSpacer(.fixed)
+
+                        ToolbarItem {
+                            moreOptionsMenu
+                        }
+                    }
+                    .toolbarVisibility(.hidden, for: .tabBar)
+            } else {
+                content
+                    .toolbar {
+                        HStack(spacing: .spacing(.medium)) {
+                            multiselectButton
+
+                            moreOptionsMenu
+                        }
+                    }
             }
         }
     }
