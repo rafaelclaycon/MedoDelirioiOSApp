@@ -263,7 +263,7 @@ Mais: correções de layout em telas estreitas e deslizar para apagar marcadores
 - [ ] Conferir no Xcode os previews da Live Activity e a tela de novidades (animação do header, tecla CONFIRMA afundando, som e vibração no aparelho).
 - [ ] Portal: Broadcast Capability no App ID `com.rafaelschmitt.MedoDelirioBrasilia`.
 - [ ] Commitar o `APP_VERSION` 13 (build 3), arquivar sem Dev Options e enviar com liberação manual e as notas.
-- [ ] Opcional: subir o build de revisão primeiro para o TestFlight do app de prod e rodar um replay `live` no `.com`. É o único jeito de ver o canal de prod chegando num iPhone antes do revisor.
+- [x] Build de revisão no TestFlight interno do app de prod, com replay `live` no `.com`: os pushes chegaram (27/09). Confirma servidor, canal de prod, Broadcast Capability e APNs de produção com o app da versão 13.
 - [ ] Configurar o `.com` para a revisão (comando acima).
 
 ### Teste no simulado (28 e 29/09, 14h às 16h)
