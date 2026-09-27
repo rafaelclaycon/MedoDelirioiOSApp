@@ -35,6 +35,7 @@ struct ElectionLiveActivity: Widget {
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     VStack(spacing: 6) {
+                        ElectionNamesRow(first: first, second: second)
                         Text(ElectionFormat.counted(state))
                             .font(.caption)
                             .fontWeight(.bold)
@@ -65,13 +66,9 @@ struct ElectionLiveActivity: Widget {
                     .fontWeight(.semibold)
                 }
             } minimal: {
-                Gauge(value: state.sectionsCountedPercent, in: 0...100) {
-                    Image("ElectionAppLogo")
-                        .resizable()
-                        .clipShape(.circle)
-                }
-                .gaugeStyle(.accessoryCircularCapacity)
-                .tint(ElectionPalette.bar)
+                Image("ElectionPodcastLogo")
+                    .resizable()
+                    .scaledToFit()
             }
             .keylineTint(ElectionPalette.bar)
         }
@@ -91,24 +88,13 @@ struct ElectionLockScreenView: View {
         VStack(spacing: 0) {
             VStack(spacing: 6) {
                 HStack(spacing: 8) {
-                    ElectionCandidateSide(candidate: first, rank: 0, alignment: .leading, badgeSize: 40, showsName: false)
+                    ElectionCandidateSide(candidate: first, rank: 0, alignment: .leading, badgeSize: 40)
                     Spacer(minLength: 4)
                     ElectionRoundLabel(round: round, isLive: !state.isFinal)
                     Spacer(minLength: 4)
-                    ElectionCandidateSide(candidate: second, rank: 1, alignment: .trailing, badgeSize: 40, showsName: false)
+                    ElectionCandidateSide(candidate: second, rank: 1, alignment: .trailing, badgeSize: 40)
                 }
-                // Names get a row of their own, half the width each: at a fixed size, a name
-                // like FLAVIO BOLSONARO doesn't fit next to the photo.
-                HStack(spacing: 8) {
-                    Text(first?.name ?? "")
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Text(second?.name ?? "")
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                }
-                .font(.caption2)
-                .fontWeight(.semibold)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+                ElectionNamesRow(first: first, second: second)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -175,15 +161,14 @@ struct ElectionLockScreenView: View {
 
 // MARK: - Pieces
 
-/// Badge, share of valid votes and name, mirrored on the trailing side.
-/// Font sizes are fixed on purpose: long names get cut instead of shrinking.
+/// Badge and share of valid votes, mirrored on the trailing side. The names go in
+/// `ElectionNamesRow`. Font sizes are fixed on purpose.
 struct ElectionCandidateSide: View {
 
     let candidate: ElectionActivityAttributes.Candidate?
     let rank: Int
     let alignment: HorizontalAlignment
     let badgeSize: CGFloat
-    var showsName = true
 
     var body: some View {
         if let candidate {
@@ -191,24 +176,37 @@ struct ElectionCandidateSide: View {
                 if alignment == .leading {
                     ElectionCandidateBadge(candidate: candidate, rank: rank, size: badgeSize)
                 }
-                VStack(alignment: alignment, spacing: 0) {
-                    Text(ElectionFormat.percent(candidate.percent, digits: 2))
-                        .font(badgeSize > 32 ? .title2 : .headline)
-                        .fontWeight(.semibold)
-                        .monospacedDigit()
-                    if showsName {
-                        Text(candidate.name)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                }
-                .lineLimit(1)
+                Text(ElectionFormat.percent(candidate.percent, digits: 2))
+                    .font(badgeSize > 32 ? .title2 : .headline)
+                    .fontWeight(.semibold)
+                    .monospacedDigit()
+                    .lineLimit(1)
                 if alignment == .trailing {
                     ElectionCandidateBadge(candidate: candidate, rank: rank, size: badgeSize)
                 }
             }
         }
+    }
+}
+
+/// Names get a row of their own, half the width each: at a fixed size, a name like
+/// FLAVIO BOLSONARO doesn't fit next to the photo.
+struct ElectionNamesRow: View {
+
+    let first: ElectionActivityAttributes.Candidate?
+    let second: ElectionActivityAttributes.Candidate?
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(first?.name ?? "")
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Text(second?.name ?? "")
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+        .font(.caption2)
+        .fontWeight(.semibold)
+        .foregroundStyle(.secondary)
+        .lineLimit(1)
     }
 }
 
