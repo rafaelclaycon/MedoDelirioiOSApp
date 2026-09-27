@@ -130,12 +130,13 @@ struct SearchResultsView: View {
                                         currentContentListMode: .constant(.regular)
                                     )
                                     .contentShape(
-                                        .contextMenuPreview,
+                                        [.contextMenuPreview, .dragPreview],
                                         RoundedRectangle(cornerRadius: 18, style: .continuous)
                                     )
                                     .onTapGesture {
                                         onContentSelected(item, loadedContent: soundsMatchingTitle)
                                     }
+                                    .draggable(playable.dragItem(for: item))
                                     .shareSheet(request: playable.shareRequest(for: item.id))
                                     .contextMenu {
                                         contextMenuOptionsView(
@@ -190,12 +191,13 @@ struct SearchResultsView: View {
                                         currentContentListMode: .constant(.regular)
                                     )
                                     .contentShape(
-                                        .contextMenuPreview,
+                                        [.contextMenuPreview, .dragPreview],
                                         RoundedRectangle(cornerRadius: 18, style: .continuous)
                                     )
                                     .onTapGesture {
                                         onContentSelected(item, loadedContent: songsMatchingTitle)
                                     }
+                                    .draggable(playable.dragItem(for: item))
                                     .shareSheet(request: playable.shareRequest(for: item.id))
                                     .contextMenu {
                                         contextMenuOptionsView(
@@ -419,12 +421,13 @@ struct SearchResultsView: View {
                 currentContentListMode: .constant(.regular)
             )
             .contentShape(
-                .contextMenuPreview,
+                [.contextMenuPreview, .dragPreview],
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
             )
             .onTapGesture {
                 onContentSelected(content, loadedContent: [content])
             }
+            .draggable(playable.dragItem(for: content))
             .shareSheet(request: playable.shareRequest(for: content.id))
             .contextMenu {
                 contextMenuOptionsView(
@@ -681,7 +684,7 @@ extension SearchResultsView {
                     currentContentListMode: .constant(.regular)
                 )
                 .contentShape(
-                    .contextMenuPreview,
+                    [.contextMenuPreview, .dragPreview],
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
                 )
                 .onTapGesture {
@@ -692,6 +695,7 @@ extension SearchResultsView {
                         playable.play(content)
                     }
                 }
+                .draggable(playable.dragItem(for: content))
                 .shareSheet(request: playable.shareRequest(for: content.id))
                 .contextMenu {
                     Section {

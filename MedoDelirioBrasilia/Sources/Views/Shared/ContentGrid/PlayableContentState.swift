@@ -140,6 +140,20 @@ extension PlayableContentState {
         }
     }
 
+    /// The file a content card hands over when it's dragged into another app. Counts as a
+    /// share once that app takes the file; the destination app is unknown, so it's logged
+    /// as `.other`.
+    public func dragItem(for content: AnyEquatableMedoContent) -> DraggedContentFile {
+        let contentType = ContentType.shareType(for: content.type)
+        let contentId = content.id
+        return DraggedContentFile(url: try? content.fileURL(), title: content.title) {
+            guard let contentType else { return }
+            Task { @MainActor in
+                Logger.shared.logShared(contentType, contentId: contentId, destination: .other, destinationBundleId: "dragAndDrop")
+            }
+        }
+    }
+
     /// The pending share as seen by one content card: non-nil only for the card the share
     /// belongs to, so only that card presents (and anchors) the share sheet. Attach with
     /// `.shareSheet(request: playable.shareRequest(for: content.id))`.

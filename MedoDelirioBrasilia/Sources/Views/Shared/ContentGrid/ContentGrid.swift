@@ -110,12 +110,13 @@ struct ContentGrid<
                             currentContentListMode: viewModel.currentListMode
                         )
                         .contentShape(
-                            .contextMenuPreview,
+                            [.contextMenuPreview, .dragPreview],
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
                         )
                         .onTapGesture {
                             viewModel.onContentSelected(content, loadedContent: loadedContent)
                         }
+                        .draggable(viewModel.playable.dragItem(for: content))
                         .shareSheet(request: viewModel.playable.shareRequest(for: content.id))
                         .contextMenu {
                             if viewModel.currentListMode.wrappedValue != .selection {
