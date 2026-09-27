@@ -9,61 +9,71 @@ import ActivityKit
 import SwiftUI
 import WidgetKit
 
+/// Only the top two matter: the leader on the left, second place on the right, like the
+/// indie election apps of 2022. Always dark green, after the app's colors.
 struct ElectionLiveActivity: Widget {
 
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: ElectionActivityAttributes.self) { context in
             ElectionLockScreenView(round: context.attributes.round, state: context.state, isStale: context.isStale)
-                .activityBackgroundTint(Color.black.opacity(0.75))
+                .activityBackgroundTint(ElectionPalette.body)
                 .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in
             let state = context.state
+            let (first, second) = ElectionFormat.topTwo(state)
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Label("Presidente", systemImage: "checkmark.seal.fill")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.secondary)
+                    ElectionCandidateSide(candidate: first, rank: 0, alignment: .leading, badgeSize: 30)
+                        .padding(.leading, 4)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    Text(ElectionFormat.sections(state))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    ElectionCandidateSide(candidate: second, rank: 1, alignment: .trailing, badgeSize: 30)
+                        .padding(.trailing, 4)
+                }
+                DynamicIslandExpandedRegion(.center) {
+                    ElectionRoundLabel(round: context.attributes.round, isLive: !state.isFinal)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     VStack(spacing: 6) {
-                        ForEach(Array(state.candidates.prefix(3).enumerated()), id: \.element.id) { index, candidate in
-                            ElectionCandidateRow(candidate: candidate, rank: index)
-                        }
+                        Text(ElectionFormat.counted(state))
+                            .font(.caption)
+                            .fontWeight(.bold)
+                            .monospacedDigit()
+                        ElectionProgressBar(percent: state.sectionsCountedPercent)
                     }
-                    .padding(.top, 4)
+                    .padding(.horizontal, 4)
+                    .padding(.top, 6)
                 }
             } compactLeading: {
-                if let leader = state.leader {
+                if let first {
                     HStack(spacing: 4) {
-                        Circle()
-                            .fill(ElectionFormat.color(for: leader, rank: 0))
-                            .frame(width: 8, height: 8)
-                        Text(leader.name)
-                            .lineLimit(1)
-                            .frame(maxWidth: 64)
+                        ElectionCandidateBadge(candidate: first, rank: 0, size: 20)
+                        Text(ElectionFormat.percent(first.percent, digits: 1))
+                            .monospacedDigit()
                     }
                     .font(.caption2)
+                    .fontWeight(.semibold)
                 }
             } compactTrailing: {
-                if let leader = state.leader {
-                    Text(ElectionFormat.percent(leader.percent))
-                        .font(.caption2)
-                        .monospacedDigit()
+                if let second {
+                    HStack(spacing: 4) {
+                        Text(ElectionFormat.percent(second.percent, digits: 1))
+                            .monospacedDigit()
+                        ElectionCandidateBadge(candidate: second, rank: 1, size: 20)
+                    }
+                    .font(.caption2)
+                    .fontWeight(.semibold)
                 }
             } minimal: {
                 Gauge(value: state.sectionsCountedPercent, in: 0...100) {
-                    Image(systemName: "checkmark.seal.fill")
+                    Image("ElectionAppLogo")
+                        .resizable()
+                        .clipShape(.circle)
                 }
                 .gaugeStyle(.accessoryCircularCapacity)
-                .tint(.green)
+                .tint(ElectionPalette.bar)
             }
-            .keylineTint(.green)
+            .keylineTint(ElectionPalette.bar)
         }
     }
 }
@@ -77,39 +87,55 @@ struct ElectionLockScreenView: View {
     let isStale: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Presidente · \(round)º turno")
-                    .font(.subheadline)
-                    .fontWeight(.bold)
-                Spacer()
-                Text(ElectionFormat.sections(state))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
+        let (first, second) = ElectionFormat.topTwo(state)
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                ElectionCandidateSide(candidate: first, rank: 0, alignment: .leading, badgeSize: 40)
+                Spacer(minLength: 4)
+                ElectionRoundLabel(round: round, isLive: !state.isFinal)
+                    .layoutPriority(1)
+                Spacer(minLength: 4)
+                ElectionCandidateSide(candidate: second, rank: 1, alignment: .trailing, badgeSize: 40)
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(ElectionPalette.header)
 
-            ProgressView(value: state.sectionsCountedPercent, total: 100)
-                .tint(.green)
+            VStack(spacing: 8) {
+                Text(ElectionFormat.counted(state))
+                    .font(.headline)
+                    .fontWeight(.bold)
+                    .monospacedDigit()
 
-            VStack(spacing: 6) {
-                ForEach(Array(state.candidates.prefix(4).enumerated()), id: \.element.id) { index, candidate in
-                    ElectionCandidateRow(candidate: candidate, rank: index)
+                ElectionProgressBar(percent: state.sectionsCountedPercent)
+
+                HStack(spacing: 6) {
+                    Image("ElectionAppLogo")
+                        .resizable()
+                        .frame(width: 16, height: 16)
+                        .clipShape(.rect(cornerRadius: 4))
+                    Text(footer)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
             }
-
-            Text(footer)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+            .padding(.horizontal, 16)
+            .padding(.top, 10)
+            .padding(.bottom, 12)
+            .frame(maxWidth: .infinity)
+            // Not left to `activityBackgroundTint` alone: in light mode the system can still
+            // lay the activity over a white background.
+            .background(ElectionPalette.body)
         }
         .foregroundStyle(.white)
-        .padding()
+        .environment(\.colorScheme, .dark)
     }
 
     private var footer: String {
+        let time = state.updatedAtDate.formatted(date: .omitted, time: .shortened)
         if isStale {
-            return "Fonte: TSE · atualização atrasada"
+            return "Atualização atrasada · última às \(time)"
         }
         if state.isFinal {
             let runoff = state.candidates.filter { $0.status == .runoff }
@@ -121,68 +147,137 @@ struct ElectionLockScreenView: View {
             }
             return "Apuração encerrada · Fonte: TSE"
         }
-        return "Fonte: TSE · \(state.updatedAtDate.formatted(date: .omitted, time: .shortened))"
+        return "Atualizado às \(time) · Fonte: TSE"
     }
 }
 
-// MARK: - Candidate Row
+// MARK: - Pieces
 
-struct ElectionCandidateRow: View {
+/// Badge, share of valid votes and name, mirrored on the trailing side.
+struct ElectionCandidateSide: View {
+
+    let candidate: ElectionActivityAttributes.Candidate?
+    let rank: Int
+    let alignment: HorizontalAlignment
+    let badgeSize: CGFloat
+
+    var body: some View {
+        if let candidate {
+            HStack(spacing: 8) {
+                if alignment == .leading {
+                    ElectionCandidateBadge(candidate: candidate, rank: rank, size: badgeSize)
+                }
+                VStack(alignment: alignment, spacing: 0) {
+                    Text(ElectionFormat.percent(candidate.percent, digits: 2))
+                        .font(badgeSize > 32 ? .title2 : .headline)
+                        .fontWeight(.semibold)
+                        .monospacedDigit()
+                        .minimumScaleFactor(0.8)
+                    Text(candidate.name)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
+                .lineLimit(1)
+                if alignment == .trailing {
+                    ElectionCandidateBadge(candidate: candidate, rank: rank, size: badgeSize)
+                }
+            }
+        }
+    }
+}
+
+/// Stands in for the candidate's photo: their color with the ballot number.
+struct ElectionCandidateBadge: View {
 
     let candidate: ElectionActivityAttributes.Candidate
     let rank: Int
+    let size: CGFloat
 
     var body: some View {
-        let color = ElectionFormat.color(for: candidate, rank: rank)
-        VStack(spacing: 2) {
-            HStack(spacing: 6) {
-                Text(candidate.name)
-                    .fontWeight(rank == 0 ? .semibold : .regular)
-                    .lineLimit(1)
-                if let badge {
-                    Text(badge)
-                        .font(.caption2)
-                        .fontWeight(.bold)
-                        .padding(.horizontal, 4)
-                        .background(color.opacity(0.3), in: .capsule)
-                }
-                Spacer(minLength: 4)
-                Text(ElectionFormat.percent(candidate.percent))
-                    .fontWeight(.semibold)
+        Circle()
+            .fill(ElectionFormat.color(for: candidate, rank: rank))
+            .overlay {
+                Text(String(candidate.number))
+                    .font(.system(size: size * 0.42, weight: .bold, design: .rounded))
                     .monospacedDigit()
+                    .minimumScaleFactor(0.5)
+                    .foregroundStyle(.white)
+                    .padding(size * 0.12)
             }
-            .font(.caption)
-
-            GeometryReader { proxy in
-                Capsule()
-                    .fill(color)
-                    .frame(width: max(4, proxy.size.width * min(candidate.percent, 100) / 100))
+            .overlay {
+                Circle().strokeBorder(.white.opacity(0.8), lineWidth: 1.5)
             }
-            .frame(height: 4)
-        }
+            .frame(width: size, height: size)
     }
+}
 
-    private var badge: String? {
-        switch candidate.status {
-        case .elected: "ELEITO"
-        case .runoff: "2º TURNO"
-        case .counting, .notElected: nil
+struct ElectionRoundLabel: View {
+
+    let round: Int
+    let isLive: Bool
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if isLive {
+                Circle()
+                    .fill(.red)
+                    .frame(width: 8, height: 8)
+            }
+            Text("\(round)º TURNO")
+                .font(.caption2)
+                .fontWeight(.heavy)
+                .fixedSize()
         }
     }
 }
 
-// MARK: - Formatting
+struct ElectionProgressBar: View {
+
+    let percent: Double
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(.white.opacity(0.15))
+                Capsule()
+                    .fill(ElectionPalette.bar)
+                    .frame(width: max(8, proxy.size.width * min(max(percent, 0), 100) / 100))
+            }
+        }
+        .frame(height: 8)
+    }
+}
+
+// MARK: - Style
+
+enum ElectionPalette {
+
+    /// Band behind the two candidates.
+    static let header = Color(red: 0.03, green: 0.20, blue: 0.11)
+    /// Everything else.
+    static let body = Color(red: 0.06, green: 0.29, blue: 0.16)
+    static let bar = Color(red: 1, green: 0.84, blue: 0)
+}
 
 enum ElectionFormat {
 
-    private static let fallbackColors: [Color] = [.red, .blue, .yellow, .purple]
+    private static let fallbackColors: [Color] = [.red, .blue]
+    private static let locale = Locale(identifier: "pt_BR")
 
-    static func percent(_ value: Double) -> String {
-        value.formatted(.number.precision(.fractionLength(1)).locale(Locale(identifier: "pt_BR"))) + "%"
+    /// The server already sends candidates ordered by votes.
+    static func topTwo(_ state: ElectionActivityAttributes.ContentState) -> (ElectionActivityAttributes.Candidate?, ElectionActivityAttributes.Candidate?) {
+        (state.candidates.first, state.candidates.dropFirst().first)
     }
 
-    static func sections(_ state: ElectionActivityAttributes.ContentState) -> String {
-        "\(percent(state.sectionsCountedPercent)) apurado"
+    static func percent(_ value: Double, digits: Int) -> String {
+        value.formatted(.number.precision(.fractionLength(digits)).locale(locale)) + "%"
+    }
+
+    static func counted(_ state: ElectionActivityAttributes.ContentState) -> String {
+        "\(percent(state.sectionsCountedPercent, digits: 2)) TOTALIZADO"
     }
 
     static func color(for candidate: ElectionActivityAttributes.Candidate, rank: Int) -> Color {
@@ -211,12 +306,12 @@ private extension Color {
 extension ElectionActivityAttributes.ContentState {
 
     static let previewCounting = Self(
-        sectionsCountedPercent: 62.4,
+        sectionsCountedPercent: 65.57,
         isFinal: false,
         updatedAt: 1_790_277_154,
         candidates: [
-            .init(number: 89, name: "Candidato string 1234!@#$\"TSE\"", party: "P 9972", percent: 38.7, status: .counting, colorHex: "#D62828"),
-            .init(number: 57, name: "CANDIDATO 9999", party: "P 9998", percent: 34.2, status: .counting, colorHex: "#1D4E89"),
+            .init(number: 89, name: "Candidato string 1234!@#$\"TSE\"", party: "P 9972", percent: 50.03, status: .counting, colorHex: "#D62828"),
+            .init(number: 57, name: "CANDIDATO 9999", party: "P 9998", percent: 49.97, status: .counting, colorHex: "#1D4E89"),
             .init(number: 68, name: "CANDIDATO 9987", party: "P 9996", percent: 9.1, status: .counting, colorHex: nil),
             .init(number: 88, name: "CANDIDATO 9977", party: "P 9973", percent: 6.3, status: .counting, colorHex: nil)
         ]
@@ -249,6 +344,12 @@ extension ElectionActivityAttributes.ContentState {
 }
 
 #Preview("Island Compact", as: .dynamicIsland(.compact), using: ElectionActivityAttributes(round: 1)) {
+    ElectionLiveActivity()
+} contentStates: {
+    ElectionActivityAttributes.ContentState.previewCounting
+}
+
+#Preview("Island Minimal", as: .dynamicIsland(.minimal), using: ElectionActivityAttributes(round: 1)) {
     ElectionLiveActivity()
 } contentStates: {
     ElectionActivityAttributes.ContentState.previewCounting
