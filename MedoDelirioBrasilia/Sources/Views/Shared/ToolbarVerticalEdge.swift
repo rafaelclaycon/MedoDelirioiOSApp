@@ -25,9 +25,9 @@ private struct ToolbarVerticalEdgeObserver: ViewModifier {
     let action: (HorizontalEdge?) -> Void
 
     func body(content: Content) -> some View {
-        // `toolbarVerticalEdge` is an iOS 27.1 SDK symbol, so it only compiles with the
-        // Xcode that bundles that SDK (same guard as `MainView`).
-        #if compiler(>=6.4)
+        // `toolbarVerticalEdge` is an iOS 27.1 SDK symbol, so it only compiles with an
+        // Xcode that bundles that SDK or later (why this check: see `VerticalCrease.swift`).
+        #if canImport(SwiftUI, _version: 8.0.85.27)
         if #available(iOS 27.1, *) {
             content.modifier(Reader(action: action))
         } else {
@@ -38,7 +38,7 @@ private struct ToolbarVerticalEdgeObserver: ViewModifier {
         #endif
     }
 
-    #if compiler(>=6.4)
+    #if canImport(SwiftUI, _version: 8.0.85.27)
     @available(iOS 27.1, *)
     private struct Reader: ViewModifier {
 

@@ -143,10 +143,10 @@ struct EpisodeDetailView: View {
 
     @ViewBuilder
     private var layout: some View {
-        // `ArrangementView` is an iOS 27.1 SDK symbol, so it only compiles with the Xcode
-        // that bundles that SDK (same guard as `MainView`). `isSplitLayout` is never true
-        // before 27.1 anyway, since the crease can't be read there.
-        #if compiler(>=6.4)
+        // `ArrangementView` is an iOS 27.1 SDK symbol, so it only compiles with an Xcode
+        // that bundles that SDK or later (why this check: see `VerticalCrease.swift`).
+        // `isSplitLayout` is never true before 27.1 anyway, since the crease can't be read.
+        #if canImport(SwiftUI, _version: 8.0.85.27)
         if isSplitLayout, #available(iOS 27.1, *) {
             splitLayout
         } else {
@@ -163,7 +163,7 @@ struct EpisodeDetailView: View {
         }
     }
 
-    #if compiler(>=6.4)
+    #if canImport(SwiftUI, _version: 8.0.85.27)
     /// Unfolded iPhone Duo in landscape: the details on one side of the crease and, on the
     /// other, chapters and bookmarks behind the same pill tabs as Now Playing, each side
     /// scrolling on its own.

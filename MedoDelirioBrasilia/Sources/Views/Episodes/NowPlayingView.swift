@@ -325,10 +325,10 @@ struct NowPlayingView: View {
 
     @ViewBuilder
     private var layout: some View {
-        // `ArrangementView` is an iOS 27.1 SDK symbol, so it only compiles with the Xcode
-        // that bundles that SDK (same guard as `MainView`). `isSplitLayout` is never true
-        // before 27.1 anyway, since the crease can't be read there.
-        #if compiler(>=6.4)
+        // `ArrangementView` is an iOS 27.1 SDK symbol, so it only compiles with an Xcode
+        // that bundles that SDK or later (why this check: see `VerticalCrease.swift`).
+        // `isSplitLayout` is never true before 27.1 anyway, since the crease can't be read.
+        #if canImport(SwiftUI, _version: 8.0.85.27)
         if isSplitLayout, #available(iOS 27.1, *) {
             splitLayout
         } else {
@@ -363,7 +363,7 @@ struct NowPlayingView: View {
         .toast($toast)
     }
 
-    #if compiler(>=6.4)
+    #if canImport(SwiftUI, _version: 8.0.85.27)
     /// Unfolded iPhone Duo in landscape: the cover with the transport under it on one side
     /// of the crease, the tabs and their canvas on the other. `.split` puts the divider on
     /// the crease, so nothing here has to know where it is.

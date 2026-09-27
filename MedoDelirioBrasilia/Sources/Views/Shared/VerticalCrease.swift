@@ -29,9 +29,12 @@ private struct VerticalCreaseObserver: ViewModifier {
     let action: (Bool) -> Void
 
     func body(content: Content) -> some View {
-        // Reserved regions are an iOS 27.1 SDK symbol, so they only compile with the Xcode
-        // that bundles that SDK (same guard as `MainView`).
-        #if compiler(>=6.4)
+        // Reserved regions are an iOS 27.1 SDK symbol, so they only compile with an Xcode
+        // that bundles that SDK or later. `compiler(>=6.4)` can't tell: Xcode 27.0 ships
+        // the same Swift 6.4 with the 27.0 SDK (Xcode Cloud failed on it). The SwiftUI
+        // module version can — 8.0.85.27 is what the iOS 27.1 SDK (Xcode 27.1 beta)
+        // reports. Every iOS 27.1 guard in the app uses this same check.
+        #if canImport(SwiftUI, _version: 8.0.85.27)
         if #available(iOS 27.1, *) {
             content
                 .onGeometryChange(for: Bool.self) { proxy in
