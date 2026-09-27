@@ -106,8 +106,8 @@ struct IntroducingElectionLiveView: View {
 
                         featureItem(
                             icon: "calendar",
-                            title: "Dia 4 de Outubro, a Partir das 17h",
-                            message: "Horário de Brasília. Quando a apuração começar, um banner aparece no topo das Vírgulas. É só tocar em Acompanhar ao Vivo. Se tiver 2º turno, dia 25 tem de novo."
+                            title: "4 de Outubro, às 17h de Brasília",
+                            message: "Um banner aparece no topo das Vírgulas quando a apuração começar. Se tiver 2º turno, dia 25 tem de novo."
                         )
                     }
                     .padding(.top, 16)

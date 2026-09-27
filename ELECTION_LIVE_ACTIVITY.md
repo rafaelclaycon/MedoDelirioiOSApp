@@ -1,34 +1,42 @@
 # Live Activity da apuração presidencial
 
-Resumo do trabalho feito até 25/09/2026 (tarde) e do que falta. Objetivo: uma Live Activity (Tela Bloqueada + Dynamic Island) que mostra em tempo real a apuração para Presidente, com dados oficiais do TSE.
+Resumo do trabalho feito até 27/09/2026 e do que falta. Objetivo: uma Live Activity (Tela Bloqueada + Dynamic Island) que mostra em tempo real a apuração para Presidente, com dados oficiais do TSE.
+
+## Situação em 27/09
+
+- **Beta:** testado ponta a ponta. Replay offline no `.club` com `broadcastMode: live`, e a activity do app beta (TestFlight) atualizou sozinha.
+- **Servidor de prod (`.com`):** código no ar, canal de prod criado, poller e broadcaster conferidos em `dryRun`, `enabled` desligado.
+- **App de prod:** versão 13 pronta para arquivar e enviar, com a Live Activity redesenhada, fotos, frases finais e a tela de novidades. Falta o envio para revisão.
 
 ## Datas que importam
 
 | Quando | O quê |
 |---|---|
 | 28 e 29/09, 14h às 16h | Janela de teste no simulado do TSE ("3ª semana de testes (semana extra)", aba Simulados da página técnica do TSE, conferido em 25/09) |
-| Até 29/09 à noite | Enviar o app para review, com o banner desligado no servidor |
-| 04/10 | 1º turno: trocar a fonte para `official` e ligar `enabled` |
-| 25/10 | 2º turno: trocar `round` para 2 |
+| Até 29/09 à noite | Enviar o app para revisão, com liberação manual (ver "Revisão da App Store") |
+| 04/10 | 1º turno. Totalização a partir das 17h de Brasília (notícia do TSE de 06/07/2026). Trocar a fonte para `official` e ligar `enabled` |
+| 25/10 | 2º turno: trocar `round` para 2. A tela de novidades deixa de aparecer a partir do dia 26 |
 
 ## Arquitetura
 
 ```
-TSE CDN --(poll a cada 10s, ETag)--> Vapor no Linode --(1 broadcast push)--> APNs --> Live Activities
+TSE CDN --(poll a cada 10s, ETag)--> Vapor no Linode --(1 broadcast push por app)--> APNs --> Live Activities
                                             |
-                                            +-- GET v4/election/live <-- app (estado inicial + channelId + enabled)
+                                            +-- GET v4/election/live?bundleId= <-- app (estado inicial + channelId + enabled)
 ```
 
 - Só o servidor fala com o TSE. O app só consome a nossa API.
 - As atualizações da activity não passam pelo app: o servidor manda um push por **canal de broadcast** (iOS 18+) e o iOS atualiza todas as activities inscritas.
+- **Dois servidores:** o app beta pergunta ao `.club` (`api.medodelirioios.club`) e o de prod ao `.com` (`api.medodelirioios.com`), só para a eleição (ver `APIConfig.electionAPIURL`). Cada um tem o próprio canal e o próprio `enabled`.
 
 ## Regras do TSE
 
-- Simulado: `https://resultados-sim.tse.jus.br/simulado`, ambiente `simulado2026`. Os arquivos continuam no ar fora das janelas, parados no resultado final.
+- Simulado: `https://resultados-sim.tse.jus.br/simulado`, ambiente `simulado2026`. Os arquivos continuam no ar fora das janelas, parados no resultado final. O `ele-c.json` não muda desde 14/09 e todas as rodadas usaram a eleição 21270.
 - Oficial: `https://resultados.tse.jus.br`, ambiente `oficial`. Pleito 3220, eleição federal 6257 (ainda não aparece no `ele-c.json` oficial).
 - Máximo de 100 requisições por segundo por IP; 304 também conta. Se passar: bloqueio de 10 min, renovado a cada nova tentativa.
 - Vários 404 também bloqueiam o IP. Por isso o servidor nunca monta URL no chute: descobre ciclo e código da eleição pelo `ele-c.json`.
 - Arquivo de Presidente: `<base>/<ambiente>/<ciclo>/<eleicao>/dados/br/br-c0001-e<eleicao com 6 dígitos>-u.json`.
+- Fotos (não documentado, visto no app de resultados do TSE): `<base>/<ambiente>/<ciclo>/<eleicao>/fotos/<uf>/<sqcand>.jpeg`. O `sqcand` vem no `-u.json`.
 - No simulado, o 1º colocado é um candidato "Anulado sub judice" que vai para o 2º turno. Por isso o snapshot mantém os anulados na lista, marcados com `hasValidVotes = false`.
 - Documentação: https://www.tse.jus.br/eleicoes/informacoes-tecnicas-sobre-a-divulgacao-de-resultados
 
@@ -36,47 +44,61 @@ TSE CDN --(poll a cada 10s, ETag)--> Vapor no Linode --(1 broadcast push)--> APN
 
 ### Servidor (`medo-delirio-api`, branch `main`)
 
-Commits `04a37b1` (parser e replay), `3d3d037` (poller e endpoints) e o broadcaster da APNs (25/09, tarde).
+Commits `04a37b1` (parser e replay), `3d3d037` (poller e endpoints), `463526b` (broadcaster da APNs), `b517463` (replay realista e offline) e `39ad257` (frases finais).
 
 - `Sources/App/Election/` (só Foundation, testável sem Vapor):
   - `TSEElectionConfig`: lê o `ele-c.json` e encontra a eleição de Presidente de cada turno.
   - `TSEEndpoint`: endereços do simulado e do oficial, e a montagem das URLs.
   - `TSEResultFile`: os campos do arquivo `-u.json` que usamos.
-  - `ElectionSnapshot`: nosso modelo do resultado, com candidatos na ordem `seq` do TSE, status (`counting`, `elected`, `runoff`, `notElected`) e horário de Brasília (com fallback fixo em UTC-3 se o servidor não tiver `tzdata`).
+  - `ElectionSnapshot`: nosso modelo do resultado, com candidatos na ordem `seq` do TSE, nome de urna (`nmu`), status (`counting`, `elected`, `runoff`, `notElected`) e horário de Brasília (com fallback fixo em UTC-3 se o servidor não tiver `tzdata`).
   - `ElectionReplay`: simula a apuração de 0 a 100% a partir do resultado final, com troca de liderança no caminho. Avança em saltos de `replayStepSeconds` (padrão 60s, como arquivos novos do TSE), cada salto com o próprio horário de totalização, e numa curva rápida no começo e lenta no fim (metade da apuração em um quarto do tempo).
   - `ElectionReplayFixture`: o resultado final do simulado (eleição 21270) embutido no servidor. O replay usa esse resultado com `replayOffline: true`, ou sozinho quando o TSE não responde ou não lista o simulado. Um teste garante que ele é idêntico à fixture.
-  - `ElectionLiveContentState`: o formato dos dados da activity. Tem que ser **idêntico** ao `ElectionActivityAttributes.ContentState` do app.
+  - `ElectionLiveContentState`: o formato dos dados da activity. Tem que ser **idêntico** ao `ElectionActivityAttributes.ContentState` do app (ver "Contrato com o app").
   - `ElectionSettings` e `ElectionLiveStore`: configuração em runtime e estado em memória do poller. As configurações decodificam com valores padrão para chaves ausentes, então um campo novo não quebra o JSON já salvo no banco.
-  - `ElectionBroadcastPlanner`: decide quando mandar push, com qual prioridade, e monta o payload (ver "Broadcaster" abaixo).
+  - `ElectionBroadcastPlanner`: decide quando mandar push, com qual prioridade, e monta o payload (ver "Broadcaster").
 - `Services/ElectionPollingService.swift`: loop a cada 10s com `If-None-Match`. Ignora 304 e `idg` repetido. Depois de um 404, esquece a URL e só consulta o `ele-c.json` de novo após 60s. Outros erros: espera de 60s. Um retry imediato quando a CDN derruba a conexão keep-alive (`remoteConnectionClosed`).
 - `Services/APNsBroadcastClient.swift`: HTTP/2 direto para a APNs (o APNSwift 4.0.1 não tem Live Activity nem broadcast), com JWT ES256 assinado pela mesma chave `.p8` e reaproveitado por 50 min. Envia broadcast (`POST /4/broadcasts/apps/<bundle>`), cria e lista canais (Channel Management API, portas 2195/2196). O ambiente segue o `APNS_ENVIRONMENT`.
 - `Controllers/ElectionController.swift` e rotas:
-  - `GET api/v4/election/live?bundleId=<bundle>`: pública, usada pelo app. Devolve o estado mesmo com `enabled` desligado, para testers com a flag local. O `channelId` é o do bundle pedido (sem `bundleId`, o de prod; sem fallback do beta para o de prod, porque um canal só serve para o app dele).
-  - `GET api/v4/election/status/:password`: diagnóstico, agora com o último push (`lastBroadcastAt`, `lastBroadcastEvent`, `lastBroadcastPriority`, `lastBroadcastReason`, `lastBroadcastError`).
+  - `GET api/v4/election/live?bundleId=<bundle>`: pública, usada pelo app. O `channelId` é o do bundle pedido (sem `bundleId`, o de prod; sem fallback do beta para o de prod, porque um canal só serve para o app dele).
+  - `GET api/v4/election/status/:password`: diagnóstico, com o último push (`lastBroadcastAt`, `lastBroadcastEvent`, `lastBroadcastPriority`, `lastBroadcastReason`, `lastBroadcastError`). Campos vazios não aparecem na resposta.
   - `POST api/v4/election/settings/:password`: atualização parcial das configurações.
-  - `POST api/v4/election/channels/:password`: cria o canal de cada app que ainda não tem um (prod e beta), no ambiente atual da APNs, e salva nas configurações.
-  - `GET api/v4/election/channels/:password`: mostra os canais configurados e os que a APNs conhece para cada bundle.
-- Testes: `ElectionSnapshotTests`, `ElectionLiveTests` e `ElectionBroadcastPlannerTests`, com fixtures reais do simulado em `Tests/AppTests/Fixtures/Election/`. 55 testes passando.
+  - `POST api/v4/election/channels/:password[?bundleId=]`: cria o canal de cada app que ainda não tem um (ou só do bundle pedido), no ambiente atual da APNs, e salva nas configurações.
+  - `GET api/v4/election/channels/:password`: mostra o ambiente da APNs, os canais configurados e os que a APNs conhece para cada bundle.
+- Testes: `ElectionSnapshotTests`, `ElectionLiveTests` e `ElectionBroadcastPlannerTests`, com fixtures reais do simulado em `Tests/AppTests/Fixtures/Election/`. 68 testes passando.
 
 #### Broadcaster
 
 Roda no fim de todo tick do poller (não só quando chega arquivo novo, para um update retido pelo throttle sair assim que der). Erro de APNs não dispara o backoff do polling.
 
 - **Modo** (`broadcastMode`): `off`, `dryRun` (padrão: decide tudo e só registra o payload no log) e `live`.
-- **Prioridade 10:** primeiro push, novo líder, cada 10% apurado, resultado final e recomeço do replay. O resto sai em prioridade 5.
+- **Prioridade 10:** primeiro push, novo líder, cada 10% apurado, resultado final e recomeço do replay. O resto sai em prioridade 5, que o iOS pode atrasar ou agrupar.
 - **Throttle:** no máximo um push a cada `minPushIntervalSeconds` (padrão 30, mínimo 10). Novo líder e marcos de % também esperam o intervalo; o resultado final não espera.
-- **Fim:** quando `isFinal` vira `true`, manda `event: end` com `dismissal-date` de 4h e um `alert` ("Apuração encerrada" + eleito ou os dois do 2º turno).
+- **Fim:** quando `isFinal` vira `true`, manda `event: end` com `dismissal-date` de 4h e um `alert` ("Apuração encerrada" + eleito ou os dois do 2º turno, ou o texto da frase final).
 - **Resultado já final no boot:** se o primeiro estado que o servidor vê já é final (o simulado entre janelas, ou um restart depois da apuração), não manda nada. Sem isso, cada restart reanunciaria um resultado velho.
 - `stale-date` de 15 min, igual ao `staleInterval` do app. `apns-expiration`: 15 min para update, 4h para o fim.
 - Canal criado com `message-storage-policy: 1` (guarda a última mensagem para quem estava offline).
 - Se todos os canais falham, nada é registrado e o próximo tick tenta de novo. Se só um falha, o envio conta como feito (repetir mandaria de novo para o outro) e o erro aparece no status.
 
-**Variáveis de ambiente novas (obrigatórias antes do deploy):**
+#### Frases finais
 
-- `ELECTION_PASSWORD`: sem ela, as rotas de admin derrubam o processo com `fatalError`.
+O push de fim sai assim que o TSE encerra a apuração, então as frases são escritas **com antecedência**, uma por desfecho. O servidor escolhe a mais específica: `elected:13`, `elected`, `runoff:13-22` (números em ordem crescente), `runoff`, `default`. Sem frase, sai o texto neutro.
+
+- `text` aparece na activity em negrito, entre a barra e o rodapé. O rodapé continua neutro, com "Fonte: TSE".
+- `alertTitle` e `alertBody` substituem o alerta neutro "Apuração encerrada".
+- `null` apaga uma chave. Editar a frase depois do fim reenvia o `end` em prioridade 5 e sem alerta.
+- Os números nunca mudam de tom: a opinião fica só nesse campo, separada dos dados do TSE.
+
+#### Contrato com o app
+
+Depois que uma versão do app é aprovada, o servidor **nunca** pode renomear ou remover um campo do `ContentState`, nem criar um valor novo de `status`: o iOS descarta o push em silêncio. Adicionar campos opcionais pode (o app ignora).
+
+#### Variáveis de ambiente
+
+- `ELECTION_PASSWORD`: sem ela, a primeira rota de admin da eleição derruba o processo inteiro com `fatalError` (e com ele a API do app). Aconteceu no `.com` em 27/09.
 - `ELECTION_POLLING_ENABLED=true`: liga o poller.
+- `APNS_ENVIRONMENT`: vazio ou ausente é produção, que é o que TestFlight e App Store usam. `sandbox` só para apps instalados pelo Xcode. Os canais pertencem a um ambiente só.
 
-**Configurações em runtime** (um JSON em `ServerSetting`, chave `election-settings`):
+#### Comandos
 
 ```bash
 # Ver o estado
@@ -88,46 +110,49 @@ curl -X POST -H 'Content-Type: application/json' -d '{"source":"official"}' http
 # Lançamento público
 curl -X POST -H 'Content-Type: application/json' -d '{"enabled":true}' https://<servidor>/api/v4/election/settings/<senha>
 
-# Replay de 15 minutos (recomeça do 0%)
-curl -X POST -H 'Content-Type: application/json' -d '{"source":"replay","replayDurationMinutes":15,"restartReplay":true}' https://<servidor>/api/v4/election/settings/<senha>
+# Replay sem o TSE, com um "arquivo novo" a cada 45s, pushes de verdade
+curl -X POST -H 'Content-Type: application/json' -d '{"source":"replay","replayOffline":true,"replayStepSeconds":45,"replayDurationMinutes":15,"restartReplay":true,"broadcastMode":"live"}' https://<servidor>/api/v4/election/settings/<senha>
 
-# Replay sem o TSE, com um "arquivo novo" a cada 45s
-curl -X POST -H 'Content-Type: application/json' -d '{"source":"replay","replayOffline":true,"replayStepSeconds":45,"replayDurationMinutes":15,"restartReplay":true}' https://<servidor>/api/v4/election/settings/<senha>
+# Cores por número de urna (só para candidatos sem foto; sem cor, 1º vermelho e 2º azul)
+curl -X POST -H 'Content-Type: application/json' -d '{"candidateColors":{"55":"#1D4E89"}}' https://<servidor>/api/v4/election/settings/<senha>
 
-# Cores por número de urna
-curl -X POST -H 'Content-Type: application/json' -d '{"candidateColors":{"13":"#D62828","22":"#1D4E89"}}' https://<servidor>/api/v4/election/settings/<senha>
-```
+# Criar o canal de um app no ambiente atual da APNs
+curl -X POST "https://<servidor>/api/v4/election/channels/<senha>?bundleId=com.rafaelschmitt.MedoDelirioBrasilia"
 
-```bash
-# Criar os canais (prod e beta) no ambiente atual da APNs
-curl -X POST https://<servidor>/api/v4/election/channels/<senha>
-
-# Conferir os canais
+# Conferir canais e ambiente
 curl https://<servidor>/api/v4/election/channels/<senha>
 
-# Ligar os pushes de verdade (o padrão é dryRun)
-curl -X POST -H 'Content-Type: application/json' -d '{"broadcastMode":"live"}' https://<servidor>/api/v4/election/settings/<senha>
+# Voltar a não mandar pushes
+curl -X POST -H 'Content-Type: application/json' -d '{"broadcastMode":"dryRun"}' https://<servidor>/api/v4/election/settings/<senha>
 
 # Ajustar o throttle depois de medir a cadência do TSE
 curl -X POST -H 'Content-Type: application/json' -d '{"minPushIntervalSeconds":45}' https://<servidor>/api/v4/election/settings/<senha>
-```
 
-**Frases finais** (escritas com antecedência, uma por desfecho, porque o push de fim sai assim que o TSE encerra a apuração). Chaves, da mais específica para a mais genérica: `elected:13`, `elected`, `runoff:13-22` (números em ordem crescente), `runoff`, `default`. O `text` aparece na activity entre a barra e o rodapé; `alertTitle` e `alertBody` substituem o alerta neutro "Apuração encerrada". `null` apaga uma chave. Editar a frase depois do fim reenvia o `end` sem alerta.
-
-```bash
+# Frases finais
 curl -X POST -H 'Content-Type: application/json' -d '{"finalMessages":{"runoff:13-22":{"text":"Segura que tem 2º turno. Bora!"},"default":{"text":"Acabou a apuração."}}}' https://<servidor>/api/v4/election/settings/<senha>
 ```
 
-Campos aceitos: `enabled`, `source` (`simulation`, `official`, `replay`), `round` (1 ou 2), `channelIds` (mapa bundle ID → canal, mesclado; string vazia apaga), `broadcastMode` (`off`, `dryRun`, `live`), `minPushIntervalSeconds`, `candidateColors`, `replayDurationMinutes`, `replayStepSeconds` (0 = avança a cada poll), `replayOffline`, `restartReplay`.
+Campos aceitos: `enabled`, `source` (`simulation`, `official`, `replay`), `round` (1 ou 2), `channelIds` (mapa bundle ID → canal, mesclado; string vazia apaga), `broadcastMode` (`off`, `dryRun`, `live`), `minPushIntervalSeconds`, `candidateColors`, `finalMessages`, `replayDurationMinutes`, `replayStepSeconds` (0 = avança a cada poll), `replayOffline`, `restartReplay`.
 
-**Rodar localmente** (banco em memória e sem APNs, não precisa das chaves de produção):
+#### Conferir um servidor sem os logs
+
+Nesta ordem, porque as rotas com senha derrubam o processo se a senha faltar:
+
+1. `GET api/v2/status-check` → 200.
+2. `GET api/v4/election/live` → 200 com `state` preenchido (poller rodando). 404 = código da eleição não subiu.
+3. Conferir no servidor que `ELECTION_PASSWORD` está no `.env` (`grep -c "^ELECTION_PASSWORD=." .env`), e só então `GET election/status/<senha>`. Os campos `finalMessages`, `replayStepSeconds` e `replayOffline` em `settings` provam que é a versão mais recente.
+4. `GET election/channels/<senha>` → `apnsEnvironment: production` e `errors` vazio.
+5. `GET election/live?bundleId=<bundle>` → `channelId` preenchido.
+6. Replay em `dryRun` e ver `lastBroadcastAt` e `lastBroadcastReason` avançando, sem `lastBroadcastError`.
+
+#### Rodar localmente
+
+Banco em memória e sem APNs, não precisa das chaves de produção:
 
 ```bash
 cd medo-delirio-api
 ELECTION_POLLING_ENABLED=true ELECTION_PASSWORD=local-test swift run Run serve --env testing --port 8089
 ```
-
-Testado assim contra o simulado real: o poller encontrou a eleição 21270, os 304 funcionaram, e um replay de 3 minutos rodou 18 ciclos de 10s sem erro, com o líder trocando a 93,68%. Em 25/09, um replay de 2 minutos em `dryRun` mostrou o primeiro push, os marcos de 20/50/70% em prioridade 10 e o `end` com alerta no final. Depois, um replay offline de 3 minutos em saltos de 20s: 10 pushes, um por salto, horário avançando, duas trocas de liderança e o `end`, sem nenhuma chamada ao TSE.
 
 **Toolchain:** se o Xcode ativo for um beta mais novo que o macOS (ex.: Xcode 27.1 beta no macOS 26.7), o `swift test` compila mas falha ao carregar o bundle (`Symbol not found: _swift_initBorrow`). Rodar com o Xcode estável:
 
@@ -137,92 +162,149 @@ DEVELOPER_DIR=/Applications/Xcode_26.6.app/Contents/Developer swift test
 
 ### App (`MedoDelirioiOSApp`, branch `main`)
 
-Commits `c2e03f5b` (Live Activity e flag) e `f67997c1` (banner).
+Commits de 24 e 25/09: `c2e03f5b` (Live Activity e flag), `f67997c1` (banner), `a8f09c0b` (canal por app). De 26 e 27/09: `aa88ce0b` (servidor da eleição no beta), `d083256a` (redesign), `a36220fd` (fotos e frase final), `9880433a` (fontes fixas), `0cec3004` (Dynamic Island), `2baeee60` (banner), `2d34f27f` (fim da flag), `7ad79c46` (tela de novidades), `c7fb25c1` (tecla CONFIRMA).
 
-- `MedoDelirioWidget/Election/ElectionActivityAttributes.swift`: formato dos dados, compartilhado com o app pela exception set do projeto (mesmo mecanismo do `PlayRandomSoundIntent`). Sem `Date` e com chaves camelCase, para o mesmo JSON servir no endpoint (decoder do app com ISO 8601 e snake case) e no push (decoder padrão do ActivityKit).
-- `MedoDelirioWidget/Election/ElectionLiveActivity.swift`: Tela Bloqueada (top 4 com barras, % apurado, rodapé "Fonte: TSE", aviso de atualização atrasada, resultado final) e Dynamic Island (compacto: líder e %; minimal: anel da apuração; expandido: top 3). Tem previews.
-- `Info.plist` do app: `NSSupportsLiveActivities` e `NSSupportsLiveActivitiesFrequentUpdates`.
-- `Sources/Helpers/ElectionLiveActivityManager.swift`: inicia com `pushType: .channel(channelId)`, não duplica activity do mesmo turno, mensagens de erro em português, `endAll()`. Activities já encerradas (que ficam na Tela Bloqueada até a `dismissal-date`) não contam como "acompanhando" nem impedem uma nova, o que importa para repetir o replay.
-- `Sources/Networking/APIClient+Election.swift`: `GET v4/election/live?bundleId=<Bundle.main.bundleIdentifier>`.
-- `Sources/Views/Banners/ElectionLiveBannerView.swift`: banner no topo do `BannersView` com "Acompanhar ao Vivo" e "Parar de Acompanhar", alerta quando as Atividades ao Vivo estão desligadas e eventos de analytics.
-- **Fotos dos candidatos:** fotos oficiais de candidatura do TSE (DivulgaCandContas) no catálogo do widget como `ElectionCandidate<número>`, hoje para 13, 14, 22, 30 e 70. Sem foto, o candidato aparece como um círculo na cor dele com o número. Para trocar ou adicionar (ex.: no 2º turno), nomeie os arquivos pelo número (`13.jpg`) e rode `scripts/import-election-photos.sh <pasta>`.
-- **Sem feature flag:** o banner aparece só quando o `enabled` do servidor está ligado. A flag local `electionLiveActivity` foi removida em 27/09, antes do envio para revisão: como o beta pergunta ao `.club` e prod ao `.com`, os testers entram ligando `enabled` no `.club`.
-- **Servidor da eleição no beta:** o `APIConfig.electionAPIURL` manda só o `v4/election/live` do bundle beta para `api.medodelirioios.club`; o resto do beta continua no servidor de prod. Motivo: o `api_environment` do scheme só vale rodando pelo Xcode, então um build de TestFlight do beta sempre caía no servidor de prod. Assim o servidor de prod só recebe o código da eleição depois do teste no beta. Com `api_environment` ligado no scheme, ele continua mandando.
+#### Live Activity (`MedoDelirioWidget/Election/`)
 
-Build completo do scheme `MedoDelirio` passando (25/09). **Ainda não rodou em aparelho.**
+- `ElectionActivityAttributes.swift`: formato dos dados, compartilhado com o app pela exception set do projeto (mesmo mecanismo do `PlayRandomSoundIntent`). Sem `Date` e com chaves camelCase, para o mesmo JSON servir no endpoint e no push. Inclui o `finalMessage` opcional.
+- `ElectionLiveActivity.swift`, inspirado num app indie de 2022:
+  - **Só os 2 mais votados**, com o líder sempre à esquerda. O servidor ainda manda 4 no 1º turno; o app mostra 2.
+  - **Tela Bloqueada:** faixa de cima verde-escura com foto e porcentagem (duas casas) de cada um e o selo "1º TURNO" no meio, com um ponto vermelho enquanto a apuração está ao vivo (some no resultado final). Embaixo, os nomes numa linha própria, "X% TOTALIZADO", a barra amarela e o rodapé com a logo do app e "Atualizado às HH:mm · Fonte: TSE" (ou "Atualização atrasada", ou o resultado final). No fim, a frase final em negrito acima do rodapé.
+  - **Fundo sempre verde-escuro**, em dois tons. A parte de baixo pinta o próprio fundo: no modo claro, o sistema pode pôr branco por baixo mesmo com `activityBackgroundTint`.
+  - **Fontes fixas:** porcentagens e nomes não encolhem. Os nomes têm uma linha própria, com metade da largura para cada lado, porque ao lado da foto "FLAVIO BOLSONARO" não cabe. "ESCRITOR AUGUSTO CURY" contra "FLAVIO BOLSONARO" cabe inteiro.
+  - **Dynamic Island:** compacta com os dois (foto + %), expandida com o mesmo layout da Tela Bloqueada, mínima só com o logo do podcast em branco (`ElectionPodcastLogo`).
+  - **Previews:** Lock Screen (apurando, com fotos, final, final com frase), Island expandida, compacta e mínima.
+- **Fotos:** fotos oficiais de candidatura do TSE (DivulgaCandContas, eleição 20322002026) no catálogo do widget como `ElectionCandidate<número>`, para 13 (Lula), 14 (Renan Santos), 22 (Flávio Bolsonaro), 30 (Zema) e 70 (Escritor Augusto Cury). Recortadas em círculo pela view, alinhadas pelo topo. Sem foto, o candidato aparece como um círculo na cor dele com o número. Para trocar ou adicionar, nomeie os arquivos pelo número (`13.jpg`) e rode `scripts/import-election-photos.sh <pasta>`. O site do TSE bloqueia downloads fora do navegador: baixe pelo navegador.
+- **Logo:** `ElectionAppLogo` (ícone padrão do app, 22 pt) no rodapé.
+
+#### App
+
+- `Info.plist`: `NSSupportsLiveActivities` e `NSSupportsLiveActivitiesFrequentUpdates`.
+- `Sources/Helpers/ElectionLiveActivityManager.swift`: inicia com `pushType: .channel(channelId)`, não duplica activity do mesmo turno, mensagens de erro em português, `endAll()`. Activities já encerradas (que ficam na Tela Bloqueada até a `dismissal-date`) não contam como "acompanhando" nem impedem uma nova.
+- `Sources/Networking/APIClient+Election.swift`: `GET v4/election/live?bundleId=<Bundle.main.bundleIdentifier>`, no servidor de `APIConfig.electionAPIURL`.
+- **Servidor da eleição no beta:** `APIConfig.electionAPIURL` manda só o `v4/election/live` do bundle beta para o `.club`; o resto do beta continua no servidor de prod. Motivo: o `api_environment` do scheme só vale rodando pelo Xcode, então um build de TestFlight sempre caía no servidor de prod. Com `api_environment` ligado no scheme, ele continua mandando.
+- **Banner** (`Sources/Views/Banners/ElectionLiveBannerView.swift`): no topo das Vírgulas, com "Acompanhar ao Vivo" e "Parar de Acompanhar", alerta quando as Atividades ao Vivo estão desligadas e eventos de analytics. O texto não cita a Dynamic Island (não há API para saber se o aparelho tem uma).
+  - O `BannersView` pergunta ao servidor quando aparece **e sempre que o app volta ao primeiro plano**: quem deixou o app aberto de manhã vê o banner às 17h. Se a requisição falhar, o banner fica como estava.
+- **Sem feature flag:** o banner aparece só quando o `enabled` do servidor está ligado. A flag `electionLiveActivity` foi removida em 27/09; os testers do beta entram com `{"enabled":true}` no `.club`.
+- **Dev Options** só aparece com o argumento `-SHOW_MORE_DEV_OPTIONS`, que não chega a builds de TestFlight. Para um build especial de TestFlight, trocar por `if true` no `SettingsView` sem commitar e reverter depois.
+
+#### Tela de novidades (`Sources/Views/Onboarding/WhatsNew/IntroducingElectionLiveView.swift`)
+
+- Aparece uma vez, depois do onboarding, antes das telas de Clipes e Transcrições. **Não aparece a partir de 26/10.**
+- **Header:** as fotos do Lula e do Flávio se chocam e voltam; a cada choque, um anel amarelo explode no ponto de contato e o "% TOTALIZADO" e a barra andam um passo, até 100% e recomeçar. Com Reduzir Movimento, fica parado.
+- **Fundo do header:** mini teclados de urna (1 a 9, 0 embaixo do 8, BRANCO, CORRIGE e CONFIRMA nas cores reais, ponto de braille em cada tecla), poucos, grandes e apagados, sumindo atrás das fotos e do título. Menores ou mais densos viram ruído.
+- **Itens:** Na Tela Bloqueada; Dados Oficiais do TSE; "4 de Outubro, às 17h de Brasília" (banner no topo das Vírgulas, 2º turno no dia 25).
+- **Botão:** a tecla CONFIRMA da urna (face verde sobre um degrau mais escuro, "CONFIRMA" em fonte monoespaçada, o texto em braille embaixo). Afunda ao apertar, com vibração forte e o "piririm" da urna (`Resources/ElectionStuff/urna_confirma.caf`, tocado como som de sistema: respeita a chave de silencioso e não interrompe outros áudios).
+- As fotos do Lula e do Flávio também estão no catálogo do app (`ElectionCandidate13` e `22`), porque o app não enxerga o catálogo do widget.
+- **Dev Options:** "Reexibir Election Live What's New" e "Resetar Election Live What's New" (vale na próxima abertura do app).
+
+## Revisão da App Store
+
+Enquanto a versão está em revisão, só os revisores têm esse código no app de prod (o beta usa o `.club`, e as versões antigas não têm o banner). Então:
+
+1. Ligar a **Broadcast Capability** no App ID de prod antes de arquivar.
+2. Arquivar sem o Dev Options aberto.
+3. Enviar com **liberação manual** e as notas abaixo.
+4. Durante a revisão, deixar o `.com` assim (replay de 24h; se a revisão passar de um dia, mandar de novo):
+
+```bash
+curl -X POST -H 'Content-Type: application/json' -d '{"enabled":true,"source":"replay","replayOffline":true,"replayDurationMinutes":1440,"replayStepSeconds":60,"restartReplay":true,"broadcastMode":"live"}' https://api.medodelirioios.com/api/v4/election/settings/<senha>
+```
+
+5. Depois da aprovação, **antes de liberar:**
+
+```bash
+curl -X POST -H 'Content-Type: application/json' -d '{"enabled":false,"broadcastMode":"dryRun"}' https://api.medodelirioios.com/api/v4/election/settings/<senha>
+```
+
+**Notas para o revisor:**
+
+```text
+ELECTION LIVE ACTIVITY (new in this version)
+
+This version adds a Live Activity that follows the vote count for President of Brazil in real time, on the Lock Screen and in the Dynamic Island, using the official public results published by Brazil's Superior Electoral Court (TSE, Tribunal Superior Eleitoral).
+
+The feature is switched on by our server only on election days (October 4 and October 25, 2026). To allow review, it is switched on now and runs a simulated count built from the TSE's official public test data (their "simulado" environment). This is why the candidates show placeholder names such as "CANDIDATO 9999": those are the TSE's own test candidates, not real people.
+
+HOW TO TEST
+1. Make sure Live Activities are enabled in Settings.
+2. Open the app. On the first tab ("Vírgulas"), a green banner titled "Apuração ao Vivo" appears at the top.
+3. Tap "Acompanhar ao Vivo". A Live Activity starts.
+4. Lock the device. The Live Activity shows the two leading candidates with their share of valid votes, the percentage of ballots counted and the time of the last update.
+5. Leave the device locked for a few minutes: the count advances roughly every minute through push notifications, without opening the app. On devices with a Dynamic Island, the same data appears there.
+6. To stop, open the app and tap "Parar de Acompanhar" in the same banner, or dismiss the Live Activity from the Lock Screen.
+
+NOTES
+- No account or login is required.
+- The app only displays the TSE's public data without changing it. The Live Activity credits the source ("Fonte: TSE").
+- Updates are sent by our server through an APNs broadcast channel. Starting and stopping the Live Activity sends an anonymous analytics event, and nothing else is collected.
+- After election day, the server switches the feature off and the banner disappears.
+```
+
+**Novidades desta versão (App Store):**
+
+```text
+APURAÇÃO AO VIVO
+Acompanhe a apuração para Presidente em tempo real na Tela Bloqueada, com dados oficiais do TSE. Os dois mais votados, a porcentagem de cada um e quanto já foi totalizado, atualizando sozinho, sem abrir o app.
+
+No dia 4 de outubro, a partir das 17h (horário de Brasília), um banner aparece no topo das Vírgulas. É só tocar em "Acompanhar ao Vivo". Se tiver 2º turno, dia 25 tem de novo.
+
+IPHONE DUO E JANELAS REDIMENSIONÁVEIS
+• O app se adapta ao tamanho da janela, e não mais ao tipo de aparelho: no iPhone Duo aberto e no iPad em Split View, as grades e os espaçamentos acompanham o espaço disponível.
+• No iPhone Duo aberto, a tela de Reproduzindo Agora ocupa a tela toda. Com a dobra na vertical, a capa e os controles ficam de um lado e as abas do outro.
+
+Mais: correções de layout em telas estreitas e deslizar para apagar marcadores no iOS 27.
+```
 
 ## O que falta
 
-### 1. Antes de tudo, na máquina nova
+### Antes do envio (até 29/09)
 
-- [x] `git pull` nos dois repositórios.
-- [x] Build completo do app.
-- [ ] Conferir os previews da Live Activity no Xcode.
-
-### 2. Broadcaster da APNs (servidor)
-
-- [x] Tudo o que estava listado aqui (ver "Broadcaster" acima). O APNSwift 4.0.1 não suporta Live Activity nem broadcast, então é HTTP/2 direto com JWT.
-- [x] Primeiro envio real: em 27/09, replay offline no `.club` com `broadcastMode: live`, e a activity do beta (TestFlight) atualizou. Confirma JWT, HTTP/2, canal de broadcast e formato do payload.
-
-### 3. Teste no beta (servidor `.club`)
-
-O servidor de prod (`.com`) não muda nada até este teste passar.
-
-**Portal da Apple**
-
-- [x] Identifiers → `com.rafaelschmitt.MedoDelirioBrasilia.beta` → Push Notifications → ligar **Broadcast Capability**.
-
-**Servidor `.club`**
-
-- [x] Deploy dos commits da eleição.
-- [ ] No `.env`: `ELECTION_PASSWORD=<senha>`, `ELECTION_POLLING_ENABLED=true` e `APNS_ENVIRONMENT` **vazio ou ausente** (produção, que é o que o TestFlight usa). Se hoje estiver `sandbox` para testes pelo Xcode, os outros pushes do `.club` também mudam de ambiente.
-- [ ] `GET election/status/<senha>`: o poller encontrou a eleição do simulado e `lastError` está vazio.
-- [ ] `GET election/channels/<senha>`: primeira conversa com a APNs. Se voltar lista vazia sem `errors`, o JWT e o HTTP/2 estão certos.
-- [x] `POST election/channels/<senha>?bundleId=com.rafaelschmitt.MedoDelirioBrasilia.beta`: cria só o canal do beta.
-- [ ] Replay de 5 min ainda em `dryRun`; ler as linhas `Election push (dry run)` no log. Com `"replayOffline":true` o teste não depende do TSE.
-
-**App beta**
-
-- [x] Subir o build number, arquivar o scheme `MedoDelirio - BETA` e enviar para o TestFlight do registro beta. Grupo interno não passa por review.
-- [x] No aparelho: Dev Options → ligar a flag `electionLiveActivity`. O banner aparece. (Flag removida depois; hoje é `{"enabled":true}` no `.club`.)
-
-**Ponta a ponta**
-
-- [x] `{"source":"replay","replayOffline":true,"replayDurationMinutes":15,"restartReplay":true,"broadcastMode":"live"}`, e em seguida "Acompanhar ao Vivo" no app. Bloquear o aparelho e acompanhar.
-- [ ] Esperado: marcos de 10% chegam na hora (prioridade 10); os updates de prioridade 5 podem atrasar ou chegar agrupados, porque o iOS os entrega conforme a bateria. No fim: resultado final, alerta "Apuração encerrada" e a activity encerrada.
-- [ ] Conferir `lastBroadcast*` no status durante o teste.
-- [ ] Repetir com `restartReplay` e iniciar de novo pelo banner.
-- [ ] Ao terminar: `{"broadcastMode":"dryRun"}`.
-- [ ] 28/09, 14h às 16h: `{"source":"simulation","broadcastMode":"live"}` e acompanhar o simulado ao vivo. Medir a cadência real dos arquivos e ajustar `minPushIntervalSeconds`.
-
-### 4. Prod
-
+- [ ] Conferir no Xcode os previews da Live Activity e a tela de novidades (animação do header, tecla CONFIRMA afundando, som e vibração no aparelho).
 - [ ] Portal: Broadcast Capability no App ID `com.rafaelschmitt.MedoDelirioBrasilia`.
-- [ ] Deploy no servidor de prod (`.com`) com o mesmo `.env` da eleição, em `dryRun`.
-- [ ] `POST election/channels/<senha>?bundleId=com.rafaelschmitt.MedoDelirioBrasilia`.
-- [ ] 29/09: enviar o app para review com `enabled` desligado.
-- [ ] Decidir antes do dia 04/10 o servidor da eleição do beta: deixar os dois servidores configurados iguais no dia (e o `.club` segue servindo os testers), ou tirar o `electionAPIURL` num build novo do beta.
+- [ ] Commitar o `APP_VERSION` 13 (build 3), arquivar sem Dev Options e enviar com liberação manual e as notas.
+- [ ] Opcional: subir o build de revisão primeiro para o TestFlight do app de prod e rodar um replay `live` no `.com`. É o único jeito de ver o canal de prod chegando num iPhone antes do revisor.
+- [ ] Configurar o `.com` para a revisão (comando acima).
 
-### 5. No dia 04/10
+### Teste no simulado (28 e 29/09, 14h às 16h)
 
-- [ ] Quando o pleito 3220 aparecer no `ele-c.json` oficial: `{"source":"official"}`.
-- [ ] Configurar as cores dos candidatos reais.
-- [ ] `{"enabled":true}` e mandar um push normal "a apuração começou" para a base.
+- [ ] `{"source":"simulation","broadcastMode":"live"}` no `.club` e acompanhar pelo beta.
+- [ ] Conferir o `electionCode` no status quando a janela abrir. Se o TSE publicar outro código e deixar o antigo no ar, trocar a fonte para `replay` e de volta para `simulation` para o servidor resolver de novo.
+- [ ] Anotar de quanto em quanto tempo o `generationId` muda e ajustar `minPushIntervalSeconds`.
 
-### 6. Depois do 2º turno (25/10)
+### Depois da aprovação
 
-- [ ] Trocar o `APNsBroadcastClient` pela biblioteca. O APNSwift 7.0.0 (jul/2026) já tem broadcast (envio e gestão de canais) e os campos de Live Activity do iOS 18, mas o vapor/apns 5.0.0 só aceita APNSwift abaixo da 7, e o SwiftPM não deixa ter duas versões do mesmo pacote. Então a migração é: tirar o vapor/apns (hoje na 3.0.0, com APNSwift 4.0.1), usar o APNSwift 7 direto (ou o vapor/apns, se já aceitar a 7) e reescrever todos os pushes: novo episódio, destaques da semana, sync de conteúdo em background e o envio manual. Ficou para depois da eleição para não mexer nesses pushes na semana do 1º turno.
+- [ ] `{"enabled":false,"broadcastMode":"dryRun"}` no `.com` e só então liberar a versão.
+- [ ] Decidir o `.club` no dia 4: configurar igual ao `.com` (os testers do beta seguem acompanhando) ou deixar desligado.
+
+### No dia 04/10
+
+- [ ] Quando o pleito 3220 aparecer no `ele-c.json` oficial: `{"source":"official"}` e `{"broadcastMode":"live"}`.
+- [ ] Escrever as frases finais (`finalMessages`). No 1º turno, o mais provável é `runoff:13-22`.
+- [ ] Cores para candidatos sem foto que possam chegar aos 2 primeiros (ex.: Caiado, 55).
+- [ ] Ligar `enabled` **só depois** de o status mostrar o primeiro arquivo oficial (sem estado, o app responde "ainda não está disponível"). Mandar um push normal "a apuração começou" para a base.
+
+### No dia 25/10
+
+- [ ] `{"round":2}` e, se o `ele-c.json` listar a eleição do 2º turno, o servidor resolve sozinho. Conferir as fotos dos finalistas.
+
+### Depois do 2º turno
+
+- [ ] Trocar o `APNsBroadcastClient` pela biblioteca. O APNSwift 7.0.0 (jul/2026) já tem broadcast (envio e gestão de canais) e os campos de Live Activity do iOS 18, mas o vapor/apns 5.0.0 só aceita APNSwift abaixo da 7, e o SwiftPM não deixa ter duas versões do mesmo pacote. Então a migração é: tirar o vapor/apns (hoje na 3.0.0, com APNSwift 4.0.1), usar o APNSwift 7 direto (ou o vapor/apns, se já aceitar a 7) e reescrever todos os pushes: novo episódio, destaques da semana, sync de conteúdo em background e o envio manual.
+- [ ] Desligar `enabled` nos dois servidores.
 
 ## Decisões em aberto
 
 - Mostrar ou não candidatos anulados ("Anulado sub judice") na Live Activity. Hoje eles aparecem, como no app do TSE.
-- Fotos dos candidatos (fora do MVP). Caminho possível: o app baixa para o App Group e a extensão lê de lá.
 - Push-to-start (iniciar a activity remotamente) fica para depois: exige um token por aparelho.
 - Ler as regras de divulgação da Resolução TSE 23.751, arts. 264 a 269.
 - O alerta do resultado final acende a Tela Bloqueada de todo mundo que está acompanhando (sem som). Tirar é só remover o `alert` do `end` no `ElectionBroadcastPlanner`.
-- Uma Live Activity dura no máximo 8h ativa. Se o banner for ligado muito cedo no dia 4, quem iniciar logo no começo pode perder o fim da apuração.
+- Uma Live Activity dura no máximo 8h ativa. Quem iniciar às 17h passa da meia-noite; a apuração costuma terminar antes.
 
 ## Lições
 
-- Rodar o servidor num notebook que dorme engana: o `Task.sleep` pausa junto com o sistema e parece que o poller travou. No teste do dia 28, a máquina precisa estar acordada e na tomada (ou usar o Linode).
+- Rodar o servidor num notebook que dorme engana: o `Task.sleep` pausa junto com o sistema e parece que o poller travou.
 - A CDN do TSE às vezes derruba conexões keep-alive ociosas; o retry imediato no `get` cobre isso.
+- `broadcastMode` começa em `dryRun`: se a activity não atualizar num teste, o primeiro suspeito é ter esquecido `"broadcastMode":"live"`.
+- Uma variável de ambiente faltando derruba a API inteira (`fatalError` em `ReleaseConfigs`), não só a eleição. Conferir o `.env` antes de chamar rotas com senha.
+- O site do TSE (e o DivulgaCandContas) bloqueia clientes que não sejam navegador: `curl` recebe 403.
