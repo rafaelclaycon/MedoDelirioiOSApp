@@ -25,25 +25,26 @@ struct ElectionLiveActivity: Widget {
                 DynamicIslandExpandedRegion(.leading) {
                     ElectionCandidateSide(candidate: first, rank: 0, alignment: .leading, badgeSize: 30)
                         .padding(.leading, 4)
+                        .dynamicTypeSize(.large)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     ElectionCandidateSide(candidate: second, rank: 1, alignment: .trailing, badgeSize: 30)
                         .padding(.trailing, 4)
+                        .dynamicTypeSize(.large)
                 }
-                DynamicIslandExpandedRegion(.center) {
-                    ElectionRoundLabel(round: context.attributes.round, isLive: !state.isFinal)
-                }
+                // No center region: it takes width from the percentages.
                 DynamicIslandExpandedRegion(.bottom) {
-                    VStack(spacing: 6) {
+                    VStack(spacing: 4) {
                         ElectionNamesRow(first: first, second: second)
-                        Text(ElectionFormat.counted(state))
-                            .font(.caption)
-                            .fontWeight(.bold)
-                            .monospacedDigit()
+                        ElectionCountedRow(round: context.attributes.round, state: state, font: .caption)
+                        // Inset and lifted: the island's rounded bottom corners cut off
+                        // the ends of a full-width bar.
                         ElectionProgressBar(percent: state.sectionsCountedPercent)
+                            .padding(.horizontal, 18)
+                            .padding(.bottom, 6)
                     }
                     .padding(.horizontal, 4)
-                    .padding(.top, 6)
+                    .dynamicTypeSize(.large)
                 }
             } compactLeading: {
                 if let first {
@@ -86,21 +87,22 @@ struct ElectionLockScreenView: View {
     var body: some View {
         let (first, second) = ElectionFormat.topTwo(state)
         VStack(spacing: 0) {
-            VStack(spacing: 6) {
+            VStack(spacing: 4) {
                 HStack(spacing: 8) {
-                    ElectionCandidateSide(candidate: first, rank: 0, alignment: .leading, badgeSize: 40)
+                    ElectionCandidateSide(candidate: first, rank: 0, alignment: .leading, badgeSize: 36)
                     Spacer(minLength: 4)
                     ElectionRoundLabel(round: round, isLive: !state.isFinal)
                     Spacer(minLength: 4)
-                    ElectionCandidateSide(candidate: second, rank: 1, alignment: .trailing, badgeSize: 40)
+                    ElectionCandidateSide(candidate: second, rank: 1, alignment: .trailing, badgeSize: 36)
                 }
                 ElectionNamesRow(first: first, second: second)
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.vertical, 10)
             .background(ElectionPalette.header)
 
-            VStack(spacing: 8) {
+            // Tight on purpose: the Lock Screen cuts a Live Activity taller than 160 pt.
+            VStack(spacing: 6) {
                 Text(ElectionFormat.counted(state))
                     .font(.headline)
                     .fontWeight(.bold)
@@ -108,29 +110,30 @@ struct ElectionLockScreenView: View {
 
                 ElectionProgressBar(percent: state.sectionsCountedPercent)
 
-                if state.isFinal, let finalMessage = state.finalMessage {
-                    Text(finalMessage)
-                        .font(.subheadline)
-                        .fontWeight(.bold)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.85)
-                }
-
+                // The final message takes the footer's place: a line more would pass the
+                // Live Activity's maximum height and get cut.
                 HStack(spacing: 6) {
                     Image("ElectionAppLogo")
                         .resizable()
                         .frame(width: 16, height: 16)
                         .clipShape(.rect(cornerRadius: 4))
-                    Text(footer)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                    if state.isFinal, let finalMessage = state.finalMessage {
+                        Text(finalMessage)
+                            .font(.subheadline)
+                            .fontWeight(.bold)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    } else {
+                        Text(footer)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.top, 10)
-            .padding(.bottom, 12)
+            .padding(.top, 8)
+            .padding(.bottom, 10)
             .frame(maxWidth: .infinity)
             // Not left to `activityBackgroundTint` alone: in light mode the system can still
             // lay the activity over a white background.
@@ -138,6 +141,10 @@ struct ElectionLockScreenView: View {
         }
         .foregroundStyle(.white)
         .environment(\.colorScheme, .dark)
+        // Fixed at the default text size: with the round between the percentages, larger
+        // sizes push the photos out on narrow iPhones, and the Lock Screen cuts anything
+        // taller than 160 pt.
+        .dynamicTypeSize(.large)
     }
 
     private var footer: String {
@@ -177,14 +184,35 @@ struct ElectionCandidateSide: View {
                     ElectionCandidateBadge(candidate: candidate, rank: rank, size: badgeSize)
                 }
                 Text(ElectionFormat.percent(candidate.percent, digits: 2))
-                    .font(badgeSize > 32 ? .title2 : .headline)
+                    .font(badgeSize > 32 ? .title3 : .headline)
                     .fontWeight(.semibold)
                     .monospacedDigit()
                     .lineLimit(1)
+                    .fixedSize()
                 if alignment == .trailing {
                     ElectionCandidateBadge(candidate: candidate, rank: rank, size: badgeSize)
                 }
             }
+        }
+    }
+}
+
+/// "● 1º TURNO   19,00% TOTALIZADO": the round and the live dot share the line with the
+/// counted share, leaving the top row to the candidates.
+struct ElectionCountedRow: View {
+
+    let round: Int
+    let state: ElectionActivityAttributes.ContentState
+    let font: Font
+
+    var body: some View {
+        HStack(spacing: 10) {
+            ElectionRoundLabel(round: round, isLive: !state.isFinal)
+            Text(ElectionFormat.counted(state))
+                .font(font)
+                .fontWeight(.bold)
+                .monospacedDigit()
+                .lineLimit(1)
         }
     }
 }
