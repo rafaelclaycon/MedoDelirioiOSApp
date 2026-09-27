@@ -89,13 +89,26 @@ struct ElectionLockScreenView: View {
     var body: some View {
         let (first, second) = ElectionFormat.topTwo(state)
         VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                ElectionCandidateSide(candidate: first, rank: 0, alignment: .leading, badgeSize: 40)
-                Spacer(minLength: 4)
-                ElectionRoundLabel(round: round, isLive: !state.isFinal)
-                    .layoutPriority(1)
-                Spacer(minLength: 4)
-                ElectionCandidateSide(candidate: second, rank: 1, alignment: .trailing, badgeSize: 40)
+            VStack(spacing: 6) {
+                HStack(spacing: 8) {
+                    ElectionCandidateSide(candidate: first, rank: 0, alignment: .leading, badgeSize: 40, showsName: false)
+                    Spacer(minLength: 4)
+                    ElectionRoundLabel(round: round, isLive: !state.isFinal)
+                    Spacer(minLength: 4)
+                    ElectionCandidateSide(candidate: second, rank: 1, alignment: .trailing, badgeSize: 40, showsName: false)
+                }
+                // Names get a row of their own, half the width each: at a fixed size, a name
+                // like FLAVIO BOLSONARO doesn't fit next to the photo.
+                HStack(spacing: 8) {
+                    Text(first?.name ?? "")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(second?.name ?? "")
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+                .font(.caption2)
+                .fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -163,12 +176,14 @@ struct ElectionLockScreenView: View {
 // MARK: - Pieces
 
 /// Badge, share of valid votes and name, mirrored on the trailing side.
+/// Font sizes are fixed on purpose: long names get cut instead of shrinking.
 struct ElectionCandidateSide: View {
 
     let candidate: ElectionActivityAttributes.Candidate?
     let rank: Int
     let alignment: HorizontalAlignment
     let badgeSize: CGFloat
+    var showsName = true
 
     var body: some View {
         if let candidate {
@@ -181,12 +196,12 @@ struct ElectionCandidateSide: View {
                         .font(badgeSize > 32 ? .title2 : .headline)
                         .fontWeight(.semibold)
                         .monospacedDigit()
-                        .minimumScaleFactor(0.8)
-                    Text(candidate.name)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
+                    if showsName {
+                        Text(candidate.name)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
                 }
                 .lineLimit(1)
                 if alignment == .trailing {
@@ -237,6 +252,7 @@ struct ElectionCandidateBadge: View {
     }
 }
 
+/// The red dot means the count is live; it goes away with the final result.
 struct ElectionRoundLabel: View {
 
     let round: Int
