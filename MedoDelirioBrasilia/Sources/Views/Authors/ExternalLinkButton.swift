@@ -11,6 +11,8 @@ import Kingfisher
 struct ExternalLinkButton: View {
 
     let externalLink: ExternalLink
+    /// Icon only when there's no room for the name; VoiceOver still reads it.
+    var showsTitle = true
 
     var imageUrl: URL {
         URL(string: "\(APIConfig.baseServerURL)images/\(externalLink.symbol)")!
@@ -26,12 +28,15 @@ struct ExternalLinkButton: View {
                     .scaledToFit()
                     .frame(width: 22)
 
-                Text(externalLink.title)
+                if showsTitle {
+                    Text(externalLink.title)
+                }
             }
             .padding(.vertical, 2)
-            .padding(.horizontal, 6)
+            .padding(.horizontal, showsTitle ? 6 : 2)
         }
         .capsule(colored: externalLink.color.toColor())
+        .accessibilityLabel(externalLink.title)
     }
 }
 

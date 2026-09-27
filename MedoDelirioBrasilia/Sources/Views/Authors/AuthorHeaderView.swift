@@ -168,26 +168,7 @@ extension AuthorHeaderView {
                         ExpandableText(description)
                     }
 
-                    if !author.links.isEmpty {
-                        ViewThatFits(in: .horizontal) {
-                            HStack(spacing: .spacing(.small)) {
-                                ForEach(author.links, id: \.title) {
-                                    ExternalLinkButton(externalLink: $0)
-                                }
-                            }
-                            VStack(alignment: .leading, spacing: .spacing(.medium)) {
-                                ForEach(author.links, id: \.title) {
-                                    ExternalLinkButton(externalLink: $0)
-                                }
-                            }
-                        }
-                        .padding(.vertical, .spacing(.xxxSmall))
-                    }
-
-                    Text(soundCountText)
-                        .font(.subheadline)
-                        .foregroundColor(.gray)
-                        .bold()
+                    SoundCountAndLinks(soundCountText: soundCountText, links: author.links)
                 }
                 .padding(.horizontal, .spacing(.large))
                 .padding(.top, .spacing(.small))
@@ -299,27 +280,11 @@ extension AuthorHeaderView {
                                     ExpandableText(description)
                                 }
 
-                                if !author.links.isEmpty {
-                                    ViewThatFits(in: .horizontal) {
-                                        HStack(spacing: .spacing(.small)) {
-                                            ForEach(author.links, id: \.title) {
-                                                ExternalLinkButton(externalLink: $0)
-                                            }
-                                        }
-                                        VStack(alignment: .leading, spacing: .spacing(.medium)) {
-                                            ForEach(author.links, id: \.title) {
-                                                ExternalLinkButton(externalLink: $0)
-                                            }
-                                        }
-                                    }
-                                    .padding(.vertical, .spacing(.xxxSmall))
-                                }
-
-                                Text(soundCountText)
-                                    .font(.subheadline)
-                                    .foregroundColor(.gray)
-                                    .bold()
+                                SoundCountAndLinks(soundCountText: soundCountText, links: author.links)
                             }
+                            // Lines up with the name above instead of centering in the
+                            // space beside the photo, which looked adrift on wide layouts.
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         .padding(.top, .spacing(.large))
                         .padding(.trailing, .spacing(.xLarge))
@@ -337,6 +302,54 @@ extension AuthorHeaderView {
                         contentSortChangeAction: contentSortChangeAction
                     )
                 )
+            }
+        }
+    }
+
+    /// The sound count with the author's links on the same line, so the links don't take
+    /// a row of their own. Falls back to icon-only links, then to two lines.
+    struct SoundCountAndLinks: View {
+
+        let soundCountText: String
+        let links: [ExternalLink]
+
+        var body: some View {
+            if links.isEmpty {
+                count
+            } else {
+                ViewThatFits(in: .horizontal) {
+                    sameLine(showsTitles: true)
+                    sameLine(showsTitles: false)
+                    VStack(alignment: .leading, spacing: .spacing(.small)) {
+                        count
+                        linkButtons(showsTitles: false)
+                    }
+                }
+            }
+        }
+
+        private var count: some View {
+            Text(soundCountText)
+                .font(.subheadline)
+                .foregroundColor(.gray)
+                .bold()
+        }
+
+        private func sameLine(showsTitles: Bool) -> some View {
+            HStack(spacing: .spacing(.small)) {
+                count
+                    .fixedSize()
+                Spacer(minLength: .spacing(.medium))
+                linkButtons(showsTitles: showsTitles)
+            }
+        }
+
+        private func linkButtons(showsTitles: Bool) -> some View {
+            HStack(spacing: .spacing(.small)) {
+                ForEach(links, id: \.title) {
+                    ExternalLinkButton(externalLink: $0, showsTitle: showsTitles)
+                        .fixedSize()
+                }
             }
         }
     }
