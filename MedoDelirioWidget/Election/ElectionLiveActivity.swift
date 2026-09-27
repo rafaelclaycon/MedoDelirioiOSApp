@@ -109,6 +109,15 @@ struct ElectionLockScreenView: View {
 
                 ElectionProgressBar(percent: state.sectionsCountedPercent)
 
+                if state.isFinal, let finalMessage = state.finalMessage {
+                    Text(finalMessage)
+                        .font(.subheadline)
+                        .fontWeight(.bold)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.85)
+                }
+
                 HStack(spacing: 6) {
                     Image("ElectionAppLogo")
                         .resizable()
@@ -188,7 +197,8 @@ struct ElectionCandidateSide: View {
     }
 }
 
-/// Stands in for the candidate's photo: their color with the ballot number.
+/// The candidate's official TSE photo when the widget has one (`ElectionCandidate<number>`
+/// in the asset catalog), otherwise their color with the ballot number.
 struct ElectionCandidateBadge: View {
 
     let candidate: ElectionActivityAttributes.Candidate
@@ -196,20 +206,34 @@ struct ElectionCandidateBadge: View {
     let size: CGFloat
 
     var body: some View {
-        Circle()
-            .fill(ElectionFormat.color(for: candidate, rank: rank))
-            .overlay {
-                Text(String(candidate.number))
-                    .font(.system(size: size * 0.42, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .minimumScaleFactor(0.5)
-                    .foregroundStyle(.white)
-                    .padding(size * 0.12)
-            }
+        content
+            .frame(width: size, height: size)
+            .clipShape(.circle)
             .overlay {
                 Circle().strokeBorder(.white.opacity(0.8), lineWidth: 1.5)
             }
-            .frame(width: size, height: size)
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if let photo = UIImage(named: "ElectionCandidate\(candidate.number)") {
+            // TSE photos are portraits: anchored to the top so the face stays in the circle.
+            Image(uiImage: photo)
+                .resizable()
+                .scaledToFill()
+                .frame(width: size, height: size, alignment: .top)
+        } else {
+            Circle()
+                .fill(ElectionFormat.color(for: candidate, rank: rank))
+                .overlay {
+                    Text(String(candidate.number))
+                        .font(.system(size: size * 0.42, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .minimumScaleFactor(0.5)
+                        .foregroundStyle(.white)
+                        .padding(size * 0.12)
+                }
+        }
     }
 }
 
@@ -328,13 +352,32 @@ extension ElectionActivityAttributes.ContentState {
             .init(number: 88, name: "CANDIDATO 9977", party: "P 9973", percent: 5.9, status: .notElected, colorHex: nil)
         ]
     )
+
+    /// Ballot numbers with photos in the asset catalog.
+    static let previewWithPhotos = Self(
+        sectionsCountedPercent: 48.2,
+        isFinal: false,
+        updatedAt: 1_790_277_154,
+        candidates: [
+            .init(number: 13, name: "LULA", party: "PT", percent: 47.12, status: .counting, colorHex: nil),
+            .init(number: 22, name: "FLAVIO BOLSONARO", party: "PL", percent: 38.45, status: .counting, colorHex: nil)
+        ]
+    )
+
+    static let previewFinalWithMessage: Self = {
+        var state = previewFinal
+        state.finalMessage = "Segura que ainda tem 2º turno. Bora!"
+        return state
+    }()
 }
 
 #Preview("Lock Screen", as: .content, using: ElectionActivityAttributes(round: 1)) {
     ElectionLiveActivity()
 } contentStates: {
     ElectionActivityAttributes.ContentState.previewCounting
+    ElectionActivityAttributes.ContentState.previewWithPhotos
     ElectionActivityAttributes.ContentState.previewFinal
+    ElectionActivityAttributes.ContentState.previewFinalWithMessage
 }
 
 #Preview("Island Expanded", as: .dynamicIsland(.expanded), using: ElectionActivityAttributes(round: 1)) {

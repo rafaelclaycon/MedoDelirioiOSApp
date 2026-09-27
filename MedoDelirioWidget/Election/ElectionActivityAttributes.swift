@@ -26,6 +26,8 @@ struct ElectionActivityAttributes: ActivityAttributes {
         var updatedAt: Double
         /// Already trimmed and ordered by the server.
         var candidates: [Candidate]
+        /// Written by the admin for how the count ended. Only on the final state.
+        var finalMessage: String?
 
         var leader: Candidate? {
             candidates.first

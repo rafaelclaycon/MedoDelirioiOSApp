@@ -112,6 +112,12 @@ curl -X POST -H 'Content-Type: application/json' -d '{"broadcastMode":"live"}' h
 curl -X POST -H 'Content-Type: application/json' -d '{"minPushIntervalSeconds":45}' https://<servidor>/api/v4/election/settings/<senha>
 ```
 
+**Frases finais** (escritas com antecedência, uma por desfecho, porque o push de fim sai assim que o TSE encerra a apuração). Chaves, da mais específica para a mais genérica: `elected:13`, `elected`, `runoff:13-22` (números em ordem crescente), `runoff`, `default`. O `text` aparece na activity entre a barra e o rodapé; `alertTitle` e `alertBody` substituem o alerta neutro "Apuração encerrada". `null` apaga uma chave. Editar a frase depois do fim reenvia o `end` sem alerta.
+
+```bash
+curl -X POST -H 'Content-Type: application/json' -d '{"finalMessages":{"runoff:13-22":{"text":"Segura que tem 2º turno. Bora!"},"default":{"text":"Acabou a apuração."}}}' https://<servidor>/api/v4/election/settings/<senha>
+```
+
 Campos aceitos: `enabled`, `source` (`simulation`, `official`, `replay`), `round` (1 ou 2), `channelIds` (mapa bundle ID → canal, mesclado; string vazia apaga), `broadcastMode` (`off`, `dryRun`, `live`), `minPushIntervalSeconds`, `candidateColors`, `replayDurationMinutes`, `replayStepSeconds` (0 = avança a cada poll), `replayOffline`, `restartReplay`.
 
 **Rodar localmente** (banco em memória e sem APNs, não precisa das chaves de produção):
@@ -139,6 +145,7 @@ Commits `c2e03f5b` (Live Activity e flag) e `f67997c1` (banner).
 - `Sources/Helpers/ElectionLiveActivityManager.swift`: inicia com `pushType: .channel(channelId)`, não duplica activity do mesmo turno, mensagens de erro em português, `endAll()`. Activities já encerradas (que ficam na Tela Bloqueada até a `dismissal-date`) não contam como "acompanhando" nem impedem uma nova, o que importa para repetir o replay.
 - `Sources/Networking/APIClient+Election.swift`: `GET v4/election/live?bundleId=<Bundle.main.bundleIdentifier>`.
 - `Sources/Views/Banners/ElectionLiveBannerView.swift`: banner no topo do `BannersView` com "Acompanhar ao Vivo" e "Parar de Acompanhar", alerta quando as Atividades ao Vivo estão desligadas e eventos de analytics.
+- **Fotos dos candidatos:** fotos oficiais de candidatura do TSE (DivulgaCandContas) no catálogo do widget como `ElectionCandidate<número>`, hoje para 13, 14, 22, 30 e 70. Sem foto, o candidato aparece como um círculo na cor dele com o número. Para trocar ou adicionar (ex.: no 2º turno), nomeie os arquivos pelo número (`13.jpg`) e rode `scripts/import-election-photos.sh <pasta>`.
 - **Feature flag `electionLiveActivity`** (Dev Options): o banner aparece se o `enabled` do servidor **ou** a flag local estiver ligada.
 - **Servidor da eleição no beta:** o `APIConfig.electionAPIURL` manda só o `v4/election/live` do bundle beta para `api.medodelirioios.club`; o resto do beta continua no servidor de prod. Motivo: o `api_environment` do scheme só vale rodando pelo Xcode, então um build de TestFlight do beta sempre caía no servidor de prod. Assim o servidor de prod só recebe o código da eleição depois do teste no beta. Com `api_environment` ligado no scheme, ele continua mandando.
 
@@ -155,7 +162,7 @@ Build completo do scheme `MedoDelirio` passando (25/09). **Ainda não rodou em a
 ### 2. Broadcaster da APNs (servidor)
 
 - [x] Tudo o que estava listado aqui (ver "Broadcaster" acima). O APNSwift 4.0.1 não suporta Live Activity nem broadcast, então é HTTP/2 direto com JWT.
-- [ ] Primeiro envio real: nunca foi testado contra a APNs. Os pontos que só um teste real confirma são a negociação HTTP/2 do `app.client` com a APNs e a aceitação do JWT pela Channel Management API.
+- [x] Primeiro envio real: em 27/09, replay offline no `.club` com `broadcastMode: live`, e a activity do beta (TestFlight) atualizou. Confirma JWT, HTTP/2, canal de broadcast e formato do payload.
 
 ### 3. Teste no beta (servidor `.club`)
 
@@ -163,25 +170,25 @@ O servidor de prod (`.com`) não muda nada até este teste passar.
 
 **Portal da Apple**
 
-- [ ] Identifiers → `com.rafaelschmitt.MedoDelirioBrasilia.beta` → Push Notifications → ligar **Broadcast Capability**.
+- [x] Identifiers → `com.rafaelschmitt.MedoDelirioBrasilia.beta` → Push Notifications → ligar **Broadcast Capability**.
 
 **Servidor `.club`**
 
-- [ ] Deploy dos commits da eleição.
+- [x] Deploy dos commits da eleição.
 - [ ] No `.env`: `ELECTION_PASSWORD=<senha>`, `ELECTION_POLLING_ENABLED=true` e `APNS_ENVIRONMENT` **vazio ou ausente** (produção, que é o que o TestFlight usa). Se hoje estiver `sandbox` para testes pelo Xcode, os outros pushes do `.club` também mudam de ambiente.
 - [ ] `GET election/status/<senha>`: o poller encontrou a eleição do simulado e `lastError` está vazio.
 - [ ] `GET election/channels/<senha>`: primeira conversa com a APNs. Se voltar lista vazia sem `errors`, o JWT e o HTTP/2 estão certos.
-- [ ] `POST election/channels/<senha>?bundleId=com.rafaelschmitt.MedoDelirioBrasilia.beta`: cria só o canal do beta.
+- [x] `POST election/channels/<senha>?bundleId=com.rafaelschmitt.MedoDelirioBrasilia.beta`: cria só o canal do beta.
 - [ ] Replay de 5 min ainda em `dryRun`; ler as linhas `Election push (dry run)` no log. Com `"replayOffline":true` o teste não depende do TSE.
 
 **App beta**
 
-- [ ] Subir o build number, arquivar o scheme `MedoDelirio - BETA` e enviar para o TestFlight do registro beta. Grupo interno não passa por review.
-- [ ] No aparelho: Dev Options → ligar a flag `electionLiveActivity`. O banner aparece.
+- [x] Subir o build number, arquivar o scheme `MedoDelirio - BETA` e enviar para o TestFlight do registro beta. Grupo interno não passa por review.
+- [x] No aparelho: Dev Options → ligar a flag `electionLiveActivity`. O banner aparece.
 
 **Ponta a ponta**
 
-- [ ] `{"source":"replay","replayOffline":true,"replayDurationMinutes":15,"restartReplay":true,"broadcastMode":"live"}`, e em seguida "Acompanhar ao Vivo" no app. Bloquear o aparelho e acompanhar.
+- [x] `{"source":"replay","replayOffline":true,"replayDurationMinutes":15,"restartReplay":true,"broadcastMode":"live"}`, e em seguida "Acompanhar ao Vivo" no app. Bloquear o aparelho e acompanhar.
 - [ ] Esperado: marcos de 10% chegam na hora (prioridade 10); os updates de prioridade 5 podem atrasar ou chegar agrupados, porque o iOS os entrega conforme a bateria. No fim: resultado final, alerta "Apuração encerrada" e a activity encerrada.
 - [ ] Conferir `lastBroadcast*` no status durante o teste.
 - [ ] Repetir com `restartReplay` e iniciar de novo pelo banner.
