@@ -5,6 +5,7 @@
 //  Created by Rafael Schmitt on 27/09/26.
 //
 
+import AudioToolbox
 import SwiftUI
 
 /// Announces the election Live Activity before election day: the banner that starts it
@@ -42,6 +43,8 @@ struct IntroducingElectionLiveView: View {
     }
 
     private let accentGreen = Color.green
+
+    @State private var confirmations = 0
 
     var body: some View {
         NavigationStack {
@@ -132,34 +135,19 @@ struct IntroducingElectionLiveView: View {
         }
     }
 
-    @ViewBuilder
+    /// The ballot machine's CONFIRMA key, braille and all.
     private var dismissButton: some View {
-        if #available(iOS 26.0, *) {
-            Button {
-                close()
-            } label: {
-                Text("Combinado!")
-                    .font(.headline)
-                    .bold()
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-            }
-            .buttonStyle(.glassProminent)
-            .tint(accentGreen)
-        } else {
-            Button {
-                close()
-            } label: {
-                HStack {
-                    Spacer()
-                    Text("Combinado!")
-                        .font(.headline)
-                        .bold()
-                    Spacer()
-                }
-            }
-            .largeRoundedRectangleBorderedProminent(colored: accentGreen)
+        Button {
+            confirmations += 1
+            ConfirmaKey.playSound()
+            close()
+        } label: {
+            ConfirmaKeyLabel()
         }
+        .buttonStyle(ConfirmaKeyStyle())
+        .sensoryFeedback(.impact(weight: .heavy), trigger: confirmations)
+        .accessibilityLabel("Confirma")
+        .accessibilityHint("Fecha as novidades")
     }
 
     private func close() {
@@ -184,6 +172,117 @@ struct IntroducingElectionLiveView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+}
+
+// MARK: - Confirma Key
+
+extension IntroducingElectionLiveView {
+
+    /// Colors of the real CONFIRMA key.
+    enum ConfirmaKey {
+        static let face = Color(red: 0.37, green: 0.62, blue: 0.34)
+        static let edge = Color(red: 0.24, green: 0.44, blue: 0.22)
+        static let ink = Color(red: 0.09, green: 0.21, blue: 0.09)
+        static let depth: CGFloat = 6
+
+        /// The ballot machine's confirmation beep, through the system sound API instead of
+        /// an audio player: it respects the silent switch, mixes with whatever is playing,
+        /// and never touches the app's `.playback` session, so an episode keeps going.
+        private static let soundID: SystemSoundID? = {
+            guard let url = Bundle.main.url(forResource: "urna_confirma", withExtension: "caf") else {
+                return nil
+            }
+            var id: SystemSoundID = 0
+            guard AudioServicesCreateSystemSoundID(url as CFURL, &id) == kAudioServicesNoError else {
+                return nil
+            }
+            return id
+        }()
+
+        static func playSound() {
+            guard let soundID else { return }
+            AudioServicesPlaySystemSound(soundID)
+        }
+    }
+
+    /// A physical key: the face sits on a darker edge and sinks into it while pressed.
+    struct ConfirmaKeyStyle: ButtonStyle {
+
+        func makeBody(configuration: Configuration) -> some View {
+            let depth = configuration.isPressed ? 1 : ConfirmaKey.depth
+            configuration.label
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(ConfirmaKey.face, in: .rect(cornerRadius: 12))
+                .offset(y: ConfirmaKey.depth - depth)
+                .background(alignment: .bottom) {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(ConfirmaKey.edge)
+                        .offset(y: ConfirmaKey.depth)
+                }
+                .padding(.bottom, ConfirmaKey.depth)
+                .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
+        }
+    }
+
+    struct ConfirmaKeyLabel: View {
+
+        var body: some View {
+            VStack(spacing: 8) {
+                Text("CONFIRMA")
+                    .font(.system(size: 24, weight: .heavy, design: .monospaced))
+                    .tracking(1)
+                BrailleView(text: "CONFIRMA")
+                    .accessibilityHidden(true)
+            }
+            .foregroundStyle(ConfirmaKey.ink)
+        }
+    }
+
+    /// Only the raised dots of each cell, like the embossing on the key. Letters a to z;
+    /// anything else is left blank.
+    struct BrailleView: View {
+
+        let text: String
+
+        /// Dots 1-2-3 run down the left column, 4-5-6 down the right.
+        private static let letters: [Character: Set<Int>] = [
+            "A": [1], "B": [1, 2], "C": [1, 4], "D": [1, 4, 5], "E": [1, 5],
+            "F": [1, 2, 4], "G": [1, 2, 4, 5], "H": [1, 2, 5], "I": [2, 4], "J": [2, 4, 5],
+            "K": [1, 3], "L": [1, 2, 3], "M": [1, 3, 4], "N": [1, 3, 4, 5], "O": [1, 3, 5],
+            "P": [1, 2, 3, 4], "Q": [1, 2, 3, 4, 5], "R": [1, 2, 3, 5], "S": [2, 3, 4], "T": [2, 3, 4, 5],
+            "U": [1, 3, 6], "V": [1, 2, 3, 6], "W": [2, 4, 5, 6], "X": [1, 3, 4, 6], "Y": [1, 3, 4, 5, 6],
+            "Z": [1, 3, 5, 6]
+        ]
+
+        private let dot: CGFloat = 4.5
+        private let dotSpacing: CGFloat = 2.5
+
+        var body: some View {
+            HStack(spacing: 7) {
+                ForEach(Array(text.uppercased().enumerated()), id: \.offset) { _, letter in
+                    cell(Self.letters[letter] ?? [])
+                }
+            }
+        }
+
+        private func cell(_ dots: Set<Int>) -> some View {
+            HStack(spacing: dotSpacing) {
+                column(dots, numbers: [1, 2, 3])
+                column(dots, numbers: [4, 5, 6])
+            }
+        }
+
+        private func column(_ dots: Set<Int>, numbers: [Int]) -> some View {
+            VStack(spacing: dotSpacing) {
+                ForEach(numbers, id: \.self) { number in
+                    Circle()
+                        .frame(width: dot, height: dot)
+                        .opacity(dots.contains(number) ? 1 : 0)
+                }
             }
         }
     }

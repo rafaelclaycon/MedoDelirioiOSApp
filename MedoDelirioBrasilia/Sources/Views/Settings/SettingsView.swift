@@ -343,6 +343,7 @@ struct DevOptionsView: View {
     @AppStorage("devMockShareClipGeneration") private var mockShareClipGeneration: Bool = false
     @State private var supportSheetPreviewContext: StandaloneSupportView.Context?
     @State private var showTipsResetConfirmation: Bool = false
+    @State private var showElectionLiveWhatsNewResetConfirmation: Bool = false
     @State private var isGeneratingReactionsExport: Bool = false
     @State private var reactionsExportURL: URL?
     @State private var reactionsExportError: String?
@@ -367,6 +368,11 @@ struct DevOptionsView: View {
 
                 Button("Reexibir Election Live What's New") {
                     showElectionLiveWhatsNewPreview = true
+                }
+
+                Button("Resetar Election Live What's New") {
+                    AppPersistentMemory.shared.hasSeenElectionLiveWhatsNewScreen(false)
+                    showElectionLiveWhatsNewResetConfirmation = true
                 }
 
                 Menu("Exibir Tela de Apoio") {
@@ -432,6 +438,12 @@ struct DevOptionsView: View {
         .navigationTitle("Dev Options")
         .sheet(item: $supportSheetPreviewContext) { context in
             StandaloneSupportView(context: context)
+        }
+        .alert("Election Live What's New resetado", isPresented: $showElectionLiveWhatsNewResetConfirmation) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            // MainView only checks on appear, and the screen is never shown after the 2nd round.
+            Text("Feche o app completamente e abra de novo para ver a tela outra vez. Depois de 25/10, ela não aparece mais.")
         }
         .alert("Tips resetados", isPresented: $showTipsResetConfirmation) {
             Button("OK", role: .cancel) {}
