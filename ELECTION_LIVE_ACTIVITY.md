@@ -162,17 +162,19 @@ DEVELOPER_DIR=/Applications/Xcode_26.6.app/Contents/Developer swift test
 
 ### App (`MedoDelirioiOSApp`, branch `main`)
 
-Commits de 24 e 25/09: `c2e03f5b` (Live Activity e flag), `f67997c1` (banner), `a8f09c0b` (canal por app). De 26 e 27/09: `aa88ce0b` (servidor da eleição no beta), `d083256a` (redesign), `a36220fd` (fotos e frase final), `9880433a` (fontes fixas), `0cec3004` (Dynamic Island), `2baeee60` (banner), `2d34f27f` (fim da flag), `7ad79c46` (tela de novidades), `c7fb25c1` (tecla CONFIRMA).
+Commits de 24 e 25/09: `c2e03f5b` (Live Activity e flag), `f67997c1` (banner), `a8f09c0b` (canal por app). De 26 e 27/09: `aa88ce0b` (servidor da eleição no beta), `d083256a` (redesign), `a36220fd` (fotos e frase final), `9880433a` (fontes fixas), `0cec3004` (Dynamic Island), `2baeee60` (banner), `2d34f27f` (fim da flag), `7ad79c46` (tela de novidades), `c7fb25c1` (tecla CONFIRMA), `25a5d896` (texto da data), `60743c3d` (limites da Tela Bloqueada e da Island).
 
 #### Live Activity (`MedoDelirioWidget/Election/`)
 
 - `ElectionActivityAttributes.swift`: formato dos dados, compartilhado com o app pela exception set do projeto (mesmo mecanismo do `PlayRandomSoundIntent`). Sem `Date` e com chaves camelCase, para o mesmo JSON servir no endpoint e no push. Inclui o `finalMessage` opcional.
 - `ElectionLiveActivity.swift`, inspirado num app indie de 2022:
   - **Só os 2 mais votados**, com o líder sempre à esquerda. O servidor ainda manda 4 no 1º turno; o app mostra 2.
-  - **Tela Bloqueada:** faixa de cima verde-escura com foto e porcentagem (duas casas) de cada um e o selo "1º TURNO" no meio, com um ponto vermelho enquanto a apuração está ao vivo (some no resultado final). Embaixo, os nomes numa linha própria, "X% TOTALIZADO", a barra amarela e o rodapé com a logo do app e "Atualizado às HH:mm · Fonte: TSE" (ou "Atualização atrasada", ou o resultado final). No fim, a frase final em negrito acima do rodapé.
+  - **Tela Bloqueada:** faixa de cima verde-escura com foto (36 pt) e porcentagem (duas casas, `title3`) de cada um e o selo "1º TURNO" no meio, com um ponto vermelho enquanto a apuração está ao vivo (some no resultado final). Embaixo, os nomes numa linha própria, "X% TOTALIZADO", a barra amarela e o rodapé com a logo do app e "Atualizado às HH:mm · Fonte: TSE" (ou "Atualização atrasada", ou o resultado final). No fim, a frase final em negrito **no lugar do rodapé**, numa linha só.
+  - **Limite de 160 pt:** a Tela Bloqueada corta uma Live Activity mais alta que isso. Medido em 27/09: 148 pt contando e 151 pt no final com frase. Os espaçamentos verticais estão justos de propósito; qualquer linha nova precisa sair de algum lugar.
   - **Fundo sempre verde-escuro**, em dois tons. A parte de baixo pinta o próprio fundo: no modo claro, o sistema pode pôr branco por baixo mesmo com `activityBackgroundTint`.
   - **Fontes fixas:** porcentagens e nomes não encolhem. Os nomes têm uma linha própria, com metade da largura para cada lado, porque ao lado da foto "FLAVIO BOLSONARO" não cabe. "ESCRITOR AUGUSTO CURY" contra "FLAVIO BOLSONARO" cabe inteiro.
-  - **Dynamic Island:** compacta com os dois (foto + %), expandida com o mesmo layout da Tela Bloqueada, mínima só com o logo do podcast em branco (`ElectionPodcastLogo`).
+  - **Tamanho de texto fixo no padrão** (`.dynamicTypeSize(.large)`): com o turno entre as porcentagens, tamanhos maiores empurram as fotos para fora num iPhone estreito (xLarge já encosta no SE, xxLarge sai da tela). Quem usa texto grande no sistema vê a Live Activity no tamanho padrão.
+  - **Dynamic Island:** compacta com os dois (foto + %); expandida com foto e % de cada lado, e embaixo os nomes, "● 1º TURNO   X% TOTALIZADO" e a barra (sem região do meio, que roubava largura das porcentagens); mínima só com o logo do podcast em branco (`ElectionPodcastLogo`). A barra da expandida fica afastada 18 pt das bordas e 6 pt acima do fundo: os cantos arredondados da Island cortavam as pontas.
   - **Previews:** Lock Screen (apurando, com fotos, final, final com frase), Island expandida, compacta e mínima.
 - **Fotos:** fotos oficiais de candidatura do TSE (DivulgaCandContas, eleição 20322002026) no catálogo do widget como `ElectionCandidate<número>`, para 13 (Lula), 14 (Renan Santos), 22 (Flávio Bolsonaro), 30 (Zema) e 70 (Escritor Augusto Cury). Recortadas em círculo pela view, alinhadas pelo topo. Sem foto, o candidato aparece como um círculo na cor dele com o número. Para trocar ou adicionar, nomeie os arquivos pelo número (`13.jpg`) e rode `scripts/import-election-photos.sh <pasta>`. O site do TSE bloqueia downloads fora do navegador: baixe pelo navegador.
 - **Logo:** `ElectionAppLogo` (ícone padrão do app, 22 pt) no rodapé.
@@ -197,6 +199,11 @@ Commits de 24 e 25/09: `c2e03f5b` (Live Activity e flag), `f67997c1` (banner), `
 - **Botão:** a tecla CONFIRMA da urna (face verde sobre um degrau mais escuro, "CONFIRMA" em fonte monoespaçada, o texto em braille embaixo). Afunda ao apertar, com vibração forte e o "piririm" da urna (`Resources/ElectionStuff/urna_confirma.caf`, tocado como som de sistema: respeita a chave de silencioso e não interrompe outros áudios).
 - As fotos do Lula e do Flávio também estão no catálogo do app (`ElectionCandidate13` e `22`), porque o app não enxerga o catálogo do widget.
 - **Dev Options:** "Reexibir Election Live What's New" e "Resetar Election Live What's New" (vale na próxima abertura do app).
+
+### Também na versão 13 (fora da eleição)
+
+- **Splash** (`36f09137`): o logo dos 4 anos saiu. Logo preto no fundo claro e branco no escuro, com as @2x geradas das @3x. Os arquivos originais vieram com `light` e `dark` trocados em relação à convenção do projeto (`light` = modo claro = logo preto); foram aplicados pelo conteúdo. O iOS guarda a splash em cache: se a antiga aparecer depois de atualizar, reiniciar o aparelho.
+- **Tela de autor** (`81ba2caa`): no layout largo (Duo aberto, iPad), a descrição, os links e a contagem se alinham com o nome em vez de centralizar ao lado da foto. Os links das redes sociais foram para a linha do "15 SONS" (`SoundCountAndLinks`), com fallback para botões só com ícone e depois para duas linhas.
 
 ## Revisão da App Store
 
@@ -252,15 +259,18 @@ No dia 4 de outubro, a partir das 17h (horário de Brasília), um banner aparece
 IPHONE DUO E JANELAS REDIMENSIONÁVEIS
 • O app se adapta ao tamanho da janela, e não mais ao tipo de aparelho: no iPhone Duo aberto e no iPad em Split View, as grades e os espaçamentos acompanham o espaço disponível.
 • No iPhone Duo aberto, a tela de Reproduzindo Agora ocupa a tela toda. Com a dobra na vertical, a capa e os controles ficam de um lado e as abas do outro.
+• Na tela de autor, o texto se alinha ao nome, e os links das redes sociais ficam na mesma linha da contagem de sons, sobrando mais espaço para as vírgulas.
 
-Mais: correções de layout em telas estreitas e deslizar para apagar marcadores no iOS 27.
+Mais: nova tela de abertura, correções de layout em telas estreitas e deslizar para apagar marcadores no iOS 27.
 ```
 
 ## O que falta
 
 ### Antes do envio (até 29/09)
 
-- [ ] Conferir no Xcode os previews da Live Activity e a tela de novidades (animação do header, tecla CONFIRMA afundando, som e vibração no aparelho).
+- [ ] Conferir no aparelho a barra da Island expandida (não dá para renderizar no Mac) e a tela de novidades (animação do header, tecla CONFIRMA afundando, som e vibração).
+- [ ] Conferir a tela de autor no iPhone Duo aberto e num iPhone comum (ver "Também na versão 13").
+- [ ] Gerar um build novo: o que está no TestFlight ainda tem a splash de aniversário e o layout antigo da Live Activity.
 - [ ] Portal: Broadcast Capability no App ID `com.rafaelschmitt.MedoDelirioBrasilia`.
 - [ ] Commitar o `APP_VERSION` 13 (build 3), arquivar sem Dev Options e enviar com liberação manual e as notas.
 - [x] Build de revisão no TestFlight interno do app de prod, com replay `live` no `.com`: os pushes chegaram (27/09). Confirma servidor, canal de prod, Broadcast Capability e APNs de produção com o app da versão 13.
@@ -303,6 +313,7 @@ Mais: correções de layout em telas estreitas e deslizar para apagar marcadores
 
 ## Lições
 
+- Minhas renderizações no Mac não aplicam o Dynamic Type nem o limite de 160 pt, e não sabem o raio dos cantos da Island. O que parecia certo no Mac cortou no aparelho três vezes: porcentagens truncadas, frase final cortada e barra da Island. Para a Live Activity, medir a altura e simular os tamanhos de texto antes de dar por pronto, e conferir a Island no aparelho.
 - Rodar o servidor num notebook que dorme engana: o `Task.sleep` pausa junto com o sistema e parece que o poller travou.
 - A CDN do TSE às vezes derruba conexões keep-alive ociosas; o retry imediato no `get` cobre isso.
 - `broadcastMode` começa em `dryRun`: se a activity não atualizar num teste, o primeiro suspeito é ter esquecido `"broadcastMode":"live"`.
