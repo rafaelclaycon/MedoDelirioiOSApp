@@ -20,6 +20,7 @@ struct SettingsView: View {
     @State private var showOnboardingPreview: Bool = false
     @State private var showTranscriptsWhatsNewPreview: Bool = false
     @State private var showShareClipWhatsNewPreview: Bool = false
+    @State private var showElectionLiveWhatsNewPreview: Bool = false
     @State private var toast: Toast?
     @State private var donors: [Donor]? = nil
     /// Written from the chapter list's "Ocultar capítulos" action; this is the
@@ -245,6 +246,9 @@ struct SettingsView: View {
             .sheet(isPresented: $showShareClipWhatsNewPreview) {
                 IntroducingShareClipView(appMemory: AppPersistentMemory.shared)
             }
+            .sheet(isPresented: $showElectionLiveWhatsNewPreview) {
+                IntroducingElectionLiveView(appMemory: AppPersistentMemory.shared)
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     CloseButton {
@@ -269,7 +273,8 @@ struct SettingsView: View {
                     DevOptionsView(
                         showOnboardingPreview: $showOnboardingPreview,
                         showTranscriptsWhatsNewPreview: $showTranscriptsWhatsNewPreview,
-                        showShareClipWhatsNewPreview: $showShareClipWhatsNewPreview
+                        showShareClipWhatsNewPreview: $showShareClipWhatsNewPreview,
+                        showElectionLiveWhatsNewPreview: $showElectionLiveWhatsNewPreview
                     )
 
                 case .diagnostics:
@@ -332,6 +337,7 @@ struct DevOptionsView: View {
     @Binding var showOnboardingPreview: Bool
     @Binding var showTranscriptsWhatsNewPreview: Bool
     @Binding var showShareClipWhatsNewPreview: Bool
+    @Binding var showElectionLiveWhatsNewPreview: Bool
 
     @AppStorage("devHideSoundsBanners") private var hideSoundsBanners: Bool = false
     @AppStorage("devMockShareClipGeneration") private var mockShareClipGeneration: Bool = false
@@ -357,6 +363,10 @@ struct DevOptionsView: View {
 
                 Button("Reexibir ShareClip What's New") {
                     showShareClipWhatsNewPreview = true
+                }
+
+                Button("Reexibir Election Live What's New") {
+                    showElectionLiveWhatsNewPreview = true
                 }
 
                 Menu("Exibir Tela de Apoio") {

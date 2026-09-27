@@ -43,6 +43,7 @@ struct MainView: View {
     @State private var showingModalView: Bool = false
     @State private var showTranscriptsWhatsNew: Bool = false
     @State private var showShareClipWhatsNew: Bool = false
+    @State private var showElectionLiveWhatsNew: Bool = false
 
     // iPad
     @State private var sidebarFoldersViewModel: SidebarFoldersViewModel
@@ -692,9 +693,9 @@ struct MainView: View {
             sendUserPersonalTrendsToServerIfEnabled()
             displayOnboardingIfNeeded()
             // Only one "what's new" sheet can be presented at a time, so these
-            // are mutually exclusive per app open — ShareClip (the newer
-            // feature) takes priority; Transcripts catches up on a later open.
-            if !displayShareClipWhatsNewIfNeeded() {
+            // are mutually exclusive per app open — the newest feature takes
+            // priority and the others catch up on later opens.
+            if !displayElectionLiveWhatsNewIfNeeded() && !displayShareClipWhatsNewIfNeeded() {
                 displayTranscriptsWhatsNewIfNeeded()
             }
 
@@ -784,6 +785,11 @@ struct MainView: View {
             AppPersistentMemory.shared.hasSeenShareClipWhatsNewScreen(true)
         }) {
             IntroducingShareClipView(appMemory: AppPersistentMemory.shared)
+        }
+        .sheet(isPresented: $showElectionLiveWhatsNew, onDismiss: {
+            AppPersistentMemory.shared.hasSeenElectionLiveWhatsNewScreen(true)
+        }) {
+            IntroducingElectionLiveView(appMemory: AppPersistentMemory.shared)
         }
         .sheetOrFullScreenCover(isPresented: $showNowPlaying, fullScreen: presentsNowPlayingFullScreen) {
             NowPlayingView(isFullScreen: presentsNowPlayingFullScreen)
@@ -951,6 +957,16 @@ struct MainView: View {
         guard !AppPersistentMemory.shared.hasSeenTranscriptsWhatsNewScreen() else { return }
 
         showTranscriptsWhatsNew = true
+    }
+
+    @discardableResult
+    private func displayElectionLiveWhatsNewIfNeeded() -> Bool {
+        guard AppPersistentMemory.shared.hasShownNotificationsOnboarding() else { return false }
+        guard !AppPersistentMemory.shared.hasSeenElectionLiveWhatsNewScreen() else { return false }
+        guard Date.now < IntroducingElectionLiveView.lastDayToShow else { return false }
+
+        showElectionLiveWhatsNew = true
+        return true
     }
 
     @discardableResult
