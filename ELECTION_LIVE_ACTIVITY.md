@@ -50,7 +50,7 @@ Commits `04a37b1` (parser e replay), `3d3d037` (poller e endpoints), `463526b` (
   - `TSEElectionConfig`: lê o `ele-c.json` e encontra a eleição de Presidente de cada turno.
   - `TSEEndpoint`: endereços do simulado e do oficial, e a montagem das URLs.
   - `TSEResultFile`: os campos do arquivo `-u.json` que usamos.
-  - `ElectionSnapshot`: nosso modelo do resultado, com candidatos na ordem `seq` do TSE, nome de urna (`nmu`), status (`counting`, `elected`, `runoff`, `notElected`) e horário de Brasília (com fallback fixo em UTC-3 se o servidor não tiver `tzdata`).
+  - `ElectionSnapshot`: nosso modelo do resultado, com candidatos na ordem `seq` do TSE, nome de urna (`nmu`), status (`counting`, `elected`, `runoff`, `notElected`) e horário de Brasília (com fallback fixo em UTC-3 se o servidor não tiver `tzdata`). Campos de contagem vazios (votos, porcentagens, seções) contam como 0 e posição vazia vai para o fim, por votos, porque o arquivo oficial das 17h pode vir sem números. Número do candidato e turno vazios continuam dando erro.
   - `ElectionReplay`: simula a apuração de 0 a 100% a partir do resultado final, com troca de liderança no caminho. Avança em saltos de `replayStepSeconds` (padrão 60s, como arquivos novos do TSE), cada salto com o próprio horário de totalização, e numa curva rápida no começo e lenta no fim (metade da apuração em um quarto do tempo).
   - `ElectionReplayFixture`: o resultado final do simulado (eleição 21270) embutido no servidor. O replay usa esse resultado com `replayOffline: true`, ou sozinho quando o TSE não responde ou não lista o simulado. Um teste garante que ele é idêntico à fixture.
   - `ElectionLiveContentState`: o formato dos dados da activity. Tem que ser **idêntico** ao `ElectionActivityAttributes.ContentState` do app (ver "Contrato com o app").
@@ -279,6 +279,7 @@ Mais: nova tela de abertura, correções de layout em telas estreitas e deslizar
 ### Teste no simulado (28 e 29/09, 14h às 16h)
 
 - [ ] `{"source":"simulation","broadcastMode":"live"}` no `.club` e acompanhar pelo beta.
+- [ ] Quando o simulado recomeçar do 0%, conferir `lastError` no status: é o primeiro arquivo "antes da apuração" que vemos, e o parser agora aceita campos de contagem vazios.
 - [ ] Conferir o `electionCode` no status quando a janela abrir. Se o TSE publicar outro código e deixar o antigo no ar, trocar a fonte para `replay` e de volta para `simulation` para o servidor resolver de novo.
 - [ ] Anotar de quanto em quanto tempo o `generationId` muda e ajustar `minPushIntervalSeconds`.
 
