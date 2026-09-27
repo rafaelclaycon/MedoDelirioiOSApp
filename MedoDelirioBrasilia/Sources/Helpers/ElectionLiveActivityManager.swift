@@ -50,10 +50,10 @@ final class ElectionLiveActivityManager {
         ActivityAuthorizationInfo().areActivitiesEnabled
     }
 
-    /// The server switch is the public launch; the local flag lets testers in before that,
-    /// since beta and production builds talk to the same server.
+    /// Only the server's switch: beta and production each ask their own server
+    /// (see `APIConfig.electionAPIURL`), so testers are let in by turning it on in the beta's.
     static func isAvailable(_ info: ElectionLiveInfo) -> Bool {
-        info.enabled || FeatureFlag.isEnabled(.electionLiveActivity)
+        info.enabled
     }
 
     func start(apiClient: APIClient = .shared) async throws {

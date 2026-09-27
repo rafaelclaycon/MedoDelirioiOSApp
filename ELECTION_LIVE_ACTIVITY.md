@@ -146,7 +146,7 @@ Commits `c2e03f5b` (Live Activity e flag) e `f67997c1` (banner).
 - `Sources/Networking/APIClient+Election.swift`: `GET v4/election/live?bundleId=<Bundle.main.bundleIdentifier>`.
 - `Sources/Views/Banners/ElectionLiveBannerView.swift`: banner no topo do `BannersView` com "Acompanhar ao Vivo" e "Parar de Acompanhar", alerta quando as Atividades ao Vivo estão desligadas e eventos de analytics.
 - **Fotos dos candidatos:** fotos oficiais de candidatura do TSE (DivulgaCandContas) no catálogo do widget como `ElectionCandidate<número>`, hoje para 13, 14, 22, 30 e 70. Sem foto, o candidato aparece como um círculo na cor dele com o número. Para trocar ou adicionar (ex.: no 2º turno), nomeie os arquivos pelo número (`13.jpg`) e rode `scripts/import-election-photos.sh <pasta>`.
-- **Feature flag `electionLiveActivity`** (Dev Options): o banner aparece se o `enabled` do servidor **ou** a flag local estiver ligada.
+- **Sem feature flag:** o banner aparece só quando o `enabled` do servidor está ligado. A flag local `electionLiveActivity` foi removida em 27/09, antes do envio para revisão: como o beta pergunta ao `.club` e prod ao `.com`, os testers entram ligando `enabled` no `.club`.
 - **Servidor da eleição no beta:** o `APIConfig.electionAPIURL` manda só o `v4/election/live` do bundle beta para `api.medodelirioios.club`; o resto do beta continua no servidor de prod. Motivo: o `api_environment` do scheme só vale rodando pelo Xcode, então um build de TestFlight do beta sempre caía no servidor de prod. Assim o servidor de prod só recebe o código da eleição depois do teste no beta. Com `api_environment` ligado no scheme, ele continua mandando.
 
 Build completo do scheme `MedoDelirio` passando (25/09). **Ainda não rodou em aparelho.**
@@ -184,7 +184,7 @@ O servidor de prod (`.com`) não muda nada até este teste passar.
 **App beta**
 
 - [x] Subir o build number, arquivar o scheme `MedoDelirio - BETA` e enviar para o TestFlight do registro beta. Grupo interno não passa por review.
-- [x] No aparelho: Dev Options → ligar a flag `electionLiveActivity`. O banner aparece.
+- [x] No aparelho: Dev Options → ligar a flag `electionLiveActivity`. O banner aparece. (Flag removida depois; hoje é `{"enabled":true}` no `.club`.)
 
 **Ponta a ponta**
 
