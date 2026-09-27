@@ -26,10 +26,12 @@ struct ElectionLiveBannerView: View {
         colorScheme == .dark ? .primary : .darkestGreen
     }
 
+    /// Doesn't mention the Dynamic Island: there's no API to tell whether the device has one,
+    /// and it shows up there on its own when it does.
     private var message: String {
         isRunning
-            ? "Você está acompanhando a apuração na Tela Bloqueada e na Dynamic Island."
-            : "Acompanhe a apuração para Presidente em tempo real na Tela Bloqueada e na Dynamic Island, com dados oficiais do TSE."
+            ? "Você está acompanhando a apuração na Tela Bloqueada."
+            : "Acompanhe a apuração para Presidente em tempo real na Tela Bloqueada, com dados oficiais do TSE."
     }
 
     private var buttonTitle: String {

@@ -20,6 +20,8 @@ extension MainContentView {
         @State private var showAnniversaryBanner: Bool = false
         @State private var showDunBanner = !AppPersistentMemory.shared.hasDismissedDunBanner()
 
+        @Environment(\.scenePhase) private var scenePhase
+
         var body: some View {
             VStack {
                 if showElectionLiveBanner {
@@ -72,10 +74,24 @@ extension MainContentView {
                     showAnniversaryBanner = await bannerRepository.showAnniversaryBanner()
                 }
                 Task{
-                    guard let info = try? await APIClient.shared.electionLiveInfo() else { return }
-                    showElectionLiveBanner = ElectionLiveActivityManager.isAvailable(info)
+                    await updateElectionLiveBanner()
                 }
             }
+            // The server switches the election banner on during election day, often while
+            // the app sits in the background, so check again whenever it comes back.
+            .onChange(of: scenePhase) {
+                if scenePhase == .active {
+                    Task {
+                        await updateElectionLiveBanner()
+                    }
+                }
+            }
+        }
+
+        /// Keeps the current state when the request fails.
+        private func updateElectionLiveBanner() async {
+            guard let info = try? await APIClient.shared.electionLiveInfo() else { return }
+            showElectionLiveBanner = ElectionLiveActivityManager.isAvailable(info)
         }
     }
 }
