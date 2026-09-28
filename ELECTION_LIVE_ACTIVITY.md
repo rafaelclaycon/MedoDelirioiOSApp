@@ -37,6 +37,7 @@ TSE CDN --(poll a cada 10s, ETag)--> Vapor no Linode --(1 broadcast push por app
 - Vários 404 também bloqueiam o IP. Por isso o servidor nunca monta URL no chute: descobre ciclo e código da eleição pelo `ele-c.json`.
 - Arquivo de Presidente: `<base>/<ambiente>/<ciclo>/<eleicao>/dados/br/br-c0001-e<eleicao com 6 dígitos>-u.json`.
 - Fotos (não documentado, visto no app de resultados do TSE): `<base>/<ambiente>/<ciclo>/<eleicao>/fotos/<uf>/<sqcand>.jpeg`. O `sqcand` vem no `-u.json`.
+- **Os arquivos publicados durante a apuração não têm todos os campos do arquivo final.** No simulado de 28/09, os candidatos vieram sem `dvt` (destino do voto) no meio da contagem, e o arquivo final (16h36) tinha o campo em todos. Nossas fixtures são arquivos finais, então não mostravam isso. Por isso, só o que identifica o arquivo e o candidato é obrigatório (ver `TSEResultFile`).
 - No simulado, o 1º colocado é um candidato "Anulado sub judice" que vai para o 2º turno. Por isso o snapshot mantém os anulados na lista, marcados com `hasValidVotes = false`.
 - Documentação: https://www.tse.jus.br/eleicoes/informacoes-tecnicas-sobre-a-divulgacao-de-resultados
 
@@ -50,7 +51,7 @@ Commits `04a37b1` (parser e replay), `3d3d037` (poller e endpoints), `463526b` (
   - `TSEElectionConfig`: lê o `ele-c.json` e encontra a eleição de Presidente de cada turno.
   - `TSEEndpoint`: endereços do simulado e do oficial, e a montagem das URLs.
   - `TSEResultFile`: os campos do arquivo `-u.json` que usamos.
-  - `ElectionSnapshot`: nosso modelo do resultado, com candidatos na ordem `seq` do TSE, nome de urna (`nmu`), status (`counting`, `elected`, `runoff`, `notElected`) e horário de Brasília (com fallback fixo em UTC-3 se o servidor não tiver `tzdata`). Campos de contagem vazios (votos, porcentagens, seções) contam como 0 e posição vazia vai para o fim, por votos, porque o arquivo oficial das 17h pode vir sem números. Número do candidato e turno vazios continuam dando erro.
+  - `ElectionSnapshot`: nosso modelo do resultado, com candidatos na ordem `seq` do TSE, nome de urna (`nmu`), status (`counting`, `elected`, `runoff`, `notElected`) e horário de Brasília (com fallback fixo em UTC-3 se o servidor não tiver `tzdata`). Campos de contagem vazios ou ausentes (votos, porcentagens, seções) contam como 0, posição vazia vai para o fim, por votos, `dvt` ausente conta como voto válido, nome de urna ausente cai para o nome completo e depois para "Candidato 13", e sem `and` a apuração não é final. Só código da eleição, turno, geração, a estrutura de cargos e o número do candidato são obrigatórios (commits `560b630` e `185114b`).
   - `ElectionReplay`: simula a apuração de 0 a 100% a partir do resultado final, com troca de liderança no caminho. Avança em saltos de `replayStepSeconds` (padrão 60s, como arquivos novos do TSE), cada salto com o próprio horário de totalização, e numa curva rápida no começo e lenta no fim (metade da apuração em um quarto do tempo).
   - `ElectionReplayFixture`: o resultado final do simulado (eleição 21270) embutido no servidor. O replay usa esse resultado com `replayOffline: true`, ou sozinho quando o TSE não responde ou não lista o simulado. Um teste garante que ele é idêntico à fixture.
   - `ElectionLiveContentState`: o formato dos dados da activity. Tem que ser **idêntico** ao `ElectionActivityAttributes.ContentState` do app (ver "Contrato com o app").
@@ -154,7 +155,7 @@ cd medo-delirio-api
 ELECTION_POLLING_ENABLED=true ELECTION_PASSWORD=local-test swift run Run serve --env testing --port 8089
 ```
 
-**Toolchain:** se o Xcode ativo for um beta mais novo que o macOS (ex.: Xcode 27.1 beta no macOS 26.7), o `swift test` compila mas falha ao carregar o bundle (`Symbol not found: _swift_initBorrow`). Rodar com o Xcode estável:
+**Toolchain:** os Xcode 27 e 27.1 beta (e as Command Line Tools, com o mesmo Swift 6.4) geram binários para o runtime do macOS 27. No macOS 26.7, o `swift test` compila mas falha ao carregar o bundle (`Symbol not found: _swift_initBorrow`). Desde 28/09 o Xcode 26.6 não está mais instalado, então os testes da API não rodam neste Mac: rodar no servidor (`swift test` no Linode, antes de reiniciar o serviço) ou reinstalar o Xcode 26.6 pelo Xcodes e usar:
 
 ```bash
 DEVELOPER_DIR=/Applications/Xcode_26.6.app/Contents/Developer swift test
@@ -278,8 +279,18 @@ Mais: nova tela de abertura, correções de layout em telas estreitas e deslizar
 
 ### Teste no simulado (28 e 29/09, 14h às 16h)
 
+**28/09, o que aconteceu:**
+
+- O TSE só publicou o primeiro arquivo novo às 14h39, e ele já veio com 50,01% apurado (não recomeçou do 0%).
+- O servidor detectou a nova rodada sozinho (mesma eleição 21270, geração `173854587`) e mandou o primeiro push.
+- A partir de 14h40, todos os arquivos falharam com `Key 'dvt' not found`: o TSE tirou o campo dos candidatos durante a contagem. O servidor ficou parado em 50,01% e não mandou mais nenhum push até o fim da janela. Corrigido em `185114b`.
+- Não deu para medir a cadência dos arquivos, porque o servidor parou de lê-los.
+
+**29/09:**
+
+- [ ] Rodar `swift test` no `.club` com o `185114b` e fazer o deploy antes das 14h.
 - [ ] `{"source":"simulation","broadcastMode":"live"}` no `.club` e acompanhar pelo beta.
-- [ ] Quando o simulado recomeçar do 0%, conferir `lastError` no status: é o primeiro arquivo "antes da apuração" que vemos, e o parser agora aceita campos de contagem vazios.
+- [ ] Conferir que a última coluna do monitor fica vazia depois do primeiro arquivo novo (sem `DecodingError`).
 - [ ] Conferir o `electionCode` no status quando a janela abrir. Se o TSE publicar outro código e deixar o antigo no ar, trocar a fonte para `replay` e de volta para `simulation` para o servidor resolver de novo.
 - [ ] Anotar de quanto em quanto tempo o `generationId` muda e ajustar `minPushIntervalSeconds`.
 
@@ -314,6 +325,7 @@ Mais: nova tela de abertura, correções de layout em telas estreitas e deslizar
 
 ## Lições
 
+- Arquivo final não é amostra de arquivo intermediário. O parser era rígido com campos que só o arquivo final garante, e o teste de 28/09 parou dois minutos depois de começar. Qualquer campo que não identifique o candidato precisa ter valor padrão.
 - Minhas renderizações no Mac não aplicam o Dynamic Type nem o limite de 160 pt, e não sabem o raio dos cantos da Island. O que parecia certo no Mac cortou no aparelho três vezes: porcentagens truncadas, frase final cortada e barra da Island. Para a Live Activity, medir a altura e simular os tamanhos de texto antes de dar por pronto, e conferir a Island no aparelho.
 - Rodar o servidor num notebook que dorme engana: o `Task.sleep` pausa junto com o sistema e parece que o poller travou.
 - A CDN do TSE às vezes derruba conexões keep-alive ociosas; o retry imediato no `get` cobre isso.
