@@ -38,6 +38,7 @@ TSE CDN --(poll a cada 10s, ETag)--> Vapor no Linode --(1 broadcast push por app
 - Arquivo de Presidente: `<base>/<ambiente>/<ciclo>/<eleicao>/dados/br/br-c0001-e<eleicao com 6 dígitos>-u.json`.
 - Fotos (não documentado, visto no app de resultados do TSE): `<base>/<ambiente>/<ciclo>/<eleicao>/fotos/<uf>/<sqcand>.jpeg`. O `sqcand` vem no `-u.json`.
 - **Os arquivos publicados durante a apuração não têm todos os campos do arquivo final.** No simulado de 28/09, os candidatos vieram sem `dvt` (destino do voto) no meio da contagem, e o arquivo final (16h36) tinha o campo em todos. Nossas fixtures são arquivos finais, então não mostravam isso. Por isso, só o que identifica o arquivo e o candidato é obrigatório (ver `TSEResultFile`).
+- **Antes da apuração começar, o arquivo vem sem horário de totalização.** No simulado de 29/09, o arquivo de 0% tinha `dt` e `ht` vazios; só `dg` e `hg` (data e hora em que o TSE gerou o arquivo) estavam preenchidos.
 - No simulado, o 1º colocado é um candidato "Anulado sub judice" que vai para o 2º turno. Por isso o snapshot mantém os anulados na lista, marcados com `hasValidVotes = false`.
 - Documentação: https://www.tse.jus.br/eleicoes/informacoes-tecnicas-sobre-a-divulgacao-de-resultados
 
@@ -51,7 +52,7 @@ Commits `04a37b1` (parser e replay), `3d3d037` (poller e endpoints), `463526b` (
   - `TSEElectionConfig`: lê o `ele-c.json` e encontra a eleição de Presidente de cada turno.
   - `TSEEndpoint`: endereços do simulado e do oficial, e a montagem das URLs.
   - `TSEResultFile`: os campos do arquivo `-u.json` que usamos.
-  - `ElectionSnapshot`: nosso modelo do resultado, com candidatos na ordem `seq` do TSE, nome de urna (`nmu`), status (`counting`, `elected`, `runoff`, `notElected`) e horário de Brasília (com fallback fixo em UTC-3 se o servidor não tiver `tzdata`). Campos de contagem vazios ou ausentes (votos, porcentagens, seções) contam como 0, posição vazia vai para o fim, por votos, `dvt` ausente conta como voto válido, nome de urna ausente cai para o nome completo e depois para "Candidato 13", e sem `and` a apuração não é final. Só código da eleição, turno, geração, a estrutura de cargos e o número do candidato são obrigatórios (commits `560b630` e `185114b`).
+  - `ElectionSnapshot`: nosso modelo do resultado, com candidatos na ordem `seq` do TSE, nome de urna (`nmu`), status (`counting`, `elected`, `runoff`, `notElected`) e horário de Brasília (com fallback fixo em UTC-3 se o servidor não tiver `tzdata`). Campos de contagem vazios ou ausentes (votos, porcentagens, seções) contam como 0, posição vazia vai para o fim, por votos, `dvt` ausente conta como voto válido, nome de urna ausente cai para o nome completo e depois para "Candidato 13", e sem `and` a apuração não é final. Sem `dt`/`ht`, o horário é o de geração do arquivo (`dg`/`hg`): usar a hora atual fazia o estado "mudar" a cada tick e disparava um push por intervalo sem dado novo. Só código da eleição, turno, geração, a estrutura de cargos e o número do candidato são obrigatórios (commits `560b630`, `185114b` e `eed02d0`).
   - `ElectionReplay`: simula a apuração de 0 a 100% a partir do resultado final, com troca de liderança no caminho. Avança em saltos de `replayStepSeconds` (padrão 60s, como arquivos novos do TSE), cada salto com o próprio horário de totalização, e numa curva rápida no começo e lenta no fim (metade da apuração em um quarto do tempo).
   - `ElectionReplayFixture`: o resultado final do simulado (eleição 21270) embutido no servidor. O replay usa esse resultado com `replayOffline: true`, ou sozinho quando o TSE não responde ou não lista o simulado. Um teste garante que ele é idêntico à fixture.
   - `ElectionLiveContentState`: o formato dos dados da activity. Tem que ser **idêntico** ao `ElectionActivityAttributes.ContentState` do app (ver "Contrato com o app").
@@ -78,7 +79,7 @@ Roda no fim de todo tick do poller (não só quando chega arquivo novo, para um 
 - **Resultado já final no boot:** se o primeiro estado que o servidor vê já é final (o simulado entre janelas, ou um restart depois da apuração), não manda nada. Sem isso, cada restart reanunciaria um resultado velho.
 - `stale-date` de 15 min, igual ao `staleInterval` do app. `apns-expiration`: 15 min para update, 4h para o fim.
 - Canal criado com `message-storage-policy: 1` (guarda a última mensagem para quem estava offline).
-- Se todos os canais falham, nada é registrado e o próximo tick tenta de novo. Se só um falha, o envio conta como feito (repetir mandaria de novo para o outro) e o erro aparece no status.
+- Se todos os canais falham, nada é registrado e o servidor **espera pelo menos 60 s** (ou `minPushIntervalSeconds`, se for maior) antes de tentar de novo (`4e942d0`). Antes, tentava no tick seguinte, a cada 10 s, e isso mantinha o canal bloqueado pelo APNs (429). A Apple pede para repetir `TooManyRequests` "com um intervalo" e diz que erros 4XX reduzem a vazão do provedor; não publica limite numérico por canal. Se só um canal falha, o envio conta como feito (repetir mandaria de novo para o outro) e o erro aparece no status.
 
 #### Frases finais
 
@@ -145,6 +146,14 @@ Nesta ordem, porque as rotas com senha derrubam o processo se a senha faltar:
 4. `GET election/channels/<senha>` → `apnsEnvironment: production` e `errors` vazio.
 5. `GET election/live?bundleId=<bundle>` → `channelId` preenchido.
 6. Replay em `dryRun` e ver `lastBroadcastAt` e `lastBroadcastReason` avançando, sem `lastBroadcastError`.
+
+**Monitor** (uma linha a cada 10 s: hora, eleição, geração, % apurado, FINAL, último motivo de push, erro):
+
+```bash
+while true; do curl -s https://<servidor>/api/v4/election/status/<senha> | python3 -c 'import sys,json,datetime; d=json.load(sys.stdin); print(datetime.datetime.now().strftime("%H:%M:%S"), d.get("electionCode"), d.get("generationId"), round(d.get("sectionsCountedPercent") or 0, 2), "FINAL" if d.get("isFinal") else "", d.get("lastBroadcastReason") or "", d.get("lastBroadcastError") or d.get("lastError") or "")'; sleep 10; done
+```
+
+A penúltima coluna é o motivo do **último** push, não um push por linha: ela só muda quando sai um push novo. Um `JSONDecodeError` do Python durante um deploy é a página de erro do nginx, não problema do servidor.
 
 #### Rodar localmente
 
@@ -286,14 +295,23 @@ Mais: nova tela de abertura, correções de layout em telas estreitas e deslizar
 - A partir de 14h40, todos os arquivos falharam com `Key 'dvt' not found`: o TSE tirou o campo dos candidatos durante a contagem. O servidor ficou parado em 50,01% e não mandou mais nenhum push até o fim da janela. Corrigido em `185114b`.
 - Não deu para medir a cadência dos arquivos, porque o servidor parou de lê-los.
 
-**29/09:**
+**29/09, o que aconteceu:**
 
-- [x] `185114b` testado: 73 testes passando no Xcode 26.6, e o servidor local leu o arquivo real do simulado (geração `174062884`) sem erro.
-- [ ] Deploy do `185114b` no `.club` antes das 14h.
-- [ ] `{"source":"simulation","broadcastMode":"live"}` no `.club` e acompanhar pelo beta.
-- [ ] Conferir que a última coluna do monitor fica vazia depois do primeiro arquivo novo (sem `DecodingError`).
-- [ ] Conferir o `electionCode` no status quando a janela abrir. Se o TSE publicar outro código e deixar o antigo no ar, trocar a fonte para `replay` e de volta para `simulation` para o servidor resolver de novo.
-- [ ] Anotar de quanto em quanto tempo o `generationId` muda e ajustar `minPushIntervalSeconds`.
+- Deploy do `185114b` feito. O primeiro arquivo novo foi o de 0% (geração `175528807`, gerado às 13h18), e o `dvt` não derrubou mais nada.
+- Às 14h04, o APNs recusou os pushes do canal do beta com **429 `TooManyRequests`**. Duas causas nossas somadas:
+  1. O arquivo de 0% vem sem `dt`/`ht`. O servidor usava a hora atual como horário, o estado mudava a cada tick e saía um push por intervalo sem dado novo. Se o `minPushIntervalSeconds` estava em 10 (valor sugerido num teste de 27/09; não confirmado), eram pushes a cada 10 s.
+  2. Depois de uma falha, o servidor tentava de novo a cada 10 s, o que mantinha o canal bloqueado.
+- Correções: `4e942d0` (espera de 60 s depois de falhar) e `eed02d0` (horário de geração quando falta o de totalização). Testado localmente contra o arquivo real: o horário ficou fixo em 13:18:27 e saiu um único push em 30 s.
+- Depois do deploy do `4e942d0`, com `live` e `minPushIntervalSeconds` em 60: primeiro push às 14h23, sem erro, e a Live Activity iniciou no iPhone pelo beta.
+- A cadência dos arquivos do TSE ainda não foi medida.
+
+**Pendências de 29/09:**
+
+- [ ] Deploy do `eed02d0` no `.club` (e depois no `.com`).
+- [ ] Conferir que, com a geração parada, não sai push novo, e que o "Atualizado às" mostra o horário do arquivo.
+- [ ] Anotar de quanto em quanto tempo o `generationId` muda e decidir o `minPushIntervalSeconds` do dia 4 (hoje em 60 no `.club`).
+- [ ] Depois da janela: `{"broadcastMode":"dryRun"}` no `.club`.
+- [ ] Para o dia 4: considerar dobrar a espera a cada falha seguida (60 s, 2 min, 4 min, até ~10 min), o back-off que a Apple sugere.
 
 ### Depois da aprovação
 
@@ -326,6 +344,8 @@ Mais: nova tela de abertura, correções de layout em telas estreitas e deslizar
 
 ## Lições
 
+- Se o estado depende do relógio, o servidor acha que sempre há novidade. O fallback para a hora atual no `updatedAt` virou um push por intervalo e, somado ao retry sem espera, um 429 do APNs. Qualquer campo do estado precisa vir do arquivo, não do momento em que ele é lido.
+- Valores de teste esquecidos no servidor viram configuração de produção. Suspeita (não confirmada) de que o `minPushIntervalSeconds: 10` de um teste de 27/09 ficou no `.club` e multiplicou o problema de 29/09. Conferir `settings` no status antes de cada janela.
 - Arquivo final não é amostra de arquivo intermediário. O parser era rígido com campos que só o arquivo final garante, e o teste de 28/09 parou dois minutos depois de começar. Qualquer campo que não identifique o candidato precisa ter valor padrão.
 - Minhas renderizações no Mac não aplicam o Dynamic Type nem o limite de 160 pt, e não sabem o raio dos cantos da Island. O que parecia certo no Mac cortou no aparelho três vezes: porcentagens truncadas, frase final cortada e barra da Island. Para a Live Activity, medir a altura e simular os tamanhos de texto antes de dar por pronto, e conferir a Island no aparelho.
 - Rodar o servidor num notebook que dorme engana: o `Task.sleep` pausa junto com o sistema e parece que o poller travou.
