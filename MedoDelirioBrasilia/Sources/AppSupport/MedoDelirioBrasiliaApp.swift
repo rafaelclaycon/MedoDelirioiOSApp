@@ -79,6 +79,8 @@ struct MedoDelirioBrasiliaApp: App {
                         await AnalyticsService().send(action: "hadErrorPlayingRandomSound(\(error.localizedDescription))")
                     }
                 }
+            } else if url.host == "apuracao" {
+                deepLinkHandler.pendingDeepLink = .electionResults
             } else if url.host == "sound",
                       let soundId = url.pathComponents.dropFirst().first,
                       !soundId.isEmpty {

@@ -18,6 +18,42 @@ struct ElectionLiveInfo: Codable {
     let round: Int
     /// Nil before the first TSE file is available.
     let state: ElectionActivityAttributes.ContentState?
+    /// Every candidate, for the results screen. Nil before the first TSE file, or from a
+    /// server older than the results screen.
+    let details: ElectionLiveDetails?
+    /// The TSE page behind "Ver no site do TSE", set on the server so it can move to the
+    /// results app once that's up.
+    let officialResultsURL: String?
+
+    static let defaultOfficialResultsURL = URL(string: "https://www.tse.jus.br/eleicoes/resultados-eleicoes")!
+
+    var officialResults: URL {
+        officialResultsURL.flatMap(URL.init(string:)) ?? Self.defaultOfficialResultsURL
+    }
+}
+
+/// What the results screen shows beyond the Live Activity. Never in a push.
+struct ElectionLiveDetails: Codable {
+
+    let sectionsCounted: Int
+    let sectionsTotal: Int
+    let validVotes: Int
+    /// Every candidate in the TSE ranking.
+    let candidates: [Candidate]
+
+    struct Candidate: Codable, Identifiable {
+        let number: Int
+        let name: String
+        let party: String
+        let votes: Int
+        let percent: Double
+        let status: ElectionActivityAttributes.Status
+        let colorHex: String?
+        /// False for "Anulado" and "Anulado sub judice".
+        let hasValidVotes: Bool
+
+        var id: Int { number }
+    }
 }
 
 extension APIClient {

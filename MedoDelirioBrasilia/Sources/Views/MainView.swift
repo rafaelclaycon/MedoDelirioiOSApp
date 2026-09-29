@@ -44,6 +44,10 @@ struct MainView: View {
     @State private var showTranscriptsWhatsNew: Bool = false
     @State private var showShareClipWhatsNew: Bool = false
     @State private var showElectionLiveWhatsNew: Bool = false
+    @State private var showElectionResults: Bool = false
+    /// A sheet can't open while another one is leaving, so a results link that arrives
+    /// during the election What's New waits for it to close.
+    @State private var openElectionResultsAfterWhatsNew: Bool = false
 
     // iPad
     @State private var sidebarFoldersViewModel: SidebarFoldersViewModel
@@ -786,8 +790,15 @@ struct MainView: View {
         }) {
             IntroducingShareClipView(appMemory: AppPersistentMemory.shared)
         }
+        .sheet(isPresented: $showElectionResults) {
+            ElectionResultsView()
+        }
         .sheet(isPresented: $showElectionLiveWhatsNew, onDismiss: {
             AppPersistentMemory.shared.hasSeenElectionLiveWhatsNewScreen(true)
+            if openElectionResultsAfterWhatsNew {
+                openElectionResultsAfterWhatsNew = false
+                showElectionResults = true
+            }
         }) {
             IntroducingElectionLiveView(appMemory: AppPersistentMemory.shared)
         }
@@ -909,6 +920,14 @@ struct MainView: View {
                 deepLinkErrorTitle = "Opa! 😅"
                 deepLinkErrorMessage = "Esse episódio saiu correndo e não conseguimos encontrá-lo. Tente novamente mais tarde."
                 showDeepLinkError = true
+            }
+
+        case .electionResults:
+            if showElectionLiveWhatsNew {
+                openElectionResultsAfterWhatsNew = true
+                showElectionLiveWhatsNew = false
+            } else {
+                showElectionResults = true
             }
         }
     }

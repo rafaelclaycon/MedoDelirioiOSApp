@@ -13,6 +13,9 @@ import SwiftUI
 struct ElectionLiveBannerView: View {
 
     @Binding var toast: Toast?
+    /// From the server (`officialResultsURL`), so it can point at the TSE's results app
+    /// once that's up.
+    var officialResultsURL: URL = ElectionLiveInfo.defaultOfficialResultsURL
 
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.openURL) private var openURL
@@ -74,6 +77,24 @@ struct ElectionLiveBannerView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(isWorking)
             }
+
+            HStack(spacing: .spacing(.large)) {
+                Button {
+                    if let url = URL(string: "medodelirio://apuracao") {
+                        openURL(url)
+                    }
+                } label: {
+                    Label("Ver Resultados", systemImage: "list.number")
+                }
+
+                Link(destination: officialResultsURL) {
+                    Label("Site do TSE", systemImage: "safari")
+                }
+            }
+            .font(.callout)
+            .fontWeight(.semibold)
+            .foregroundStyle(textColor)
+            .frame(maxWidth: .infinity)
         }
         .padding(.all, 20)
         .background {

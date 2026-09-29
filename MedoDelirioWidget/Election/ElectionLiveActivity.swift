@@ -18,6 +18,7 @@ struct ElectionLiveActivity: Widget {
             ElectionLockScreenView(round: context.attributes.round, state: context.state, isStale: context.isStale)
                 .activityBackgroundTint(ElectionPalette.body)
                 .activitySystemActionForegroundColor(.white)
+                .widgetURL(ElectionPalette.resultsURL)
         } dynamicIsland: { context in
             let state = context.state
             let (first, second) = ElectionFormat.topTwo(state)
@@ -72,6 +73,7 @@ struct ElectionLiveActivity: Widget {
                     .scaledToFit()
             }
             .keylineTint(ElectionPalette.bar)
+            .widgetURL(ElectionPalette.resultsURL)
         }
     }
 }
@@ -326,6 +328,9 @@ enum ElectionPalette {
     /// Everything else.
     static let body = Color(red: 0.06, green: 0.29, blue: 0.16)
     static let bar = Color(red: 1, green: 0.84, blue: 0)
+
+    /// Tapping the activity opens the app's results screen.
+    static let resultsURL = URL(string: "medodelirio://apuracao")!
 }
 
 enum ElectionFormat {

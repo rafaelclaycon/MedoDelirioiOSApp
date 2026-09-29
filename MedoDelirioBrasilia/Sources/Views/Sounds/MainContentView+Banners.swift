@@ -17,6 +17,7 @@ extension MainContentView {
         @State private var dynamicBanner: DynamicBannerData?
         @State private var promoBanner: PromoBannerData?
         @State private var showElectionLiveBanner: Bool = false
+        @State private var officialResultsURL = ElectionLiveInfo.defaultOfficialResultsURL
         @State private var showAnniversaryBanner: Bool = false
         @State private var showDunBanner = !AppPersistentMemory.shared.hasDismissedDunBanner()
 
@@ -25,7 +26,7 @@ extension MainContentView {
         var body: some View {
             VStack {
                 if showElectionLiveBanner {
-                    ElectionLiveBannerView(toast: $toast)
+                    ElectionLiveBannerView(toast: $toast, officialResultsURL: officialResultsURL)
                         .padding(.top, .spacing(.xxxSmall))
                         .padding(.bottom, .spacing(.xSmall))
                 }
@@ -92,6 +93,7 @@ extension MainContentView {
         private func updateElectionLiveBanner() async {
             guard let info = try? await APIClient.shared.electionLiveInfo() else { return }
             showElectionLiveBanner = ElectionLiveActivityManager.isAvailable(info)
+            officialResultsURL = info.officialResults
         }
     }
 }

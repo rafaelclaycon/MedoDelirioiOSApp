@@ -10,6 +10,8 @@ import Foundation
 enum DeepLink: Equatable {
     case reaction(id: String)
     case episode(id: String)
+    /// `medodelirio://apuracao`, from the Live Activity and the election banner.
+    case electionResults
 }
 
 /// Carries a pending deep-link from the App entry point down to MainView,
