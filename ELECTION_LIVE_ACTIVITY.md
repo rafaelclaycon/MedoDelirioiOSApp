@@ -155,7 +155,7 @@ cd medo-delirio-api
 ELECTION_POLLING_ENABLED=true ELECTION_PASSWORD=local-test swift run Run serve --env testing --port 8089
 ```
 
-**Toolchain:** os Xcode 27 e 27.1 beta (e as Command Line Tools, com o mesmo Swift 6.4) geram binários para o runtime do macOS 27. No macOS 26.7, o `swift test` compila mas falha ao carregar o bundle (`Symbol not found: _swift_initBorrow`). Desde 28/09 o Xcode 26.6 não está mais instalado, então os testes da API não rodam neste Mac: rodar no servidor (`swift test` no Linode, antes de reiniciar o serviço) ou reinstalar o Xcode 26.6 pelo Xcodes e usar:
+**Toolchain:** os Xcode 27 e 27.1 beta (e as Command Line Tools, com o mesmo Swift 6.4) geram binários para o runtime do macOS 27. No macOS 26.7, o `swift test` compila mas falha ao carregar o bundle (`Symbol not found: _swift_initBorrow`). Manter o Xcode 26.6 instalado (pelo Xcodes) e rodar os testes da API com ele:
 
 ```bash
 DEVELOPER_DIR=/Applications/Xcode_26.6.app/Contents/Developer swift test
@@ -288,7 +288,8 @@ Mais: nova tela de abertura, correções de layout em telas estreitas e deslizar
 
 **29/09:**
 
-- [ ] Rodar `swift test` no `.club` com o `185114b` e fazer o deploy antes das 14h.
+- [x] `185114b` testado: 73 testes passando no Xcode 26.6, e o servidor local leu o arquivo real do simulado (geração `174062884`) sem erro.
+- [ ] Deploy do `185114b` no `.club` antes das 14h.
 - [ ] `{"source":"simulation","broadcastMode":"live"}` no `.club` e acompanhar pelo beta.
 - [ ] Conferir que a última coluna do monitor fica vazia depois do primeiro arquivo novo (sem `DecodingError`).
 - [ ] Conferir o `electionCode` no status quando a janela abrir. Se o TSE publicar outro código e deixar o antigo no ar, trocar a fonte para `replay` e de volta para `simulation` para o servidor resolver de novo.
