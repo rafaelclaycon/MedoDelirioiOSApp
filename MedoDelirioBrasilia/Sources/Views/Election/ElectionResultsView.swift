@@ -21,7 +21,8 @@ struct ElectionResultsView: View {
     @State private var isWorking = false
     @State private var startErrorMessage: String?
     @State private var showActivitiesDisabledAlert = false
-    @State private var shareImage: UIImage?
+    /// The count at the moment "Compartilhar Imagem" was tapped.
+    @State private var shareSnapshot: ElectionShareSnapshot?
 
     /// The server takes a new TSE file every 10 s; 20 s keeps the screen current without
     /// hammering it while someone leaves it open all night.
@@ -61,8 +62,9 @@ struct ElectionResultsView: View {
                         Button("Tentar de Novo") {
                             Task { await load() }
                         }
-                        .buttonStyle(.bordered)
+                        .electionButtonStyle(prominent: false)
                         Link("Abrir o App do TSE", destination: ElectionLiveInfo.defaultOfficialResultsURL)
+                            .electionButtonStyle(prominent: false)
                     } else {
                         ProgressView()
                             .padding(.top, 80)
@@ -91,7 +93,9 @@ struct ElectionResultsView: View {
                     try? await Task.sleep(for: Self.refreshInterval)
                 }
             }
-            .shareSheet(item: $shareImage, activityItems: { [$0] })
+            .sheet(item: $shareSnapshot) { snapshot in
+                ElectionShareView(snapshot: snapshot)
+            }
             .alert("Atividades ao Vivo Desativadas", isPresented: $showActivitiesDisabledAlert) {
                 Button("Abrir Ajustes") {
                     if let url = URL(string: UIApplication.openSettingsURLString) {
@@ -134,26 +138,30 @@ struct ElectionResultsView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, .spacing(.xxSmall))
             }
-            .buttonStyle(.borderedProminent)
-            .tint(ElectionResultsPalette.accent)
+            .electionButtonStyle(prominent: true)
             .disabled(isWorking)
 
-            HStack(spacing: .spacing(.small)) {
+            // Stacked at full width: side by side, the labels had to go icon-over-text.
+            Group {
                 Button {
-                    shareImage = ElectionShareCard.render(round: info.round, state: state)
+                    shareSnapshot = ElectionShareSnapshot(round: info.round, state: state)
                 } label: {
-                    Label("Compartilhar", systemImage: "square.and.arrow.up")
-                        .frame(maxWidth: .infinity)
+                    secondaryLabel("Compartilhar Imagem", systemImage: "square.and.arrow.up")
                 }
 
                 Link(destination: info.officialResults) {
-                    Label("App do TSE", systemImage: "arrow.up.forward.app")
-                        .frame(maxWidth: .infinity)
+                    secondaryLabel("App do TSE", systemImage: "arrow.up.forward.app")
                 }
             }
-            .buttonStyle(.bordered)
-            .tint(ElectionResultsPalette.accent)
+            .electionButtonStyle(prominent: false)
         }
+    }
+
+    private func secondaryLabel(_ title: String, systemImage: String) -> some View {
+        Label(title, systemImage: systemImage)
+            .font(.headline)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, .spacing(.xxSmall))
     }
 
     private func candidateList(_ details: ElectionLiveDetails) -> some View {
@@ -309,11 +317,16 @@ struct ElectionCandidateResultRow: View {
             ElectionCandidatePhoto(number: candidate.number, colorHex: candidate.colorHex, size: 44)
 
             VStack(alignment: .leading, spacing: 4) {
+                // Two lines rather than cutting a long ballot name. The badge sits on the
+                // party line: next to the name it squeezed both into broken lines.
+                Text(candidate.name)
+                    .font(.headline)
+                    .lineLimit(2)
                 HStack(spacing: 6) {
-                    // Two lines rather than cutting a long ballot name.
-                    Text(candidate.name)
-                        .font(.headline)
-                        .lineLimit(2)
+                    Text(candidate.hasValidVotes ? candidate.party : "\(candidate.party) · anulado")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
                     if let badge {
                         Text(badge)
                             .font(.caption2)
@@ -321,12 +334,9 @@ struct ElectionCandidateResultRow: View {
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
                             .background(ElectionResultsPalette.accent.opacity(0.2), in: .capsule)
+                            .fixedSize()
                     }
                 }
-                Text(candidate.hasValidVotes ? candidate.party : "\(candidate.party) · votos anulados")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
                 ElectionResultsBar(
                     fraction: candidate.percent / 100,
                     color: candidate.colorHex.map(Color.init(hex:)) ?? ElectionResultsPalette.accent
@@ -417,6 +427,32 @@ struct ElectionResultsBar: View {
     }
 }
 
+extension View {
+
+    /// Liquid Glass on iOS 26, bordered before it: prominent for the screen's main action,
+    /// plain glass for the rest. Tinted with the election green either way.
+    @ViewBuilder
+    func electionButtonStyle(prominent: Bool) -> some View {
+        if #available(iOS 26, *) {
+            if prominent {
+                buttonStyle(.glassProminent)
+                    .tint(ElectionResultsPalette.accent)
+            } else {
+                buttonStyle(.glass)
+                    .tint(ElectionResultsPalette.accent)
+            }
+        } else {
+            if prominent {
+                buttonStyle(.borderedProminent)
+                    .tint(ElectionResultsPalette.accent)
+            } else {
+                buttonStyle(.bordered)
+                    .tint(ElectionResultsPalette.accent)
+            }
+        }
+    }
+}
+
 enum ElectionResultsPalette {
 
     /// Same greens and yellow as the Live Activity.
@@ -439,105 +475,8 @@ enum ElectionResultsFormat {
     }
 }
 
-// MARK: - Share Card
-
-/// A square image of the current count, in the Live Activity's colors, for sharing on
-/// election night. Carries the source and the app's name.
-struct ElectionShareCard: View {
-
-    let round: Int
-    let state: ElectionActivityAttributes.ContentState
-
-    static let size: CGFloat = 360
-
-    @MainActor
-    static func render(round: Int, state: ElectionActivityAttributes.ContentState) -> UIImage? {
-        let renderer = ImageRenderer(content: ElectionShareCard(round: round, state: state))
-        renderer.scale = 3
-        return renderer.uiImage
-    }
-
-    var body: some View {
-        ZStack {
-            LinearGradient(
-                colors: [ElectionResultsPalette.header, ElectionResultsPalette.body],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            IntroducingElectionLiveView.KeypadPatternView()
-
-            VStack(spacing: 14) {
-                Text(state.isFinal ? "APURAÇÃO · PRESIDENTE · \(round)º TURNO · RESULTADO" : "APURAÇÃO · PRESIDENTE · \(round)º TURNO")
-                    .font(.system(size: 11, weight: .heavy))
-                    .foregroundStyle(.white.opacity(0.85))
-
-                HStack(alignment: .top, spacing: 0) {
-                    ForEach(Array(state.candidates.prefix(2))) { candidate in
-                        VStack(spacing: 8) {
-                            ElectionCandidatePhoto(number: candidate.number, colorHex: candidate.colorHex, size: 84)
-                            Text(ElectionResultsFormat.percent(candidate.percent))
-                                .font(.system(size: 30, weight: .bold, design: .rounded))
-                                .monospacedDigit()
-                            Text(candidate.name)
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(.white.opacity(0.8))
-                                .lineLimit(1)
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-                }
-
-                VStack(spacing: 6) {
-                    Text("\(ElectionResultsFormat.percent(state.sectionsCountedPercent)) TOTALIZADO")
-                        .font(.system(size: 15, weight: .bold))
-                        .monospacedDigit()
-                    ElectionResultsBar(fraction: state.sectionsCountedPercent / 100, color: ElectionResultsPalette.bar)
-                        .frame(height: 8)
-                        .environment(\.colorScheme, .dark)
-                }
-                .padding(.horizontal, 12)
-
-                if state.isFinal, let finalMessage = state.finalMessage {
-                    Text(finalMessage)
-                        .font(.system(size: 14, weight: .bold))
-                        .multilineTextAlignment(.center)
-                        .lineLimit(2)
-                }
-
-                HStack(spacing: 8) {
-                    Image("IconePadrao")
-                        .resizable()
-                        .frame(width: 24, height: 24)
-                        .clipShape(.rect(cornerRadius: 6))
-                    Text("Medo e Delírio em Brasília")
-                        .font(.system(size: 12, weight: .bold))
-                    Spacer()
-                    Text("Fonte: TSE · \(state.updatedAtDate.formatted(date: .omitted, time: .shortened))")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.75))
-                }
-            }
-            .padding(20)
-            .foregroundStyle(.white)
-        }
-        .frame(width: Self.size, height: Self.size)
-    }
-}
-
 // MARK: - Preview
 
 #Preview("Results") {
     ElectionResultsView()
-}
-
-#Preview("Share Card") {
-    ElectionShareCard(round: 1, state: .init(
-        sectionsCountedPercent: 65.57,
-        isFinal: false,
-        updatedAt: 1_790_277_154,
-        candidates: [
-            .init(number: 13, name: "LULA", party: "PT", percent: 47.12, status: .counting, colorHex: nil),
-            .init(number: 22, name: "FLAVIO BOLSONARO", party: "PL", percent: 38.45, status: .counting, colorHex: nil)
-        ]
-    ))
 }
