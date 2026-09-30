@@ -2,6 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.rafaelschmitt.MedoDelirioBrasilia.contentRefresh</string>
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER).contentUpdate.*</string>
+	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -19,17 +24,8 @@
 		<string>ymail</string>
 		<string>whatsapp</string>
 	</array>
-	<key>BGTaskSchedulerPermittedIdentifiers</key>
-	<array>
-		<string>com.rafaelschmitt.MedoDelirioBrasilia.contentRefresh</string>
-		<string>$(PRODUCT_BUNDLE_IDENTIFIER).contentUpdate.*</string>
-	</array>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
-	<key>NSSupportsLiveActivities</key>
-	<true/>
-	<key>NSSupportsLiveActivitiesFrequentUpdates</key>
-	<true/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
