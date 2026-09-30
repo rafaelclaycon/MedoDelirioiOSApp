@@ -44,8 +44,6 @@ struct DiagnosticsView: View {
 
             PushTokenCacheView()
 
-            CrashTestView()
-
             Section("Transcrições") {
                 NavigationLink("Arquivos de transcrição") {
                     TranscriptFilesBrowserView()
@@ -401,33 +399,6 @@ extension DiagnosticsView {
             }
             .navigationTitle("Logs de push")
             .navigationBarTitleDisplayMode(.inline)
-        }
-    }
-
-    struct CrashTestView: View {
-
-        @State private var showConfirmation = false
-
-        var body: some View {
-            Section {
-                Button("Forçar crash do app", role: .destructive) {
-                    showConfirmation = true
-                }
-                .confirmationDialog(
-                    "Isso vai fechar o app imediatamente. Reabra o app para que o relatório seja enviado ao Crashlytics.",
-                    isPresented: $showConfirmation,
-                    titleVisibility: .visible
-                ) {
-                    Button("Crashar agora", role: .destructive) {
-                        fatalError("Crash test triggered from Diagnostics")
-                    }
-                    Button("Cancelar", role: .cancel) {}
-                }
-            } header: {
-                Text("Crashlytics")
-            } footer: {
-                Text("Use para testar se o Crashlytics está recebendo relatórios de crash.")
-            }
         }
     }
 

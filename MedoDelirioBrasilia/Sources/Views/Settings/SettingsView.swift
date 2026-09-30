@@ -434,6 +434,8 @@ struct DevOptionsView: View {
                         : "Exportação cancelada."
                 }
             }
+
+            CrashTestView()
         }
         .navigationTitle("Dev Options")
         .sheet(item: $supportSheetPreviewContext) { context in
@@ -459,6 +461,33 @@ struct DevOptionsView: View {
             Button("OK", role: .cancel) { reactionsExportResultMessage = nil }
         } message: {
             Text(reactionsExportResultMessage ?? "")
+        }
+    }
+
+    struct CrashTestView: View {
+
+        @State private var showConfirmation = false
+
+        var body: some View {
+            Section {
+                Button("Forçar crash do app", role: .destructive) {
+                    showConfirmation = true
+                }
+                .confirmationDialog(
+                    "Isso vai fechar o app imediatamente. Reabra o app para que o relatório seja enviado ao Crashlytics.",
+                    isPresented: $showConfirmation,
+                    titleVisibility: .visible
+                ) {
+                    Button("Crashar agora", role: .destructive) {
+                        fatalError("Crash test triggered from Dev Options")
+                    }
+                    Button("Cancelar", role: .cancel) {}
+                }
+            } header: {
+                Text("Crashlytics")
+            } footer: {
+                Text("Use para testar se o Crashlytics está recebendo relatórios de crash.")
+            }
         }
     }
 }
