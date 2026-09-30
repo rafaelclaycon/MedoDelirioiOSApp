@@ -21,11 +21,11 @@ struct ElectionLiveInfo: Codable {
     /// Every candidate, for the results screen. Nil before the first TSE file, or from a
     /// server older than the results screen.
     let details: ElectionLiveDetails?
-    /// The TSE page behind "Ver no site do TSE", set on the server so it can move to the
-    /// results app once that's up.
+    /// Where "App do TSE" goes, set on the server so it can change without an app review.
     let officialResultsURL: String?
 
-    static let defaultOfficialResultsURL = URL(string: "https://www.tse.jus.br/eleicoes/resultados-eleicoes")!
+    /// The TSE's own Resultados app on the App Store.
+    static let defaultOfficialResultsURL = URL(string: "https://apps.apple.com/br/app/resultados/id1136359313")!
 
     var officialResults: URL {
         officialResultsURL.flatMap(URL.init(string:)) ?? Self.defaultOfficialResultsURL

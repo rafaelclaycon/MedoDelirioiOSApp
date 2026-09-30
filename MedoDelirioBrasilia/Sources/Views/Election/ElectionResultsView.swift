@@ -9,7 +9,7 @@ import SwiftUI
 
 /// Every candidate in the President count, opened from the Live Activity and the election
 /// banner (`medodelirio://apuracao`). The Live Activity is the glance; this is where people
-/// come for the rest: every candidate, votes, a card to share and the TSE's own page.
+/// come for the rest: every candidate, votes, a card to share and the TSE's own app.
 struct ElectionResultsView: View {
 
     @Environment(\.dismiss) private var dismiss
@@ -56,13 +56,13 @@ struct ElectionResultsView: View {
                         placeholder(
                             symbol: "wifi.exclamationmark",
                             title: "Não foi possível carregar a apuração",
-                            message: "Confira sua conexão. Enquanto isso, os resultados oficiais estão no site do TSE."
+                            message: "Confira sua conexão. Enquanto isso, os resultados oficiais estão no app Resultados, do TSE."
                         )
                         Button("Tentar de Novo") {
                             Task { await load() }
                         }
                         .buttonStyle(.bordered)
-                        Link("Ver no Site do TSE", destination: ElectionLiveInfo.defaultOfficialResultsURL)
+                        Link("Abrir o App do TSE", destination: ElectionLiveInfo.defaultOfficialResultsURL)
                     } else {
                         ProgressView()
                             .padding(.top, 80)
@@ -147,7 +147,7 @@ struct ElectionResultsView: View {
                 }
 
                 Link(destination: info.officialResults) {
-                    Label("Site do TSE", systemImage: "safari")
+                    Label("App do TSE", systemImage: "arrow.up.forward.app")
                         .frame(maxWidth: .infinity)
                 }
             }

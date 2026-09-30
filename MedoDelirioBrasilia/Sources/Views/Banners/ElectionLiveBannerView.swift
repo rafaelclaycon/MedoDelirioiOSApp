@@ -13,8 +13,7 @@ import SwiftUI
 struct ElectionLiveBannerView: View {
 
     @Binding var toast: Toast?
-    /// From the server (`officialResultsURL`), so it can point at the TSE's results app
-    /// once that's up.
+    /// From the server (`officialResultsURL`); the TSE's Resultados app by default.
     var officialResultsURL: URL = ElectionLiveInfo.defaultOfficialResultsURL
 
     @Environment(\.colorScheme) var colorScheme
@@ -88,13 +87,14 @@ struct ElectionLiveBannerView: View {
                 }
 
                 Link(destination: officialResultsURL) {
-                    Label("Site do TSE", systemImage: "safari")
+                    Label("App do TSE", systemImage: "arrow.up.forward.app")
                 }
             }
             .font(.callout)
             .fontWeight(.semibold)
             .foregroundStyle(textColor)
             .frame(maxWidth: .infinity)
+            .padding(.top, .spacing(.xSmall))
         }
         .padding(.all, 20)
         .background {
