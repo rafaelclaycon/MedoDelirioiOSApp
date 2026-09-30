@@ -1,19 +1,21 @@
 # Live Activity da apuração presidencial
 
-Resumo do trabalho feito até 27/09/2026 e do que falta. Objetivo: uma Live Activity (Tela Bloqueada + Dynamic Island) que mostra em tempo real a apuração para Presidente, com dados oficiais do TSE.
+Resumo do trabalho feito até 29/09/2026 e do que falta. Objetivo: uma Live Activity (Tela Bloqueada + Dynamic Island) que mostra em tempo real a apuração para Presidente, com dados oficiais do TSE.
 
-## Situação em 27/09
+## Situação em 29/09
 
-- **Beta:** testado ponta a ponta. Replay offline no `.club` com `broadcastMode: live`, e a activity do app beta (TestFlight) atualizou sozinha.
-- **Servidor de prod (`.com`):** código no ar, canal de prod criado, poller e broadcaster conferidos em `dryRun`, `enabled` desligado.
-- **App de prod:** versão 13 pronta para arquivar e enviar, com a Live Activity redesenhada, fotos, frases finais e a tela de novidades. Falta o envio para revisão.
+- **App de prod:** versão 13 aprovada pela revisão em 28/09, com a Live Activity, as fotos, as frases finais e a tela de novidades. Depois da aprovação, `enabled` voltou a desligado e `broadcastMode` a `dryRun` no `.com`.
+- **Próxima versão (em desenvolvimento):** tela de resultados com todos os candidatos, cartão para compartilhar e link fixo para o TSE (ver "Tela de resultados"). Precisa de build novo e de nova revisão, e a ideia é que chegue antes do dia 4.
+- **Servidor:** parser tolerante a campos vazios e ausentes, horário de geração quando falta o de totalização, espera depois de falhar no APNs, e o `details`/`officialResultsURL` para a tela de resultados. Os deploys de cada commit estão nas pendências.
+- **Simulados do TSE:** 28/09 parou por um campo ausente; 29/09 mostrou o 429 do APNs e o horário vazio. Os dois foram corrigidos (ver "Teste no simulado").
 
 ## Datas que importam
 
 | Quando | O quê |
 |---|---|
 | 28 e 29/09, 14h às 16h | Janela de teste no simulado do TSE ("3ª semana de testes (semana extra)", aba Simulados da página técnica do TSE, conferido em 25/09) |
-| Até 29/09 à noite | Enviar o app para revisão, com liberação manual (ver "Revisão da App Store") |
+| 28/09 | Versão 13 aprovada pela revisão |
+| Assim que testada | Enviar a próxima versão (tela de resultados) para revisão, com liberação manual, para chegar antes do dia 4 |
 | 04/10 | 1º turno. Totalização a partir das 17h de Brasília (notícia do TSE de 06/07/2026). Trocar a fonte para `official` e ligar `enabled` |
 | 25/10 | 2º turno: trocar `round` para 2. A tela de novidades deixa de aparecer a partir do dia 26 |
 
@@ -61,7 +63,7 @@ Commits `04a37b1` (parser e replay), `3d3d037` (poller e endpoints), `463526b` (
 - `Services/ElectionPollingService.swift`: loop a cada 10s com `If-None-Match`. Ignora 304 e `idg` repetido. Depois de um 404, esquece a URL e só consulta o `ele-c.json` de novo após 60s. Outros erros: espera de 60s. Um retry imediato quando a CDN derruba a conexão keep-alive (`remoteConnectionClosed`).
 - `Services/APNsBroadcastClient.swift`: HTTP/2 direto para a APNs (o APNSwift 4.0.1 não tem Live Activity nem broadcast), com JWT ES256 assinado pela mesma chave `.p8` e reaproveitado por 50 min. Envia broadcast (`POST /4/broadcasts/apps/<bundle>`), cria e lista canais (Channel Management API, portas 2195/2196). O ambiente segue o `APNS_ENVIRONMENT`.
 - `Controllers/ElectionController.swift` e rotas:
-  - `GET api/v4/election/live?bundleId=<bundle>`: pública, usada pelo app. O `channelId` é o do bundle pedido (sem `bundleId`, o de prod; sem fallback do beta para o de prod, porque um canal só serve para o app dele).
+  - `GET api/v4/election/live?bundleId=<bundle>`: pública, usada pelo app. O `channelId` é o do bundle pedido (sem `bundleId`, o de prod; sem fallback do beta para o de prod, porque um canal só serve para o app dele). Também traz `details` (todos os candidatos, com votos, e as seções; `ElectionLiveDetails`, fora do payload do push, que tem limite de 5 KB) e `officialResultsURL` (o link "App do TSE" do app). Apps antigos ignoram os dois (`472b4a7`).
   - `GET api/v4/election/status/:password`: diagnóstico, com o último push (`lastBroadcastAt`, `lastBroadcastEvent`, `lastBroadcastPriority`, `lastBroadcastReason`, `lastBroadcastError`). Campos vazios não aparecem na resposta.
   - `POST api/v4/election/settings/:password`: atualização parcial das configurações.
   - `POST api/v4/election/channels/:password[?bundleId=]`: cria o canal de cada app que ainda não tem um (ou só do bundle pedido), no ambiente atual da APNs, e salva nas configurações.
@@ -130,11 +132,14 @@ curl -X POST -H 'Content-Type: application/json' -d '{"broadcastMode":"dryRun"}'
 # Ajustar o throttle depois de medir a cadência do TSE
 curl -X POST -H 'Content-Type: application/json' -d '{"minPushIntervalSeconds":45}' https://<servidor>/api/v4/election/settings/<senha>
 
+# Link "App do TSE" do app (string vazia volta ao padrão, o app Resultados na App Store)
+curl -X POST -H 'Content-Type: application/json' -d '{"officialResultsURL":"https://resultados.tse.jus.br/oficial/app/index.html"}' https://<servidor>/api/v4/election/settings/<senha>
+
 # Frases finais
 curl -X POST -H 'Content-Type: application/json' -d '{"finalMessages":{"runoff:13-22":{"text":"Segura que tem 2º turno. Bora!"},"default":{"text":"Acabou a apuração."}}}' https://<servidor>/api/v4/election/settings/<senha>
 ```
 
-Campos aceitos: `enabled`, `source` (`simulation`, `official`, `replay`), `round` (1 ou 2), `channelIds` (mapa bundle ID → canal, mesclado; string vazia apaga), `broadcastMode` (`off`, `dryRun`, `live`), `minPushIntervalSeconds`, `candidateColors`, `finalMessages`, `replayDurationMinutes`, `replayStepSeconds` (0 = avança a cada poll), `replayOffline`, `restartReplay`.
+Campos aceitos: `enabled`, `source` (`simulation`, `official`, `replay`), `round` (1 ou 2), `channelIds` (mapa bundle ID → canal, mesclado; string vazia apaga), `broadcastMode` (`off`, `dryRun`, `live`), `minPushIntervalSeconds`, `candidateColors`, `finalMessages`, `replayDurationMinutes`, `replayStepSeconds` (0 = avança a cada poll), `replayOffline`, `restartReplay`, `officialResultsURL` (só https).
 
 #### Conferir um servidor sem os logs
 
@@ -172,7 +177,7 @@ DEVELOPER_DIR=/Applications/Xcode_26.6.app/Contents/Developer swift test
 
 ### App (`MedoDelirioiOSApp`, branch `main`)
 
-Commits de 24 e 25/09: `c2e03f5b` (Live Activity e flag), `f67997c1` (banner), `a8f09c0b` (canal por app). De 26 e 27/09: `aa88ce0b` (servidor da eleição no beta), `d083256a` (redesign), `a36220fd` (fotos e frase final), `9880433a` (fontes fixas), `0cec3004` (Dynamic Island), `2baeee60` (banner), `2d34f27f` (fim da flag), `7ad79c46` (tela de novidades), `c7fb25c1` (tecla CONFIRMA), `25a5d896` (texto da data), `60743c3d` (limites da Tela Bloqueada e da Island).
+Commits de 24 e 25/09: `c2e03f5b` (Live Activity e flag), `f67997c1` (banner), `a8f09c0b` (canal por app). De 26 e 27/09: `aa88ce0b` (servidor da eleição no beta), `d083256a` (redesign), `a36220fd` (fotos e frase final), `9880433a` (fontes fixas), `0cec3004` (Dynamic Island), `2baeee60` (banner), `2d34f27f` (fim da flag), `7ad79c46` (tela de novidades), `c7fb25c1` (tecla CONFIRMA), `25a5d896` (texto da data), `60743c3d` (limites da Tela Bloqueada e da Island). De 29/09: `3d3b247c` (tela de resultados, cartão e link do TSE).
 
 #### Live Activity (`MedoDelirioWidget/Election/`)
 
@@ -199,6 +204,22 @@ Commits de 24 e 25/09: `c2e03f5b` (Live Activity e flag), `f67997c1` (banner), `
   - O `BannersView` pergunta ao servidor quando aparece **e sempre que o app volta ao primeiro plano**: quem deixou o app aberto de manhã vê o banner às 17h. Se a requisição falhar, o banner fica como estava.
 - **Sem feature flag:** o banner aparece só quando o `enabled` do servidor está ligado. A flag `electionLiveActivity` foi removida em 27/09; os testers do beta entram com `{"enabled":true}` no `.club`.
 - **Dev Options** só aparece com o argumento `-SHOW_MORE_DEV_OPTIONS`, que não chega a builds de TestFlight. Para um build especial de TestFlight, trocar por `if true` no `SettingsView` sem commitar e reverter depois.
+
+#### Tela de resultados (`Sources/Views/Election/ElectionResultsView.swift`)
+
+Para a próxima versão, depois da 13. Enquanto a Live Activity é a espiada, esta tela é onde a pessoa vai para ver o resto.
+
+- **Como se chega:** pelo link `medodelirio://apuracao` (`DeepLink.electionResults`), que abre uma sheet no `MainView`. Tocar na Live Activity (`widgetURL` na Tela Bloqueada e na Dynamic Island) e o botão "Ver Resultados" do banner usam esse link. Se ele chegar com a tela de novidades aberta, os resultados abrem quando ela fechar (duas sheets não trocam no mesmo instante).
+- **Topo verde**, no estilo da Live Activity: "PRESIDENTE · 1º TURNO · AO VIVO" com o ponto vermelho (ou "RESULTADO"), o totalizado grande, a barra amarela, "X de Y seções", o horário com a fonte e a frase final.
+- **Todos os candidatos** (do `details`): posição, foto ou círculo com o número, nome (até duas linhas), partido, situação ("ELEITO"/"2º TURNO"), porcentagem, votos e barra. Votos anulados aparecem esmaecidos. A coluna da direita tem largura fixa (106 pt), para as barras terminarem no mesmo lugar.
+- **Ações:** "Acompanhar na Tela Bloqueada"/"Parar de Acompanhar", "Compartilhar" e "App do TSE".
+- **Atualização:** a cada 20 s com a tela aberta, e puxando para baixo. Se uma atualização falha, os últimos números ficam.
+- **Casos especiais:** "A apuração ainda não começou" (sem estado) e erro de conexão, com link para o app do TSE.
+- **Cartão para compartilhar** (`ElectionShareCard`): imagem quadrada de 1080 px com o fundo verde e os teclados de urna, os dois primeiros com foto e porcentagem, o totalizado, a logo e o nome do app, a fonte e o horário, e a frase final no fim. As fotos do TSE têm só 161 px e ficam um pouco suaves no cartão.
+- **Link "App do TSE":** no banner (abaixo de "Acompanhar ao Vivo", com um respiro a mais) e na tela. Por padrão abre o app **Resultados**, do Tribunal Superior Eleitoral, na App Store (`apps.apple.com/br/app/resultados/id1136359313`); quem já tem o app instalado abre direto de lá. O endereço vem do servidor (`officialResultsURL`) e pode mudar sem nova revisão. O site de resultados (`resultados.tse.jus.br/oficial/app`) dava 404 em 29/09.
+- **Fotos no app:** as cinco (13, 14, 22, 30, 70) estão também no catálogo do app, além do widget.
+- **Sem o `details` no servidor** (antes do deploy do `472b4a7`), a tela mostra só o topo, sem a lista.
+- Sem eventos de analytics.
 
 #### Tela de novidades (`Sources/Views/Onboarding/WhatsNew/IntroducingElectionLiveView.swift`)
 
@@ -276,15 +297,17 @@ Mais: nova tela de abertura, correções de layout em telas estreitas e deslizar
 
 ## O que falta
 
-### Antes do envio (até 29/09)
+### Versão 13
 
-- [ ] Conferir no aparelho a barra da Island expandida (não dá para renderizar no Mac) e a tela de novidades (animação do header, tecla CONFIRMA afundando, som e vibração).
-- [ ] Conferir a tela de autor no iPhone Duo aberto e num iPhone comum (ver "Também na versão 13").
-- [ ] Gerar um build novo: o que está no TestFlight ainda tem a splash de aniversário e o layout antigo da Live Activity.
-- [ ] Portal: Broadcast Capability no App ID `com.rafaelschmitt.MedoDelirioBrasilia`.
-- [ ] Commitar o `APP_VERSION` 13 (build 3), arquivar sem Dev Options e enviar com liberação manual e as notas.
-- [x] Build de revisão no TestFlight interno do app de prod, com replay `live` no `.com`: os pushes chegaram (27/09). Confirma servidor, canal de prod, Broadcast Capability e APNs de produção com o app da versão 13.
-- [ ] Configurar o `.com` para a revisão (comando acima).
+- [x] Build de revisão no TestFlight interno do app de prod, com replay `live` no `.com`: os pushes chegaram (27/09).
+- [x] Aprovada pela revisão (28/09). `.com` de volta a `enabled: false` e `dryRun`.
+
+### Próxima versão (tela de resultados)
+
+- [ ] Deploy do `472b4a7` no `.club` e no `.com` (`details` e `officialResultsURL`). Sem ele, a tela mostra só o topo.
+- [ ] No aparelho, pelo beta com replay no `.club`: tocar na Live Activity abre a tela; "Ver Resultados" e "App do TSE" no banner; a lista atualiza sozinha; "Compartilhar" gera o cartão; iniciar e parar a Live Activity pela tela.
+- [ ] Build novo, notas para o revisor mencionando a tela de resultados, e envio com liberação manual. Na revisão, o `.com` volta à configuração de replay de 24h.
+- [ ] Decidir: eventos de analytics na tela (hoje nenhum) e a frase final no cartão de compartilhar (hoje entra).
 
 ### Teste no simulado (28 e 29/09, 14h às 16h)
 
@@ -307,7 +330,7 @@ Mais: nova tela de abertura, correções de layout em telas estreitas e deslizar
 
 **Pendências de 29/09:**
 
-- [ ] Deploy do `eed02d0` no `.club` (e depois no `.com`).
+- [ ] Deploy do `eed02d0` e do `472b4a7` no `.club` e no `.com`.
 - [ ] Conferir que, com a geração parada, não sai push novo, e que o "Atualizado às" mostra o horário do arquivo.
 - [ ] Anotar de quanto em quanto tempo o `generationId` muda e decidir o `minPushIntervalSeconds` do dia 4 (hoje em 60 no `.club`).
 - [ ] Depois da janela: `{"broadcastMode":"dryRun"}` no `.club`.
@@ -341,6 +364,8 @@ Mais: nova tela de abertura, correções de layout em telas estreitas e deslizar
 - Ler as regras de divulgação da Resolução TSE 23.751, arts. 264 a 269.
 - O alerta do resultado final acende a Tela Bloqueada de todo mundo que está acompanhando (sem som). Tirar é só remover o `alert` do `end` no `ElectionBroadcastPlanner`.
 - Uma Live Activity dura no máximo 8h ativa. Quem iniciar às 17h passa da meia-noite; a apuração costuma terminar antes.
+- Ideias ainda não feitas: reações da apuração (sons do podcast para a noite, pelo conteúdo da aba Reações), pushes normais nos momentos-chave ("virou a liderança", "vai ter 2º turno") e o widget da tela inicial.
+- Banner dinâmico como plano B: ele já aceita botão `openLink`. Se a Live Activity falhar no dia, dá para publicar um banner "Acompanhe no app Resultados, do TSE" pelo servidor.
 
 ## Lições
 
