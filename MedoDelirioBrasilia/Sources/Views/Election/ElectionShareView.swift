@@ -46,11 +46,24 @@ enum ElectionShareFormat: String, CaseIterable, Identifiable {
 struct ElectionShareView: View {
 
     let snapshot: ElectionShareSnapshot
+    /// Called with the activity picked once a share completes, right before this screen
+    /// closes, so the screen underneath can confirm it.
+    let onShared: (UIActivity.ActivityType?) -> Void
 
     @Environment(\.dismiss) private var dismiss
 
     @State private var format: ElectionShareFormat = .square
     @State private var shareItem: ImageShareItemSource?
+    @State private var isRendering = false
+    @State private var copiedHandle = false
+
+    private static let instagramHandle = "@medoedelirioembrasiliapodcast"
+
+    /// From the tap until the share sheet closes: the render and the sheet's own startup
+    /// together take a second or two.
+    private var isPreparingShare: Bool {
+        isRendering || shareItem != nil
+    }
 
     private var explanation: String {
         let time = snapshot.state.updatedAtDate.formatted(date: .omitted, time: .shortened)
@@ -99,17 +112,37 @@ struct ElectionShareView: View {
                 }
                 .animation(.snappy, value: format)
 
+                if format == .stories {
+                    tagCallout
+                }
+
                 Button {
-                    if let image = ElectionShareCard.render(round: snapshot.round, state: snapshot.state, format: format) {
-                        shareItem = ImageShareItemSource(image: image, title: shareTitle)
+                    isRendering = true
+                    Task {
+                        // Rendering blocks the main thread, so give the spinner a frame to
+                        // show up first. It keeps spinning on its own while the render runs.
+                        try? await Task.sleep(for: .milliseconds(50))
+                        if let image = ElectionShareCard.render(round: snapshot.round, state: snapshot.state, format: format) {
+                            shareItem = ImageShareItemSource(image: image, title: shareTitle)
+                        }
+                        isRendering = false
                     }
                 } label: {
+                    // The label stays in the layout while the spinner shows, so the button
+                    // keeps its height.
                     Label("Compartilhar", systemImage: "square.and.arrow.up")
+                        .opacity(isPreparingShare ? 0 : 1)
+                        .overlay {
+                            if isPreparingShare {
+                                ProgressView()
+                            }
+                        }
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, .spacing(.xxSmall))
                 }
                 .electionButtonStyle(prominent: true)
+                .disabled(isPreparingShare)
             }
             .padding(.spacing(.large))
             .navigationTitle("Compartilhar Imagem")
@@ -121,8 +154,49 @@ struct ElectionShareView: View {
                     }
                 }
             }
-            .shareSheet(item: $shareItem, activityItems: { [$0] })
+            .shareSheet(item: $shareItem, activityItems: { [$0] }) { _, activityType, completed in
+                guard completed else { return }
+                onShared(activityType)
+                dismiss()
+            }
+            .task(id: copiedHandle) {
+                guard copiedHandle else { return }
+                try? await Task.sleep(for: .seconds(2))
+                copiedHandle = false
+            }
         }
+    }
+
+    /// Asks people posting to Stories to tag the podcast. Tapping the handle copies it, since
+    /// typing it into Instagram's mention sticker is a chore.
+    private var tagCallout: some View {
+        VStack(spacing: .spacing(.small)) {
+            Text("Vai postar nos Stories? Marca o podcast!")
+                .font(.subheadline.weight(.semibold))
+
+            Button {
+                UIPasteboard.general.string = Self.instagramHandle
+                HapticFeedback.success()
+                copiedHandle = true
+            } label: {
+                // The handle's label stays in the layout underneath, so the shorter
+                // checkmark doesn't shrink the button.
+                Label(Self.instagramHandle, systemImage: "doc.on.doc")
+                    .hidden()
+                    .overlay {
+                        Label(
+                            copiedHandle ? "Copiado" : Self.instagramHandle,
+                            systemImage: copiedHandle ? "checkmark" : "doc.on.doc"
+                        )
+                        .contentTransition(.symbolEffect(.replace))
+                    }
+                    .font(.subheadline)
+            }
+            .tint(ElectionResultsPalette.accent)
+            .accessibilityHint("Copia o nome da conta do podcast no Instagram")
+        }
+        .multilineTextAlignment(.center)
+        .padding(.vertical, .spacing(.small))
     }
 }
 
@@ -145,6 +219,12 @@ struct ElectionShareCard: View {
 
     private var heading: String {
         state.isFinal ? "APURAÇÃO · PRESIDENTE · \(round)º TURNO · RESULTADO" : "APURAÇÃO · PRESIDENTE · \(round)º TURNO"
+    }
+
+    /// Stories are too narrow for the final heading on one line, and letting it wrap left
+    /// "· RESULTADO" on its own, so it breaks before "RESULTADO" instead.
+    private var storiesHeading: String {
+        state.isFinal ? "APURAÇÃO · PRESIDENTE · \(round)º TURNO\nRESULTADO" : heading
     }
 
     private var time: String {
@@ -204,28 +284,42 @@ struct ElectionShareCard: View {
         .padding(.vertical, 22)
     }
 
+    /// Related blocks stay together, and flexible spacers split whatever height is left
+    /// between the groups, so the card breathes without spilling past the safe area.
     private var stories: some View {
-        VStack(spacing: 22) {
-            appBadge(iconSize: 30, fontSize: 14)
+        VStack(spacing: 0) {
+            VStack(spacing: 14) {
+                appBadge(iconSize: 30, fontSize: 14)
 
-            Text(heading)
-                .font(.system(size: 12, weight: .heavy))
-                .foregroundStyle(.white.opacity(0.85))
-                .multilineTextAlignment(.center)
+                Text(storiesHeading)
+                    .font(.system(size: 12, weight: .heavy))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .multilineTextAlignment(.center)
+            }
+
+            Spacer(minLength: 24)
 
             candidates(photoSize: 112, percentSize: 34)
 
-            counted(fontSize: 18)
+            Spacer(minLength: 24)
 
-            finalMessage(fontSize: 17)
+            VStack(spacing: 20) {
+                counted(fontSize: 18)
+                finalMessage(fontSize: 17)
+            }
 
-            Text("Fonte: TSE · Atualizado às \(time)")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.white.opacity(0.75))
+            Spacer(minLength: 24)
+
+            VStack(spacing: 4) {
+                Text("Fonte: TSE · Atualizado às \(time)")
+                Text("Criado com o app Medo e Delírio para iOS")
+            }
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(.white.opacity(0.75))
         }
         .padding(.horizontal, 28)
-        // Instagram covers roughly the top and bottom 14% with its own controls.
-        .padding(.vertical, 90)
+        // Instagram covers roughly the top and bottom 13% (250 px of 1920) with its own controls.
+        .padding(.vertical, 84)
     }
 
     private func candidates(photoSize: CGFloat, percentSize: CGFloat) -> some View {
@@ -292,7 +386,7 @@ private let previewState = ElectionActivityAttributes.ContentState(
 )
 
 #Preview("Share Screen") {
-    ElectionShareView(snapshot: ElectionShareSnapshot(round: 1, state: previewState))
+    ElectionShareView(snapshot: ElectionShareSnapshot(round: 1, state: previewState)) { _ in }
 }
 
 #Preview("Square Card") {

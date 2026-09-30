@@ -23,6 +23,7 @@ struct ElectionResultsView: View {
     @State private var showActivitiesDisabledAlert = false
     /// The count at the moment "Compartilhar Imagem" was tapped.
     @State private var shareSnapshot: ElectionShareSnapshot?
+    @State private var toast: Toast?
 
     /// The server takes a new TSE file every 10 s; 20 s keeps the screen current without
     /// hammering it while someone leaves it open all night.
@@ -78,6 +79,7 @@ struct ElectionResultsView: View {
             .refreshable {
                 await load()
             }
+            .toast($toast)
             .navigationTitle("Apuração ao Vivo")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -94,7 +96,12 @@ struct ElectionResultsView: View {
                 }
             }
             .sheet(item: $shareSnapshot) { snapshot in
-                ElectionShareView(snapshot: snapshot)
+                ElectionShareView(snapshot: snapshot) { activityType in
+                    let message = activityType == .saveToCameraRoll
+                        ? "Imagem salva nas Fotos."
+                        : "Imagem compartilhada com sucesso."
+                    toast = Toast(message: message, type: .success)
+                }
             }
             .alert("Atividades ao Vivo Desativadas", isPresented: $showActivitiesDisabledAlert) {
                 Button("Abrir Ajustes") {
@@ -124,14 +131,16 @@ struct ElectionResultsView: View {
             Button {
                 Task { await toggleLiveActivity() }
             } label: {
-                Group {
+                // The label stays in the layout while the spinner shows, so the button
+                // keeps its height.
+                Label(
+                    isRunning ? "Parar de Acompanhar" : "Acompanhar na Tela Bloqueada",
+                    systemImage: isRunning ? "stop.circle" : "lock.iphone"
+                )
+                .opacity(isWorking ? 0 : 1)
+                .overlay {
                     if isWorking {
                         ProgressView()
-                    } else {
-                        Label(
-                            isRunning ? "Parar de Acompanhar" : "Acompanhar na Tela Bloqueada",
-                            systemImage: isRunning ? "stop.circle" : "lock.iphone"
-                        )
                     }
                 }
                 .font(.headline)
