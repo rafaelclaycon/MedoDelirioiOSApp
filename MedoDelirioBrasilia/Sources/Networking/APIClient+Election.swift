@@ -58,11 +58,18 @@ struct ElectionLiveDetails: Codable {
 
 extension APIClient {
 
+    /// `bundleId` picks the broadcast channel. `appVersion` lets the server show the feature
+    /// to the version in App Review while the one in the store stays without it.
     func electionLiveInfo() async throws -> ElectionLiveInfo {
         var components = URLComponents(string: APIConfig.electionAPIURL + "v4/election/live")!
+        var queryItems: [URLQueryItem] = []
         if let bundleId = Bundle.main.bundleIdentifier {
-            components.queryItems = [URLQueryItem(name: "bundleId", value: bundleId)]
+            queryItems.append(URLQueryItem(name: "bundleId", value: bundleId))
         }
+        if !Versioneer.appVersion.isEmpty {
+            queryItems.append(URLQueryItem(name: "appVersion", value: Versioneer.appVersion))
+        }
+        components.queryItems = queryItems.isEmpty ? nil : queryItems
         return try await get(from: components.url!)
     }
 }

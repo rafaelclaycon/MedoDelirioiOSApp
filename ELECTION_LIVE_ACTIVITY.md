@@ -143,7 +143,7 @@ curl -X POST -H 'Content-Type: application/json' -d '{"officialResultsURL":"http
 curl -X POST -H 'Content-Type: application/json' -d '{"finalMessages":{"runoff:13-22":{"text":"Segura que tem 2º turno. Bora!"},"default":{"text":"Acabou a apuração."}}}' https://<servidor>/api/v4/election/settings/<senha>
 ```
 
-Campos aceitos: `enabled`, `previewBuilds` (lista de builds que veem o banner com `enabled` desligado; substitui a lista, `[]` limpa), `source` (`simulation`, `official`, `replay`), `round` (1 ou 2), `channelIds` (mapa bundle ID → canal, mesclado; string vazia apaga), `broadcastMode` (`off`, `dryRun`, `live`), `minPushIntervalSeconds`, `candidateColors`, `finalMessages`, `replayDurationMinutes`, `replayStepSeconds` (0 = avança a cada poll), `replayOffline`, `replayLoop` (recomeça do 0% depois do resultado final), `replayLoopPauseMinutes` (quanto o resultado final fica antes de recomeçar, padrão 5), `restartReplay`, `officialResultsURL` (só https).
+Campos aceitos: `enabled`, `previewVersions` (lista de versões do app, como `"13.1"`, que veem o banner com `enabled` desligado; substitui a lista, `[]` limpa), `source` (`simulation`, `official`, `replay`), `round` (1 ou 2), `channelIds` (mapa bundle ID → canal, mesclado; string vazia apaga), `broadcastMode` (`off`, `dryRun`, `live`), `minPushIntervalSeconds`, `candidateColors`, `finalMessages`, `replayDurationMinutes`, `replayStepSeconds` (0 = avança a cada poll), `replayOffline`, `replayLoop` (recomeça do 0% depois do resultado final), `replayLoopPauseMinutes` (quanto o resultado final fica antes de recomeçar, padrão 5), `restartReplay`, `officialResultsURL` (só https).
 
 #### Conferir um servidor sem os logs
 
@@ -244,23 +244,23 @@ Para a próxima versão, depois da 13. Enquanto a Live Activity é a espiada, es
 
 ## Revisão da App Store
 
-Na versão 13, só os revisores tinham esse código no app de prod, e bastava ligar `enabled`. **A partir da 13.1, a 13.0 está na loja com o banner**: ligar `enabled` mostraria o replay de teste ("CANDIDATO 9999") para todo mundo. Por isso o servidor libera o banner só para os builds em `previewBuilds`, lendo o build do User-Agent que o iOS manda (`MedoDelirio/<build> CFNetwork/… Darwin/…`; o app não manda a versão). A 13.0 da loja é o build 5, e a 13.1 enviada é o build 1. Como a numeração dos builds recomeça a cada versão, confira que o build em revisão não é igual ao de nenhuma versão com o banner que esteja na loja.
+Na versão 13, só os revisores tinham esse código no app de prod, e bastava ligar `enabled`. **A partir da 13.1, a 13.0 está na loja com o banner**: ligar `enabled` mostraria o replay de teste ("CANDIDATO 9999") para todo mundo. Por isso o servidor libera o banner só para as versões em `previewVersions`. Desde a 13.1, o app manda a versão no `?appVersion=` do `v4/election/live`; a 13.0 não manda e só vê o banner com `enabled` ligado. (O primeiro build da 13.1, que ainda não mandava a versão, foi recusado pela revisão porque o banner estava desligado, e depois retirado. Por um tempo, o servidor separou as versões pelo build no User-Agent; isso foi trocado pela versão.)
 
 1. Ligar a **Broadcast Capability** no App ID de prod antes de arquivar.
 2. Arquivar sem o Dev Options aberto.
 3. Enviar com **liberação manual** e as notas abaixo.
-4. Durante a revisão, deixar o `.com` assim, com o build em revisão em `previewBuilds` (replay de 24h; se a revisão passar de um dia, mandar de novo):
+4. Durante a revisão, deixar o `.com` assim, com a versão em revisão em `previewVersions` (replay de 24h; se a revisão passar de um dia, mandar de novo):
 
 ```bash
-curl -s -X POST -H 'Content-Type: application/json' -d '{"enabled":false,"previewBuilds":["1"],"source":"replay","replayOffline":true,"replayDurationMinutes":1440,"replayStepSeconds":60,"restartReplay":true,"broadcastMode":"live"}' https://api.medodelirioios.com/api/v4/election/settings/<senha> | jq
+curl -s -X POST -H 'Content-Type: application/json' -d '{"enabled":false,"previewVersions":["13.1"],"source":"replay","replayOffline":true,"replayDurationMinutes":1440,"replayStepSeconds":60,"restartReplay":true,"broadcastMode":"live"}' https://api.medodelirioios.com/api/v4/election/settings/<senha> | jq
 ```
 
-   Conferir antes de reenviar: o mesmo build pelo TestFlight mostra o banner, e a versão da loja não.
+   Conferir antes de enviar: o mesmo build pelo TestFlight mostra o banner, e a versão da loja não.
 
 5. Depois da aprovação, **antes de liberar:**
 
 ```bash
-curl -s -X POST -H 'Content-Type: application/json' -d '{"enabled":false,"previewBuilds":[],"broadcastMode":"dryRun"}' https://api.medodelirioios.com/api/v4/election/settings/<senha> | jq
+curl -s -X POST -H 'Content-Type: application/json' -d '{"enabled":false,"previewVersions":[],"broadcastMode":"dryRun"}' https://api.medodelirioios.com/api/v4/election/settings/<senha> | jq
 ```
 
 **Notas para o revisor:**
