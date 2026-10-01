@@ -786,46 +786,29 @@ extension SearchResultsView {
                 )
             } footer: {
                 if items.count > itemCountWhenCollapsed && isCollapsed {
-                    if #available(iOS 26, *) {
-                        HStack {
-                            Spacer()
-                            Text("Ver Tudo")
-                                .bold()
-                            Spacer()
-                        }
-                        .foregroundStyle(
-                            colorScheme == .dark ? .primary : Color.darkestGreen
-                        )
-                        .frame(height: 46)
-                        .glassEffect(
-                            .regular.tint(
-                                .accentColor.opacity(0.3)
-                            ).interactive()
-                        )
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            withAnimation {
-                                isCollapsed.toggle()
-                            }
-                        }
-                        .accessibilityLabel("Ver todos os resultados")
-                        .accessibilityAddTraits(.isButton)
-                    } else {
-                        Button {
-                            withAnimation {
-                                isCollapsed.toggle()
-                            }
-                        } label: {
-                            HStack {
-                                Spacer()
-                                Text("Ver Tudo")
-                                    .bold()
-                                Spacer()
-                            }
-                        }
-                        .largeRoundedRectangleBordered(colored: .green)
-                        .accessibilityLabel("Ver todos os resultados")
+                    HStack {
+                        Spacer()
+                        Text("Ver Tudo")
+                            .bold()
+                        Spacer()
                     }
+                    .foregroundStyle(
+                        colorScheme == .dark ? .primary : Color.darkestGreen
+                    )
+                    .frame(height: 46)
+                    .glassEffect(
+                        .regular.tint(
+                            .accentColor.opacity(0.3)
+                        ).interactive()
+                    )
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation {
+                            isCollapsed.toggle()
+                        }
+                    }
+                    .accessibilityLabel("Ver todos os resultados")
+                    .accessibilityAddTraits(.isButton)
                 }
             }
             .onChange(of: searchString) {
@@ -1150,37 +1133,21 @@ struct TranscriptDownloadPromptView: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, .spacing(.large))
 
-            if #available(iOS 26, *) {
-                Button {
-                    Task { await service.downloadTranscripts(priorityEpisodeId: priorityEpisodeId) }
-                    Task { await AnalyticsService().send(originatingScreen: analyticsSource, action: "transcripts_opted_in") }
-                } label: {
-                    Text("Baixar Transcrições")
-                        .font(.callout)
-                        .bold()
-                        .foregroundStyle(colorScheme == .dark ? .primary : Color.darkestGreen)
-                        .padding(.vertical, .spacing(.small))
-                        .padding(.horizontal, .spacing(.xLarge))
-                        .glassEffect(
-                            .regular.tint(
-                                Color.green.opacity(0.3)
-                            ).interactive()
-                        )
-                }
-            } else {
-                Button {
-                    Task { await service.downloadTranscripts(priorityEpisodeId: priorityEpisodeId) }
-                    Task { await AnalyticsService().send(originatingScreen: analyticsSource, action: "transcripts_opted_in") }
-                } label: {
-                    HStack {
-                        Spacer()
-                        Text("Baixar Transcrições")
-                            .bold()
-                        Spacer()
-                    }
-                }
-                .largeRoundedRectangleBordered(colored: .green)
-                .padding(.horizontal, .spacing(.huge))
+            Button {
+                Task { await service.downloadTranscripts(priorityEpisodeId: priorityEpisodeId) }
+                Task { await AnalyticsService().send(originatingScreen: analyticsSource, action: "transcripts_opted_in") }
+            } label: {
+                Text("Baixar Transcrições")
+                    .font(.callout)
+                    .bold()
+                    .foregroundStyle(colorScheme == .dark ? .primary : Color.darkestGreen)
+                    .padding(.vertical, .spacing(.small))
+                    .padding(.horizontal, .spacing(.xLarge))
+                    .glassEffect(
+                        .regular.tint(
+                            Color.green.opacity(0.3)
+                        ).interactive()
+                    )
             }
 
             Spacer()

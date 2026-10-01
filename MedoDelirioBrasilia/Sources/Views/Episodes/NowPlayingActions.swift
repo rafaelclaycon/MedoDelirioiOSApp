@@ -7,11 +7,8 @@
 
 import SwiftUI
 
-/// The now-playing screen's action buttons, shared by the iOS 26 native bottom
-/// bar and the custom `NowPlayingLegacyBottomBar` used below it.
-///
-/// Each button is its own small view so the two bars can arrange them
-/// differently without duplicating their behaviour.
+/// The now-playing screen's action buttons, each its own small view so the
+/// native bottom bar can arrange them without duplicating their behaviour.
 enum NowPlayingActions {
 
     struct Bookmark: View {
@@ -99,46 +96,5 @@ enum NowPlayingActions {
                 Image(systemName: "xmark")
             }
         }
-    }
-}
-
-// MARK: - Legacy Bottom Bar
-
-/// Reproduces the iOS 26 bottom bar's actions in a neutral gray, rounded bar for
-/// iOS < 26, which otherwise gets plain, accent-tinted `.bottomBar` chrome that
-/// doesn't fit the rest of the screen.
-///
-/// Attach via `safeAreaInset(edge: .bottom)` so it reserves the same space a
-/// native bottom bar would.
-struct NowPlayingLegacyBottomBar: View {
-
-    let episode: PodcastEpisode?
-    let shareImage: Image?
-    let onAddBookmark: () -> Void
-    let onShareClip: () -> Void
-    let onOpenTranscript: () -> Void
-
-    var body: some View {
-        HStack(spacing: .spacing(.xxLarge)) {
-            NowPlayingActions.Bookmark(onAdd: onAddBookmark)
-
-            NowPlayingActions.ShareClip(onShare: onShareClip)
-
-            NowPlayingActions.Favorite()
-
-            NowPlayingActions.Share(episode: episode, image: shareImage)
-
-            if FeatureFlag.isEnabled(.transcriptFullView) {
-                NowPlayingActions.Transcript(onOpen: onOpenTranscript)
-            }
-        }
-        .font(.body)
-        .foregroundStyle(.primary)
-        .buttonStyle(.plain)
-        .padding(.horizontal, .spacing(.xLarge))
-        .padding(.vertical, .spacing(.medium))
-        .background(Color(.systemGray5), in: RoundedRectangle(cornerRadius: .spacing(.huge), style: .continuous))
-        .padding(.horizontal, .spacing(.medium))
-        .padding(.bottom, .spacing(.xSmall))
     }
 }

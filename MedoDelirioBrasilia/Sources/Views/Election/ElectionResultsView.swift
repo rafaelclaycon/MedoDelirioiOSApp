@@ -438,26 +438,16 @@ struct ElectionResultsBar: View {
 
 extension View {
 
-    /// Liquid Glass on iOS 26, bordered before it: prominent for the screen's main action,
-    /// plain glass for the rest. Tinted with the election green either way.
+    /// Liquid Glass: prominent for the screen's main action, plain glass for the rest.
+    /// Tinted with the election green either way.
     @ViewBuilder
     func electionButtonStyle(prominent: Bool) -> some View {
-        if #available(iOS 26, *) {
-            if prominent {
-                buttonStyle(.glassProminent)
-                    .tint(ElectionResultsPalette.accent)
-            } else {
-                buttonStyle(.glass)
-                    .tint(ElectionResultsPalette.accent)
-            }
+        if prominent {
+            buttonStyle(.glassProminent)
+                .tint(ElectionResultsPalette.accent)
         } else {
-            if prominent {
-                buttonStyle(.borderedProminent)
-                    .tint(ElectionResultsPalette.accent)
-            } else {
-                buttonStyle(.bordered)
-                    .tint(ElectionResultsPalette.accent)
-            }
+            buttonStyle(.glass)
+                .tint(ElectionResultsPalette.accent)
         }
     }
 }

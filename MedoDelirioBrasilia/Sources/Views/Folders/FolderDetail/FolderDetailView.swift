@@ -81,57 +81,32 @@ struct FolderDetailView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            if #available(iOS 26.0, *) {
-                ScrollView {
-                    detailView(size: geometry.size, topInset: geometry.safeAreaInsets.top)
-                        .toolbar {
-                            ToolbarItem(id: "play-stop-button", placement: .topBarTrailing) {
-                                if currentContentListMode.wrappedValue == .regular {
-                                    playStopButton()
-                                } else {
-                                    selectionControls
-                                }
-                            }
-
-                            ToolbarSpacer(.fixed, placement: .topBarTrailing)
-
-                            ToolbarItem(id: "options-menu", placement: .topBarTrailing) {
-                                optionsMenu()
+            ScrollView {
+                detailView(size: geometry.size, topInset: geometry.safeAreaInsets.top)
+                    .toolbar {
+                        ToolbarItem(id: "play-stop-button", placement: .topBarTrailing) {
+                            if currentContentListMode.wrappedValue == .regular {
+                                playStopButton()
+                            } else {
+                                selectionControls
                             }
                         }
-                }
-                .edgesIgnoringSafeArea(.top)
-                .toast(contentGridViewModel.toast)
-                .floatingContentOptions(contentGridViewModel.floatingOptions)
-                // `toolbarVisibility`, not the older `toolbar(_:for:)` it deprecated:
-                // the latter silently stops hiding iOS 26's redesigned tab bar, which
-                // then sits on top of the selection options in the bottom bar.
-                .toolbarVisibility(contentGridViewModel.tabBarVisibility, for: .tabBar)
-                .scrollEdgeEffectHidden(true, for: .top)
-            } else {
-                ScrollView {
-                    detailView(size: geometry.size, topInset: geometry.safeAreaInsets.top)
-                        .toolbar {
-                            ToolbarItem(placement: .topBarLeading) {
-                                optionsMenu()
-                            }
-                            ToolbarItem(placement: .topBarTrailing) {
-                                if currentContentListMode.wrappedValue == .regular {
-                                    playStopButton()
-                                } else {
-                                    selectionControls
-                                }
-                            }
+
+                        ToolbarSpacer(.fixed, placement: .topBarTrailing)
+
+                        ToolbarItem(id: "options-menu", placement: .topBarTrailing) {
+                            optionsMenu()
                         }
-                }
-                .edgesIgnoringSafeArea(.top)
-                .toast(contentGridViewModel.toast)
-                .floatingContentOptions(contentGridViewModel.floatingOptions)
-                // `toolbarVisibility`, not the older `toolbar(_:for:)` it deprecated:
-                // the latter silently stops hiding iOS 26's redesigned tab bar, which
-                // then sits on top of the selection options in the bottom bar.
-                .toolbarVisibility(contentGridViewModel.tabBarVisibility, for: .tabBar)
+                    }
             }
+            .edgesIgnoringSafeArea(.top)
+            .toast(contentGridViewModel.toast)
+            .floatingContentOptions(contentGridViewModel.floatingOptions)
+            // `toolbarVisibility`, not the older `toolbar(_:for:)` it deprecated:
+            // the latter silently stops hiding iOS 26's redesigned tab bar, which
+            // then sits on top of the selection options in the bottom bar.
+            .toolbarVisibility(contentGridViewModel.tabBarVisibility, for: .tabBar)
+            .scrollEdgeEffectHidden(true, for: .top)
         }
     }
 
@@ -308,12 +283,8 @@ extension FolderDetailView {
                         // The background-extension effect must wrap the *fill*, not
                         // the grow/offset transform. On iOS 26 applying it after the
                         // offset pins the fill and kills the stretch.
-                        if #available(iOS 26.0, *) {
-                            colorfulFill
-                                .backgroundExtensionEffect()
-                        } else {
-                            colorfulFill
-                        }
+                        colorfulFill
+                            .backgroundExtensionEffect()
                     }
                     .clipped()
                     .offset(y: -extraHeight)

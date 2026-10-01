@@ -215,16 +215,10 @@ struct ShareAsVideoView: View {
             }
         }
 
-        if #available(iOS 26, *) {
-            button
-                .controlSize(.large)
-                .buttonStyle(.glass)
-                .disabled(viewModel.isShowingProcessingView)
-        } else {
-            button
-                .borderedButton(colored: .accentColor)
-                .disabled(viewModel.isShowingProcessingView)
-        }
+        button
+            .controlSize(.large)
+            .buttonStyle(.glass)
+            .disabled(viewModel.isShowingProcessingView)
     }
     
     @ViewBuilder
@@ -253,16 +247,10 @@ struct ShareAsVideoView: View {
             }
         }
 
-        if #available(iOS 26, *) {
-            button
-                .controlSize(.large)
-                .buttonStyle(.glassProminent)
-                .disabled(viewModel.isShowingProcessingView)
-        } else {
-            button
-                .borderedProminentButton(colored: .accentColor)
-                .disabled(viewModel.isShowingProcessingView)
-        }
+        button
+            .controlSize(.large)
+            .buttonStyle(.glassProminent)
+            .disabled(viewModel.isShowingProcessingView)
     }
 }
 

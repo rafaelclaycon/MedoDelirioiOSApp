@@ -25,13 +25,6 @@ extension UIDevice {
 
 extension UIDevice {
 
-    static var isIOS26OrLater: Bool {
-        if #available(iOS 26.0, *) {
-            return true
-        }
-        return false
-    }
-
     static var systemMarketingName: String {
         switch deviceType {
         case .iPhone:

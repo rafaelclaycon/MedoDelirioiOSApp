@@ -421,12 +421,10 @@ extension ContentGridViewModel {
     ) {
         stopPlaying()
 
-        if #available(iOS 26, *) {
-            if currentListMode.wrappedValue == .regular {
-                tabBarVisibility = .hidden
-            } else {
-                tabBarVisibility = .automatic
-            }
+        if currentListMode.wrappedValue == .regular {
+            tabBarVisibility = .hidden
+        } else {
+            tabBarVisibility = .automatic
         }
 
         if currentListMode.wrappedValue == .regular {
@@ -462,9 +460,7 @@ extension ContentGridViewModel {
         selectionKeeper.removeAll()
         selectedContentMultiple = nil
         floatingOptions.wrappedValue = nil
-        if #available(iOS 26, *) {
-            tabBarVisibility = .automatic
-        }
+        tabBarVisibility = .automatic
     }
 
     public func allSelectedAreFavorites() -> Bool {

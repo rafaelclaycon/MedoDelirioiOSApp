@@ -54,28 +54,16 @@ struct ElectionLiveBannerView: View {
                 .font(.callout)
                 .fixedSize(horizontal: false, vertical: true)
 
-            if #available(iOS 26, *) {
-                Button {
-                    Task { await onButtonSelected() }
-                } label: {
-                    buttonLabel
-                        .foregroundStyle(textColor)
-                        .padding(.vertical, .spacing(.small))
-                        .frame(maxWidth: .infinity)
-                        .glassEffect(.regular.interactive())
-                }
-                .disabled(isWorking)
-            } else {
-                Button {
-                    Task { await onButtonSelected() }
-                } label: {
-                    buttonLabel
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, .spacing(.xxSmall))
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(isWorking)
+            Button {
+                Task { await onButtonSelected() }
+            } label: {
+                buttonLabel
+                    .foregroundStyle(textColor)
+                    .padding(.vertical, .spacing(.small))
+                    .frame(maxWidth: .infinity)
+                    .glassEffect(.regular.interactive())
             }
+            .disabled(isWorking)
 
             HStack(spacing: .spacing(.large)) {
                 Button {

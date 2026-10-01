@@ -55,33 +55,20 @@ struct EpisodeNotificationsBannerView: View {
                 .opacity(0.8)
                 .font(.callout)
 
-            if #available(iOS 26, *) {
-                Button {
-                    Task { await optIn() }
-                } label: {
-                    Text("Quero Receber")
-                        .font(.callout)
-                        .bold()
-                        .foregroundStyle(
-                            colorScheme == .dark ? .primary : Color.darkestGreen
-                        )
-                        .padding(.vertical, .spacing(.small))
-                        .frame(maxWidth: .infinity)
-                        .glassEffect(
-                            .regular.interactive()
-                        )
-                }
-            } else {
-                Button {
-                    Task { await optIn() }
-                } label: {
-                    Text("Quero Receber")
-                        .font(.callout)
-                        .bold()
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, .spacing(.xxSmall))
-                }
-                .buttonStyle(.borderedProminent)
+            Button {
+                Task { await optIn() }
+            } label: {
+                Text("Quero Receber")
+                    .font(.callout)
+                    .bold()
+                    .foregroundStyle(
+                        colorScheme == .dark ? .primary : Color.darkestGreen
+                    )
+                    .padding(.vertical, .spacing(.small))
+                    .frame(maxWidth: .infinity)
+                    .glassEffect(
+                        .regular.interactive()
+                    )
             }
         }
         .padding(.all, 20)

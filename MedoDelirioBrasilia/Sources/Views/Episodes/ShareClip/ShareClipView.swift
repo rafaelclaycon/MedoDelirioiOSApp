@@ -313,8 +313,7 @@ struct ShareClipView: View {
         }
     }
 
-    /// Red trash button that clears the picked range, with the Liquid Glass
-    /// look on iOS 26 and a plain bordered fallback elsewhere.
+    /// Red trash button that clears the picked range, with the Liquid Glass look.
     @ViewBuilder
     private var clearSelectionButton: some View {
         let button = Button {
@@ -329,11 +328,7 @@ struct ShareClipView: View {
         .disabled(startCueIndex == nil)
         .accessibilityLabel("Limpar seleção")
 
-        if #available(iOS 26, *) {
-            button.buttonStyle(.glass)
-        } else {
-            button.buttonStyle(.bordered)
-        }
+        button.buttonStyle(.glass)
     }
 
     private var maxLengthWarning: some View {

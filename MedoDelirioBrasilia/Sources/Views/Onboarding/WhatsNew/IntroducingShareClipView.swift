@@ -124,36 +124,19 @@ struct IntroducingShareClipView: View {
 
     @ViewBuilder
     private var dismissButton: some View {
-        if #available(iOS 26.0, *) {
-            Button {
-                appMemory.hasSeenShareClipWhatsNewScreen(true)
-                Task { await AnalyticsService().send(originatingScreen: "ShareClipWhatsNew", action: "dismissed") }
-                dismiss()
-            } label: {
-                Text("Bora cortar!")
-                    .font(.headline)
-                    .bold()
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-            }
-            .buttonStyle(.glassProminent)
-            .tint(accentOrange)
-        } else {
-            Button {
-                appMemory.hasSeenShareClipWhatsNewScreen(true)
-                Task { await AnalyticsService().send(originatingScreen: "ShareClipWhatsNew", action: "dismissed") }
-                dismiss()
-            } label: {
-                HStack {
-                    Spacer()
-                    Text("Bora cortar!")
-                        .font(.headline)
-                        .bold()
-                    Spacer()
-                }
-            }
-            .largeRoundedRectangleBorderedProminent(colored: accentOrange)
+        Button {
+            appMemory.hasSeenShareClipWhatsNewScreen(true)
+            Task { await AnalyticsService().send(originatingScreen: "ShareClipWhatsNew", action: "dismissed") }
+            dismiss()
+        } label: {
+            Text("Bora cortar!")
+                .font(.headline)
+                .bold()
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
         }
+        .buttonStyle(.glassProminent)
+        .tint(accentOrange)
     }
 
     private func featureItem(icon: String, title: String, message: String) -> some View {

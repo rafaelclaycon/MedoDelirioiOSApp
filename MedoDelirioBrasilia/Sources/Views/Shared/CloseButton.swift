@@ -12,16 +12,10 @@ struct CloseButton: View {
     let action: () -> Void
 
     var body: some View {
-        if #available(iOS 26, *) {
-            Button {
-                action()
-            } label: {
-                Image(systemName: "xmark")
-            }
-        } else {
-            Button("Fechar") {
-                action()
-            }
+        Button {
+            action()
+        } label: {
+            Image(systemName: "xmark")
         }
     }
 }

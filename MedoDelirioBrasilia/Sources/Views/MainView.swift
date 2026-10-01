@@ -80,12 +80,6 @@ struct MainView: View {
     @State private var accessoryShareMetadata: LPLinkMetadata?
     @Namespace private var nowPlayingTransition
 
-    /// Whether the iOS 26 tab bar bottom accessory is available on this OS.
-    /// On earlier versions the floating `NowPlayingBar` is used instead.
-    private var isBottomAccessoryAvailable: Bool {
-        if #available(iOS 26.0, *) { return true } else { return false }
-    }
-
     /// Sidebar layout on iPad at regular width, tab bar otherwise — so it switches live
     /// when an iPad enters or leaves Split View. Published to the subtree as
     /// `\.usesSidebarLayout`; the navigation paths are shared `@State`, so pushed screens
@@ -142,133 +136,8 @@ struct MainView: View {
     var body: some View {
         ZStack {
             if !usesSidebarLayout {
-                if #available(iOS 26.0, *) {
-                    TabView(selection: tabSelection) {
-                        Tab(Shared.TabInfo.name(.sounds), systemImage: Shared.TabInfo.symbol(.sounds), value: .sounds) {
-                            NavigationStack(path: $soundsPath) {
-                                MainContentView(
-                                    viewModel: MainContentViewModel(
-                                        currentViewMode: .all,
-                                        contentSortOption: UserSettings().mainSoundListSoundSortOption(),
-                                        authorSortOption: UserSettings().authorSortOption(),
-                                        currentContentListMode: $currentContentListMode,
-                                        toast: $toast,
-                                        floatingOptions: $floatingOptions,
-                                        syncValues: syncValues,
-                                        contentRepository: contentRepository,
-                                        analyticsService: AnalyticsService()
-                                    ),
-                                    currentContentListMode: $currentContentListMode,
-                                    toast: $toast,
-                                    floatingOptions: $floatingOptions,
-                                    openSettingsAction: {
-                                        isShowingSettingsSheet.toggle()
-                                    },
-                                    contentRepository: contentRepository,
-                                    userFolderRepository: userFolderRepository,
-                                    bannerRepository: BannerRepository(),
-                                    analyticsService: AnalyticsService()
-                                )
-                                .environment(trendsHelper)
-                                .environment(settingsHelper)
-                                .navigationDestination(for: GeneralNavigationDestination.self) { screen in
-                                    GeneralRouter(destination: screen, contentRepository: contentRepository)
-                                }
-                            }
-                            .tag(PhoneTab.sounds)
-                            .environment(\.push, PushAction { soundsPath.append($0) })
-                        }
-
-                        Tab(Shared.TabInfo.name(PhoneTab.reactions), systemImage: Shared.TabInfo.symbol(PhoneTab.reactions), value: .reactions) {
-                            NavigationStack(path: $reactionsPath) {
-                                ReactionsView(
-                                    goToFolders: {
-                                        tabSelection.wrappedValue = .sounds
-                                        trendsHelper.contentModeToGoTo = .folders
-                                    }
-                                )
-                                .environment(trendsHelper)
-                                .navigationDestination(for: GeneralNavigationDestination.self) { screen in
-                                    GeneralRouter(destination: screen, contentRepository: contentRepository)
-                                }
-                            }
-                            .tag(PhoneTab.reactions)
-                            .environment(\.push, PushAction { reactionsPath.append($0) })
-                        }
-
-                        Tab("Episódios", systemImage: "radio", value: .episodes) {
-                            NavigationStack(path: $episodesPath) {
-                                EpisodesView()
-                                    .navigationDestination(for: PodcastEpisode.self) { episode in
-                                        EpisodeDetailView(episode: episode)
-                                    }
-                            }
-                            .environment(\.push, PushAction { episodesPath.append($0) })
-                            .tag(PhoneTab.episodes)
-                        }
-                        .badge(episodesBadgeText)
-
-                        let searchNavStack = NavigationStack(path: $searchTabPath) {
-                            StandaloneSearchView(
-                                searchService: searchService,
-                                trendsService: trendsService,
-                                contentRepository: contentRepository,
-                                userFolderRepository: userFolderRepository,
-                                analyticsService: AnalyticsService()
-                            )
-                            .navigationDestination(for: GeneralNavigationDestination.self) { screen in
-                                GeneralRouter(destination: screen, contentRepository: contentRepository)
-                            }
-                            .navigationDestination(for: SearchNavigationDestination.self) { screen in
-                                switch screen {
-                                case .trends:
-                                    TrendsView(
-                                        audienceViewModel: MostSharedByAudienceView.ViewModel(trendsService: trendsService),
-                                        tabSelection: tabSelection,
-                                        activePadScreen: .constant(.trends)
-                                    )
-                                    .environment(trendsHelper)
-                                }
-                            }
-                        }
-                        .environment(\.push, PushAction { searchTabPath.append($0) })
-
-                        // The `.prominent` tab role is an iOS 27 SDK symbol, so it only
-                        // compiles with the Xcode that bundles that SDK.
-                        #if compiler(>=6.4)
-                        if #available(iOS 27.0, *) {
-                            Tab("Buscar", systemImage: "magnifyingglass", value: .search, role: .prominent) {
-                                searchNavStack
-                            }
-                        } else {
-                            Tab(value: .search, role: .search) {
-                                searchNavStack
-                            }
-                        }
-                        #else
-                        Tab(value: .search, role: .search) {
-                            searchNavStack
-                        }
-                        #endif
-                    }
-                    .if_tabViewBottomAccessory(
-                        isEnabled: episodePlayer.currentEpisode != nil
-                    ) {
-                        NowPlayingAccessoryView(
-                            episode: episodePlayer.currentEpisode,
-                            player: episodePlayer,
-                            onShare: { shareCurrentEpisode() },
-                            onGoToEpisode: { goToCurrentEpisode() }
-                        )
-                        .shareSheet(item: $accessoryShareMetadata) { [LinkMetadataItemSource(metadata: $0)] }
-                        .onTapGesture {
-                            showNowPlaying = true
-                        }
-                        .matchedTransitionSource(id: "nowPlaying", in: nowPlayingTransition)
-                    }
-                    .tabBarMinimizeBehavior(.onScrollDown)
-                } else {
-                    TabView(selection: tabSelection) {
+                TabView(selection: tabSelection) {
+                    Tab(Shared.TabInfo.name(.sounds), systemImage: Shared.TabInfo.symbol(.sounds), value: .sounds) {
                         NavigationStack(path: $soundsPath) {
                             MainContentView(
                                 viewModel: MainContentViewModel(
@@ -299,12 +168,11 @@ struct MainView: View {
                                 GeneralRouter(destination: screen, contentRepository: contentRepository)
                             }
                         }
-                        .tabItem {
-                            Label(Shared.TabInfo.name(.sounds), systemImage: Shared.TabInfo.symbol(.sounds))
-                        }
                         .tag(PhoneTab.sounds)
                         .environment(\.push, PushAction { soundsPath.append($0) })
+                    }
 
+                    Tab(Shared.TabInfo.name(PhoneTab.reactions), systemImage: Shared.TabInfo.symbol(PhoneTab.reactions), value: .reactions) {
                         NavigationStack(path: $reactionsPath) {
                             ReactionsView(
                                 goToFolders: {
@@ -317,12 +185,11 @@ struct MainView: View {
                                 GeneralRouter(destination: screen, contentRepository: contentRepository)
                             }
                         }
-                        .tabItem {
-                            Label(Shared.TabInfo.name(PhoneTab.reactions), systemImage: Shared.TabInfo.symbol(PhoneTab.reactions))
-                        }
                         .tag(PhoneTab.reactions)
                         .environment(\.push, PushAction { reactionsPath.append($0) })
+                    }
 
+                    Tab("Episódios", systemImage: "radio", value: .episodes) {
                         NavigationStack(path: $episodesPath) {
                             EpisodesView()
                                 .navigationDestination(for: PodcastEpisode.self) { episode in
@@ -330,46 +197,69 @@ struct MainView: View {
                                 }
                         }
                         .environment(\.push, PushAction { episodesPath.append($0) })
-                        .safeAreaInset(edge: .bottom) {
-                            NowPlayingBarContainer(player: episodePlayer, showNowPlaying: $showNowPlaying)
-                                .padding(.bottom, .spacing(.xSmall))
-                        }
-                        .tabItem {
-                            Label("Episódios", systemImage: "radio")
-                        }
-                        .badge(episodesBadgeText)
                         .tag(PhoneTab.episodes)
-
-                        NavigationStack(path: $searchTabPath) {
-                            StandaloneSearchView(
-                                searchService: searchService,
-                                trendsService: trendsService,
-                                contentRepository: contentRepository,
-                                userFolderRepository: userFolderRepository,
-                                analyticsService: AnalyticsService()
-                            )
-                            .navigationDestination(for: GeneralNavigationDestination.self) { screen in
-                                GeneralRouter(destination: screen, contentRepository: contentRepository)
-                            }
-                            .navigationDestination(for: SearchNavigationDestination.self) { screen in
-                                switch screen {
-                                case .trends:
-                                    TrendsView(
-                                        audienceViewModel: MostSharedByAudienceView.ViewModel(trendsService: trendsService),
-                                        tabSelection: tabSelection,
-                                        activePadScreen: .constant(.trends)
-                                    )
-                                    .environment(trendsHelper)
-                                }
-                            }
-                        }
-                        .tabItem {
-                            Label(Shared.TabInfo.name(.search), systemImage: Shared.TabInfo.symbol(.search))
-                        }
-                        .tag(PhoneTab.search)
-                        .environment(\.push, PushAction { searchTabPath.append($0) })
                     }
+                    .badge(episodesBadgeText)
+
+                    let searchNavStack = NavigationStack(path: $searchTabPath) {
+                        StandaloneSearchView(
+                            searchService: searchService,
+                            trendsService: trendsService,
+                            contentRepository: contentRepository,
+                            userFolderRepository: userFolderRepository,
+                            analyticsService: AnalyticsService()
+                        )
+                        .navigationDestination(for: GeneralNavigationDestination.self) { screen in
+                            GeneralRouter(destination: screen, contentRepository: contentRepository)
+                        }
+                        .navigationDestination(for: SearchNavigationDestination.self) { screen in
+                            switch screen {
+                            case .trends:
+                                TrendsView(
+                                    audienceViewModel: MostSharedByAudienceView.ViewModel(trendsService: trendsService),
+                                    tabSelection: tabSelection,
+                                    activePadScreen: .constant(.trends)
+                                )
+                                .environment(trendsHelper)
+                            }
+                        }
+                    }
+                    .environment(\.push, PushAction { searchTabPath.append($0) })
+
+                    // The `.prominent` tab role is an iOS 27 SDK symbol, so it only
+                    // compiles with the Xcode that bundles that SDK.
+                    #if compiler(>=6.4)
+                    if #available(iOS 27.0, *) {
+                        Tab("Buscar", systemImage: "magnifyingglass", value: .search, role: .prominent) {
+                            searchNavStack
+                        }
+                    } else {
+                        Tab(value: .search, role: .search) {
+                            searchNavStack
+                        }
+                    }
+                    #else
+                    Tab(value: .search, role: .search) {
+                        searchNavStack
+                    }
+                    #endif
                 }
+                .if_tabViewBottomAccessory(
+                    isEnabled: episodePlayer.currentEpisode != nil
+                ) {
+                    NowPlayingAccessoryView(
+                        episode: episodePlayer.currentEpisode,
+                        player: episodePlayer,
+                        onShare: { shareCurrentEpisode() },
+                        onGoToEpisode: { goToCurrentEpisode() }
+                    )
+                    .shareSheet(item: $accessoryShareMetadata) { [LinkMetadataItemSource(metadata: $0)] }
+                    .onTapGesture {
+                        showNowPlaying = true
+                    }
+                    .matchedTransitionSource(id: "nowPlaying", in: nowPlayingTransition)
+                }
+                .tabBarMinimizeBehavior(.onScrollDown)
             } else {
                 TabView {
                     Tab(Shared.TabInfo.name(.allSounds), systemImage: Shared.TabInfo.symbol(.allSounds)) {
@@ -463,11 +353,6 @@ struct MainView: View {
                                 }
                         }
                         .environment(\.push, PushAction { episodesPath.append($0) })
-                        .if(!isBottomAccessoryAvailable) { view in
-                            view.safeAreaInset(edge: .bottom) {
-                                NowPlayingBarContainer(player: episodePlayer, showNowPlaying: $showNowPlaying)
-                            }
-                        }
                     }
                     .badge(episodesBadgeText)
 
@@ -561,26 +446,24 @@ struct MainView: View {
                     }
                 }
                 .tabViewStyle(.sidebarAdaptable)
-                .if_tabViewBottomAccessoryIfAvailable(
+                .if_tabViewBottomAccessory(
                     isEnabled: episodePlayer.currentEpisode != nil
                 ) {
-                    if #available(iOS 26.0, *) {
-                        // No `matchedTransitionSource` here: in the sidebar layout Now
-                        // Playing presents full screen and the zoom morph from a
-                        // bottom-bar accessory misbehaves, so this layout uses the
-                        // standard animation (see `if_zoomNavigationTransition`).
-                        NowPlayingAccessoryView(
-                            episode: episodePlayer.currentEpisode,
-                            player: episodePlayer,
-                            onShare: { shareCurrentEpisode() },
-                            onGoToEpisode: { goToCurrentEpisode() }
-                        )
-                        .shareSheet(item: $accessoryShareMetadata) { [LinkMetadataItemSource(metadata: $0)] }
-                        .onTapGesture {
-                            showNowPlaying = true
-                        }
-                        .frame(maxWidth: 700)
+                    // No `matchedTransitionSource` here: in the sidebar layout Now
+                    // Playing presents full screen and the zoom morph from a
+                    // bottom-bar accessory misbehaves, so this layout uses the
+                    // standard animation (see `if_zoomNavigationTransition`).
+                    NowPlayingAccessoryView(
+                        episode: episodePlayer.currentEpisode,
+                        player: episodePlayer,
+                        onShare: { shareCurrentEpisode() },
+                        onGoToEpisode: { goToCurrentEpisode() }
+                    )
+                    .shareSheet(item: $accessoryShareMetadata) { [LinkMetadataItemSource(metadata: $0)] }
+                    .onTapGesture {
+                        showNowPlaying = true
                     }
+                    .frame(maxWidth: 700)
                 }
                 .tabViewSidebarHeader {
                     HStack {
@@ -1011,25 +894,6 @@ struct MainView: View {
                 originatingScreen: "MainView",
                 action: "issueSendingFolderResearchChanges(\(error.localizedDescription))"
             )
-        }
-    }
-}
-
-// MARK: - NowPlayingBarContainer
-
-/// Isolates `EpisodePlayer` observation so that high-frequency property changes
-/// (e.g. `currentTime` every 0.5s) only invalidate this small view, not the
-/// parent `MainView.body`. Fixes an iOS 18 over-tracking issue where accessing
-/// any `@Observable` property caused all mutations to trigger body re-evaluation.
-private struct NowPlayingBarContainer: View {
-
-    let player: EpisodePlayer
-    @Binding var showNowPlaying: Bool
-
-    var body: some View {
-        if player.currentEpisode != nil {
-            NowPlayingBar(episode: player.currentEpisode, player: player)
-                .onTapGesture { showNowPlaying = true }
         }
     }
 }

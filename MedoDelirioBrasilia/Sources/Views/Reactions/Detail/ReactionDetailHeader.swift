@@ -57,12 +57,8 @@ struct ReactionDetailHeader: View {
                 .padding(.horizontal, .spacing(.small))
         }
         .background {
-            if #available(iOS 26.0, *) {
-                image
-                    .backgroundExtensionEffect()
-            } else {
-                image
-            }
+            image
+                .backgroundExtensionEffect()
         }
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .alert(

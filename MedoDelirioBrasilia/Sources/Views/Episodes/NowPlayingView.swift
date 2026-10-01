@@ -165,22 +165,6 @@ struct NowPlayingView: View {
             .toolbar {
                 toolbarControls
             }
-            // iOS 18's native `.bottomBar` renders plain and accent-tinted;
-            // `NowPlayingLegacyBottomBar` replaces it there. Attached after
-            // `.toolbar` (which is a no-op bottom bar-wise pre-26, see
-            // `toolbarControls`) so it reserves the same bottom space a native
-            // bar would, and `.toast` above stays nested above it.
-            .safeAreaInset(edge: .bottom) {
-                if !UIDevice.isIOS26OrLater {
-                    NowPlayingLegacyBottomBar(
-                        episode: player.currentEpisode,
-                        shareImage: shareImage,
-                        onAddBookmark: addBookmark,
-                        onShareClip: startShareClip,
-                        onOpenTranscript: { showFullTranscript = true }
-                    )
-                }
-            }
             // Observe `currentTime` in an isolated child so the toolbar's host view
             // doesn't re-evaluate on every playback tick (which made toolbar items
             // intermittently disappear/misalign).
@@ -545,30 +529,25 @@ struct NowPlayingView: View {
             }
         }
 
-        // iOS 26 gets the native Liquid Glass bottom bar; iOS 18 renders
-        // `NowPlayingLegacyBottomBar` instead, since the plain, tinted pre-26
-        // `.bottomBar` chrome doesn't fit the rest of the screen.
-        if UIDevice.isIOS26OrLater {
-            ToolbarItem(id: "bookmark", placement: .bottomBar) {
-                NowPlayingActions.Bookmark(onAdd: addBookmark)
-            }
+        ToolbarItem(id: "bookmark", placement: .bottomBar) {
+            NowPlayingActions.Bookmark(onAdd: addBookmark)
+        }
 
-            ToolbarItem(id: "shareClip", placement: .bottomBar) {
-                NowPlayingActions.ShareClip(onShare: startShareClip)
-            }
+        ToolbarItem(id: "shareClip", placement: .bottomBar) {
+            NowPlayingActions.ShareClip(onShare: startShareClip)
+        }
 
-            ToolbarItem(id: "favorite", placement: .bottomBar) {
-                NowPlayingActions.Favorite()
-            }
+        ToolbarItem(id: "favorite", placement: .bottomBar) {
+            NowPlayingActions.Favorite()
+        }
 
-            ToolbarItem(id: "share", placement: .bottomBar) {
-                NowPlayingActions.Share(episode: player.currentEpisode, image: shareImage)
-            }
+        ToolbarItem(id: "share", placement: .bottomBar) {
+            NowPlayingActions.Share(episode: player.currentEpisode, image: shareImage)
+        }
 
-            if FeatureFlag.isEnabled(.transcriptFullView) {
-                ToolbarItem(id: "transcript", placement: .bottomBar) {
-                    NowPlayingActions.Transcript(onOpen: { showFullTranscript = true })
-                }
+        if FeatureFlag.isEnabled(.transcriptFullView) {
+            ToolbarItem(id: "transcript", placement: .bottomBar) {
+                NowPlayingActions.Transcript(onOpen: { showFullTranscript = true })
             }
         }
     }

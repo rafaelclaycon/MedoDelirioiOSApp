@@ -13,7 +13,6 @@ enum URLCreationError: Error {
     case invalidURL
 }
 
-@available(iOS 18.0, watchOS 11.0, macOS 15.0, visionOS 2.0, *)
 struct PlayRandomSoundIntent: AppIntent {
 
     static let title: LocalizedStringResource = "Tocar som aleatório"

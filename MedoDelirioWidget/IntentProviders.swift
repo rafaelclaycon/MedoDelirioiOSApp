@@ -8,7 +8,6 @@
 import Foundation
 import AppIntents
 
-@available(iOS 18.0, *)
 struct PlayRandomSoundIntentProvider: AppShortcutsProvider {
 
     static var appShortcuts: [AppShortcut] {

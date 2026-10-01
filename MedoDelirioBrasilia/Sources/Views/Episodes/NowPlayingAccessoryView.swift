@@ -12,7 +12,6 @@ import Kingfisher
 ///
 /// Shows the episode artwork, title, progress bar with time remaining, and playback controls.
 /// The liquid glass capsule background is automatically applied by `tabViewBottomAccessory`.
-@available(iOS 26.0, *)
 struct NowPlayingAccessoryView: View {
 
     let episode: PodcastEpisode?
@@ -232,7 +231,6 @@ struct NowPlayingAccessoryView: View {
 
 // MARK: - Subviews
 
-@available(iOS 26.0, *)
 extension NowPlayingAccessoryView {
 
     struct Artwork: View {

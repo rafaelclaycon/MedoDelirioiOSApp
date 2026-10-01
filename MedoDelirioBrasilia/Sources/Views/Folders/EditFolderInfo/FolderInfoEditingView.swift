@@ -77,24 +77,14 @@ struct FolderInfoEditingView: View {
                     }
 
                     ToolbarItem(placement: .confirmationAction) {
-                        if #available(iOS 26, *) {
-                            Button {
-                                viewModel.onSaveSelected()
-                            } label: {
-                                Image(systemName: "checkmark")
-                            }
-                            .buttonStyle(.glassProminent)
-                            .tint(.accentColor)
-                            .disabled(viewModel.saveCreateButtonIsDisabled)
-                        } else {
-                            Button {
-                                viewModel.onSaveSelected()
-                            } label: {
-                                Text(viewModel.isEditing ? "Salvar" : "Criar")
-                                    .bold()
-                            }
-                            .disabled(viewModel.saveCreateButtonIsDisabled)
+                        Button {
+                            viewModel.onSaveSelected()
+                        } label: {
+                            Image(systemName: "checkmark")
                         }
+                        .buttonStyle(.glassProminent)
+                        .tint(.accentColor)
+                        .disabled(viewModel.saveCreateButtonIsDisabled)
                     }
                 }
             }

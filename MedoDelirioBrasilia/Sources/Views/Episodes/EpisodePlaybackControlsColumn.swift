@@ -66,64 +66,40 @@ struct EpisodeRowPlaybackControls: View {
 
     @ViewBuilder
     private var pauseButton: some View {
-        if #available(iOS 26.0, *) {
-            Button {
-                episodePlayer.togglePlayPause()
-            } label: {
-                Image(systemName: "pause.fill")
-                    .font(.title2)
-                    .foregroundStyle(.primary)
-            }
-            .buttonStyle(.borderless)
-            .padding(.spacing(.small))
-            .glassEffect(
-                .regular.tint(
-                    Color.green.opacity(0.3)
-                ).interactive()
-            )
-        } else {
-            Button {
-                episodePlayer.togglePlayPause()
-            } label: {
-                Image(systemName: "pause.fill")
-                    .font(.title2)
-                    .padding(.vertical, .spacing(.xxxSmall))
-            }
-            .capsule(colored: .accentColor)
+        Button {
+            episodePlayer.togglePlayPause()
+        } label: {
+            Image(systemName: "pause.fill")
+                .font(.title2)
+                .foregroundStyle(.primary)
         }
+        .buttonStyle(.borderless)
+        .padding(.spacing(.small))
+        .glassEffect(
+            .regular.tint(
+                Color.green.opacity(0.3)
+            ).interactive()
+        )
     }
 
     @ViewBuilder
     private var playActionButton: some View {
-        if #available(iOS 26.0, *) {
-            Button {
-                Task {
-                    await episodePlayer.play(episode: episode)
-                }
-            } label: {
-                Image(systemName: "play.fill")
-                    .font(.title2)
-                    .foregroundStyle(.primary)
+        Button {
+            Task {
+                await episodePlayer.play(episode: episode)
             }
-            .buttonStyle(.borderless)
-            .padding(.spacing(.small))
-            .glassEffect(
-                .regular.tint(
-                    Color.green.opacity(0.3)
-                ).interactive()
-            )
-        } else {
-            Button {
-                Task {
-                    await episodePlayer.play(episode: episode)
-                }
-            } label: {
-                Image(systemName: "play.fill")
-                    .font(.title2)
-                    .padding(.vertical, .spacing(.xxxSmall))
-            }
-            .capsule(colored: .accentColor)
+        } label: {
+            Image(systemName: "play.fill")
+                .font(.title2)
+                .foregroundStyle(.primary)
         }
+        .buttonStyle(.borderless)
+        .padding(.spacing(.small))
+        .glassEffect(
+            .regular.tint(
+                Color.green.opacity(0.3)
+            ).interactive()
+        )
     }
 
     private var downloadProgressIndicator: some View {

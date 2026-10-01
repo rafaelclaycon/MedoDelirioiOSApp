@@ -136,10 +136,6 @@ private extension View {
 
     @ViewBuilder
     func if_iOS26GlassElsePlain() -> some View {
-        if #available(iOS 26.0, *) {
-            self.buttonStyle(.glass)
-        } else {
-            self.buttonStyle(.plain)
-        }
+        self.buttonStyle(.glass)
     }
 }

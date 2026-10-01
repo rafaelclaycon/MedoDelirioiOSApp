@@ -67,36 +67,23 @@ struct NoSearchResultsView: View {
 
     @ViewBuilder
     private var suggestionButton: some View {
-        if #available(iOS 26, *) {
-            HStack(spacing: .spacing(.small)) {
-                Image(systemName: "lightbulb")
-                Text("Não encontrou? Sugira uma adição")
-            }
-            .font(.subheadline)
-            .fontWeight(.medium)
-            .foregroundStyle(colorScheme == .dark ? .primary : Color.darkestGreen)
-            .padding(.vertical, .spacing(.small))
-            .padding(.horizontal, .spacing(.medium))
-            .glassEffect(
-                .regular.tint(
-                    .accentColor.opacity(0.3)
-                ).interactive()
-            )
-            .contentShape(Rectangle())
-            .onTapGesture {
-                showSuggestionAlert = true
-            }
-        } else {
-            Button {
-                showSuggestionAlert = true
-            } label: {
-                HStack(spacing: .spacing(.small)) {
-                    Image(systemName: "lightbulb")
-                    Text("Não encontrou? Sugira uma adição")
-                }
-            }
-            .buttonStyle(.bordered)
-            .tint(.green)
+        HStack(spacing: .spacing(.small)) {
+            Image(systemName: "lightbulb")
+            Text("Não encontrou? Sugira uma adição")
+        }
+        .font(.subheadline)
+        .fontWeight(.medium)
+        .foregroundStyle(colorScheme == .dark ? .primary : Color.darkestGreen)
+        .padding(.vertical, .spacing(.small))
+        .padding(.horizontal, .spacing(.medium))
+        .glassEffect(
+            .regular.tint(
+                .accentColor.opacity(0.3)
+            ).interactive()
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            showSuggestionAlert = true
         }
     }
 }

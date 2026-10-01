@@ -250,15 +250,9 @@ extension View {
 
     @ViewBuilder
     func shareClipButtonStyle() -> some View {
-        if #available(iOS 26, *) {
-            self
-                .controlSize(.large)
-                .buttonStyle(.glassProminent)
-                .tint(.orange)
-        } else {
-            self
-                .buttonStyle(.borderedProminent)
-                .tint(.orange)
-        }
+        self
+            .controlSize(.large)
+            .buttonStyle(.glassProminent)
+            .tint(.orange)
     }
 }

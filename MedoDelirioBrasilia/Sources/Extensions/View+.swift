@@ -23,7 +23,6 @@ extension View {
 
     /// Conditionally applies `tabViewBottomAccessory` using the `isEnabled` parameter on iOS 26.1+,
     /// falling back to the `.if` conditional modifier on iOS 26.0.
-    @available(iOS 26.0, *)
     @ViewBuilder func if_tabViewBottomAccessory<Accessory: View>(
         isEnabled: @autoclosure () -> Bool,
         @ViewBuilder content: @escaping () -> Accessory
@@ -48,24 +47,9 @@ extension View {
         }
     }
 
-    /// Like `if_tabViewBottomAccessory`, but callable from contexts that are
-    /// not already gated to iOS 26 (e.g. the iPad branch). No-ops on earlier OSes.
-    @ViewBuilder func if_tabViewBottomAccessoryIfAvailable<Accessory: View>(
-        isEnabled: @autoclosure () -> Bool,
-        @ViewBuilder content: @escaping () -> Accessory
-    ) -> some View {
-        if #available(iOS 26.0, *) {
-            self.if_tabViewBottomAccessory(isEnabled: isEnabled(), content: content)
-        } else {
-            self
-        }
-    }
-
     /// Applies a zoom `navigationTransition` from the given matched source id.
     ///
-    /// Gated to iOS 26 because the only matching `matchedTransitionSource`
-    /// lives in the iOS 26+ tab bar accessory; on earlier OSes the sheet
-    /// presents with the default animation.
+    /// The matching `matchedTransitionSource` lives in the tab bar accessory.
     ///
     /// `isEnabled` lets callers opt out where the zoom misbehaves — notably
     /// iPad, where sheets present as centered cards and the morph from a
@@ -76,7 +60,7 @@ extension View {
         in namespace: Namespace.ID,
         isEnabled: Bool = true
     ) -> some View {
-        if isEnabled, #available(iOS 26.0, *) {
+        if isEnabled {
             self.navigationTransition(.zoom(sourceID: sourceID, in: namespace))
         } else {
             self

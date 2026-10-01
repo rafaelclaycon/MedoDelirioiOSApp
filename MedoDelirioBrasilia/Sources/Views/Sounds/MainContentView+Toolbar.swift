@@ -31,24 +31,14 @@ extension MainContentView {
                     )
                 } else {
                     if contentListMode == .regular {
-                        if #available(iOS 26.0, *) {
-                            ToolbarItem {
-                                Button {
-                                    openContentUpdateSheet()
-                                } label: {
-                                    ContentUpdateStatusSymbol()
-                                }
-                            }
-                            .matchedTransitionSource(id: "sync-status-view", in: matchedTransitionNamespace)
-                        } else {
-                            ToolbarItem {
-                                Button {
-                                    openContentUpdateSheet()
-                                } label: {
-                                    ContentUpdateStatusSymbol()
-                                }
+                        ToolbarItem {
+                            Button {
+                                openContentUpdateSheet()
+                            } label: {
+                                ContentUpdateStatusSymbol()
                             }
                         }
+                        .matchedTransitionSource(id: "sync-status-view", in: matchedTransitionNamespace)
                     }
 
                     ContentToolbarOptionsView(

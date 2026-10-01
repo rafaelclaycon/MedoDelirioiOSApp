@@ -217,86 +217,45 @@ extension ReactionDetailView {
         }
 
         var body: some ToolbarContent {
-            if #available(iOS 26.0, *) {
-                ToolbarItem {
-                    Button {
-                        playStopAction()
-                    } label: {
-                        Image(systemName: isPlayingPlaylist ? "stop.fill" : "play.fill")
+            ToolbarItem {
+                Button {
+                    playStopAction()
+                } label: {
+                    Image(systemName: isPlayingPlaylist ? "stop.fill" : "play.fill")
+                }
+                .disabled(playStopIsDisabled)
+            }
+
+            ToolbarSpacer(.fixed)
+
+            ToolbarItem {
+                shareButton
+            }
+
+            ToolbarSpacer(.fixed)
+
+            ToolbarItem {
+                Menu {
+                    Section {
+                        Button {
+                            startSelectingAction()
+                        } label: {
+                            Label(
+                                isSelecting ? "Cancelar Seleção" : "Selecionar",
+                                systemImage: isSelecting ? "xmark.circle" : "checkmark.circle"
+                            )
+                        }
                     }
-                    .disabled(playStopIsDisabled)
-                }
 
-                ToolbarSpacer(.fixed)
-
-                ToolbarItem {
-                    shareButton
-                }
-
-                ToolbarSpacer(.fixed)
-
-                ToolbarItem {
-                    Menu {
-                        Section {
-                            Button {
-                                startSelectingAction()
-                            } label: {
-                                Label(
-                                    isSelecting ? "Cancelar Seleção" : "Selecionar",
-                                    systemImage: isSelecting ? "xmark.circle" : "checkmark.circle"
-                                )
+                    Section {
+                        Picker("Ordenação", selection: $contentSortOption) {
+                            ForEach(ReactionSoundSortOption.allCases, id: \.self) { option in
+                                Text(option.description).tag(option.rawValue)
                             }
                         }
-
-                        Section {
-                            Picker("Ordenação", selection: $contentSortOption) {
-                                ForEach(ReactionSoundSortOption.allCases, id: \.self) { option in
-                                    Text(option.description).tag(option.rawValue)
-                                }
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis")
                     }
-                }
-            } else {
-                ToolbarItem {
-                    Button {
-                        playStopAction()
-                    } label: {
-                        Image(systemName: isPlayingPlaylist ? "stop.fill" : "play.fill")
-                            .opacity(playStopIsDisabled ? 0.5 : 1.0)
-                    }
-                    .disabled(playStopIsDisabled)
-                }
-
-                ToolbarItem {
-                    shareButton
-                }
-
-                ToolbarItem {
-                    Menu {
-                        Section {
-                            Button {
-                                startSelectingAction()
-                            } label: {
-                                Label(
-                                    isSelecting ? "Cancelar Seleção" : "Selecionar",
-                                    systemImage: isSelecting ? "xmark.circle" : "checkmark.circle"
-                                )
-                            }
-                        }
-
-                        Section {
-                            Picker("Ordenação", selection: $contentSortOption) {
-                                ForEach(ReactionSoundSortOption.allCases, id: \.self) { option in
-                                    Text(option.description).tag(option.rawValue)
-                                }
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis")
-                    }
+                } label: {
+                    Image(systemName: "ellipsis")
                 }
             }
         }

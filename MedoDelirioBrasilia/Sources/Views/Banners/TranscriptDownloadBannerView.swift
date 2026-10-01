@@ -105,32 +105,20 @@ struct TranscriptDownloadBannerView: View {
 
     @ViewBuilder
     private var retryButton: some View {
-        if #available(iOS 26, *) {
-            Button {
-                Task { await service.downloadTranscripts() }
-            } label: {
-                Text("Tentar Novamente")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.white)
-                    .padding(.vertical, .spacing(.xxxSmall))
-                    .padding(.horizontal, .spacing(.small))
-                    .glassEffect(
-                        .regular.tint(
-                            Color.white.opacity(0.2)
-                        ).interactive()
-                    )
-            }
-        } else {
-            Button {
-                Task { await service.downloadTranscripts() }
-            } label: {
-                Text("Tentar Novamente")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-            }
-            .buttonStyle(.bordered)
-            .tint(.white)
+        Button {
+            Task { await service.downloadTranscripts() }
+        } label: {
+            Text("Tentar Novamente")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(.white)
+                .padding(.vertical, .spacing(.xxxSmall))
+                .padding(.horizontal, .spacing(.small))
+                .glassEffect(
+                    .regular.tint(
+                        Color.white.opacity(0.2)
+                    ).interactive()
+                )
         }
     }
 }

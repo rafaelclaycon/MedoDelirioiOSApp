@@ -38,48 +38,22 @@ struct GlassButton: View {
     }
 
     var body: some View {
-        if #available(iOS 26, *) {
-            label
-                .font(isCTA ? .body : .subheadline)
-                .fontWeight(.regular)
-                .foregroundStyle(resolvedForeground)
-                .frame(maxWidth: fullWidth ? .infinity : nil)
-                .padding(.vertical, .spacing(compact ? .xSmall : .medium))
-                .padding(.horizontal, .spacing(.medium))
-                .glassEffect(
-                    .regular.tint(
-                        colorScheme == .dark ? color.opacity(0.3) : color.opacity(0.1)
-                    ).interactive()
-                )
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    action()
-                }
-        } else if color == .clear {
-            Button {
+        label
+            .font(isCTA ? .body : .subheadline)
+            .fontWeight(.regular)
+            .foregroundStyle(resolvedForeground)
+            .frame(maxWidth: fullWidth ? .infinity : nil)
+            .padding(.vertical, .spacing(compact ? .xSmall : .medium))
+            .padding(.horizontal, .spacing(.medium))
+            .glassEffect(
+                .regular.tint(
+                    colorScheme == .dark ? color.opacity(0.3) : color.opacity(0.1)
+                ).interactive()
+            )
+            .contentShape(Rectangle())
+            .onTapGesture {
                 action()
-            } label: {
-                label
-                    .font(.subheadline)
-                    .fontWeight(.regular)
-                    .padding(.vertical, .spacing(compact ? .xxxSmall : .xxSmall))
-                    .frame(maxWidth: fullWidth ? .infinity : nil)
             }
-            .foregroundColor(.blue)
-        } else {
-            Button {
-                action()
-            } label: {
-                label
-                    .font(.body)
-                    .fontWeight(.regular)
-                    .foregroundStyle(color)
-                    .padding(.vertical, .spacing(compact ? .xxxSmall : .xxSmall))
-                    .frame(maxWidth: fullWidth ? .infinity : nil)
-            }
-            .buttonStyle(.bordered)
-            .tint(color)
-        }
     }
 
     @ViewBuilder
@@ -101,33 +75,20 @@ struct GlassIconButton: View {
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
-        if #available(iOS 26, *) {
-            Image(systemName: symbol)
-                .font(.subheadline)
-                .fontWeight(.regular)
-                .foregroundStyle(colorScheme == .dark ? .white : color)
-                .padding(.spacing(.small))
-                .glassEffect(
-                    .regular.tint(
-                        colorScheme == .dark ? color.opacity(0.3) : color.opacity(0.1)
-                    ).interactive()
-                )
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    action()
-                }
-        } else {
-            Button {
+        Image(systemName: symbol)
+            .font(.subheadline)
+            .fontWeight(.regular)
+            .foregroundStyle(colorScheme == .dark ? .white : color)
+            .padding(.spacing(.small))
+            .glassEffect(
+                .regular.tint(
+                    colorScheme == .dark ? color.opacity(0.3) : color.opacity(0.1)
+                ).interactive()
+            )
+            .contentShape(Rectangle())
+            .onTapGesture {
                 action()
-            } label: {
-                Image(systemName: symbol)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(color)
             }
-            .buttonStyle(.bordered)
-            .tint(color)
-        }
     }
 }
 

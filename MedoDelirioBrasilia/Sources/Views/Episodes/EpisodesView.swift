@@ -564,11 +564,7 @@ private extension View {
 
     @ViewBuilder
     func if_iOS26GlassElseBorderless() -> some View {
-        if #available(iOS 26.0, *) {
-            self.buttonStyle(.glass)
-        } else {
-            self.buttonStyle(.borderless)
-        }
+        self.buttonStyle(.glass)
     }
 }
 

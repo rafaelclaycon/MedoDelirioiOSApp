@@ -83,12 +83,8 @@ extension AuthorHeaderView {
                         // The background-extension effect must wrap the *image*,
                         // not the grow/offset transform. On iOS 26 applying it
                         // after the offset pins the image and kills the stretch.
-                        if #available(iOS 26.0, *) {
-                            image
-                                .backgroundExtensionEffect()
-                        } else {
-                            image
-                        }
+                        image
+                            .backgroundExtensionEffect()
                     }
                     .clipped()
                     .offset(y: -extraHeight)
@@ -388,30 +384,19 @@ extension AuthorHeaderView {
         }
 
         func body(content: Content) -> some View {
-            if #available(iOS 26.0, *) {
-                content
-                    .toolbar {
-                        ToolbarItem {
-                            multiselectButton
-                        }
-
-                        ToolbarSpacer(.fixed)
-
-                        ToolbarItem {
-                            moreOptionsMenu
-                        }
+            content
+                .toolbar {
+                    ToolbarItem {
+                        multiselectButton
                     }
-                    .toolbarVisibility(.hidden, for: .tabBar)
-            } else {
-                content
-                    .toolbar {
-                        HStack(spacing: .spacing(.medium)) {
-                            multiselectButton
 
-                            moreOptionsMenu
-                        }
+                    ToolbarSpacer(.fixed)
+
+                    ToolbarItem {
+                        moreOptionsMenu
                     }
-            }
+                }
+                .toolbarVisibility(.hidden, for: .tabBar)
         }
     }
 

@@ -212,24 +212,12 @@ extension EpisodeStatsView {
         let systemImage: String
 
         var body: some View {
-            if #available(iOS 26, *) {
-                cardContent
-                    .glassEffect(
-                        .regular.tint(Color.green.opacity(0.3)).interactive(),
-                        in: .rect(cornerRadius: .spacing(.medium))
-                    )
-                    .scrollClipDisabled()
-            } else {
-                cardContent
-                    .background {
-                        RoundedRectangle(cornerRadius: .spacing(.medium))
-                            .fill(Color.green.opacity(0.1))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: .spacing(.medium), style: .continuous)
-                                    .stroke(Color.green.opacity(0.3), lineWidth: 1)
-                            )
-                    }
-            }
+            cardContent
+                .glassEffect(
+                    .regular.tint(Color.green.opacity(0.3)).interactive(),
+                    in: .rect(cornerRadius: .spacing(.medium))
+                )
+                .scrollClipDisabled()
         }
 
         private var cardContent: some View {

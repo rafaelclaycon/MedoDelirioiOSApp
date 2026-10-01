@@ -10,10 +10,10 @@ import UIKit
 
 /// Keeps a long content update going after the user leaves the app.
 ///
-/// On iOS 26 the system grants real background runtime through `BGContinuedProcessingTask`
-/// and shows its own progress UI in the Dynamic Island and on the Lock Screen. Earlier
-/// systems only get a short grace period, after which the update pauses — unfinished
-/// events stay marked unsuccessful and are retried later, so stopping midway is safe.
+/// The system grants real background runtime through `BGContinuedProcessingTask` and shows
+/// its own progress UI in the Dynamic Island and on the Lock Screen. If it refuses or
+/// expires the task, the update pauses — unfinished events stay marked unsuccessful and
+/// are retried later, so stopping midway is safe.
 @MainActor
 enum ContentUpdateContinuation {
 
@@ -45,7 +45,6 @@ enum ContentUpdateContinuation {
     // MARK: - Setup
 
     static func register() {
-        guard #available(iOS 26.0, *) else { return }
 
         let registered = BGTaskScheduler.shared.register(
             forTaskWithIdentifier: taskIdentifier,
@@ -67,7 +66,6 @@ enum ContentUpdateContinuation {
     static func begin() {
         isBackgroundContinuationGranted = false
 
-        guard #available(iOS 26.0, *) else { return }
         guard !isContinuedTaskRunning else { return }
         // Continued-processing tasks exist for work the user is watching. A long update
         // detected during a background wake (silent push, scheduled refresh) must not
@@ -141,7 +139,6 @@ enum ContentUpdateContinuation {
 
     /// Mirrors the update's progress onto the task for as long as it runs. The system
     /// expires tasks that look stalled, so reporting has to continue throughout.
-    @available(iOS 26.0, *)
     private static func run(_ task: BGContinuedProcessingTask) async {
         BackgroundContentSync.log("🏝️ Continuação iniciada pelo sistema")
 
@@ -200,7 +197,6 @@ enum ContentUpdateContinuation {
         BackgroundContentSync.log("🏝️ Continuação encerrada")
     }
 
-    @available(iOS 26.0, *)
     private static func report(service: ContentUpdateService, to task: BGContinuedProcessingTask) {
         // Never zero: a total of 0 would make the system's progress bar meaningless.
         task.progress.totalUnitCount = Int64(max(service.totalUpdateCount, 1))

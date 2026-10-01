@@ -135,58 +135,31 @@ struct IntroducingTranscriptsView: View {
 
     @ViewBuilder
     private var bottomButtons: some View {
-        if #available(iOS 26.0, *) {
-            Button {
-                appMemory.hasSeenTranscriptsWhatsNewScreen(true)
-                Task { await transcriptDownloadService.downloadTranscripts() }
-                Task { await AnalyticsService().send(originatingScreen: "TranscriptsWhatsNew", action: "transcripts_opted_in") }
-                dismiss()
-            } label: {
-                Text("Baixar Transcrições")
-                    .font(.headline)
-                    .bold()
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-            }
-            .buttonStyle(.glassProminent)
-            .tint(.orange)
-
-            Button {
-                appMemory.hasSeenTranscriptsWhatsNewScreen(true)
-                dismiss()
-            } label: {
-                Text("Depois")
-                    .font(.subheadline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-            }
-            .buttonStyle(.glass)
-        } else {
-            Button {
-                appMemory.hasSeenTranscriptsWhatsNewScreen(true)
-                Task { await transcriptDownloadService.downloadTranscripts() }
-                Task { await AnalyticsService().send(originatingScreen: "TranscriptsWhatsNew", action: "transcripts_opted_in") }
-                dismiss()
-            } label: {
-                HStack {
-                    Spacer()
-                    Text("Baixar Transcrições")
-                        .font(.headline)
-                        .bold()
-                    Spacer()
-                }
-            }
-            .largeRoundedRectangleBorderedProminent(colored: accentAmber)
-
-            Button {
-                appMemory.hasSeenTranscriptsWhatsNewScreen(true)
-                dismiss()
-            } label: {
-                Text("Depois")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
+        Button {
+            appMemory.hasSeenTranscriptsWhatsNewScreen(true)
+            Task { await transcriptDownloadService.downloadTranscripts() }
+            Task { await AnalyticsService().send(originatingScreen: "TranscriptsWhatsNew", action: "transcripts_opted_in") }
+            dismiss()
+        } label: {
+            Text("Baixar Transcrições")
+                .font(.headline)
+                .bold()
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
         }
+        .buttonStyle(.glassProminent)
+        .tint(.orange)
+
+        Button {
+            appMemory.hasSeenTranscriptsWhatsNewScreen(true)
+            dismiss()
+        } label: {
+            Text("Depois")
+                .font(.subheadline)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+        }
+        .buttonStyle(.glass)
     }
 
     private func featureItem(icon: String, title: String, message: String) -> some View {

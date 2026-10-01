@@ -99,121 +99,58 @@ struct FloatingSelectionOptionsView: ViewModifier {
     }
 
     public func body(content: Content) -> some View {
-        if #available(iOS 26, *) {
-            content
-                .shareSheet(request: shareRequest, sourceRect: Self.shareButtonRect(in:))
-                .toolbar {
-                    if let options {
-                        ToolbarItem(placement: .bottomBar) {
-                            Button {
-                                options.favoriteAction()
-                            } label: {
-                                Label {
-                                    Text(favoriteTitle).bold()
-                                } icon: {
-                                    Image(systemName: favoriteSymbol)
-                                }
+        content
+            .shareSheet(request: shareRequest, sourceRect: Self.shareButtonRect(in:))
+            .toolbar {
+                if let options {
+                    ToolbarItem(placement: .bottomBar) {
+                        Button {
+                            options.favoriteAction()
+                        } label: {
+                            Label {
+                                Text(favoriteTitle).bold()
+                            } icon: {
+                                Image(systemName: favoriteSymbol)
                             }
-                            .disabled(!options.areButtonsEnabled)
                         }
+                        .disabled(!options.areButtonsEnabled)
+                    }
 
-                        ToolbarItem(placement: .bottomBar) {
+                    ToolbarItem(placement: .bottomBar) {
+                        Button {
+                            options.folderAction()
+                        } label: {
+                            Label {
+                                Text(folderTitle)
+                                    .bold()
+                            } icon: {
+                                Image(systemName: folderSymbol)
+                            }
+                        }
+                        .disabled(!options.areButtonsEnabled)
+                    }
+
+                    ToolbarSpacer(.flexible, placement: .bottomBar)
+
+                    ToolbarItem(placement: .bottomBar) {
+                        if options.shareIsProcessing {
+                            ProgressView()
+                        } else {
                             Button {
-                                options.folderAction()
+                                options.shareAction()
                             } label: {
                                 Label {
-                                    Text(folderTitle)
+                                    Text(hSizeClass != .regular ? "Comp." : "Compartilhar")
                                         .bold()
                                 } icon: {
-                                    Image(systemName: folderSymbol)
+                                    Image(systemName: "square.and.arrow.up")
                                 }
                             }
-                            .disabled(!options.areButtonsEnabled)
-                        }
-
-                        ToolbarSpacer(.flexible, placement: .bottomBar)
-
-                        ToolbarItem(placement: .bottomBar) {
-                            if options.shareIsProcessing {
-                                ProgressView()
-                            } else {
-                                Button {
-                                    options.shareAction()
-                                } label: {
-                                    Label {
-                                        Text(hSizeClass != .regular ? "Comp." : "Compartilhar")
-                                            .bold()
-                                    } icon: {
-                                        Image(systemName: "square.and.arrow.up")
-                                    }
-                                }
-                                .disabled(!options.areButtonsEnabled || UIDevice.deviceType != .iPhone) // Sharing many crashed on iPad.
-                            }
+                            .disabled(!options.areButtonsEnabled || UIDevice.deviceType != .iPhone) // Sharing many crashed on iPad.
                         }
                     }
                 }
-        } else {
-            content
-                .shareSheet(request: shareRequest, sourceRect: Self.shareButtonRect(in:))
-                .overlay(alignment: .bottom) {
-                    if let options {
-                        HStack(spacing: 14) {
-                            Button {
-                                options.favoriteAction()
-                            } label: {
-                                Label {
-                                    Text(favoriteTitle).bold()
-                                } icon: {
-                                    Image(systemName: favoriteSymbol)
-                                }
-                            }
-                            .disabled(!options.areButtonsEnabled)
-
-                            Divider()
-
-                            Button {
-                                options.folderAction()
-                            } label: {
-                                Label {
-                                    Text(folderTitle)
-                                        .bold()
-                                } icon: {
-                                    Image(systemName: folderSymbol)
-                                }
-                            }
-                            .disabled(!options.areButtonsEnabled)
-
-                            Divider()
-
-                            if options.shareIsProcessing {
-                                ProgressView()
-                                    .frame(width: 80)
-                            } else {
-                                Button {
-                                    options.shareAction()
-                                } label: {
-                                    Label {
-                                        Text(hSizeClass != .regular ? "Comp." : "Compartilhar")
-                                            .bold()
-                                    } icon: {
-                                        Image(systemName: "square.and.arrow.up")
-                                    }
-                                }
-                                .disabled(!options.areButtonsEnabled || UIDevice.deviceType != .iPhone) // Sharing many crashed on iPad.
-                            }
-                        }
-                        .padding(.horizontal, 20)
-                        .frame(maxHeight: 50)
-                        .background {
-                            RoundedRectangle(cornerRadius: 50, style: .continuous)
-                                .fill(Color.systemBackground)
-                                .shadow(color: .gray, radius: 2, y: 2)
-                        }
-                        .padding(.bottom)
-                        .disabled(options.shareIsProcessing)
-                    }
-                }
-        }
+            }
     }
 }
 

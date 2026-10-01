@@ -15,11 +15,7 @@ struct ContentModePicker<Option: FilterOption>: View {
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            if #available(iOS 26, *) {
-                GlassEffectContainer(spacing: .spacing(.small)) {
-                    scrollingOptions()
-                }
-            } else {
+            GlassEffectContainer(spacing: .spacing(.small)) {
                 scrollingOptions()
             }
         }
@@ -64,11 +60,7 @@ extension ContentModePicker {
         private var selectedTextColor: Color {
             switch colorScheme {
             case .light:
-                if #available(iOS 26, *) {
-                    Color.primary
-                } else {
-                    Color.whatsAppDarkGreen
-                }
+                Color.primary
             case .dark:
                 Color.green
             @unknown default:
@@ -90,11 +82,7 @@ extension ContentModePicker {
         private var selectedBackgroundColor: Color {
             switch colorScheme {
             case .light:
-                if #available(iOS 26, *) {
-                    Color.green.opacity(0.5)
-                } else {
-                    Color.whatsAppLightGreen
-                }
+                Color.green.opacity(0.5)
             case .dark:
                 Color.green.opacity(0.3)
             @unknown default:
@@ -121,45 +109,28 @@ extension ContentModePicker {
         // MARK: - View Body
 
         var body: some View {
-            if #available(iOS 26, *) {
-                Group {
-                    if option == selected {
-                        Text(option.displayName)
-                            .transition(.scale(scale: 0.5).combined(with: .opacity))
-                    } else {
-                        Image(systemName: option.symbol)
-                            .padding(.horizontal, .spacing(.xSmall))
-                            .transition(.scale(scale: 0.5).combined(with: .opacity))
-                    }
+            Group {
+                if option == selected {
+                    Text(option.displayName)
+                        .transition(.scale(scale: 0.5).combined(with: .opacity))
+                } else {
+                    Image(systemName: option.symbol)
+                        .padding(.horizontal, .spacing(.xSmall))
+                        .transition(.scale(scale: 0.5).combined(with: .opacity))
                 }
-                .foregroundStyle(
-                    option == selected ? selectedTextColor : .primary
-                )
-                .font(.callout)
-                .fontWeight(option == selected ? .bold : .regular)
-                .padding(.vertical, verticalPadding)
-                .padding(.horizontal, horizontalPadding)
-                .glassEffect(
-                    .regular.tint(
-                        option == selected ? selectedBackgroundColor : nil
-                    ).interactive()
-                )
-            } else {
-                Text(option.displayName)
-                    .foregroundStyle(
-                        option == selected ? selectedTextColor : notSelectedTextColor
-                    )
-                    .font(.callout)
-                    .fontWeight(.medium)
-                    .padding(.vertical, verticalPadding)
-                    .padding(.horizontal, horizontalPadding)
-                    .background {
-                        RoundedRectangle(cornerRadius: .spacing(.huge))
-                            .fill(
-                                option == selected ? selectedBackgroundColor : notSelectedBackgroundColor
-                            )
-                    }
             }
+            .foregroundStyle(
+                option == selected ? selectedTextColor : .primary
+            )
+            .font(.callout)
+            .fontWeight(option == selected ? .bold : .regular)
+            .padding(.vertical, verticalPadding)
+            .padding(.horizontal, horizontalPadding)
+            .glassEffect(
+                .regular.tint(
+                    option == selected ? selectedBackgroundColor : nil
+                ).interactive()
+            )
         }
     }
 }

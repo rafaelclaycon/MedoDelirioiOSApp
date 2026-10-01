@@ -265,20 +265,13 @@ extension MostSharedByAudienceView {
 
                 menuItem(Shared.Trends.allTime, interval: .allTime)
             } label: {
-                if #available(iOS 26, *) {
-                    HStack(spacing: .spacing(.xxSmall)) {
-                        Image(systemName: "line.3.horizontal.decrease")
-                        Text(dropDownText)
-                    }
-                    .padding(.vertical, .spacing(.xSmall))
-                    .padding(.horizontal, .spacing(.small))
-                    .glassEffect(.regular.interactive())
-                } else {
-                    HStack(spacing: .spacing(.xxSmall)) {
-                        Image(systemName: "line.3.horizontal.decrease")
-                        Text(dropDownText)
-                    }
+                HStack(spacing: .spacing(.xxSmall)) {
+                    Image(systemName: "line.3.horizontal.decrease")
+                    Text(dropDownText)
                 }
+                .padding(.vertical, .spacing(.xSmall))
+                .padding(.horizontal, .spacing(.small))
+                .glassEffect(.regular.interactive())
             }
         }
 

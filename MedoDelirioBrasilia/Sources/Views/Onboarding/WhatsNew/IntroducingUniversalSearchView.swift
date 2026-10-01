@@ -208,19 +208,11 @@ struct IntroducingUniversalSearchView: View {
                             message: "Encontre palavras dentro do que é dito nas vírgulas e músicas, com trechos destacados mostrando o contexto."
                         )
 
-                        if UIDevice.isIOS26OrLater {
-                            ItemView(
-                                icon: "hand.tap",
-                                title: "Acesso Facilitado",
-                                message: "No \(currentOSName), a busca agora tem um \(searchButtonPlacement)."
-                            )
-                        } else {
-                            ItemView(
-                                icon: "checkmark.circle",
-                                title: "No Mesmo Lugar de Sempre",
-                                message: "A busca continua no topo da tela, no mesmo lugar que você já conhece."
-                            )
-                        }
+                        ItemView(
+                            icon: "hand.tap",
+                            title: "Acesso Facilitado",
+                            message: "No \(currentOSName), a busca agora tem um \(searchButtonPlacement)."
+                        )
                     }
                     .padding(.top, 16)
                     .padding(.horizontal, 24)
@@ -244,34 +236,18 @@ struct IntroducingUniversalSearchView: View {
 
     @ViewBuilder
     private var dismissButton: some View {
-        if #available(iOS 26.0, *) {
-            Button {
-                appMemory.hasSeenUniversalSearchWhatsNewScreen(true)
-                dismiss()
-            } label: {
-                Text("Bora buscar!")
-                    .font(.headline)
-                    .bold()
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-            }
-            .buttonStyle(.glassProminent)
-            .tint(.blue)
-        } else {
-            Button {
-                appMemory.hasSeenUniversalSearchWhatsNewScreen(true)
-                dismiss()
-            } label: {
-                HStack {
-                    Spacer()
-                    Text("Bora buscar!")
-                        .font(.headline)
-                        .bold()
-                    Spacer()
-                }
-            }
-            .largeRoundedRectangleBorderedProminent(colored: Color(red: 0.2, green: 0.5, blue: 1.0))
+        Button {
+            appMemory.hasSeenUniversalSearchWhatsNewScreen(true)
+            dismiss()
+        } label: {
+            Text("Bora buscar!")
+                .font(.headline)
+                .bold()
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
         }
+        .buttonStyle(.glassProminent)
+        .tint(.blue)
     }
 }
 

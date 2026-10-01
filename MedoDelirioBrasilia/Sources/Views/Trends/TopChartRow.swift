@@ -118,27 +118,14 @@ extension TopChartRow {
         // MARK: - View Body
 
         var body: some View {
-            if #available(iOS 26, *) {
-                content()
-                    .glassEffect(
-                        .regular.tint(
-                            background.opacity(0.4)
-                        ).interactive(),
-                        in: .rect(cornerRadius: .spacing(.large))
-                    )
-                    .scrollClipDisabled()
-            } else {
-                content()
-                    .background {
-                        RoundedRectangle(cornerRadius: 23)
-                            .fill(background)
-                            .opacity(0.2)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 23, style: .continuous)
-                                    .stroke(border.opacity(0.7), lineWidth: 1)
-                            )
-                    }
-            }
+            content()
+                .glassEffect(
+                    .regular.tint(
+                        background.opacity(0.4)
+                    ).interactive(),
+                    in: .rect(cornerRadius: .spacing(.large))
+                )
+                .scrollClipDisabled()
         }
 
         func content() -> some View {

@@ -135,20 +135,13 @@ extension MainContentView {
                 }
             }
             .sheet(isPresented: $showingModalView) {
-                if #available(iOS 26.0, *) {
-                    ContentUpdateStatusView(
-                        lastUpdateAttempt: AppPersistentMemory().getLastUpdateAttempt(),
-                        lastUpdateDate: LocalDatabase.shared.dateTimeOfLastUpdate()
-                    )
-                    .navigationTransition(
-                        .zoom(sourceID: "sync-status-view", in: namespace)
-                    )
-                } else {
-                    ContentUpdateStatusView(
-                        lastUpdateAttempt: AppPersistentMemory().getLastUpdateAttempt(),
-                        lastUpdateDate: LocalDatabase.shared.dateTimeOfLastUpdate()
-                    )
-                }
+                ContentUpdateStatusView(
+                    lastUpdateAttempt: AppPersistentMemory().getLastUpdateAttempt(),
+                    lastUpdateDate: LocalDatabase.shared.dateTimeOfLastUpdate()
+                )
+                .navigationTransition(
+                    .zoom(sourceID: "sync-status-view", in: namespace)
+                )
             }
             .onChange(of: settingsHelper.updateSoundsList) {
                 if settingsHelper.updateSoundsList {
