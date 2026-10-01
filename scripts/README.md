@@ -449,6 +449,28 @@ Kept for reference. You will probably never need them.
 
 ---
 
+## App Store Connect
+
+### `asc-stuck-screenshots.swift`
+
+Finds App Store screenshots stuck mid-upload on a version. They block "Add for
+Review", and the website shows no delete button for them. The script lists every
+screenshot on the version and flags the ones that never finished. With `--delete`
+it removes those, after asking.
+
+```bash
+swift scripts/asc-stuck-screenshots.swift --key-id <KEY_ID> --issuer <ISSUER_ID> \
+    --key ~/path/to/AuthKey_<KEY_ID>.p8 --version 13.1
+swift scripts/asc-stuck-screenshots.swift --key-id <KEY_ID> --issuer <ISSUER_ID> \
+    --key ~/path/to/AuthKey_<KEY_ID>.p8 --version 13.1 --delete
+```
+
+The key is an App Store Connect API key (Users and Access → Integrations) with the
+App Manager or Admin role. **Keep the `.p8` outside this repository.** It isn't
+gitignored. `--bundle-id` defaults to the production app.
+
+---
+
 ## Configuration
 
 `scripts/.env` holds the SFTP credentials for uploads. It is **not** in version
