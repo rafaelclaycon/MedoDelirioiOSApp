@@ -466,8 +466,9 @@ swift scripts/asc-stuck-screenshots.swift --key-id <KEY_ID> --issuer <ISSUER_ID>
 ```
 
 The key is an App Store Connect API key (Users and Access → Integrations) with the
-App Manager or Admin role. **Keep the `.p8` outside this repository.** It isn't
-gitignored. `--bundle-id` defaults to the production app.
+App Manager or Admin role. Keep the `.p8` outside this repository anyway: `*.p8`
+is gitignored, but a key doesn't belong in a working copy. `--bundle-id` defaults
+to the production app.
 
 ---
 
