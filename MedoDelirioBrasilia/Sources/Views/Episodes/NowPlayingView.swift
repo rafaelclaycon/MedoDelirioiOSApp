@@ -36,8 +36,8 @@ struct NowPlayingView: View {
     @Environment(TranscriptDownloadService.self) private var transcriptDownloadService
 
     @State private var toast: Toast?
-    /// Where the current toast came from, so the split layout can show it on that side of
-    /// the crease instead of across it.
+    /// Where the current toast came from, so the split layout can show it in that pane
+    /// instead of across the divider.
     @State private var toastOrigin: ToastOrigin = .toolbar
     /// The edge the system put the toolbar on as a vertical bar, or nil while it's
     /// horizontal. Decides which split pane the toolbar's toasts land in.
@@ -63,9 +63,13 @@ struct NowPlayingView: View {
     @AppStorage(ChapterPreferences.hiddenKey) private var chaptersHidden: Bool = false
     /// Dev option (see `ShareClipConfirmView`): simulated shares skip the analytics event.
     @AppStorage("devMockShareClipGeneration") private var mockShareClipGeneration: Bool = false
-    /// A display crease runs vertically through the screen (unfolded iPhone Duo in
-    /// landscape): the cover and transport get the pane on one side of it, the tabs the other.
-    @State private var isSplitLayout: Bool = false
+    /// Set when there's room for two panes (unfolded iPhone Duo in landscape, a wide iPad
+    /// or Mac window): the cover and transport get one, the tabs the other.
+    @State private var paneSplit: PaneSplit?
+
+    private var isSplitLayout: Bool {
+        paneSplit != nil
+    }
 
     @Environment(\.verticalSizeClass) private var vSizeClass
     @Environment(\.dismiss) private var dismiss
@@ -146,7 +150,7 @@ struct NowPlayingView: View {
     var body: some View {
         NavigationStack {
             layout
-                .onVerticalCreaseChange { isSplitLayout = $0 }
+                .onPaneSplitChange { paneSplit = $0 }
                 .onToolbarVerticalEdgeChange { toolbarVerticalEdge = $0 }
                 .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
@@ -325,18 +329,11 @@ struct NowPlayingView: View {
 
     @ViewBuilder
     private var layout: some View {
-        // `ArrangementView` is an iOS 27.1 SDK symbol, so it only compiles with an Xcode
-        // that bundles that SDK or later (why this check: see `VerticalCrease.swift`).
-        // `isSplitLayout` is never true before 27.1 anyway, since the crease can't be read.
-        #if canImport(SwiftUI, _version: 8.0.85.27)
-        if isSplitLayout, #available(iOS 27.1, *) {
-            splitLayout
+        if let paneSplit {
+            splitLayout(paneSplit)
         } else {
             standardLayout
         }
-        #else
-        standardLayout
-        #endif
     }
 
     /// Tabs across the top, then the canvas and the controls — stacked, or side by side
@@ -363,13 +360,10 @@ struct NowPlayingView: View {
         .toast($toast)
     }
 
-    #if canImport(SwiftUI, _version: 8.0.85.27)
-    /// Unfolded iPhone Duo in landscape: the cover with the transport under it on one side
-    /// of the crease, the tabs and their canvas on the other. `.split` puts the divider on
-    /// the crease, so nothing here has to know where it is.
-    @available(iOS 27.1, *)
-    private var splitLayout: some View {
-        ArrangementView {
+    /// The cover with the transport under it in one pane, the tabs and their canvas in the
+    /// other. On a crease the divider sits on it, so nothing here has to know where it is.
+    private func splitLayout(_ split: PaneSplit) -> some View {
+        SplitPanes(split) {
             VStack(spacing: 0) {
                 NowPlayingArtworkCanvas()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -390,14 +384,12 @@ struct NowPlayingView: View {
             }
             .toast(toastBinding(for: .secondary))
         }
-        .arrangementViewStyle(.split)
     }
-    #endif
 
     // MARK: - Toast
 
     /// Where a toast came from. In the split layout it shows in the pane on that side of
-    /// the crease; elsewhere there's one pane and it doesn't matter.
+    /// the divider; elsewhere there's one pane and it doesn't matter.
     enum ToastOrigin {
         /// The action bar (bookmark, clip). Its side is wherever the system put the bar.
         case toolbar

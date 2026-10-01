@@ -22,9 +22,9 @@ struct EpisodeDetailView: View {
     @State private var chapterProvider = ChapterProvider()
     @State private var pendingChapterID: Int?
     @State private var showSupportSheet: Bool = false
-    /// A display crease runs vertically through the screen (unfolded iPhone Duo in
-    /// landscape): chapters and bookmarks get the pane on the trailing side of it.
-    @State private var isSplitLayout: Bool = false
+    /// Set when there's room for two panes (unfolded iPhone Duo in landscape, a wide iPad
+    /// or Mac window): chapters and bookmarks get the trailing one.
+    @State private var paneSplit: PaneSplit?
     @State private var splitTab: SplitTab = .chapters
 
     enum SplitTab {
@@ -80,7 +80,7 @@ struct EpisodeDetailView: View {
 
     var body: some View {
         layout
-            .onVerticalCreaseChange { isSplitLayout = $0 }
+            .onPaneSplitChange { paneSplit = $0 }
             .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $editingBookmark) { bookmark in
@@ -143,18 +143,11 @@ struct EpisodeDetailView: View {
 
     @ViewBuilder
     private var layout: some View {
-        // `ArrangementView` is an iOS 27.1 SDK symbol, so it only compiles with an Xcode
-        // that bundles that SDK or later (why this check: see `VerticalCrease.swift`).
-        // `isSplitLayout` is never true before 27.1 anyway, since the crease can't be read.
-        #if canImport(SwiftUI, _version: 8.0.85.27)
-        if isSplitLayout, #available(iOS 27.1, *) {
-            splitLayout
+        if let paneSplit {
+            splitLayout(paneSplit)
         } else {
             standardLayout
         }
-        #else
-        standardLayout
-        #endif
     }
 
     private var standardLayout: some View {
@@ -163,14 +156,10 @@ struct EpisodeDetailView: View {
         }
     }
 
-    #if canImport(SwiftUI, _version: 8.0.85.27)
-    /// Unfolded iPhone Duo in landscape: the details on one side of the crease and, on the
-    /// other, chapters and bookmarks behind the same pill tabs as Now Playing, each side
-    /// scrolling on its own.
-    /// `.split` puts the divider on the crease, as in `NowPlayingView`.
-    @available(iOS 27.1, *)
-    private var splitLayout: some View {
-        ArrangementView {
+    /// The details in one pane and, in the other, chapters and bookmarks behind the same
+    /// pill tabs as Now Playing, each side scrolling on its own.
+    private func splitLayout(_ split: PaneSplit) -> some View {
+        SplitPanes(split) {
             ScrollView {
                 detailColumn(includesTrailingSections: false)
             }
@@ -194,9 +183,7 @@ struct EpisodeDetailView: View {
                 }
             }
         }
-        .arrangementViewStyle(.split)
     }
-    #endif
 
     /// Chapters only get a tab when there's something to show for them.
     private var splitTabs: [SplitTab] {

@@ -17,8 +17,9 @@ extension View {
     /// folded, and a layout split on the crease suits it lying fully open just as well.
     /// Regions outside this view's bounds don't count.
     ///
-    /// Pair it with `ArrangementView` and `.arrangementViewStyle(.split)`, which puts its
-    /// divider on that crease by itself.
+    /// Screens don't read this directly: `onPaneSplitChange` combines it with the wide iPad
+    /// and Mac window case, and `SplitPanes` pairs it with `ArrangementView`'s `.split` style,
+    /// which puts its divider on that crease by itself.
     func onVerticalCreaseChange(_ action: @escaping (Bool) -> Void) -> some View {
         modifier(VerticalCreaseObserver(action: action))
     }
