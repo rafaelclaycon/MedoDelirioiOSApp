@@ -19,7 +19,7 @@
 
 This app is the perfect companion for the podcast, letting you share those snippets in your WhatsApp group chats and social media, while also having easy access to all podcast episodes.
 
-*Available for iPhone, iPad and Mac (iOS 18.5+ & M1 or later).*
+*Available for iPhone, iPad and Mac (iOS 26.0+ & M1 or later).*
 
 Like what you see? 🐙 [Sponsor me](https://github.com/sponsors/rafaelclaycon) so I can keep making cool stuff!
 
@@ -54,7 +54,7 @@ To build and run this project, you'll need:
 
 - A Mac running macOS 15.6 Sequoia or later;
 - [Xcode 26.0 or later](https://www.xcodes.app/);
-- iOS 18.5+ simulators installed (Xcode 26.0 comes with iOS 26.0, so you'll be fine).
+- iOS 26.0+ simulators installed (Xcode 26.0 comes with iOS 26.0, so you'll be fine).
 
 If you've got a Mac with the software above, clone the repo, open the project's `.xcodeproj` file, and you're ready to go. Xcode will handle all dependencies.
 
