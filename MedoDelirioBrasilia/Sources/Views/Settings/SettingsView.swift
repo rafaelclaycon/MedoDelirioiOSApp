@@ -370,6 +370,10 @@ struct DevOptionsView: View {
                     showElectionLiveWhatsNewPreview = true
                 }
 
+                NavigationLink("Vídeo da Apuração ao Vivo para Stories") {
+                    ElectionStoriesVideoView()
+                }
+
                 Button("Resetar Election Live What's New") {
                     AppPersistentMemory.shared.hasSeenElectionLiveWhatsNewScreen(false)
                     showElectionLiveWhatsNewResetConfirmation = true

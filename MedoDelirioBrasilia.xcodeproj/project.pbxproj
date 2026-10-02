@@ -79,6 +79,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Election/ElectionActivityAttributes.swift,
+				Election/ElectionLiveActivity.swift,
 				IntentProviders.swift,
 				PlayRandomSoundIntent.swift,
 			);
