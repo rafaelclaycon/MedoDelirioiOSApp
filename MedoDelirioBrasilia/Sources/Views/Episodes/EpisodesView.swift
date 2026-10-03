@@ -247,7 +247,8 @@ struct EpisodesView: View {
             isFavorite: favoritesStore.isFavorite(episode.id),
             bookmarkCount: bookmarkStore.bookmarks(for: episode.id).count,
             progress: progressStore.progress(for: episode.id),
-            isPlayed: playedStore.isPlayed(episode.id)
+            isPlayed: playedStore.isPlayed(episode.id),
+            weeklyListeners: viewModel.weeklyListeners[episode.id]
         )
         .contentShape(Rectangle())
         .onTapGesture {
@@ -391,8 +392,8 @@ extension EpisodesView {
         let bookmarkCount: Int
         let progress: EpisodeProgressStore.EpisodeProgress?
         let isPlayed: Bool
-        var playCount: Int?
-        var mostPopularThisWeek: Bool?
+        /// Set only for the week's most popular episodes.
+        var weeklyListeners: Int?
 
         private var hasProgress: Bool {
             guard let progress else { return false }
@@ -423,12 +424,6 @@ extension EpisodesView {
                             .foregroundStyle(Color.rubyRed)
                         }
 
-                        if let playCount {
-                            Text("\(playCount) reproduções")
-                                .font(.caption)
-                                .padding(.leading, 10)
-                                //.foregroundStyle(.secondary)
-                        }
                     }
 
                     Text(episode.title)
@@ -446,6 +441,16 @@ extension EpisodesView {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
+                    }
+
+                    if let weeklyListeners {
+                        HStack(spacing: .spacing(.xxxSmall)) {
+                            Image(systemName: "flame.fill")
+                            Text("\(weeklyListeners) pessoas ouviram esta semana")
+                        }
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.orange)
                     }
 
                     if hasProgress, let progress {
@@ -602,7 +607,7 @@ private extension View {
         bookmarkCount: 5,
         progress: .init(currentTime: 20, duration: 80),
         isPlayed: false,
-        playCount: 33
+        weeklyListeners: 33
     )
     .padding()
     .environment(EpisodePlayer())
