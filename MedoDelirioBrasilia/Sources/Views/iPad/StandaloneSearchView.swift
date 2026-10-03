@@ -78,7 +78,7 @@ struct StandaloneSearchView: View {
                 }
                 .padding(.all, hSizeClass == .regular ? .spacing(.medium) : .spacing(.xSmall))
                 .navigationTitle(Text("Buscar"))
-                .searchable(text: $searchText, placement: .navigationBarDrawer, prompt: searchPrompt)
+                .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: searchPrompt)
                 .autocorrectionDisabled()
                 .onChange(of: searchText) {
                     onSearchStringChanged(newString: searchText)
