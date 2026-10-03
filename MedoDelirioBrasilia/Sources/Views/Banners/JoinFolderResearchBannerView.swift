@@ -10,7 +10,7 @@ struct JoinFolderResearchBannerView: View {
 
     var backgroundOpacity: Double {
         if viewModel.state == .displayingRequestToJoin {
-            return colorScheme == .dark ? 1.0 : 0.35
+            return colorScheme == .dark ? 0.3 : 0.15
         } else {
             return colorScheme == .dark ? 0.5 : 0.15
         }
@@ -57,11 +57,11 @@ struct JoinFolderResearchBannerView: View {
                 )
             }
         }
-        .padding(.vertical, 12)
-        .padding(.horizontal, 4)
+        .padding(.vertical, viewModel.state == .displayingRequestToJoin ? 0 : 12)
+        .padding(.horizontal, viewModel.state == .displayingRequestToJoin ? 0 : 4)
         .background {
             RoundedRectangle(cornerRadius: 15)
-                .fill(viewModel.state == .displayingRequestToJoin ? Color.pastelBabyBlue : Color.gray)
+                .fill(viewModel.state == .displayingRequestToJoin ? Color.blue : Color.gray)
                 .opacity(backgroundOpacity)
         }
     }
@@ -76,59 +76,44 @@ extension JoinFolderResearchBannerView {
         let onDontJoinSelected: () -> Void
 
         var body: some View {
-            HStack(spacing: 20) {
-                VStack {
-                    Image(systemName: "sparkle.magnifyingglass")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 30)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Label("Participe da Pesquisa", systemImage: "sparkle.magnifyingglass")
                         .foregroundColor(.blue)
-                        .padding(.top)
+                        .bold()
+                        .multilineTextAlignment(.leading)
 
                     Spacer()
                 }
 
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Participe da Pesquisa")
-                        .font(.headline)
-                        .foregroundColor(.mutedNavyBlue)
+                Text("Ao enviar informações das suas pastas anonimamente, você me ajuda a entender o uso dessa funcionalidade para que eu possa melhorá-la no futuro.")
+                    .foregroundColor(.blue)
+                    .opacity(0.8)
+                    .font(.callout)
 
-                    Text("Ao enviar informações das suas pastas anonimamente, você me ajuda a entender o uso dessa funcionalidade para que eu possa melhorá-la no futuro.")
-                        .font(.callout)
-                        .foregroundColor(.mutedNavyBlue)
-                        .opacity(isDark ? 1.0 : 0.75)
-
-                    HStack(spacing: 15) {
-                        Button {
-                            onJoinResearchSelected()
-                        } label: {
-                            Text("Participar")
-                                .padding(.horizontal)
-                        }
-                        .font(.body)
-                        .tint(isDark ? .mutedNavyBlue : .blue)
-                        .controlSize(.regular)
-                        .buttonStyle(.bordered)
-                        .buttonBorderShape(.roundedRectangle)
-
-                        Button {
-                            onDontJoinSelected()
-                        } label: {
-                            Text("Não")
-                                .padding(.horizontal)
-                        }
-                        .font(.body)
-                        .tint(isDark ? .mutedNavyBlue : .blue)
-                        .controlSize(.regular)
-                        .buttonStyle(.bordered)
-                        .buttonBorderShape(.roundedRectangle)
+                HStack(spacing: 15) {
+                    Button {
+                        onJoinResearchSelected()
+                    } label: {
+                        Text("Participar")
+                            .padding(.horizontal)
                     }
-                    .padding(.top, 2)
-                }
 
-                Spacer()
+                    Button {
+                        onDontJoinSelected()
+                    } label: {
+                        Text("Não")
+                            .padding(.horizontal)
+                    }
+                }
+                .font(.body)
+                .tint(.blue)
+                .controlSize(.regular)
+                .buttonStyle(.bordered)
+                .buttonBorderShape(.roundedRectangle)
+                .padding(.top, 2)
             }
-            .padding(.leading, 20)
+            .padding(.all, 20)
         }
     }
 
