@@ -15,6 +15,7 @@ struct EpisodeDetailView: View {
     @Environment(EpisodeProgressStore.self) private var progressStore
     @Environment(EpisodePlayedStore.self) private var playedStore
     @Environment(EpisodeBookmarkStore.self) private var bookmarkStore
+    @Environment(EpisodePopularityStore.self) private var popularityStore
 
     @State private var editingBookmark: EpisodeBookmark?
     @State private var bookmarksSortAscending: Bool = true
@@ -22,6 +23,7 @@ struct EpisodeDetailView: View {
     @State private var chapterProvider = ChapterProvider()
     @State private var pendingChapterID: Int?
     @State private var showSupportSheet: Bool = false
+    @State private var showListenersInfo: Bool = false
     /// Set when there's room for two panes (unfolded iPhone Duo in landscape, a wide iPad
     /// or Mac window): chapters and bookmarks get the trailing one.
     @State private var paneSplit: PaneSplit?
@@ -126,6 +128,10 @@ struct EpisodeDetailView: View {
         .background(EpisodeDetailPlayerAlerts(player: episodePlayer))
         .task(id: episode.id) {
             shareImage = await LinkShareButton.loadImage(from: episode.imageURL)
+        }
+        .task {
+            // Detail can be reached without passing through the list (search, deep links).
+            await popularityStore.loadIfNeeded()
         }
         .onAppear {
             if ChapterPreferences.isEnabled {
@@ -308,6 +314,47 @@ struct EpisodeDetailView: View {
                 ProgressView(value: episodeProgress.currentTime, total: episodeProgress.duration)
                     .tint(.primary)
             }
+
+            if let weeklyListeners = popularityStore.weeklyListeners(for: episode.id) {
+                weeklyListenersRow(weeklyListeners)
+                    .padding(.top, .spacing(.xxxSmall))
+            }
+        }
+    }
+
+    /// The count only covers this app, so it opens an explanation instead of standing
+    /// on its own — otherwise it reads as the episode's total audience.
+    private func weeklyListenersRow(_ count: Int) -> some View {
+        Button {
+            showListenersInfo = true
+        } label: {
+            HStack(spacing: .spacing(.xxxSmall)) {
+                Image(systemName: "flame.fill")
+                Text("\(count) pessoas ouviram esta semana no app")
+                Image(systemName: "info.circle")
+                    .foregroundStyle(.secondary)
+            }
+            .font(.subheadline)
+            .fontWeight(.medium)
+            .foregroundStyle(.orange)
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Mostra de onde vem esse número")
+        .popover(isPresented: $showListenersInfo) {
+            VStack(alignment: .leading, spacing: .spacing(.xSmall)) {
+                Text("Ouvintes no app")
+                    .font(.headline)
+
+                Text("Quantas pessoas deram play neste episódio pelo app Medo e Delírio nos últimos 7 dias.")
+
+                Text("Quem ouviu no Spotify, Apple Podcasts ou em outras plataformas não entra nessa conta, então o público real é bem maior.")
+                    .foregroundStyle(.secondary)
+            }
+            .font(.subheadline)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: 320, alignment: .leading)
+            .padding()
+            .presentationCompactAdaptation(.popover)
         }
     }
 

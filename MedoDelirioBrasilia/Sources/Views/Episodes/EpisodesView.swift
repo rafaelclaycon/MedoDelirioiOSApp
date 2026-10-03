@@ -15,6 +15,7 @@ struct EpisodesView: View {
     @Environment(EpisodePlayedStore.self) private var playedStore
     @Environment(EpisodeBookmarkStore.self) private var bookmarkStore
     @Environment(EpisodesBadgeStore.self) private var badgeStore
+    @Environment(EpisodePopularityStore.self) private var popularityStore
     @Environment(TranscriptDownloadService.self) private var transcriptService
     @Environment(\.push) private var push
     @Environment(\.horizontalSizeClass) private var hSizeClass
@@ -178,6 +179,9 @@ struct EpisodesView: View {
         .oneTimeTask {
             await viewModel.onViewLoaded()
         }
+        .task {
+            await popularityStore.loadIfNeeded()
+        }
         .onAppear {
             badgeStore.markAsVisited()
             Task {
@@ -248,7 +252,7 @@ struct EpisodesView: View {
             bookmarkCount: bookmarkStore.bookmarks(for: episode.id).count,
             progress: progressStore.progress(for: episode.id),
             isPlayed: playedStore.isPlayed(episode.id),
-            weeklyListeners: viewModel.weeklyListeners[episode.id]
+            weeklyListeners: popularityStore.weeklyListeners(for: episode.id)
         )
         .contentShape(Rectangle())
         .onTapGesture {
@@ -585,6 +589,7 @@ private extension View {
     .environment(EpisodePlayedStore())
     .environment(EpisodeBookmarkStore())
     .environment(EpisodesBadgeStore())
+    .environment(EpisodePopularityStore())
     .environment(TranscriptDownloadService())
 }
 

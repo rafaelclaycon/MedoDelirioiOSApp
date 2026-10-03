@@ -74,6 +74,7 @@ struct MainView: View {
     @State private var episodeBookmarkStore = EpisodeBookmarkStore()
     @State private var episodeListenStore = EpisodeListenStore()
     @State private var episodesBadgeStore = EpisodesBadgeStore()
+    @State private var episodePopularityStore = EpisodePopularityStore()
     @State private var showNowPlaying = false
     /// Set once the Now Playing bar's share preview is ready; the share sheet shows,
     /// anchored to the bar, while it's non-nil.
@@ -503,6 +504,7 @@ struct MainView: View {
         .environment(episodeBookmarkStore)
         .environment(episodeListenStore)
         .environment(episodesBadgeStore)
+        .environment(episodePopularityStore)
         // Siri Suggestions. Attached here, on the shared ancestor, so they fire on
         // every device path (both iPhone TabView variants and iPad).
         .onContinueUserActivity(Shared.ActivityTypes.playAndShareSounds) { _ in
