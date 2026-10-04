@@ -642,6 +642,7 @@ struct MainView: View {
                 SettingsView(apiClient: APIClient.shared)
                     .environment(settingsHelper)
                     .environment(transcriptDownloadService)
+                    .environment(episodePopularityStore)
 
             case .onboarding:
                 OnboardingView()
@@ -666,6 +667,7 @@ struct MainView: View {
             SettingsView(apiClient: APIClient.shared)
                 .environment(settingsHelper)
                 .environment(transcriptDownloadService)
+                .environment(episodePopularityStore)
         }
         .sheet(isPresented: $isShowingSupportSheet) {
             StandaloneSupportView()

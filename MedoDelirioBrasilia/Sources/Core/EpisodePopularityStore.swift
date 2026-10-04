@@ -35,6 +35,15 @@ final class EpisodePopularityStore {
         weeklyListeners[episodeId]
     }
 
+    /// Dev Options: forgets the numbers and fetches them again after `delay`, long enough
+    /// to close Settings and watch them arrive in the list again.
+    func replayArrival(after delay: Duration = .seconds(15)) async {
+        weeklyListeners = [:]
+        hasLoaded = false
+        try? await Task.sleep(for: delay)
+        await loadIfNeeded()
+    }
+
     /// Fetches once per launch. Purely decorative, so any failure just leaves the numbers off.
     func loadIfNeeded() async {
         guard !hasLoaded else { return }

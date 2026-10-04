@@ -318,6 +318,7 @@ struct EpisodeDetailView: View {
             if let weeklyListeners = popularityStore.weeklyListeners(for: episode.id) {
                 weeklyListenersRow(weeklyListeners)
                     .padding(.top, .spacing(.xxxSmall))
+                    .fadeInOnAppear()
             }
         }
     }
@@ -330,7 +331,7 @@ struct EpisodeDetailView: View {
         } label: {
             HStack(spacing: .spacing(.xxxSmall)) {
                 Image(systemName: "flame.fill")
-                Text("\(count) pessoas ouviram esta semana no app")
+                Text("\(count) pessoas ouviram no app na última semana")
                 Image(systemName: "info.circle")
                     .foregroundStyle(.secondary)
             }
@@ -340,21 +341,10 @@ struct EpisodeDetailView: View {
         }
         .buttonStyle(.plain)
         .accessibilityHint("Mostra de onde vem esse número")
-        .popover(isPresented: $showListenersInfo) {
-            VStack(alignment: .leading, spacing: .spacing(.xSmall)) {
-                Text("Ouvintes no app")
-                    .font(.headline)
-
-                Text("Quantas pessoas deram play neste episódio pelo app Medo e Delírio nos últimos 7 dias.")
-
-                Text("Quem ouviu no Spotify, Apple Podcasts ou em outras plataformas não entra nessa conta, então o público real é bem maior.")
-                    .foregroundStyle(.secondary)
-            }
-            .font(.subheadline)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: 320, alignment: .leading)
-            .padding()
-            .presentationCompactAdaptation(.popover)
+        .alert("Ouvintes no App", isPresented: $showListenersInfo) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Quantas pessoas deram play neste episódio pelo app Medo e Delírio nos últimos 7 dias.\n\nQuem ouviu no Spotify, Apple Podcasts ou em outras plataformas não entra nessa conta, então o público real é bem maior.")
         }
     }
 

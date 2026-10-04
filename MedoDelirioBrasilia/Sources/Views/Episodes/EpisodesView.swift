@@ -450,11 +450,12 @@ extension EpisodesView {
                     if let weeklyListeners {
                         HStack(spacing: .spacing(.xxxSmall)) {
                             Image(systemName: "flame.fill")
-                            Text("\(weeklyListeners) pessoas ouviram esta semana")
+                            Text("\(weeklyListeners) pessoas ouviram na última semana")
                         }
                         .font(.caption)
                         .fontWeight(.medium)
                         .foregroundStyle(.orange)
+                        .fadeInOnAppear()
                     }
 
                     if hasProgress, let progress {

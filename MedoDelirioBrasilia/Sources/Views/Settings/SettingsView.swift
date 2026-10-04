@@ -339,6 +339,8 @@ struct DevOptionsView: View {
     @Binding var showShareClipWhatsNewPreview: Bool
     @Binding var showElectionLiveWhatsNewPreview: Bool
 
+    @Environment(EpisodePopularityStore.self) private var popularityStore
+
     @AppStorage("devHideSoundsBanners") private var hideSoundsBanners: Bool = false
     @AppStorage("devMockShareClipGeneration") private var mockShareClipGeneration: Bool = false
     @State private var supportSheetPreviewContext: StandaloneSupportView.Context?
@@ -405,6 +407,16 @@ struct DevOptionsView: View {
                 Text("Share Clip")
             } footer: {
                 Text("Gerar Clipe pula a geração e o compartilhamento e conclui na hora, como se o clipe tivesse sido compartilhado. Para testar o que vem depois no Simulator.")
+            }
+
+            Section {
+                Button("Replay dos Mais Ouvidos da Semana") {
+                    Task { await popularityStore.replayArrival() }
+                }
+            } header: {
+                Text("Episódios")
+            } footer: {
+                Text("Apaga os números de ouvintes da semana e busca de novo depois de 15 segundos. Feche os Ajustes para ver a animação na lista.")
             }
 
             Section("Marketing") {
