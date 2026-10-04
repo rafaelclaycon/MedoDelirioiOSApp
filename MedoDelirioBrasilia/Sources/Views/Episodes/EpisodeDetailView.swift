@@ -243,34 +243,37 @@ struct EpisodeDetailView: View {
     // MARK: - Header
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: .spacing(.xSmall)) {
-            HStack(spacing: .spacing(.xxxSmall)) {
-                Text(episode.formattedDate)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .textCase(.uppercase)
-
-                if CommandLine.arguments.contains("-SHOW_MORE_DEV_OPTIONS") {
-                    Text("·")
+        VStack(alignment: .leading, spacing: .spacing(.small)) {
+            // Date and title read as one unit, closer than the rest of the header.
+            VStack(alignment: .leading, spacing: .spacing(.xSmall)) {
+                HStack(spacing: .spacing(.xxxSmall)) {
+                    Text(episode.formattedDate)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .textCase(.uppercase)
 
-                    Text(episode.id)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
+                    if CommandLine.arguments.contains("-SHOW_MORE_DEV_OPTIONS") {
+                        Text("·")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        Text(episode.id)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                    }
+
+                    if favoritesStore.isFavorite(episode.id) {
+                        Image(systemName: "star.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.yellow)
+                    }
                 }
 
-                if favoritesStore.isFavorite(episode.id) {
-                    Image(systemName: "star.fill")
-                        .font(.caption2)
-                        .foregroundStyle(.yellow)
-                }
+                Text(episode.title)
+                    .font(.title)
+                    .fontDesign(.serif)
             }
-
-            Text(episode.title)
-                .font(.title)
-                .fontDesign(.serif)
 
             HStack(spacing: .spacing(.medium)) {
                 EpisodeDetailPlaybackControls(episode: episode)
