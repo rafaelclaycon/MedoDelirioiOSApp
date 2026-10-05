@@ -1,13 +1,13 @@
 # Live Activity da apuração presidencial
 
-Resumo do trabalho feito até 29/09/2026 e do que falta. Objetivo: uma Live Activity (Tela Bloqueada + Dynamic Island) que mostra em tempo real a apuração para Presidente, com dados oficiais do TSE.
+Resumo do trabalho feito até 04/10/2026, o dia do 1º turno, e do que falta para o 2º. Objetivo: uma Live Activity (Tela Bloqueada + Dynamic Island) que mostra em tempo real a apuração para Presidente, com dados oficiais do TSE.
 
-## Situação em 29/09
+## Situação em 04/10
 
-- **App de prod:** versão 13 aprovada pela revisão em 28/09, com a Live Activity, as fotos, as frases finais e a tela de novidades. Depois da aprovação, `enabled` voltou a desligado e `broadcastMode` a `dryRun` no `.com`.
-- **Próxima versão (em desenvolvimento):** tela de resultados com todos os candidatos, cartão para compartilhar e link fixo para o TSE (ver "Tela de resultados"). Precisa de build novo e de nova revisão, e a ideia é que chegue antes do dia 4.
-- **Servidor:** parser tolerante a campos vazios e ausentes, horário de geração quando falta o de totalização, espera depois de falhar no APNs, e o `details`/`officialResultsURL` para a tela de resultados. Os deploys de cada commit estão nas pendências.
-- **Simulados do TSE:** 28/09 parou por um campo ausente; 29/09 mostrou o 429 do APNs e o horário vazio. Os dois foram corrigidos (ver "Teste no simulado").
+- **1º turno feito.** A Live Activity acompanhou a apuração no `.com` do começo ao fim, espelhando o site do TSE. Pelo menos 1.905 instalações iniciaram pelo banner, entre 9% e 13% delas fora do Brasil (ver "1º turno (04/10)"). **Vai ter 2º turno, dia 25/10.**
+- **Na loja:** a 13.1 (tela de resultados, cartão para compartilhar e link do TSE) saiu em 03/10, e a 13.2 foi aprovada em 04/10. A 13.0 também tem a Live Activity.
+- **Servidor:** fonte `official`, round 1, `live`, `enabled` ligado. Tudo do 1º turno está no ar, menos o endpoint de analytics (`c68eff0`), que fica para o deploy de 05/10.
+- **Próximo passo, 05/10:** desligar o banner, voltar a `dryRun` e fazer o deploy do endpoint (ver "O que falta").
 
 ## Datas que importam
 
@@ -15,9 +15,9 @@ Resumo do trabalho feito até 29/09/2026 e do que falta. Objetivo: uma Live Acti
 |---|---|
 | 28 e 29/09, 14h às 16h | Janela de teste no simulado do TSE ("3ª semana de testes (semana extra)", aba Simulados da página técnica do TSE, conferido em 25/09) |
 | 28/09 | Versão 13 aprovada pela revisão |
-| Assim que testada | Enviar a próxima versão (tela de resultados) para revisão, com liberação manual, para chegar antes do dia 4 |
-| 04/10 | 1º turno. Totalização a partir das 17h de Brasília (notícia do TSE de 06/07/2026). Trocar a fonte para `official` e ligar `enabled` |
-| 25/10 | 2º turno: trocar `round` para 2. A tela de novidades deixa de aparecer a partir do dia 26 |
+| 03/10 | Versão 13.1 aprovada e liberada, depois de uma recusa e de um pedido de revisão urgente |
+| 04/10 | 1º turno. Totalização a partir das 17h de Brasília. Versão 13.2 aprovada |
+| 25/10 | 2º turno, confirmado: trocar `round` para 2. A tela de novidades deixa de aparecer a partir do dia 26 |
 
 ## Arquitetura
 
@@ -34,13 +34,15 @@ TSE CDN --(poll a cada 10s, ETag)--> Vapor no Linode --(1 broadcast push por app
 ## Regras do TSE
 
 - Simulado: `https://resultados-sim.tse.jus.br/simulado`, ambiente `simulado2026`. Os arquivos continuam no ar fora das janelas, parados no resultado final. O `ele-c.json` não muda desde 14/09 e todas as rodadas usaram a eleição 21270.
-- Oficial: `https://resultados.tse.jus.br`, ambiente `oficial`. Pleito 3220, eleição federal 6257 (ainda não aparece no `ele-c.json` oficial).
+- Oficial: `https://resultados.tse.jus.br`, ambiente `oficial`. Pleito 3220, ciclo `ele2026`, eleição 6257 (Presidente, 1º turno). Arquivo de Presidente: `https://resultados.tse.jus.br/oficial/ele2026/6257/dados/br/br-c0001-e006257-u.json`.
 - Máximo de 100 requisições por segundo por IP; 304 também conta. Se passar: bloqueio de 10 min, renovado a cada nova tentativa.
 - Vários 404 também bloqueiam o IP. Por isso o servidor nunca monta URL no chute: descobre ciclo e código da eleição pelo `ele-c.json`.
 - Arquivo de Presidente: `<base>/<ambiente>/<ciclo>/<eleicao>/dados/br/br-c0001-e<eleicao com 6 dígitos>-u.json`.
 - Fotos (não documentado, visto no app de resultados do TSE): `<base>/<ambiente>/<ciclo>/<eleicao>/fotos/<uf>/<sqcand>.jpeg`. O `sqcand` vem no `-u.json`.
 - **Os arquivos publicados durante a apuração não têm todos os campos do arquivo final.** No simulado de 28/09, os candidatos vieram sem `dvt` (destino do voto) no meio da contagem, e o arquivo final (16h36) tinha o campo em todos. Nossas fixtures são arquivos finais, então não mostravam isso. Por isso, só o que identifica o arquivo e o candidato é obrigatório (ver `TSEResultFile`).
 - **Antes da apuração começar, o arquivo vem sem horário de totalização.** No simulado de 29/09, o arquivo de 0% tinha `dt` e `ht` vazios; só `dg` e `hg` (data e hora em que o TSE gerou o arquivo) estavam preenchidos.
+- **No oficial, o arquivo de 0% sai na véspera.** Em 04/10 de manhã, a eleição 6257 já estava no `ele-c.json`, com um arquivo de 0% gerado em 03/10 às 14h47 (geração `1070425`, `dt`/`ht` vazios). O primeiro arquivo não é o sinal de que a contagem começou: o sinal é a % passar de zero, depois das 17h.
+- **"Atualizado às" é a hora de totalização do arquivo,** não a do push. No começo da noite, o TSE ficou uns 11 minutos sem publicar (de 17h58 a 18h09). Isso parece atraso no celular, mas não é.
 - No simulado, o 1º colocado é um candidato "Anulado sub judice" que vai para o 2º turno. Por isso o snapshot mantém os anulados na lista, marcados com `hasValidVotes = false`.
 - Documentação: https://www.tse.jus.br/eleicoes/informacoes-tecnicas-sobre-a-divulgacao-de-resultados
 
@@ -68,6 +70,7 @@ Commits `04a37b1` (parser e replay), `3d3d037` (poller e endpoints), `463526b` (
   - `POST api/v4/election/settings/:password`: atualização parcial das configurações.
   - `POST api/v4/election/channels/:password[?bundleId=]`: cria o canal de cada app que ainda não tem um (ou só do bundle pedido), no ambiente atual da APNs, e salva nas configurações.
   - `GET api/v4/election/channels/:password`: mostra o ambiente da APNs, os canais configurados e os que a APNs conhece para cada bundle.
+  - `GET api/v4/election-live-analytics/:password` (senha de analytics, `c68eff0`, deploy em 05/10): instalações que iniciaram e pararam pelo banner, estimativa de quem ainda está acompanhando, fechamentos da tela de novidades, por hora (UTC) e por versão. `?since=` em ISO 8601, padrão 24 h atrás.
 - Testes: `ElectionSnapshotTests`, `ElectionLiveTests` e `ElectionBroadcastPlannerTests`, com fixtures reais do simulado em `Tests/AppTests/Fixtures/Election/`. 68 testes passando.
 
 #### Broadcaster
@@ -303,6 +306,36 @@ IPHONE DUO E JANELAS REDIMENSIONÁVEIS
 Mais: nova tela de abertura, correções de layout em telas estreitas e deslizar para apagar marcadores no iOS 27.
 ```
 
+## 1º turno (04/10)
+
+**Como foi:**
+
+- Às 10h, um teste no `.club` (fonte `official`, `dryRun`, banner desligado) já achou a eleição 6257 e o arquivo de 0% da véspera, idêntico ao do TSE.
+- 16h: `.com` em `official`, `live`, `minPushIntervalSeconds` 60, banner desligado. O arquivo de 0% entrou e saiu como `first push`, num canal ainda sem inscritos.
+- Até 17h12 a geração continuou a de 0%, e o próprio arquivo do TSE confirmava: nada publicado ainda. O banner foi ligado depois que a % passou de zero. Não houve erro de push na noite.
+- **Latência:** o arquivo totalizado às 18h09:09 foi gerado pelo TSE às 18h10:48, e o nosso push saiu às 18h11:16, menos de 30 s depois.
+- Às 99,04%, os números do app e os do site do TSE batiam.
+
+**Uso** (eventos `election_live_activity_started` e `_stopped` do banner desde as 17h):
+
+| | |
+|---|---|
+| **Instalações que iniciaram, na última consulta da noite** | **1.905** (soma da consulta por fuso horário) |
+| Na consulta das ~19h30 | 1.536 instalações (1.720 inícios), 157 pararam pelo banner |
+| Por hora de Brasília, às ~19h30 | 17h: 861 · 18h: 628 · 19h: 161 (hora incompleta) |
+| Por versão, às ~19h30 | 13.1: 1.047 · 13.2: 324 · 13: 204 |
+
+É um piso: a tela de resultados da 13.1 não manda evento, e só entram os inícios que deram certo. As horas e as versões somam mais que o total porque a mesma instalação pode aparecer em mais de uma.
+
+**Fora do Brasil** (pelo `currentTimeZone`, a abreviação que o aparelho escolhe, que muda com o idioma do sistema): 1.646 no Brasil com certeza (BRT 1.613, AMT 32, ACT 1); 177 fora com certeza (Europa 131, com Portugal, Reino Unido e Europa central; costa oeste dos EUA 24; Ásia e Oceania 19, incluindo Sydney na segunda de manhã); 82 ambíguos (GMT−4, −5 e −3, que podem ser o Brasil num aparelho em outro idioma ou as Américas). Entre 9% e 13% acompanharam de fora.
+
+**Tropeços:**
+
+- Um `apt install sqlite3` no servidor rodou o `needrestart`, que reiniciou o nginx no meio da noite. Voltou em cerca de um segundo. O processo do Vapor não reiniciou, e o TSE e os pushes não passam pelo nginx.
+- O primeiro `sqlite3 db.sqlite ".backup …"` falhou com "database is locked": o app grava eventos o tempo todo. Funcionou consultar direto, só para leitura, com espera (`sqlite3 -readonly -cmd ".timeout 5000" db.sqlite "…"`), usando o índice `idx_UsageMetric_dateTime` do `777de0f`.
+
+**Na revisão da 13.1:** o primeiro build foi recusado porque o banner estava desligado para a revisão. Desde então, o servidor libera o banner por versão do app, com `previewVersions` (ver "Revisão da App Store"). Responder no Resolution Center não põe o app de volta na fila: é preciso reenviar o build, e só então pedir a revisão urgente.
+
 ## O que falta
 
 ### Versão 13
@@ -310,12 +343,10 @@ Mais: nova tela de abertura, correções de layout em telas estreitas e deslizar
 - [x] Build de revisão no TestFlight interno do app de prod, com replay `live` no `.com`: os pushes chegaram (27/09).
 - [x] Aprovada pela revisão (28/09). `.com` de volta a `enabled: false` e `dryRun`.
 
-### Próxima versão (tela de resultados)
+### Versão 13.1 (tela de resultados)
 
-- [ ] Deploy do `472b4a7` no `.club` e no `.com` (`details` e `officialResultsURL`). Sem ele, a tela mostra só o topo.
-- [ ] No aparelho, pelo beta com replay no `.club`: tocar na Live Activity abre a tela; "Ver Resultados" e "App do TSE" no banner; a lista atualiza sozinha; "Compartilhar" gera o cartão; iniciar e parar a Live Activity pela tela.
-- [ ] Build novo, notas para o revisor mencionando a tela de resultados, e envio com liberação manual. Na revisão, o `.com` volta à configuração de replay de 24h.
-- [ ] Decidir: eventos de analytics na tela (hoje nenhum) e a frase final no cartão de compartilhar (hoje entra).
+- [x] Deploy do `472b4a7` (`details` e `officialResultsURL`), testes no aparelho, revisão e liberação em 03/10.
+- [ ] Eventos de analytics na tela de resultados (hoje nenhum): iniciar e parar a Live Activity por ali não aparece na contagem.
 
 ### Teste no simulado (28 e 29/09, 14h às 16h)
 
@@ -336,29 +367,26 @@ Mais: nova tela de abertura, correções de layout em telas estreitas e deslizar
 - Depois do deploy do `4e942d0`, com `live` e `minPushIntervalSeconds` em 60: primeiro push às 14h23, sem erro, e a Live Activity iniciou no iPhone pelo beta.
 - A cadência dos arquivos do TSE ainda não foi medida.
 
-**Pendências de 29/09:**
+**Pendências de 29/09:** o horário de geração (`eed02d0`) funcionou no oficial, e o `minPushIntervalSeconds` do dia 4 ficou em 60. A espera progressiva depois de falhas no APNs (60 s, 2 min, 4 min, até ~10 min) ainda não foi feita.
 
-- [ ] Deploy do `eed02d0` e do `472b4a7` no `.club` e no `.com`.
-- [ ] Conferir que, com a geração parada, não sai push novo, e que o "Atualizado às" mostra o horário do arquivo.
-- [ ] Anotar de quanto em quanto tempo o `generationId` muda e decidir o `minPushIntervalSeconds` do dia 4 (hoje em 60 no `.club`).
-- [ ] Depois da janela: `{"broadcastMode":"dryRun"}` no `.club`.
-- [ ] Para o dia 4: considerar dobrar a espera a cada falha seguida (60 s, 2 min, 4 min, até ~10 min), o back-off que a Apple sugere.
+### Em 05/10
 
-### Depois da aprovação
+- [ ] `.com`: `{"enabled":false,"broadcastMode":"dryRun"}`.
+- [ ] Conferir o `.club`: em 04/10 ficou com `official`, `dryRun` e banner desligado.
+- [ ] Push e deploy do `c68eff0` e consultar `GET api/v4/election-live-analytics/<senha de analytics>?since=2026-10-04T20:00:00Z` para ter a noite inteira.
 
-- [ ] `{"enabled":false,"broadcastMode":"dryRun"}` no `.com` e só então liberar a versão.
-- [ ] Decidir o `.club` no dia 4: configurar igual ao `.com` (os testers do beta seguem acompanhando) ou deixar desligado.
+### Até o 2º turno
 
-### No dia 04/10
-
-- [ ] Quando o pleito 3220 aparecer no `ele-c.json` oficial: `{"source":"official"}` e `{"broadcastMode":"live"}`.
-- [ ] Escrever as frases finais (`finalMessages`). No 1º turno, o mais provável é `runoff:13-22`.
-- [ ] Cores para candidatos sem foto que possam chegar aos 2 primeiros (ex.: Caiado, 55).
-- [ ] Ligar `enabled` **só depois** de o status mostrar o primeiro arquivo oficial (sem estado, o app responde "ainda não está disponível"). Mandar um push normal "a apuração começou" para a base.
+- [ ] Evento de analytics na tela de resultados (`ElectionResultsView.toggleLiveActivity()`), numa versão que saia antes do dia 25.
+- [ ] Tirar o papel de parede do iOS 27 (`ElectionStoriesWallpaper`, 859 KB) do app: ele foi para a loja na 13.2 só por causa da ferramenta de vídeo do Dev Options.
+- [ ] Espera progressiva depois de falhas no APNs.
+- [ ] Decidir o horário do "Atualizado às" para quem está fora do Brasil: hoje ele usa o fuso do aparelho (o arquivo das 18h09 apareceu como 22h09 em Lisboa), enquanto o TSE e o noticiário usam o horário de Brasília.
 
 ### No dia 25/10
 
-- [ ] `{"round":2}` e, se o `ele-c.json` listar a eleição do 2º turno, o servidor resolve sozinho. Conferir as fotos dos finalistas.
+- [ ] `{"round":2}` e, se o `ele-c.json` listar a eleição do 2º turno, o servidor resolve sozinho, apagando o estado do 1º como na troca de fonte. Conferir as fotos dos finalistas (o app tem 13, 14, 22, 30 e 70).
+- [ ] Frases finais do 2º turno: só `elected:<número>`, `elected` e `default` fazem sentido. As de `runoff` não disparam mais.
+- [ ] Seguir o checklist do 1º turno, com o ajuste de ligar o banner só quando a % passar de zero.
 
 ### Depois do 2º turno
 
@@ -386,3 +414,8 @@ Mais: nova tela de abertura, correções de layout em telas estreitas e deslizar
 - `broadcastMode` começa em `dryRun`: se a activity não atualizar num teste, o primeiro suspeito é ter esquecido `"broadcastMode":"live"`.
 - Uma variável de ambiente faltando derruba a API inteira (`fatalError` em `ReleaseConfigs`), não só a eleição. Conferir o `.env` antes de chamar rotas com senha.
 - O site do TSE (e o DivulgaCandContas) bloqueia clientes que não sejam navegador: `curl` recebe 403.
+- O primeiro arquivo do oficial não marca o começo da contagem: o arquivo de 0% sai na véspera. Ligar o banner cedo demais gasta as 8 horas da Live Activity e mostra "Atualização atrasada" depois de 15 minutos sem push. O sinal é a % passar de zero.
+- Não instalar pacotes no servidor durante a apuração: o `needrestart` reinicia serviços sozinho, e reiniciou o nginx.
+- Para consultar o SQLite de produção, só para leitura e com espera, e só consultas que usem o índice por data. Sem `.timeout`, o `sqlite3` desiste na primeira gravação do app.
+- Número de build não separa versões: ele recomeça a cada versão e pode repetir o da loja. Para liberar algo só para a revisão, usar a versão (`previewVersions`).
+- O "Atualizado às" mostra a hora do TSE, e o TSE fica vários minutos sem publicar no começo da noite. Antes de suspeitar do servidor, comparar a geração do status com o `idg` do arquivo do TSE.
