@@ -107,9 +107,6 @@ public extension UIDevice {
         func mapToDevice(identifier: String) -> String { // swiftlint:disable:this cyclomatic_complexity
             #if os(iOS)
             switch identifier {
-            case "iPhone11,8":                                     return "iPhone XR" // 2018 - A12 (4E,2P) - 3 GB
-            case "iPhone11,2":                                     return "iPhone XS" // 2018 - A12 (4E,2P) - 4 GB
-            case "iPhone11,4", "iPhone11,6":                       return "iPhone XS Max" // 2018 - A12 (4E,2P) - 4 GB
             case "iPhone12,1":                                     return "iPhone 11" // 2019 - A13 - 4 GB
             case "iPhone12,3":                                     return "iPhone 11 Pro" // 2019 - A13 - 4 GB
             case "iPhone12,5":                                     return "iPhone 11 Pro Max" // 2019 - A13 - 4 GB
@@ -141,12 +138,12 @@ public extension UIDevice {
             case "iPhone18,3":                                     return "iPhone 17" // 2025 - A19 (4E,2P) - 8 GB
             case "iPhone18,4":                                     return "iPhone Air" // 2025 - A19 Pro (4E,2P) - 12 GB
             case "iPhone18,5":                                     return "iPhone 17e" // 2026 - A19 (4E,2P) - 8 GB
-            case "iPhone19,2":                                     return "iPhone 18 Pro" // 2026 - A20 Pro (4E,2P) - 12 GB
-            case "iPhone19,3":                                     return "iPhone 18 Pro Max" // 2026 - A20 Pro (4E,2P) - 12 GB
-            case "iPhone19,4":                                     return "iPhone Duo" // 2026 - A20 Pro (4E,2P) - 12 GB
 
-            case "iPad7,5", "iPad7,6":                             return "iPad (6th generation)" // 2018 - A10 (2E,2P) - 2 GB
-            case "iPad7,11", "iPad7,12":                           return "iPad (7th generation)" // 2019 - A10 - 3 GB
+            case "iPhone19,2":                                     return "iPhone 18 Pro" // 2026 - A20 Pro (4E,2P) - 12 GB
+            case "iPhone19,3","iPhone19,7":                        return "iPhone 18 Pro Max" // 2026 - A20 Pro (4E,2P) - 12 GB
+            case "iPhone19,4":                                     return "iPhone Duo" // 2026 - A20 Pro (4E,2P) - 12 GB
+                
+
             case "iPad11,6", "iPad11,7":                           return "iPad (8th generation)" // 2020 - A12 - 3 GB
             case "iPad12,1", "iPad12,2":                           return "iPad (9th generation)" // 2021 - A13 - 3 GB
             case "iPad13,18", "iPad13,19":                         return "iPad (10th generation)" // 2022 - A14 (4E,2P) - 4 GB
@@ -166,12 +163,10 @@ public extension UIDevice {
             case "iPad14,1", "iPad14,2":                           return "iPad mini (6th generation)" // 2021 - A15 - 4 GB
             case "iPad16,1", "iPad16,2":                           return "iPad mini (A17 Pro)" // 2024 - A17 Pro - 8 GB
 
-            case "iPad7,3", "iPad7,4":                             return "iPad Pro (10.5-inch)" // 2017 - A10X (3E,3P) - 4 GB
             case "iPad8,1", "iPad8,2", "iPad8,3", "iPad8,4":       return "iPad Pro (11-inch) (1st generation)" // 2018 - A12X - 4 or 6 GB
             case "iPad8,9", "iPad8,10":                            return "iPad Pro (11-inch) (2nd generation)" // 2020 - A12Z - 6 GB
             case "iPad13,4", "iPad13,5", "iPad13,6", "iPad13,7":   return "iPad Pro (11-inch) (3rd generation)" // 2021 - M1 - 8 or 16 GB
             case "iPad14,3", "iPad14,4":                           return "iPad Pro (11-inch) (4th generation)" // 2022 - M2 - 8 or 16 GB
-            case "iPad7,1", "iPad7,2":                             return "iPad Pro (12.9-inch) (2nd generation)" // 2017 - A10X - 4 GB
             case "iPad8,5", "iPad8,6", "iPad8,7", "iPad8,8":       return "iPad Pro (12.9-inch) (3rd generation)" // 2018 - A12X - 4 or 6 GB
             case "iPad8,11", "iPad8,12":                           return "iPad Pro (12.9-inch) (4th generation)" // 2020 - A12Z - 6 GB
             case "iPad13,8", "iPad13,9", "iPad13,10", "iPad13,11": return "iPad Pro (12.9-inch) (5th generation)" // 2021 - M1 - 8 or 16 GB
