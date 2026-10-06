@@ -447,4 +447,32 @@ class FakeLocalDatabase: LocalDatabaseProtocol {
     func clearAudienceSharingStatisticTable() throws {
         //
     }
+
+    // MARK: - User Play Log
+
+    var playLogs = [UserPlayLog]()
+    var shouldFailMarkingPlayLogsAsSent = false
+
+    func insert(userPlayLog newLog: UserPlayLog) throws {
+        playLogs.append(newLog)
+    }
+
+    func pendingPlayLogsNotSentToServer(limit: Int) throws -> [UserPlayLog] {
+        Array(
+            playLogs
+                .filter { !$0.sentToServer }
+                .sorted { $0.dateTime < $1.dateTime }
+                .prefix(limit)
+        )
+    }
+
+    func markUserPlayLogsAsSent(logIds: [String]) throws {
+        if shouldFailMarkingPlayLogsAsSent {
+            throw NSError(domain: "FakeLocalDatabase", code: 1)
+        }
+        let ids = Set(logIds)
+        for index in playLogs.indices where ids.contains(playLogs[index].id) {
+            playLogs[index].sentToServer = true
+        }
+    }
 }

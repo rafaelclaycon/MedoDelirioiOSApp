@@ -96,6 +96,13 @@ extension AppPersistentMemory {
         return Date(timeIntervalSince1970: value as! Double)
     }
 
+    func getLastSendDateOfPlayLogsToServer() -> Date? {
+        guard let value = userDefaults.object(forKey: "lastSendDateOfPlayLogsToServer") as? Double else {
+            return nil
+        }
+        return Date(timeIntervalSince1970: value)
+    }
+
     func getFolderBannerWasDismissed() -> Bool {
         guard let value = userDefaults.object(forKey: "folderBannerWasDismissed") else {
             return false
@@ -353,6 +360,10 @@ extension AppPersistentMemory {
     
     func setLastSendDateOfUserPersonalTrendsToServer(to newValue: Date) {
         userDefaults.set(newValue.timeIntervalSince1970, forKey: "lastSendDateOfUserPersonalTrendsToServer")
+    }
+
+    func setLastSendDateOfPlayLogsToServer(to newValue: Date) {
+        userDefaults.set(newValue.timeIntervalSince1970, forKey: "lastSendDateOfPlayLogsToServer")
     }
     
     func setFolderBannerWasDismissed(to newValue: Bool) {

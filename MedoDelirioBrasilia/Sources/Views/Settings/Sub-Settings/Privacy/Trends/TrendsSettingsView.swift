@@ -46,19 +46,20 @@ struct TrendsSettingsView: View {
             } header: {
                 Text("Escolha o que deseja usar")
             } footer: {
-                Text("Se a opção acima estiver ativada, os seguintes dados serão enviados:\n · ID de instalação\n · ID do conteúdo compartilhado\n · tipo do conteúdo (som, música ou vídeo)\n · quantidade total de compartilhamentos\n · nome do app pelo qual o conteúdo foi compartilhado")
+                Text("Se a opção acima estiver ativada, os seguintes dados serão enviados:\n · ID de instalação\n · ID do conteúdo compartilhado\n · tipo do conteúdo (som, música ou vídeo)\n · quantidade total de compartilhamentos\n · nome do app pelo qual o conteúdo foi compartilhado\n · ID, data e hora dos conteúdos que você toca\n · versão do app")
             }
             .disabled(trendsEnabled == false)
             
-            Section("Histórico local de compartilhamento") {
+            Section("Histórico local") {
                 Button("Apagar todos os registros locais") {
                     showDeleteAllUserShareLogsConfirmationAlert = true
                 }
                 .alert(isPresented: $showDeleteAllUserShareLogsConfirmationAlert) {
-                    Alert(title: Text("Apagar Todos os Registros Locais de Compartilhamento?"),
-                          message: Text("Ter dados salvos localmente não significa que eles serão enviados para o servidor; você pode desativar o envio na opção acima. A ação de apagar não pode ser desfeita."),
+                    Alert(title: Text("Apagar Todos os Registros Locais?"),
+                          message: Text("Isso inclui os seus compartilhamentos e o que você tocou. Ter dados salvos localmente não significa que eles serão enviados para o servidor; você pode desativar o envio na opção acima. A ação de apagar não pode ser desfeita."),
                           primaryButton: .destructive(Text("Apagar")) {
                               try? LocalDatabase.shared.deleteAllUserShareLogs()
+                              try? LocalDatabase.shared.deleteAllUserPlayLogs()
                           },
                           secondaryButton: .cancel(Text("Cancelar")))
                 }

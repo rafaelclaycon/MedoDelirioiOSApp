@@ -37,6 +37,10 @@ struct DiagnosticsView: View {
                     ShareLogsView()
                 }
 
+                NavigationLink("Logs de reprodução") {
+                    PlayLogsView()
+                }
+
                 NavigationLink("Logs de push") {
                     ChannelLogsView()
                 }
@@ -298,6 +302,60 @@ extension DiagnosticsView {
             } catch {
                 return ""
             }
+        }
+    }
+
+    struct PlayLogsView: View {
+
+        @State private var playLogs: [UserPlayLog] = []
+
+        var body: some View {
+            Form {
+                if playLogs.isEmpty {
+                    Text("Sem Dados")
+                } else {
+                    Section {
+                        ForEach(playLogs) { log in
+                            HStack(spacing: 20) {
+                                Image(systemName: log.isAutoplay ? "play.square.stack" : "play")
+                                    .frame(width: 20)
+
+                                VStack(alignment: .leading, spacing: 5) {
+                                    Text(contentName(contentId: log.contentId))
+                                        .font(.subheadline)
+                                        .lineLimit(2)
+
+                                    Text(log.dateTime.formattedDayMonthYearHoursMinutesSeconds())
+                                        .foregroundStyle(.secondary)
+                                        .font(.footnote)
+                                }
+
+                                Spacer()
+
+                                Image(systemName: log.sentToServer ? "circle.fill" : "circle.dashed")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(log.sentToServer ? .green : .primary)
+                            }
+                        }
+                    } footer: {
+                        Text("Toques repetidos no mesmo conteúdo em sequência rápida contam como uma reprodução só. O ícone de pilha marca o que tocou sozinho em sequência, depois de \"Tocar a Partir Desse\" ou de tocar uma pasta inteira.")
+                    }
+                }
+            }
+            .navigationTitle("Logs de reprodução")
+            .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                playLogs = (try? LocalDatabase.shared.allUserPlayLogs()) ?? []
+            }
+        }
+
+        private func contentName(contentId: String) -> String {
+            if let sound: Sound = try? LocalDatabase.shared.sound(withId: contentId) {
+                return sound.title
+            } else if let song: Song = try? LocalDatabase.shared.song(withId: contentId) {
+                return song.title
+            }
+            return contentId
         }
     }
 

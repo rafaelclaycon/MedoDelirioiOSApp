@@ -48,3 +48,23 @@ struct PendingShareCountStat: Hashable {
     let localLogId: String
     let payload: ServerShareCountStat
 }
+
+/// Sent to the server in batches. Goal: know what people listen to, not only what they share.
+///
+/// The install ID and app version go once per batch rather than on every play. The version
+/// is there so the server can tell apart data counted under different dedupe rules.
+struct ServerPlayLogBatch: Hashable, Codable {
+
+    var installId: String
+    var appVersion: String
+    var plays: [ServerPlayLog]
+}
+
+struct ServerPlayLog: Hashable, Codable {
+
+    /// The local log's ID, which the server uses to ignore a play it already has.
+    var id: String
+    var contentId: String
+    var dateTime: String
+    var isAutoplay: Bool
+}

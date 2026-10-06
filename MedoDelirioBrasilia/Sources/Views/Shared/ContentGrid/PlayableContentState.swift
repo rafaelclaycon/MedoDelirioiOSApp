@@ -76,8 +76,11 @@ extension PlayableContentState {
         Task { loadFavorites() }
     }
 
+    /// - Parameter isAutoplay: the play was started by a playlist advancing on its own,
+    ///   not by a tap. Only affects how the play is logged.
     public func play(
         _ content: AnyEquatableMedoContent,
+        isAutoplay: Bool = false,
         onPlaybackStopped: @escaping () -> Void = {}
     ) {
         do {
@@ -94,6 +97,10 @@ extension PlayableContentState {
             )
 
             AudioPlayer.shared?.togglePlay()
+
+            if AudioPlayer.shared != nil {
+                Logger.shared.logPlayed(content, isAutoplay: isAutoplay)
+            }
         } catch {
             if content.isFromServer ?? false {
                 showServerContentNotAvailableAlert(content)

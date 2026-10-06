@@ -95,8 +95,81 @@ class Podium {
         try? self.database.clearAudienceSharingStatisticTable()
     }
 
+    /// Plays per request. Comfortably inside the server's body limit for the route
+    /// (`api/v4/play-logs`), while a week of heavy use still goes in a request or two.
+    static let playLogBatchSize = 250
+
+    /// A run stops after this many batches and leaves the rest for the next day, so
+    /// one launch never turns into an open-ended upload.
+    static let maxPlayLogBatchesPerRun = 20
+
+    /// Uploads unsent plays in batches, oldest first.
+    ///
+    /// Independent from `sendShareCountStatsToServer()` so a failure on either side
+    /// never holds up the other. A batch the server accepted but that couldn't be marked
+    /// as sent locally is simply sent again next time; the server ignores play IDs it
+    /// already has.
+    func sendPlayLogsToServer() async -> PlayLogServerExchangeResult {
+        var sentCount = 0
+
+        for _ in 0..<Self.maxPlayLogBatchesPerRun {
+            let pendingLogs: [UserPlayLog]
+            do {
+                pendingLogs = try database.pendingPlayLogsNotSentToServer(limit: Self.playLogBatchSize)
+            } catch {
+                return .failed("Falha carregando reproduções locais.")
+            }
+
+            guard !pendingLogs.isEmpty else { break }
+
+            // Checked only once there is something to send, so a day with no plays
+            // doesn't cost a status-check round trip.
+            if sentCount == 0 {
+                guard await apiClient.serverIsAvailable() else { return .failed("Servidor indisponível.") }
+            }
+
+            let batch = ServerPlayLogBatch(
+                installId: AppPersistentMemory.shared.customInstallId,
+                appVersion: Versioneer.appVersion,
+                plays: pendingLogs.map {
+                    ServerPlayLog(
+                        id: $0.id,
+                        contentId: $0.contentId,
+                        dateTime: $0.dateTime.iso8601withFractionalSeconds,
+                        isAutoplay: $0.isAutoplay
+                    )
+                }
+            )
+
+            do {
+                let url = URL(string: apiClient.serverPath + "v4/play-logs")!
+                try await apiClient.post(to: url, body: batch)
+            } catch {
+                return .failed("Falha ao enviar \(pendingLogs.count) reproduções.")
+            }
+
+            do {
+                try database.markUserPlayLogsAsSent(logIds: pendingLogs.map(\.id))
+            } catch {
+                return .failed("Falha ao marcar reproduções enviadas localmente.")
+            }
+
+            sentCount += pendingLogs.count
+
+            // A short batch means the queue just ran dry; no need to ask again.
+            if pendingLogs.count < Self.playLogBatchSize { break }
+        }
+
+        return sentCount == 0 ? .noLogsToSend : .successful
+    }
+
     enum ShareCountStatServerExchangeResult: Equatable {
 
         case successful, noStatsToSend, failed(String)
+    }
+
+    enum PlayLogServerExchangeResult: Equatable {
+
+        case successful, noLogsToSend, failed(String)
     }
 }

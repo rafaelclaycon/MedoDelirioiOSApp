@@ -580,6 +580,7 @@ struct MainView: View {
             episodeBookmarkStore.analyticsService = AnalyticsService()
             logger.debug("MainView appeared")
             sendUserPersonalTrendsToServerIfEnabled()
+            sendPlayLogsToServerIfEnabled()
             displayOnboardingIfNeeded()
             // Only one "what's new" sheet can be presented at a time, so these
             // are mutually exclusive per app open — the newest feature takes
@@ -848,6 +849,29 @@ struct MainView: View {
                 }
                 AppPersistentMemory.shared.setLastSendDateOfUserPersonalTrendsToServer(to: todayDate)
             }
+        }
+    }
+
+    /// Once a day, behind the same opt-in as shares, and on its own schedule so the two
+    /// uploads can't hold each other up.
+    private func sendPlayLogsToServerIfEnabled() {
+        Task {
+            guard
+                UserSettings().getEnableTrends(),
+                UserSettings().getEnableShareUserPersonalTrends()
+            else { return }
+
+            let todayDate = Date.now.onlyDate ?? Date.now
+
+            if let lastOnlyDate = AppPersistentMemory.shared.getLastSendDateOfPlayLogsToServer()?.onlyDate,
+               lastOnlyDate >= todayDate {
+                return
+            }
+
+            let result = await Podium.shared.sendPlayLogsToServer()
+
+            guard result == .successful || result == .noLogsToSend else { return }
+            AppPersistentMemory.shared.setLastSendDateOfPlayLogsToServer(to: todayDate)
         }
     }
 

@@ -127,6 +127,11 @@ internal protocol LocalDatabaseProtocol {
     func markUserShareLogsAsSent(logIds: [String]) throws
     func markAllUserShareLogsAsSentToServer() throws
     func clearAudienceSharingStatisticTable() throws
+
+    // User Play Log
+    func insert(userPlayLog newLog: UserPlayLog) throws
+    func pendingPlayLogsNotSentToServer(limit: Int) throws -> [UserPlayLog]
+    func markUserPlayLogsAsSent(logIds: [String]) throws
 }
 
 class LocalDatabase: LocalDatabaseProtocol {
@@ -153,6 +158,7 @@ class LocalDatabase: LocalDatabaseProtocol {
     var podcastEpisodeTable = Table("podcastEpisode")
     var episodeBookmarkTable = Table("episodeBookmark")
     var episodeListenLogTable = Table("episodeListenLog")
+    var userPlayLogTable = Table("userPlayLog")
 
     static let shared = LocalDatabase()
     
@@ -207,7 +213,8 @@ extension LocalDatabase {
             AddPodcastEpisodeTable(),
             AddEpisodeBookmarkTable(),
             AddEpisodeListenLogTable(),
-            CleanUpSlashEpisodeId()
+            CleanUpSlashEpisodeId(),
+            AddUserPlayLogTable()
         ]
     }
 

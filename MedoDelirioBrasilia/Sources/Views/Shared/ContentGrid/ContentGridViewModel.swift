@@ -298,6 +298,7 @@ extension ContentGridViewModel {
     private func play(
         _ content: AnyEquatableMedoContent,
         scrollToPlaying: Bool = false,
+        isAutoplay: Bool = false,
         loadedContent: [AnyEquatableMedoContent]
     ) {
         if scrollToPlaying {
@@ -306,7 +307,7 @@ extension ContentGridViewModel {
 
         onContentPlayed?()
 
-        playable.play(content) { [weak self] in
+        playable.play(content, isAutoplay: isAutoplay) { [weak self] in
             self?.onPlaybackStopped(scrollToPlaying: scrollToPlaying, loadedContent: loadedContent)
         }
     }
@@ -324,7 +325,12 @@ extension ContentGridViewModel {
             return
         }
 
-        play(loadedContent[currentTrackIndex], scrollToPlaying: scrollToPlaying, loadedContent: loadedContent)
+        play(
+            loadedContent[currentTrackIndex],
+            scrollToPlaying: scrollToPlaying,
+            isAutoplay: true,
+            loadedContent: loadedContent
+        )
     }
 
     private func stopPlaying() {

@@ -128,6 +128,10 @@ extension ContentDetailView.ViewModel {
             })
 
             AudioPlayer.shared?.togglePlay()
+
+            if AudioPlayer.shared != nil {
+                Logger.shared.logPlayed(content)
+            }
         } catch {
             if content.isFromServer ?? false {
                 showServerSoundNotAvailableAlert()

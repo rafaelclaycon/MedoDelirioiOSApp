@@ -47,6 +47,28 @@ class Logger: LoggerProtocol {
         try? LocalDatabase.shared.insert(userShareLog: shareLog)
     }
 
+    /// Main-actor isolated because the deduplicator's memory is shared by every screen
+    /// that plays content, and playback only ever starts there.
+    @MainActor private var playDeduplicator = PlayDeduplicator()
+
+    /// Records a play once it has actually started. Re-taps on the same content in quick
+    /// succession are folded into one play (see `PlayDeduplicator`).
+    @MainActor
+    func logPlayed(_ content: AnyEquatableMedoContent, isAutoplay: Bool = false) {
+        guard let contentType = ContentType.shareType(for: content.type) else { return }
+
+        let now = Date.now
+        guard playDeduplicator.shouldCount(contentId: content.id, at: now) else { return }
+
+        let playLog = UserPlayLog(
+            contentId: content.id,
+            contentType: contentType.rawValue,
+            dateTime: now,
+            isAutoplay: isAutoplay
+        )
+        try? LocalDatabase.shared.insert(userPlayLog: playLog)
+    }
+
     func shareCountStatsForServer() -> [ServerShareCountStat]? {
         guard 
             let items = try? LocalDatabase.shared.userShareStatsNotSentToServer(),

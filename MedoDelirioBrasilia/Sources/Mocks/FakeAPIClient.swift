@@ -20,6 +20,10 @@ class FakeAPIClient: APIClientProtocol {
     var shareCountPostCalls = 0
     var postedBundleIdLogs = [ServerShareBundleIdLog]()
     var shouldFailBundleIdPost = false
+    var postedPlayLogBatches = [ServerPlayLogBatch]()
+    var postedPlayLogBatchURLs = [URL]()
+    var failPlayLogBatchPostAtIndexes = Set<Int>()
+    private var playLogBatchPostCalls = 0
 
     var sound: Sound?
     var song: Song?
@@ -64,6 +68,14 @@ class FakeAPIClient: APIClientProtocol {
                 throw APIClientError.unexpectedStatusCode
             }
             postedBundleIdLogs.append(log)
+        }
+        if let batch = body as? ServerPlayLogBatch {
+            defer { playLogBatchPostCalls += 1 }
+            if failPlayLogBatchPostAtIndexes.contains(playLogBatchPostCalls) {
+                throw APIClientError.unexpectedStatusCode
+            }
+            postedPlayLogBatches.append(batch)
+            postedPlayLogBatchURLs.append(url)
         }
     }
 
