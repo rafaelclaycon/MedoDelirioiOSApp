@@ -71,6 +71,7 @@ Commits `04a37b1` (parser e replay), `3d3d037` (poller e endpoints), `463526b` (
   - `POST api/v4/election/channels/:password[?bundleId=]`: cria o canal de cada app que ainda não tem um (ou só do bundle pedido), no ambiente atual da APNs, e salva nas configurações.
   - `GET api/v4/election/channels/:password`: mostra o ambiente da APNs, os canais configurados e os que a APNs conhece para cada bundle.
   - `GET api/v4/election-live-analytics/:password` (senha de analytics, `c68eff0`, deploy em 05/10): instalações que iniciaram e pararam pelo banner, estimativa de quem ainda está acompanhando, fechamentos da tela de novidades, por hora (UTC) e por versão. `?since=` em ISO 8601, padrão 24 h atrás.
+  - `GET api/v4/election-live-analytics/series/:password` (senha de analytics, `4a7dc09`): a mesma contagem como série para gráfico, em intervalos de `?bucketMinutes=` (5, 10, 15, 30 ou 60; padrão 10) entre `?since=` e `?until=` (no máximo 48 h). Cada intervalo traz quem iniciou, quem iniciou pela primeira vez, o total acumulado (a linha principal), quem parou e a estimativa de quem ainda estava acompanhando, com o horário em UTC e em Brasília. Para o 1º turno: `?since=2026-10-04T20:00:00Z&until=2026-10-05T06:00:00Z`.
 - Testes: `ElectionSnapshotTests`, `ElectionLiveTests` e `ElectionBroadcastPlannerTests`, com fixtures reais do simulado em `Tests/AppTests/Fixtures/Election/`. 68 testes passando.
 
 #### Broadcaster
