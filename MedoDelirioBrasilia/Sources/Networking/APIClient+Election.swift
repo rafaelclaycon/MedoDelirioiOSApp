@@ -40,6 +40,23 @@ struct ElectionLiveDetails: Codable {
     let validVotes: Int
     /// Every candidate in the TSE ranking.
     let candidates: [Candidate]
+    /// Blank and null votes and who didn't vote, for the sections counted so far. Nil from
+    /// servers older than it, or when the TSE file doesn't have them.
+    let turnout: Turnout?
+
+    struct Turnout: Codable {
+        let electorate: Int
+        let attended: Int
+        let abstentions: Int
+        /// Of the voters in counted sections, 0 to 100.
+        let abstentionPercent: Double
+        let totalVotes: Int
+        let blankVotes: Int
+        /// Of every vote cast, 0 to 100.
+        let blankPercent: Double
+        let nullVotes: Int
+        let nullPercent: Double
+    }
 
     struct Candidate: Codable, Identifiable {
         let number: Int

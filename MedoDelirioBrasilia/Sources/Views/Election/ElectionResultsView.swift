@@ -40,8 +40,8 @@ struct ElectionResultsView: View {
 
                         actions(info: info, state: state)
 
-                        if let details = info.details {
-                            candidateList(details)
+                        if let turnout = info.details?.turnout, turnout.totalVotes > 0 {
+                            ElectionTurnoutSection(turnout: turnout, isFinal: state.isFinal)
                         }
 
                         Text("Os números são os divulgados pelo Tribunal Superior Eleitoral, sem nenhuma alteração.")
@@ -173,26 +173,6 @@ struct ElectionResultsView: View {
             .padding(.vertical, .spacing(.xxSmall))
     }
 
-    private func candidateList(_ details: ElectionLiveDetails) -> some View {
-        VStack(alignment: .leading, spacing: .spacing(.small)) {
-            Text("TODOS OS CANDIDATOS")
-                .font(.footnote)
-                .fontWeight(.semibold)
-                .foregroundStyle(.secondary)
-
-            VStack(spacing: 0) {
-                ForEach(Array(details.candidates.enumerated()), id: \.element.id) { index, candidate in
-                    ElectionCandidateResultRow(position: index + 1, candidate: candidate)
-                    if index < details.candidates.count - 1 {
-                        Divider()
-                            .padding(.leading, 90)
-                    }
-                }
-            }
-            .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 16))
-        }
-    }
-
     private func placeholder(symbol: String, title: String, message: String) -> some View {
         ContentUnavailableView {
             Label(title, systemImage: symbol)
@@ -243,16 +223,42 @@ struct ElectionResultsView: View {
 
 // MARK: - Header
 
-/// The Live Activity's green band, bigger: round, counted share, bar, sections, time and
-/// source, and the final message when there is one.
+/// The two candidates face to face, the leader on the left like the Live Activity, and one
+/// line saying by how much. How much is counted sits underneath, smaller: it matters less
+/// than who's ahead.
 struct ElectionResultsHeader: View {
 
     let round: Int
     let state: ElectionActivityAttributes.ContentState
     let details: ElectionLiveDetails?
 
+    /// One side of the duel, from `details` when the server sent it (it has the votes),
+    /// otherwise from the Live Activity state.
+    struct Side: Identifiable {
+        let number: Int
+        let name: String
+        let party: String
+        let percent: Double
+        let votes: Int?
+        let status: ElectionActivityAttributes.Status
+        let colorHex: String?
+
+        var id: Int { number }
+    }
+
+    private var sides: [Side] {
+        if let details, details.candidates.count >= 2 {
+            return details.candidates.prefix(2).map {
+                Side(number: $0.number, name: $0.name, party: $0.party, percent: $0.percent, votes: $0.votes, status: $0.status, colorHex: $0.colorHex)
+            }
+        }
+        return state.candidates.prefix(2).map {
+            Side(number: $0.number, name: $0.name, party: $0.party, percent: $0.percent, votes: nil, status: $0.status, colorHex: $0.colorHex)
+        }
+    }
+
     var body: some View {
-        VStack(spacing: .spacing(.small)) {
+        VStack(spacing: .spacing(.medium)) {
             HStack(spacing: 6) {
                 if !state.isFinal {
                     Circle()
@@ -265,35 +271,27 @@ struct ElectionResultsHeader: View {
             }
             .foregroundStyle(.white.opacity(0.9))
 
-            Text(ElectionResultsFormat.percent(state.sectionsCountedPercent))
-                .font(.system(size: 48, weight: .bold, design: .rounded))
-                .monospacedDigit()
-                .contentTransition(.numericText())
-            Text("TOTALIZADO")
-                .font(.subheadline)
-                .fontWeight(.bold)
-                .foregroundStyle(.white.opacity(0.85))
+            HStack(alignment: .top, spacing: .spacing(.small)) {
+                ForEach(sides) { side in
+                    sideView(side)
+                        .frame(maxWidth: .infinity)
+                }
+            }
 
-            ElectionResultsBar(fraction: state.sectionsCountedPercent / 100, color: ElectionResultsPalette.bar)
-                .frame(height: 10)
-                .padding(.top, 4)
-
-            if let details {
-                Text("\(ElectionResultsFormat.count(details.sectionsCounted)) de \(ElectionResultsFormat.count(details.sectionsTotal)) seções")
-                    .font(.footnote)
-                    .foregroundStyle(.white.opacity(0.8))
+            if sides.count == 2 {
+                lead(sides[0], over: sides[1])
+                    .font(.subheadline)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.white.opacity(0.9))
             }
 
             if state.isFinal, let finalMessage = state.finalMessage {
                 Text(finalMessage)
                     .font(.headline)
                     .multilineTextAlignment(.center)
-                    .padding(.top, 4)
             }
 
-            Text("Atualizado às \(state.updatedAtDate.formatted(date: .omitted, time: .shortened)) · Fonte: TSE")
-                .font(.caption)
-                .foregroundStyle(.white.opacity(0.7))
+            counted
         }
         .foregroundStyle(.white)
         .frame(maxWidth: .infinity)
@@ -309,79 +307,172 @@ struct ElectionResultsHeader: View {
         .padding(.top, .spacing(.small))
         .accessibilityElement(children: .combine)
     }
-}
 
-// MARK: - Candidate Row
-
-struct ElectionCandidateResultRow: View {
-
-    let position: Int
-    let candidate: ElectionLiveDetails.Candidate
-
-    var body: some View {
-        HStack(spacing: .spacing(.small)) {
-            Text("\(position)º")
-                .font(.subheadline)
-                .fontWeight(.semibold)
+    private func sideView(_ side: Side) -> some View {
+        VStack(spacing: 6) {
+            ElectionCandidatePhoto(number: side.number, colorHex: side.colorHex, size: 76)
+            Text(ElectionResultsFormat.percent(side.percent))
+                .font(.system(size: 30, weight: .bold, design: .rounded))
                 .monospacedDigit()
-                .foregroundStyle(.secondary)
-                .frame(width: 28, alignment: .trailing)
-
-            ElectionCandidatePhoto(number: candidate.number, colorHex: candidate.colorHex, size: 44)
-
-            VStack(alignment: .leading, spacing: 4) {
-                // Two lines rather than cutting a long ballot name. The badge sits on the
-                // party line: next to the name it squeezed both into broken lines.
-                Text(candidate.name)
-                    .font(.headline)
-                    .lineLimit(2)
-                HStack(spacing: 6) {
-                    Text(candidate.hasValidVotes ? candidate.party : "\(candidate.party) · anulado")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                    if let badge {
-                        Text(badge)
-                            .font(.caption2)
-                            .fontWeight(.heavy)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(ElectionResultsPalette.accent.opacity(0.2), in: .capsule)
-                            .fixedSize()
-                    }
-                }
-                ElectionResultsBar(
-                    fraction: candidate.percent / 100,
-                    color: candidate.colorHex.map(Color.init(hex:)) ?? ElectionResultsPalette.accent
-                )
-                .frame(height: 6)
-            }
-
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(ElectionResultsFormat.percent(candidate.percent))
-                    .font(.headline)
-                    .monospacedDigit()
-                Text("\(ElectionResultsFormat.count(candidate.votes)) votos")
+                .contentTransition(.numericText())
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text(side.name)
+                .font(.headline)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+            Text(side.party)
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.75))
+            if let votes = side.votes {
+                Text("\(ElectionResultsFormat.count(votes)) votos")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
                     .monospacedDigit()
+                    .foregroundStyle(.white.opacity(0.75))
             }
-            // Same width on every row, so the bars end at the same place. Fits
-            // "99.999.999 votos".
-            .frame(width: 106, alignment: .trailing)
+            if side.status == .elected {
+                Text("ELEITO")
+                    .font(.caption2)
+                    .fontWeight(.heavy)
+                    .foregroundStyle(ElectionResultsPalette.header)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(ElectionResultsPalette.bar, in: .capsule)
+            } else if side.status == .runoff {
+                Text("2º TURNO")
+                    .font(.caption2)
+                    .fontWeight(.heavy)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(.white.opacity(0.2), in: .capsule)
+            }
         }
-        .padding(.vertical, .spacing(.small))
-        .padding(.horizontal, .spacing(.small))
-        .opacity(candidate.hasValidVotes ? 1 : 0.6)
-        .accessibilityElement(children: .combine)
     }
 
-    private var badge: String? {
-        switch candidate.status {
-        case .elected: "ELEITO"
-        case .runoff: "2º TURNO"
-        case .counting, .notElected: nil
+    /// "Lula à frente por 285.671 votos (1,68 ponto)". Votes only when the server sent them.
+    private func lead(_ leader: Side, over runnerUp: Side) -> Text {
+        let points = leader.percent - runnerUp.percent
+        let voteGap = leader.votes.flatMap { leaderVotes in runnerUp.votes.map { leaderVotes - $0 } }
+        guard points > 0 || (voteGap ?? 0) > 0 else {
+            return Text("Empate")
         }
+        let name = Text(Self.displayName(leader.name)).bold()
+        let pointsText = "\(ElectionResultsFormat.decimal(points)) \(points < 2 ? "ponto" : "pontos")"
+        let gap = voteGap.map { "\(ElectionResultsFormat.count($0)) votos (\(pointsText))" } ?? pointsText
+        return state.isFinal
+            ? Text("\(name) terminou à frente por \(gap)")
+            : Text("\(name) à frente por \(gap)")
+    }
+
+    /// "FLAVIO BOLSONARO" reads as shouting mid-sentence: "Flavio Bolsonaro".
+    static func displayName(_ name: String) -> String {
+        name.lowercased(with: Locale(identifier: "pt_BR")).capitalized(with: Locale(identifier: "pt_BR"))
+    }
+
+    /// How much is counted, kept but quiet.
+    private var counted: some View {
+        VStack(spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("\(ElectionResultsFormat.percent(state.sectionsCountedPercent)) totalizado")
+                    .font(.footnote)
+                    .fontWeight(.semibold)
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+                Spacer(minLength: 8)
+                if let details {
+                    Text("\(ElectionResultsFormat.count(details.sectionsCounted)) de \(ElectionResultsFormat.count(details.sectionsTotal)) seções")
+                        .font(.caption)
+                        .monospacedDigit()
+                        .foregroundStyle(.white.opacity(0.7))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+            }
+            ElectionResultsBar(fraction: state.sectionsCountedPercent / 100, color: ElectionResultsPalette.bar)
+                .frame(height: 4)
+            Text("Atualizado às \(state.updatedAtDate.formatted(date: .omitted, time: .shortened)) · Fonte: TSE")
+                .font(.caption2)
+                .foregroundStyle(.white.opacity(0.65))
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.top, .spacing(.xxSmall))
+    }
+}
+
+// MARK: - Turnout
+
+/// Who chose no one: blank and null votes, and the voters who stayed home.
+struct ElectionTurnoutSection: View {
+
+    let turnout: ElectionLiveDetails.Turnout
+    let isFinal: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: .spacing(.small)) {
+            Text("BRANCOS, NULOS E ABSTENÇÃO")
+                .font(.footnote)
+                .fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+
+            HStack(alignment: .top, spacing: .spacing(.small)) {
+                tile(
+                    title: "Não foram votar",
+                    percent: turnout.abstentionPercent,
+                    detail: "\(ElectionResultsFormat.count(turnout.abstentions)) eleitores",
+                    systemImage: "figure.walk.departure"
+                )
+                tile(
+                    title: "Votos em branco",
+                    percent: turnout.blankPercent,
+                    detail: "\(ElectionResultsFormat.count(turnout.blankVotes)) votos",
+                    systemImage: "square.dashed"
+                )
+                tile(
+                    title: "Votos nulos",
+                    percent: turnout.nullPercent,
+                    detail: "\(ElectionResultsFormat.count(turnout.nullVotes)) votos",
+                    systemImage: "xmark.square"
+                )
+            }
+            // Same height for the three, whatever wraps.
+            .fixedSize(horizontal: false, vertical: true)
+
+            Text(isFinal
+                 ? "Brancos e nulos sobre o total de votos. A abstenção, sobre o eleitorado."
+                 : "Brancos e nulos sobre o total de votos, e a abstenção sobre o eleitorado, nas seções já apuradas.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func tile(title: String, percent: Double, detail: String, systemImage: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Image(systemName: systemImage)
+                .font(.subheadline)
+                .foregroundStyle(ElectionResultsPalette.accent)
+                .frame(height: 20, alignment: .leading)
+            Text(ElectionResultsFormat.percent(percent))
+                .font(.system(.title3, design: .rounded))
+                .fontWeight(.bold)
+                .monospacedDigit()
+                .contentTransition(.numericText())
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text(title)
+                .font(.footnote)
+                .fontWeight(.semibold)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(detail)
+                .font(.caption2)
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.spacing(.small))
+        .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 16))
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -475,6 +566,11 @@ enum ElectionResultsFormat {
 
     static func count(_ value: Int) -> String {
         value.formatted(.number.locale(locale))
+    }
+
+    /// "1,87", without the percent sign.
+    static func decimal(_ value: Double) -> String {
+        value.formatted(.number.precision(.fractionLength(2)).locale(locale))
     }
 }
 
