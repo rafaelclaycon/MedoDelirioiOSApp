@@ -229,14 +229,14 @@ Para a próxima versão, depois da 13. Enquanto a Live Activity é a espiada, es
 - **Link "App do TSE":** no banner (abaixo de "Acompanhar ao Vivo", com um respiro a mais) e na tela. Por padrão abre o app **Resultados**, do Tribunal Superior Eleitoral, na App Store (`apps.apple.com/br/app/resultados/id1136359313`); quem já tem o app instalado abre direto de lá. O endereço vem do servidor (`officialResultsURL`) e pode mudar sem nova revisão. O site de resultados (`resultados.tse.jus.br/oficial/app`) dava 404 em 29/09.
 - **Fotos no app:** as cinco (13, 14, 22, 30, 70) estão também no catálogo do app, além do widget.
 - **Sem o `details` no servidor** (antes do deploy do `472b4a7`), a tela mostra só o topo, sem a lista.
-- Sem eventos de analytics.
+- **Analytics:** a partir da versão seguinte à 13.2, iniciar e parar a Live Activity por aqui manda os mesmos eventos do banner (`election_live_activity_started` e `_stopped`), com `originatingScreen` `ElectionResults`. Os endpoints de analytics contam as duas origens. Na 13.1 e na 13.2 a tela não manda eventos.
 
 #### Tela de novidades (`Sources/Views/Onboarding/WhatsNew/IntroducingElectionLiveView.swift`)
 
 - Aparece uma vez, depois do onboarding, antes das telas de Clipes e Transcrições. **Não aparece a partir de 26/10.**
 - **Header:** as fotos do Lula e do Flávio se chocam e voltam; a cada choque, um anel amarelo explode no ponto de contato e o "% TOTALIZADO" e a barra andam um passo, até 100% e recomeçar. Com Reduzir Movimento, fica parado.
 - **Fundo do header:** mini teclados de urna (1 a 9, 0 embaixo do 8, BRANCO, CORRIGE e CONFIRMA nas cores reais, ponto de braille em cada tecla), poucos, grandes e apagados, sumindo atrás das fotos e do título. Menores ou mais densos viram ruído.
-- **Itens:** Na Tela Bloqueada; Dados Oficiais do TSE; "4 de Outubro, às 17h de Brasília" (banner no topo das Vírgulas, 2º turno no dia 25).
+- **Itens:** Na Tela Bloqueada; Dados Oficiais do TSE; a data. Até a 13.2, "4 de Outubro, às 17h de Brasília"; a partir da versão seguinte, "2º Turno: 25 de Outubro, às 17h" (Lula e Flávio Bolsonaro).
 - **Botão:** a tecla CONFIRMA da urna (face verde sobre um degrau mais escuro, "CONFIRMA" em fonte monoespaçada, o texto em braille embaixo). Afunda ao apertar, com vibração forte e o "piririm" da urna (`Resources/ElectionStuff/urna_confirma.caf`, tocado como som de sistema: respeita a chave de silencioso e não interrompe outros áudios).
 - As fotos do Lula e do Flávio também estão no catálogo do app (`ElectionCandidate13` e `22`), porque o app não enxerga o catálogo do widget.
 - **Dev Options:** "Reexibir Election Live What's New" e "Resetar Election Live What's New" (vale na próxima abertura do app).
@@ -347,7 +347,7 @@ Mais: nova tela de abertura, correções de layout em telas estreitas e deslizar
 ### Versão 13.1 (tela de resultados)
 
 - [x] Deploy do `472b4a7` (`details` e `officialResultsURL`), testes no aparelho, revisão e liberação em 03/10.
-- [ ] Eventos de analytics na tela de resultados (hoje nenhum): iniciar e parar a Live Activity por ali não aparece na contagem.
+- [x] Eventos de analytics na tela de resultados: feitos para a versão seguinte à 13.2 (ver "Tela de resultados").
 
 ### Teste no simulado (28 e 29/09, 14h às 16h)
 
@@ -378,7 +378,7 @@ Mais: nova tela de abertura, correções de layout em telas estreitas e deslizar
 
 ### Até o 2º turno
 
-- [ ] Evento de analytics na tela de resultados (`ElectionResultsView.toggleLiveActivity()`), numa versão que saia antes do dia 25.
+- [ ] Enviar a versão seguinte à 13.2 com folga (uns 10 dias antes do dia 25), com `previewVersions` e liberação manual. Ela traz o evento de analytics na tela de resultados e a data do 2º turno na tela de novidades, e precisa do deploy da API que conta a origem `ElectionResults`.
 - [ ] Tirar o papel de parede do iOS 27 (`ElectionStoriesWallpaper`, 859 KB) do app: ele foi para a loja na 13.2 só por causa da ferramenta de vídeo do Dev Options.
 - [ ] Espera progressiva depois de falhas no APNs.
 - [ ] Decidir o horário do "Atualizado às" para quem está fora do Brasil: hoje ele usa o fuso do aparelho (o arquivo das 18h09 apareceu como 22h09 em Lisboa), enquanto o TSE e o noticiário usam o horário de Brasília.
