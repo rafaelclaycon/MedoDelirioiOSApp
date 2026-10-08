@@ -125,6 +125,10 @@ curl -X POST -H 'Content-Type: application/json' -d '{"source":"replay","replayO
 # Cada volta termina com o push de fim, que encerra as Live Activities; a próxima volta precisa de uma nova.
 curl -s -X POST -H 'Content-Type: application/json' -d '{"source":"replay","replayOffline":true,"replayLoop":true,"replayLoopPauseMinutes":5,"replayStepSeconds":45,"replayDurationMinutes":15,"restartReplay":true,"broadcastMode":"live"}' https://<servidor>/api/v4/election/settings/<senha> | jq
 
+# Replay do 2º turno: os dois finalistas do simulado (57 e 89, candidatos de teste do TSE), com o 89 virando perto do fim
+# e terminando eleito com 50,83%. Mudar o round apaga o estado do turno anterior.
+curl -s -X POST -H 'Content-Type: application/json' -d '{"round":2,"source":"replay","replayOffline":true,"replayLoop":true,"replayLoopPauseMinutes":5,"replayDurationMinutes":30,"replayStepSeconds":60,"restartReplay":true,"broadcastMode":"live"}' https://<servidor>/api/v4/election/settings/<senha> | jq
+
 # Cores por número de urna (só para candidatos sem foto; sem cor, 1º vermelho e 2º azul)
 curl -X POST -H 'Content-Type: application/json' -d '{"candidateColors":{"55":"#1D4E89"}}' https://<servidor>/api/v4/election/settings/<senha>
 
@@ -219,7 +223,8 @@ Para a próxima versão, depois da 13. Enquanto a Live Activity é a espiada, es
 
 - **Como se chega:** pelo link `medodelirio://apuracao` (`DeepLink.electionResults`), que abre uma sheet no `MainView`. Tocar na Live Activity (`widgetURL` na Tela Bloqueada e na Dynamic Island) e o botão "Ver Resultados" do banner usam esse link. Se ele chegar com a tela de novidades aberta, os resultados abrem quando ela fechar (duas sheets não trocam no mesmo instante).
 - **Topo verde**, no estilo da Live Activity: "PRESIDENTE · 1º TURNO · AO VIVO" com o ponto vermelho (ou "RESULTADO"), o totalizado grande, a barra amarela, "X de Y seções", o horário com a fonte e a frase final.
-- **Todos os candidatos** (do `details`): posição, foto ou círculo com o número, nome (até duas linhas), partido, situação ("ELEITO"/"2º TURNO"), porcentagem, votos e barra. Votos anulados aparecem esmaecidos. A coluna da direita tem largura fixa (106 pt), para as barras terminarem no mesmo lugar.
+- **Para o 2º turno (versão seguinte à 13.3):** o topo verde virou um frente a frente dos dois primeiros, com o líder à esquerda (foto, porcentagem, nome, partido, votos e selo "ELEITO"/"2º TURNO"), uma barra dividida entre os dois com uma marca nos 50%, e o totalizado discreto embaixo. A lista de todos os candidatos saiu.
+- **Brancos, nulos e abstenção** (`details.turnout`, servidor a partir do commit que lê `e.te`, `e.c`, `e.a`, `v.tv`, `v.vb` e `v.tvn` do arquivo do TSE): três cartões no lugar da lista. Brancos e nulos sobre o total de votos, abstenção sobre o eleitorado, nas seções já apuradas. Sem o bloco (servidor antigo, campo estranho no arquivo), a seção não aparece.
 - **Ações:** "Acompanhar na Tela Bloqueada"/"Parar de Acompanhar", "Compartilhar" e "App do TSE".
 - **Atualização:** a cada 20 s com a tela aberta, e puxando para baixo. Se uma atualização falha, os últimos números ficam.
 - **Casos especiais:** "A apuração ainda não começou" (sem estado) e erro de conexão, com link para o app do TSE.
@@ -379,7 +384,7 @@ Mais: nova tela de abertura, correções de layout em telas estreitas e deslizar
 ### Até o 2º turno
 
 - [ ] Enviar a versão seguinte à 13.2 com folga (uns 10 dias antes do dia 25), com `previewVersions` e liberação manual. Ela traz o evento de analytics na tela de resultados e a data do 2º turno na tela de novidades, e precisa do deploy da API que conta a origem `ElectionResults`.
-- [ ] Tirar o papel de parede do iOS 27 (`ElectionStoriesWallpaper`, 859 KB) do app: ele foi para a loja na 13.2 só por causa da ferramenta de vídeo do Dev Options.
+- [x] Tirar o papel de parede do iOS 27 (`ElectionStoriesWallpaper`, 859 KB) do app: ele foi para a loja na 13.2 só por causa da ferramenta de vídeo do Dev Options. Agora a ferramenta pede o papel de parede na fototeca (versão seguinte à 13.3).
 - [ ] Espera progressiva depois de falhas no APNs.
 - [ ] Decidir o horário do "Atualizado às" para quem está fora do Brasil: hoje ele usa o fuso do aparelho (o arquivo das 18h09 apareceu como 22h09 em Lisboa), enquanto o TSE e o noticiário usam o horário de Brasília.
 
