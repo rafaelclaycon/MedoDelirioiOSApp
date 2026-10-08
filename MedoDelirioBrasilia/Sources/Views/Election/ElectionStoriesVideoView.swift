@@ -7,6 +7,7 @@
 
 import AVFoundation
 import CoreImage
+import PhotosUI
 import SwiftUI
 
 /// Dev Options tool: a 9:16 video for the app's Instagram Stories that looks like a Lock
@@ -18,6 +19,9 @@ struct ElectionStoriesVideoView: View {
 
     @State private var startedAt = Date.now
     @State private var laps = 1
+    /// Picked from the photo library each time, so the app doesn't ship a wallpaper.
+    @State private var wallpaperItem: PhotosPickerItem?
+    @State private var wallpaper: UIImage?
     @State private var exportProgress: Double?
     @State private var videoURL: URL?
     @State private var errorMessage: String?
@@ -28,13 +32,20 @@ struct ElectionStoriesVideoView: View {
                 GeometryReader { proxy in
                     let size = ElectionStoriesFrame.size
                     let scale = min(proxy.size.width / size.width, proxy.size.height / size.height)
-                    ElectionStoriesFrame(time: context.date.timeIntervalSince(startedAt))
+                    ElectionStoriesFrame(time: context.date.timeIntervalSince(startedAt), wallpaper: wallpaper)
                         .scaleEffect(scale, anchor: .topLeading)
                         .frame(width: size.width * scale, height: size.height * scale, alignment: .topLeading)
                         .clipShape(.rect(cornerRadius: 12))
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
+
+            PhotosPicker(selection: $wallpaperItem, matching: .images) {
+                Label(wallpaper == nil ? "Escolher Papel de Parede" : "Trocar Papel de Parede", systemImage: "photo")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .disabled(exportProgress != nil)
 
             Picker("Duração", selection: $laps) {
                 Text("1 volta (\(Int(ElectionStoriesTimeline.loopDuration)) s)").tag(1)
@@ -62,6 +73,14 @@ struct ElectionStoriesVideoView: View {
         .navigationTitle("Vídeo para Stories")
         .navigationBarTitleDisplayMode(.inline)
         .shareSheet(item: $videoURL, activityItems: { [$0] })
+        .task(id: wallpaperItem) {
+            guard let wallpaperItem else { return }
+            if let data = try? await wallpaperItem.loadTransferable(type: Data.self), let image = UIImage(data: data) {
+                wallpaper = image
+            } else {
+                errorMessage = "Não foi possível abrir essa imagem."
+            }
+        }
         .alert("Erro ao Exportar", isPresented: .constant(errorMessage != nil)) {
             Button("OK", role: .cancel) { errorMessage = nil }
         } message: {
@@ -73,7 +92,7 @@ struct ElectionStoriesVideoView: View {
         exportProgress = 0
         defer { exportProgress = nil }
         do {
-            videoURL = try await ElectionStoriesVideoExporter.export(laps: laps) { progress in
+            videoURL = try await ElectionStoriesVideoExporter.export(laps: laps, wallpaper: wallpaper) { progress in
                 exportProgress = progress
             }
         } catch {
@@ -89,6 +108,8 @@ struct ElectionStoriesVideoView: View {
 struct ElectionStoriesFrame: View {
 
     let time: TimeInterval
+    /// The Lock Screen wallpaper, picked from the photo library. A dark gradient without one.
+    var wallpaper: UIImage?
 
     /// An iPhone's width in points, at 9:16. Exported at 1080 × 1920, so the Live Activity
     /// shows life-size on a phone, with the room a real one has.
@@ -102,7 +123,7 @@ struct ElectionStoriesFrame: View {
         let frame = ElectionStoriesTimeline.frame(at: time)
 
         ZStack {
-            wallpaper
+            wallpaperBackground
 
             VStack(spacing: 0) {
                 // No Dynamic Island, flashlight or home indicator: the phone playing the
@@ -217,25 +238,40 @@ struct ElectionStoriesFrame: View {
         .shadow(color: ElectionPalette.bar.opacity(0.25), radius: 14)
     }
 
-    /// iOS 27's Gold wallpaper, darkened toward the bottom, as iOS does behind notifications,
-    /// and a little at the top so the white clock reads on the light wallpaper.
-    private var wallpaper: some View {
-        Image("ElectionStoriesWallpaper")
-            .resizable()
-            .scaledToFill()
-            .frame(width: Self.size.width, height: Self.size.height)
-            .overlay {
+    /// The picked wallpaper, darkened toward the bottom, as iOS does behind notifications,
+    /// and a little at the top so the white clock reads on a light wallpaper.
+    private var wallpaperBackground: some View {
+        Group {
+            if let image = wallpaper {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
                 LinearGradient(
-                    stops: [
-                        .init(color: .black.opacity(0.28), location: 0),
-                        .init(color: .black.opacity(0.08), location: 0.35),
-                        .init(color: .black.opacity(0.2), location: 0.5),
-                        .init(color: .black.opacity(0.6), location: 1)
+                    colors: [
+                        Color(red: 0.07, green: 0.08, blue: 0.22),
+                        Color(red: 0.20, green: 0.11, blue: 0.33),
+                        Color(red: 0.55, green: 0.24, blue: 0.36)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
             }
+        }
+        .frame(width: Self.size.width, height: Self.size.height)
+        .clipped()
+        .overlay {
+            LinearGradient(
+                stops: [
+                    .init(color: .black.opacity(0.28), location: 0),
+                    .init(color: .black.opacity(0.08), location: 0.35),
+                    .init(color: .black.opacity(0.2), location: 0.5),
+                    .init(color: .black.opacity(0.6), location: 1)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        }
     }
 }
 
@@ -384,7 +420,7 @@ enum ElectionStoriesVideoExporter {
 
     /// Renders every frame with `ImageRenderer` and writes an H.264 MP4, 1080 × 1920.
     @MainActor
-    static func export(laps: Int, progress: (Double) -> Void) async throws -> URL {
+    static func export(laps: Int, wallpaper: UIImage?, progress: (Double) -> Void) async throws -> URL {
         let size = ElectionStoriesFrame.exportSize
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("Apuracao-ao-Vivo-Stories.mp4")
         try? FileManager.default.removeItem(at: url)
@@ -416,7 +452,7 @@ enum ElectionStoriesVideoExporter {
             while !input.isReadyForMoreMediaData {
                 try await Task.sleep(for: .milliseconds(5))
             }
-            let renderer = ImageRenderer(content: ElectionStoriesFrame(time: Double(index) / Double(fps)))
+            let renderer = ImageRenderer(content: ElectionStoriesFrame(time: Double(index) / Double(fps), wallpaper: wallpaper))
             renderer.scale = size.width / ElectionStoriesFrame.size.width
             guard let image = renderer.cgImage, let pool = adaptor.pixelBufferPool else {
                 writer.cancelWriting()
