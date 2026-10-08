@@ -346,6 +346,7 @@ struct DevOptionsView: View {
     @State private var supportSheetPreviewContext: StandaloneSupportView.Context?
     @State private var showTipsResetConfirmation: Bool = false
     @State private var showElectionLiveWhatsNewResetConfirmation: Bool = false
+    @State private var showElectionResults: Bool = false
     @State private var isGeneratingReactionsExport: Bool = false
     @State private var reactionsExportURL: URL?
     @State private var reactionsExportError: String?
@@ -374,6 +375,11 @@ struct DevOptionsView: View {
 
                 NavigationLink("Vídeo da Apuração ao Vivo para Stories") {
                     ElectionStoriesVideoView()
+                }
+
+                // Same screen people open from the Live Activity, with the server's current data.
+                Button("Exibir Tela de Resultados da Apuração") {
+                    showElectionResults = true
                 }
 
                 Button("Resetar Election Live What's New") {
@@ -456,6 +462,9 @@ struct DevOptionsView: View {
         .navigationTitle("Dev Options")
         .sheet(item: $supportSheetPreviewContext) { context in
             StandaloneSupportView(context: context)
+        }
+        .sheet(isPresented: $showElectionResults) {
+            ElectionResultsView()
         }
         .alert("Election Live What's New resetado", isPresented: $showElectionLiveWhatsNewResetConfirmation) {
             Button("OK", role: .cancel) {}
