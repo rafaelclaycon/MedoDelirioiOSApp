@@ -41,8 +41,6 @@ struct MainView: View {
 
     @State private var subviewToOpen: MainViewModalToOpen = .onboarding
     @State private var showingModalView: Bool = false
-    @State private var showTranscriptsWhatsNew: Bool = false
-    @State private var showShareClipWhatsNew: Bool = false
     @State private var showElectionLiveWhatsNew: Bool = false
     @State private var showElectionResults: Bool = false
     /// A sheet can't open while another one is leaving, so a results link that arrives
@@ -582,12 +580,9 @@ struct MainView: View {
             sendUserPersonalTrendsToServerIfEnabled()
             sendPlayLogsToServerIfEnabled()
             displayOnboardingIfNeeded()
-            // Only one "what's new" sheet can be presented at a time, so these
-            // are mutually exclusive per app open — the newest feature takes
-            // priority and the others catch up on later opens.
-            if !displayElectionLiveWhatsNewIfNeeded() && !displayShareClipWhatsNewIfNeeded() {
-                displayTranscriptsWhatsNewIfNeeded()
-            }
+            // The election is the only "what's new" shown on launch. The Share Clip and
+            // Transcripts ones are off; Dev Options can still show them.
+            displayElectionLiveWhatsNewIfNeeded()
 
             Task {
 //                if AppPersistentMemory.shared.hasAllowedContentUpdate() {
@@ -672,11 +667,6 @@ struct MainView: View {
         }
         .sheet(isPresented: $isShowingSupportSheet) {
             StandaloneSupportView()
-        }
-        .sheet(isPresented: $showShareClipWhatsNew, onDismiss: {
-            AppPersistentMemory.shared.hasSeenShareClipWhatsNewScreen(true)
-        }) {
-            IntroducingShareClipView(appMemory: AppPersistentMemory.shared)
         }
         .sheet(isPresented: $showElectionResults) {
             ElectionResultsView()
@@ -882,13 +872,6 @@ struct MainView: View {
         }
     }
 
-    private func displayTranscriptsWhatsNewIfNeeded() {
-        guard AppPersistentMemory.shared.hasShownNotificationsOnboarding() else { return }
-        guard !AppPersistentMemory.shared.hasSeenTranscriptsWhatsNewScreen() else { return }
-
-        showTranscriptsWhatsNew = true
-    }
-
     @discardableResult
     private func displayElectionLiveWhatsNewIfNeeded() -> Bool {
         guard AppPersistentMemory.shared.hasShownNotificationsOnboarding() else { return false }
@@ -896,15 +879,6 @@ struct MainView: View {
         guard Date.now < IntroducingElectionLiveView.lastDayToShow else { return false }
 
         showElectionLiveWhatsNew = true
-        return true
-    }
-
-    @discardableResult
-    private func displayShareClipWhatsNewIfNeeded() -> Bool {
-        guard AppPersistentMemory.shared.hasShownNotificationsOnboarding() else { return false }
-        guard !AppPersistentMemory.shared.hasSeenShareClipWhatsNewScreen() else { return false }
-
-        showShareClipWhatsNew = true
         return true
     }
 

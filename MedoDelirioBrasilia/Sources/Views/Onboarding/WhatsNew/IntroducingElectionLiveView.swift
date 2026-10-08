@@ -104,10 +104,12 @@ struct IntroducingElectionLiveView: View {
                             message: "Os números vêm direto da divulgação oficial do Tribunal Superior Eleitoral."
                         )
 
+                        // The 1st round (October 4) is over: anyone seeing this now, like
+                        // someone who just installed the app, needs the 2nd round's date.
                         featureItem(
                             icon: "calendar",
-                            title: "4 de Outubro, às 17h de Brasília",
-                            message: "Um banner aparece no topo das Vírgulas quando a apuração começar. Se tiver 2º turno, dia 25 tem de novo."
+                            title: "2º Turno: 25 de Outubro, às 17h",
+                            message: "Lula e Flávio Bolsonaro. Um banner aparece no topo das Vírgulas quando a apuração começar, no horário de Brasília."
                         )
                     }
                     .padding(.top, 16)
