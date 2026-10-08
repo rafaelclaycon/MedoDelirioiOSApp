@@ -221,12 +221,16 @@ struct ElectionResultsView: View {
         isWorking = true
         defer { isWorking = false }
 
+        // Same events as the election banner, from this screen, so the server's analytics
+        // count people who start and stop here too.
         let manager = ElectionLiveActivityManager.shared
         if isRunning {
             await manager.endAll()
+            await AnalyticsService().send(originatingScreen: "ElectionResults", action: "election_live_activity_stopped")
         } else {
             do {
                 try await manager.start()
+                await AnalyticsService().send(originatingScreen: "ElectionResults", action: "election_live_activity_started")
             } catch ElectionLiveActivityManager.StartError.activitiesDisabled {
                 showActivitiesDisabledAlert = true
             } catch {
