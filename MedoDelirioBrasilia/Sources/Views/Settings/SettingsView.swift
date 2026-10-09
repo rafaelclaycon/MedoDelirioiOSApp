@@ -377,7 +377,8 @@ struct DevOptionsView: View {
                     ElectionStoriesVideoView()
                 }
 
-                // Same screen people open from the Live Activity, with the server's current data.
+                // Same screen people open from the Live Activity, with the server's current data
+                // or a made-up final result, picked in its toolbar.
                 Button("Exibir Tela de Resultados da Apuração") {
                     showElectionResults = true
                 }
@@ -464,7 +465,7 @@ struct DevOptionsView: View {
             StandaloneSupportView(context: context)
         }
         .sheet(isPresented: $showElectionResults) {
-            ElectionResultsView()
+            ElectionResultsView(showsDemoPicker: true)
         }
         .alert("Election Live What's New resetado", isPresented: $showElectionLiveWhatsNewResetConfirmation) {
             Button("OK", role: .cancel) {}

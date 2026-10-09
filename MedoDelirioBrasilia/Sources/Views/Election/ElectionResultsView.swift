@@ -12,10 +12,16 @@ import SwiftUI
 /// come for the rest: every candidate, votes, a card to share and the TSE's own app.
 struct ElectionResultsView: View {
 
+    /// A menu in the toolbar to swap the server's numbers for a made-up final result, from
+    /// Dev Options.
+    let showsDemoPicker: Bool
+
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var info: ElectionLiveInfo?
+    @State private var demo: ElectionResultsDemo
     @State private var loadFailed = false
     @State private var isRunning = ElectionLiveActivityManager.shared.isRunning
     @State private var isWorking = false
@@ -24,10 +30,32 @@ struct ElectionResultsView: View {
     /// The count at the moment "Compartilhar Imagem" was tapped.
     @State private var shareSnapshot: ElectionShareSnapshot?
     @State private var toast: Toast?
+    @State private var confettiBursts: [ElectionConfettiBurst] = []
+    @State private var haptics = ElectionFireworksHaptics()
 
     /// The server takes a new TSE file every 10 s; 20 s keeps the screen current without
     /// hammering it while someone leaves it open all night.
     private static let refreshInterval: Duration = .seconds(20)
+
+    init(showsDemoPicker: Bool = false, demo: ElectionResultsDemo = .server) {
+        self.showsDemoPicker = showsDemoPicker
+        _demo = State(initialValue: demo)
+    }
+
+    /// The made-up result when one is picked, otherwise the server's.
+    private var displayedInfo: ElectionLiveInfo? {
+        demo.info ?? info
+    }
+
+    /// Only from the demo for now; the server will send it with the final message.
+    private var theme: ElectionFinalTheme? {
+        demo.theme
+    }
+
+    /// Starts the party once there are numbers to celebrate.
+    private var isCelebrating: Bool {
+        theme == .celebration && displayedInfo?.state != nil
+    }
 
     // MARK: - View Body
 
@@ -35,8 +63,11 @@ struct ElectionResultsView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: .spacing(.large)) {
-                    if let info, let state = info.state {
-                        ElectionResultsHeader(round: info.round, state: state, details: info.details)
+                    if let info = displayedInfo, let state = info.state {
+                        ElectionResultsHeader(round: info.round, state: state, details: info.details, theme: theme) { location in
+                            guard !reduceMotion else { return }
+                            fireConfetti(.pop(at: location))
+                        }
 
                         actions(info: info, state: state)
 
@@ -48,7 +79,7 @@ struct ElectionResultsView: View {
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
-                    } else if info != nil {
+                    } else if displayedInfo != nil {
                         placeholder(
                             symbol: "clock",
                             title: "A apuração ainda não começou",
@@ -88,6 +119,19 @@ struct ElectionResultsView: View {
                         dismiss()
                     }
                 }
+                if showsDemoPicker {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Menu {
+                            Picker("Dados", selection: $demo) {
+                                ForEach(ElectionResultsDemo.allCases) { demo in
+                                    Text(demo.title).tag(demo)
+                                }
+                            }
+                        } label: {
+                            Label("Dados", systemImage: "slider.horizontal.3")
+                        }
+                    }
+                }
             }
             .task {
                 while !Task.isCancelled {
@@ -121,6 +165,23 @@ struct ElectionResultsView: View {
             } message: {
                 Text(startErrorMessage ?? "")
             }
+        }
+        // Over the navigation bar too, from the real corners of the screen.
+        .overlay {
+            ElectionConfettiView(bursts: confettiBursts)
+                .ignoresSafeArea()
+        }
+        .task(id: isCelebrating) {
+            guard isCelebrating else { return }
+            // Let the sheet finish coming up first.
+            try? await Task.sleep(for: .seconds(0.4))
+            guard !Task.isCancelled else { return }
+            haptics.play()
+            guard !reduceMotion else { return }
+            fireConfetti(.celebration())
+            try? await Task.sleep(for: .seconds(1.8))
+            guard !Task.isCancelled else { return }
+            fireConfetti(.celebration())
         }
     }
 
@@ -184,6 +245,14 @@ struct ElectionResultsView: View {
 
     // MARK: - Functions
 
+    private func fireConfetti(_ burst: ElectionConfettiBurst) {
+        confettiBursts.append(burst)
+        Task {
+            try? await Task.sleep(for: .seconds(ElectionConfettiBurst.lifetime))
+            confettiBursts.removeAll { $0.id == burst.id }
+        }
+    }
+
     private func load() async {
         do {
             info = try await APIClient.shared.electionLiveInfo()
@@ -231,6 +300,14 @@ struct ElectionResultsHeader: View {
     let round: Int
     let state: ElectionActivityAttributes.ContentState
     let details: ElectionLiveDetails?
+    var theme: ElectionFinalTheme? = nil
+    /// A tap on the winner's photo during the celebration, in global coordinates.
+    var onWinnerPhotoTap: ((CGPoint) -> Void)? = nil
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// The card goes from green to night blue for the comfort theme.
+    @State private var hasNightFallen = false
 
     /// One side of the duel, from `details` when the server sent it (it has the votes),
     /// otherwise from the Live Activity state.
@@ -296,21 +373,64 @@ struct ElectionResultsHeader: View {
         .foregroundStyle(.white)
         .frame(maxWidth: .infinity)
         .padding(.spacing(.large))
-        .background(
-            LinearGradient(
-                colors: [ElectionResultsPalette.header, ElectionResultsPalette.body],
-                startPoint: .top,
-                endPoint: .bottom
-            ),
-            in: .rect(cornerRadius: 24)
-        )
+        .background {
+            ZStack {
+                LinearGradient(
+                    colors: [ElectionResultsPalette.header, ElectionResultsPalette.body],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                LinearGradient(
+                    colors: [ElectionResultsPalette.nightTop, ElectionResultsPalette.nightBottom],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .opacity(hasNightFallen ? 1 : 0)
+                if hasNightFallen {
+                    ElectionNightSkyView()
+                }
+            }
+            .clipShape(.rect(cornerRadius: 24))
+        }
         .padding(.top, .spacing(.small))
         .accessibilityElement(children: .combine)
+        .task(id: theme) {
+            let falls = theme == .comfort
+            if falls && !reduceMotion {
+                // A moment on the result before the night comes.
+                try? await Task.sleep(for: .seconds(0.8))
+                guard !Task.isCancelled else { return }
+            }
+            withAnimation(reduceMotion ? nil : .easeInOut(duration: 3)) {
+                hasNightFallen = falls
+            }
+        }
+    }
+
+    /// The leader, when the result is being celebrated.
+    private func isWinner(_ side: Side) -> Bool {
+        theme == .celebration && side.number == sides.first?.number
     }
 
     private func sideView(_ side: Side) -> some View {
-        VStack(spacing: 6) {
+        let isWinner = isWinner(side)
+        let isDimmed = theme == .celebration && !isWinner
+        let pulses = isWinner && !reduceMotion
+        return VStack(spacing: 6) {
             ElectionCandidatePhoto(number: side.number, colorHex: side.colorHex, size: 76)
+                .phaseAnimator(pulses ? [false, true] : [false]) { photo, glowing in
+                    photo.shadow(
+                        color: ElectionResultsPalette.bar.opacity(isWinner ? (glowing ? 0.9 : 0.35) : 0),
+                        radius: glowing ? 16 : 6
+                    )
+                } animation: { _ in
+                    .easeInOut(duration: 0.9)
+                }
+                .onTapGesture(coordinateSpace: .global) { location in
+                    if isWinner {
+                        onWinnerPhotoTap?(location)
+                    }
+                }
             Text(ElectionResultsFormat.percent(side.percent))
                 .font(.system(size: 30, weight: .bold, design: .rounded))
                 .monospacedDigit()
@@ -332,12 +452,17 @@ struct ElectionResultsHeader: View {
             }
             if side.status == .elected {
                 Text("ELEITO")
-                    .font(.caption2)
+                    .font(isWinner ? .footnote : .caption2)
                     .fontWeight(.heavy)
                     .foregroundStyle(ElectionResultsPalette.header)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
                     .background(ElectionResultsPalette.bar, in: .capsule)
+                    .phaseAnimator(pulses ? [false, true] : [false]) { badge, big in
+                        badge.scaleEffect(big ? 1.15 : 1)
+                    } animation: { _ in
+                        .easeInOut(duration: 0.6)
+                    }
             } else if side.status == .runoff {
                 Text("2º TURNO")
                     .font(.caption2)
@@ -347,6 +472,9 @@ struct ElectionResultsHeader: View {
                     .background(.white.opacity(0.2), in: .capsule)
             }
         }
+        .opacity(isDimmed ? 0.5 : 1)
+        .saturation(isDimmed ? 0 : 1)
+        .animation(.easeInOut(duration: 1.2), value: isDimmed)
     }
 
     /// "Lula à frente por 285.671 votos (1,68 ponto)". Votes only when the server sent them.
@@ -570,6 +698,9 @@ enum ElectionResultsPalette {
     static let body = Color(red: 0.06, green: 0.29, blue: 0.16)
     static let bar = Color(red: 1, green: 0.84, blue: 0)
     static let accent = Color(red: 0.13, green: 0.55, blue: 0.29)
+    /// The card at night, for the comfort theme.
+    static let nightTop = Color(red: 0.04, green: 0.06, blue: 0.15)
+    static let nightBottom = Color(red: 0.10, green: 0.14, blue: 0.27)
 }
 
 enum ElectionResultsFormat {
@@ -590,8 +721,112 @@ enum ElectionResultsFormat {
     }
 }
 
+// MARK: - Demo
+
+/// Made-up final results for the 2nd round, to see the celebration and the comfort without
+/// waiting for the TSE. Same numbers both ways, swapped.
+enum ElectionResultsDemo: String, CaseIterable, Identifiable {
+    case server
+    case lulaWins
+    case flavioWins
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .server: "Dados do Servidor"
+        case .lulaWins: "Lula Venceu"
+        case .flavioWins: "Flávio Venceu"
+        }
+    }
+
+    var theme: ElectionFinalTheme? {
+        switch self {
+        case .server: nil
+        case .lulaWins: .celebration
+        case .flavioWins: .comfort
+        }
+    }
+
+    var info: ElectionLiveInfo? {
+        switch self {
+        case .server: nil
+        case .lulaWins: Self.lulaWinsInfo
+        case .flavioWins: Self.flavioWinsInfo
+        }
+    }
+
+    private static let lulaWinsInfo = makeInfo(
+        winner: (13, "LULA", "PT"),
+        loser: (22, "FLAVIO BOLSONARO", "PL"),
+        finalMessage: "A esperança venceu o medo. E o delírio."
+    )
+
+    private static let flavioWinsInfo = makeInfo(
+        winner: (22, "FLAVIO BOLSONARO", "PL"),
+        loser: (13, "LULA", "PT"),
+        finalMessage: "59.350.440 pessoas votaram como você. Ninguém solta a mão de ninguém."
+    )
+
+    private static func makeInfo(
+        winner: (number: Int, name: String, party: String),
+        loser: (number: Int, name: String, party: String),
+        finalMessage: String
+    ) -> ElectionLiveInfo {
+        let winnerVotes = 61_354_136
+        let loserVotes = 59_350_440
+        let validVotes = winnerVotes + loserVotes
+        let blankVotes = 1_902_118
+        let nullVotes = 3_811_406
+        let totalVotes = validVotes + blankVotes + nullVotes
+        let electorate = 155_912_680
+        let winnerPercent = Double(winnerVotes) / Double(validVotes) * 100
+        let loserPercent = Double(loserVotes) / Double(validVotes) * 100
+
+        let state = ElectionActivityAttributes.ContentState(
+            sectionsCountedPercent: 100,
+            isFinal: true,
+            updatedAt: Date.now.timeIntervalSince1970,
+            candidates: [
+                .init(number: winner.number, name: winner.name, party: winner.party, percent: winnerPercent, status: .elected, colorHex: nil),
+                .init(number: loser.number, name: loser.name, party: loser.party, percent: loserPercent, status: .notElected, colorHex: nil),
+            ],
+            finalMessage: finalMessage
+        )
+        let details = ElectionLiveDetails(
+            sectionsCounted: 528_951,
+            sectionsTotal: 528_951,
+            validVotes: validVotes,
+            candidates: [
+                .init(number: winner.number, name: winner.name, party: winner.party, votes: winnerVotes, percent: winnerPercent, status: .elected, colorHex: nil, hasValidVotes: true),
+                .init(number: loser.number, name: loser.name, party: loser.party, votes: loserVotes, percent: loserPercent, status: .notElected, colorHex: nil, hasValidVotes: true),
+            ],
+            turnout: .init(
+                electorate: electorate,
+                attended: totalVotes,
+                abstentions: electorate - totalVotes,
+                abstentionPercent: Double(electorate - totalVotes) / Double(electorate) * 100,
+                totalVotes: totalVotes,
+                blankVotes: blankVotes,
+                blankPercent: Double(blankVotes) / Double(totalVotes) * 100,
+                nullVotes: nullVotes,
+                nullPercent: Double(nullVotes) / Double(totalVotes) * 100
+            )
+        )
+        return ElectionLiveInfo(enabled: true, channelId: nil, round: 2, state: state, details: details, officialResultsURL: nil)
+    }
+}
+
 // MARK: - Preview
 
 #Preview("Results") {
     ElectionResultsView()
+}
+
+#Preview("Lula Wins") {
+    ElectionResultsView(showsDemoPicker: true, demo: .lulaWins)
+}
+
+#Preview("Flávio Wins") {
+    ElectionResultsView(showsDemoPicker: true, demo: .flavioWins)
 }
