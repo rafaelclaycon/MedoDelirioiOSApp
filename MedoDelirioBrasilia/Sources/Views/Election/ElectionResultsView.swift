@@ -82,9 +82,10 @@ struct ElectionResultsView: View {
                             ElectionTurnoutSection(turnout: turnout, isFinal: state.isFinal)
                         }
 
+                        // A step stronger than the usual secondary gray: it vouches for the numbers.
                         Text("Os números são os divulgados pelo Tribunal Superior Eleitoral, sem nenhuma alteração.")
                             .font(.footnote)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.primary.opacity(0.8))
                             .multilineTextAlignment(.center)
                     } else if displayedInfo != nil {
                         placeholder(
