@@ -73,6 +73,8 @@ struct MainView: View {
     @State private var episodeListenStore = EpisodeListenStore()
     @State private var episodesBadgeStore = EpisodesBadgeStore()
     @State private var episodePopularityStore = EpisodePopularityStore()
+    /// Created on first appear, since it needs the stores above.
+    @State private var episodeStateCloudSync: EpisodeStateCloudSync?
     @State private var showNowPlaying = false
     /// Set once the Now Playing bar's share preview is ready; the share sheet shows,
     /// anchored to the bar, while it's non-nil.
@@ -576,6 +578,7 @@ struct MainView: View {
             episodePlayer.analyticsService = AnalyticsService()
             episodePlayer.chapterDownloadService = chapterDownloadService
             episodeBookmarkStore.analyticsService = AnalyticsService()
+            startEpisodeStateCloudSyncIfNeeded()
             logger.debug("MainView appeared")
             sendUserPersonalTrendsToServerIfEnabled()
             sendPlayLogsToServerIfEnabled()
@@ -612,6 +615,14 @@ struct MainView: View {
         }
         .onChange(of: scenePhase) { _, newPhase in
             episodePlayer.setSceneActive(newPhase == .active)
+            // Coming back picks up what other devices changed meanwhile (and anything
+            // missed while sync was off in Settings). Leaving sends what changed here,
+            // right away rather than scheduled, while the app still gets to run.
+            if newPhase == .active {
+                episodeStateCloudSync?.requestSync()
+            } else if newPhase == .background {
+                episodeStateCloudSync?.sync()
+            }
             if newPhase == .active {
                 episodesBadgeStore.recompute()
 
@@ -863,6 +874,21 @@ struct MainView: View {
             guard result == .successful || result == .noLogsToSend else { return }
             AppPersistentMemory.shared.setLastSendDateOfPlayLogsToServer(to: todayDate)
         }
+    }
+
+    private func startEpisodeStateCloudSyncIfNeeded() {
+        guard episodeStateCloudSync == nil else { return }
+        let sync = EpisodeStateCloudSync(
+            progressStore: episodeProgressStore,
+            playedStore: episodePlayedStore
+        )
+        let player = episodePlayer
+        sync.isEpisodeActive = { [weak player] episodeID in
+            player?.currentEpisode?.id == episodeID
+        }
+        episodePlayer.cloudSync = sync
+        episodeStateCloudSync = sync
+        sync.start()
     }
 
     private func displayOnboardingIfNeeded() {

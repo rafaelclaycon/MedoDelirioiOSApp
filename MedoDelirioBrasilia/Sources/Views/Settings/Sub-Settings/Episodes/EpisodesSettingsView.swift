@@ -15,6 +15,7 @@ struct EpisodesSettingsView: View {
     @AppStorage(ChapterPreferences.coverageStartKey)
     private var coverageStartRaw: String = ChapterPreferences.defaultCoverageStart
     @State private var autoDeletePlayed: Bool = UserSettings().getAutoDeletePlayedEpisodes()
+    @State private var iCloudSync: Bool = UserSettings().getEnableICloudEpisodeSync()
 
     /// Parsed from the synced `yyyy-MM-dd` value and rendered in the device's
     /// locale. Falls back to the raw string if the server ever sends something
@@ -35,6 +36,15 @@ struct EpisodesSettingsView: View {
                     }
             } footer: {
                 Text("Quando ativado, o arquivo de cada episódio será apagado automaticamente após ser ouvido por completo.")
+            }
+
+            Section {
+                Toggle("Sincronizar com o iCloud", isOn: $iCloudSync)
+                    .onChange(of: iCloudSync) {
+                        UserSettings().setEnableICloudEpisodeSync(to: iCloudSync)
+                    }
+            } footer: {
+                Text("Mantém sincronizados o ponto onde você parou em cada episódio e os episódios finalizados em todos os seus aparelhos com a mesma Conta Apple.")
             }
 
             chaptersSection

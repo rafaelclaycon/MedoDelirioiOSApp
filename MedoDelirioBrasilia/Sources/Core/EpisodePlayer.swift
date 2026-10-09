@@ -68,6 +68,7 @@ final class EpisodePlayer {
     @ObservationIgnored var playedStore: EpisodePlayedStore?
     @ObservationIgnored var analyticsService: AnalyticsServiceProtocol?
     @ObservationIgnored var chapterDownloadService: ChapterDownloadService?
+    @ObservationIgnored var cloudSync: EpisodeStateCloudSync?
 
     /// Set to `true` when a bookmark is added from the lock screen remote command.
     /// Observed by `MainView` to auto-open the Now Playing screen.
@@ -501,6 +502,9 @@ final class EpisodePlayer {
         guard let episode = currentEpisode, playbackTime > 0, duration > 0 else { return }
         progressStore?.save(episodeID: episode.id, currentTime: playbackTime, duration: duration)
         lastProgressSaveTime = Date()
+        // Pausing, stopping and leaving the app are the moments worth sending to the
+        // user's other devices. The throttled saves during playback aren't.
+        cloudSync?.requestSync()
     }
 
     @MainActor
