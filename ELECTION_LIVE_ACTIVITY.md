@@ -172,6 +172,57 @@ while true; do curl -s https://<servidor>/api/v4/election/status/<senha> | pytho
 
 A penúltima coluna é o motivo do **último** push, não um push por linha: ela só muda quando sai um push novo. Um `JSONDecodeError` do Python durante um deploy é a página de erro do nginx, não problema do servidor.
 
+#### Serviço nos servidores (systemd)
+
+Os dois servidores rodam a API como o serviço `medo-delirio-api` do systemd, que reinicia sozinho se o processo cair e sobe no boot. O `.com` foi migrado do `screen` em agosto, e o `.club` em 08/10 (usuário `root`, pasta `/root/medo-delirio-api`).
+
+O arquivo do `.club` (`/etc/systemd/system/medo-delirio-api.service`):
+
+```ini
+[Unit]
+Description=Medo e Delírio API
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/medo-delirio-api
+ExecStart=/root/medo-delirio-api/.build/release/Run serve --hostname 0.0.0.0 --env production
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+- **Sem `EnvironmentFile`.** O Vapor lê o `.env` da pasta de trabalho sozinho. Com `EnvironmentFile`, o systemd interpreta as barras invertidas do `.env`, e os `\n` da `APNS_PRIVATE_KEY` deixam de ser `\n`. Como o Vapor não sobrescreve uma variável que já existe, a chave chega estragada e o servidor cai no boot com `JWTKit error: signing algorithm error: bioConversionFailure`, reiniciando em loop (nginx responde 502). Foi o que aconteceu na migração do `.club`.
+- **Variáveis só no `.env`.** O serviço não herda nada do terminal: uma variável que antes ia na linha do `screen` (como `ELECTION_POLLING_ENABLED=true`) precisa estar no `.env`.
+
+**Migrar um servidor do `screen` para o serviço:**
+
+1. Ler como ele roda hoje: `pgrep -af 'Run serve'` (comando e PID), `ps -o user= -p <PID>` (usuário), `sudo readlink /proc/<PID>/cwd` (pasta).
+2. Conferir as variáveis do processo contra o `.env`: `sudo cat /proc/<PID>/environ | tr '\0' '\n' | cut -d= -f1` e `grep -oE '^[A-Z_]+' <pasta>/.env`. O que faltar no `.env` vai para lá.
+3. Criar o arquivo acima com o usuário, a pasta e o comando do passo 1, e rodar `sudo systemctl daemon-reload` e `sudo systemctl enable medo-delirio-api`.
+4. Parar o `screen` (`screen -ls`, `screen -S <nome> -X quit`), conferir que `pgrep -af 'Run serve'` não mostra nada, e `sudo systemctl start medo-delirio-api`.
+5. Conferir: `systemctl status medo-delirio-api --no-pager` (`active (running)`, sem o contador de reinícios subindo) e o `status-check` respondendo 200.
+
+**No dia a dia:**
+
+```bash
+# Deploy: compila com o servidor no ar e só reinicia no fim
+cd <pasta> && git pull && swift build -c release && sudo systemctl restart medo-delirio-api
+
+# Logs ao vivo (antes ficavam dentro do screen)
+journalctl -u medo-delirio-api -f
+
+# Pushes e arquivos do TSE de uma noite, para medir a cadência
+journalctl -u medo-delirio-api --since "2026-10-04 20:00" | grep -E 'Election push|Election poll: generation'
+
+# Parar e subir
+sudo systemctl stop medo-delirio-api
+sudo systemctl start medo-delirio-api
+```
+
 #### Rodar localmente
 
 Banco em memória e sem APNs, não precisa das chaves de produção:
@@ -419,6 +470,7 @@ Mais: nova tela de abertura, correções de layout em telas estreitas e deslizar
 - A CDN do TSE às vezes derruba conexões keep-alive ociosas; o retry imediato no `get` cobre isso.
 - `broadcastMode` começa em `dryRun`: se a activity não atualizar num teste, o primeiro suspeito é ter esquecido `"broadcastMode":"live"`.
 - Uma variável de ambiente faltando derruba a API inteira (`fatalError` em `ReleaseConfigs`), não só a eleição. Conferir o `.env` antes de chamar rotas com senha.
+- O `EnvironmentFile` do systemd não lê o `.env` como o Vapor: ele interpreta as barras invertidas e estragou a chave do APNs na migração do `.club` (08/10). O serviço não usa `EnvironmentFile`; o Vapor lê o `.env` sozinho.
 - O site do TSE (e o DivulgaCandContas) bloqueia clientes que não sejam navegador: `curl` recebe 403.
 - O primeiro arquivo do oficial não marca o começo da contagem: o arquivo de 0% sai na véspera. Ligar o banner cedo demais gasta as 8 horas da Live Activity e mostra "Atualização atrasada" depois de 15 minutos sem push. O sinal é a % passar de zero.
 - Não instalar pacotes no servidor durante a apuração: o `needrestart` reinicia serviços sozinho, e reiniciou o nginx.
