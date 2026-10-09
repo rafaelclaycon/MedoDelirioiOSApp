@@ -142,6 +142,13 @@ extension UserSettings {
         return Bool(value as! Bool)
     }
 
+    func getEnableICloudEpisodeSync() -> Bool {
+        guard let value = userDefaults.object(forKey: "enableICloudEpisodeSync") else {
+            return true
+        }
+        return Bool(value as! Bool)
+    }
+
     func getWeeklyHighlightsOptedOut() -> Bool {
         guard let value = userDefaults.object(forKey: "weeklyHighlightsOptedOut") else {
             return false
@@ -216,6 +223,10 @@ extension UserSettings {
 
     func setAutoDeletePlayedEpisodes(to newValue: Bool) {
         userDefaults.set(newValue, forKey: "autoDeletePlayedEpisodes")
+    }
+
+    func setEnableICloudEpisodeSync(to newValue: Bool) {
+        userDefaults.set(newValue, forKey: "enableICloudEpisodeSync")
     }
 
     func setWeeklyHighlightsOptedOut(to newValue: Bool) {
