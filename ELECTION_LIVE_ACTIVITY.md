@@ -4,7 +4,7 @@ Resumo do trabalho feito até 04/10/2026, o dia do 1º turno, e do que falta par
 
 ## Situação em 04/10
 
-- **1º turno feito.** A Live Activity acompanhou a apuração no `.com` do começo ao fim, espelhando o site do TSE. Pelo menos 1.905 instalações iniciaram pelo banner, entre 9% e 13% delas fora do Brasil (ver "1º turno (04/10)"). **Vai ter 2º turno, dia 25/10.**
+- **1º turno feito.** A Live Activity acompanhou a apuração no `.com` do começo ao fim, espelhando o site do TSE. Pelo menos 1.905 instalações iniciaram pelo banner, entre 9% e 13% delas fora do Brasil (ver "1º turno (04/10)"). **Vai ter 2º turno, dia 25/10, entre Lula (13) e Flávio Bolsonaro (22).**
 - **Na loja:** a 13.1 (tela de resultados, cartão para compartilhar e link do TSE) saiu em 03/10, e a 13.2 foi aprovada em 04/10. A 13.0 também tem a Live Activity.
 - **Servidor:** fonte `official`, round 1, `live`, `enabled` ligado. Tudo do 1º turno está no ar, menos o endpoint de analytics (`c68eff0`), que fica para o deploy de 05/10.
 - **Próximo passo, 05/10:** desligar o banner, voltar a `dryRun` e fazer o deploy do endpoint (ver "O que falta").
@@ -65,7 +65,7 @@ Commits `04a37b1` (parser e replay), `3d3d037` (poller e endpoints), `463526b` (
 - `Services/ElectionPollingService.swift`: loop a cada 10s com `If-None-Match`. Ignora 304 e `idg` repetido. Depois de um 404, esquece a URL e só consulta o `ele-c.json` de novo após 60s. Outros erros: espera de 60s. Um retry imediato quando a CDN derruba a conexão keep-alive (`remoteConnectionClosed`).
 - `Services/APNsBroadcastClient.swift`: HTTP/2 direto para a APNs (o APNSwift 4.0.1 não tem Live Activity nem broadcast), com JWT ES256 assinado pela mesma chave `.p8` e reaproveitado por 50 min. Envia broadcast (`POST /4/broadcasts/apps/<bundle>`), cria e lista canais (Channel Management API, portas 2195/2196). O ambiente segue o `APNS_ENVIRONMENT`.
 - `Controllers/ElectionController.swift` e rotas:
-  - `GET api/v4/election/live?bundleId=<bundle>`: pública, usada pelo app. O `channelId` é o do bundle pedido (sem `bundleId`, o de prod; sem fallback do beta para o de prod, porque um canal só serve para o app dele). Também traz `details` (todos os candidatos, com votos, e as seções; `ElectionLiveDetails`, fora do payload do push, que tem limite de 5 KB) e `officialResultsURL` (o link "App do TSE" do app). Apps antigos ignoram os dois (`472b4a7`).
+  - `GET api/v4/election/live?bundleId=<bundle>`: pública, usada pelo app. O `channelId` é o do bundle pedido (sem `bundleId`, o de prod; sem fallback do beta para o de prod, porque um canal só serve para o app dele). Também traz `details` (todos os candidatos, com votos, e as seções; `ElectionLiveDetails`, fora do payload do push, que tem limite de 5 KB) e `officialResultsURL` (o link "App do TSE" do app). Apps antigos ignoram os dois (`472b4a7`). No resultado final, traz também `finalTheme`, o `theme` da frase final escolhida (ver "Frases finais").
   - `GET api/v4/election/status/:password`: diagnóstico, com o último push (`lastBroadcastAt`, `lastBroadcastEvent`, `lastBroadcastPriority`, `lastBroadcastReason`, `lastBroadcastError`). Campos vazios não aparecem na resposta.
   - `POST api/v4/election/settings/:password`: atualização parcial das configurações.
   - `POST api/v4/election/channels/:password[?bundleId=]`: cria o canal de cada app que ainda não tem um (ou só do bundle pedido), no ambiente atual da APNs, e salva nas configurações.
@@ -93,6 +93,8 @@ O push de fim sai assim que o TSE encerra a apuração, então as frases são es
 
 - `text` aparece na activity em negrito, entre a barra e o rodapé. O rodapé continua neutro, com "Fonte: TSE".
 - `alertTitle` e `alertBody` substituem o alerta neutro "Apuração encerrada".
+- `{diferença}` (ou `{diferenca}`, sem cedilha) vira a diferença de votos entre o 1º e o 2º no resultado final, como "2.003.696", no texto e nos dois campos do alerta. O servidor faz a troca, então funciona em qualquer versão do app. A frase salva continua com o marcador. Exemplo: `"elected:13":{"text":"Lula venceu por {diferença} votos. Um deles foi seu."}`.
+- `theme` (`celebration` ou `comfort`) decide como a tela de resultados do app veste o resultado final: `celebration` é confete, vibração de fogos e o cartão em vermelho; `comfort` é o cartão virando noite com estrelas aparecendo, sem som nem vibração. A imagem de compartilhar usa o mesmo fundo. Vai só no `GET election/live` (`finalTheme`), nunca no push, e só depois do fim. Outro valor é recusado pelo servidor, e o app ignora valores que não conhece. Sem `theme`, a tela fica verde, como sempre.
 - `null` apaga uma chave. Editar a frase depois do fim reenvia o `end` em prioridade 5 e sem alerta.
 - Os números nunca mudam de tom: a opinião fica só nesse campo, separada dos dados do TSE.
 
@@ -149,6 +151,9 @@ curl -X POST -H 'Content-Type: application/json' -d '{"officialResultsURL":"http
 
 # Frases finais
 curl -X POST -H 'Content-Type: application/json' -d '{"finalMessages":{"runoff:13-22":{"text":"Segura que tem 2º turno. Bora!"},"default":{"text":"Acabou a apuração."}}}' https://<servidor>/api/v4/election/settings/<senha>
+
+# Frases finais do 2º turno, com o clima da tela de resultados
+curl -s -X POST -H 'Content-Type: application/json' -d '{"finalMessages":{"elected:13":{"text":"Lula venceu por {diferença} votos. Um deles foi seu.","theme":"celebration"},"elected:22":{"text":"Hoje não precisa ser forte. Larga o celular, abraça alguém.","theme":"comfort"}}}' https://<servidor>/api/v4/election/settings/<senha> | jq
 ```
 
 Campos aceitos: `enabled`, `previewVersions` (lista de versões do app, como `"13.1"`, que veem o banner com `enabled` desligado; substitui a lista, `[]` limpa), `source` (`simulation`, `official`, `replay`), `round` (1 ou 2), `channelIds` (mapa bundle ID → canal, mesclado; string vazia apaga), `broadcastMode` (`off`, `dryRun`, `live`), `minPushIntervalSeconds`, `candidateColors`, `finalMessages`, `replayDurationMinutes`, `replayStepSeconds` (0 = avança a cada poll), `replayOffline`, `replayLoop` (recomeça do 0% depois do resultado final), `replayLoopPauseMinutes` (quanto o resultado final fica antes de recomeçar, padrão 5), `restartReplay`, `officialResultsURL` (só https).

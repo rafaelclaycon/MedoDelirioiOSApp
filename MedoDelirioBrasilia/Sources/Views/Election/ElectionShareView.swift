@@ -14,6 +14,8 @@ struct ElectionShareSnapshot: Identifiable {
     let id = UUID()
     let round: Int
     let state: ElectionActivityAttributes.ContentState
+    /// The results screen's background goes into the picture too.
+    var theme: ElectionFinalTheme? = nil
 }
 
 enum ElectionShareFormat: String, CaseIterable, Identifiable {
@@ -101,7 +103,7 @@ struct ElectionShareView: View {
                 GeometryReader { proxy in
                     let size = format.size
                     let scale = min(proxy.size.width / size.width, proxy.size.height / size.height)
-                    ElectionShareCard(round: snapshot.round, state: snapshot.state, format: format)
+                    ElectionShareCard(round: snapshot.round, state: snapshot.state, format: format, theme: snapshot.theme)
                         .scaleEffect(scale, anchor: .topLeading)
                         .frame(width: size.width * scale, height: size.height * scale, alignment: .topLeading)
                         .clipShape(.rect(cornerRadius: 16))
@@ -122,7 +124,7 @@ struct ElectionShareView: View {
                         // Rendering blocks the main thread, so give the spinner a frame to
                         // show up first. It keeps spinning on its own while the render runs.
                         try? await Task.sleep(for: .milliseconds(50))
-                        if let image = ElectionShareCard.render(round: snapshot.round, state: snapshot.state, format: format) {
+                        if let image = ElectionShareCard.render(round: snapshot.round, state: snapshot.state, format: format, theme: snapshot.theme) {
                             shareItem = ImageShareItemSource(image: image, title: shareTitle)
                         }
                         isRendering = false
@@ -209,10 +211,16 @@ struct ElectionShareCard: View {
     let round: Int
     let state: ElectionActivityAttributes.ContentState
     let format: ElectionShareFormat
+    var theme: ElectionFinalTheme? = nil
 
     @MainActor
-    static func render(round: Int, state: ElectionActivityAttributes.ContentState, format: ElectionShareFormat) -> UIImage? {
-        let renderer = ImageRenderer(content: ElectionShareCard(round: round, state: state, format: format))
+    static func render(
+        round: Int,
+        state: ElectionActivityAttributes.ContentState,
+        format: ElectionShareFormat,
+        theme: ElectionFinalTheme? = nil
+    ) -> UIImage? {
+        let renderer = ImageRenderer(content: ElectionShareCard(round: round, state: state, format: format, theme: theme))
         renderer.scale = 3
         return renderer.uiImage
     }
@@ -233,12 +241,7 @@ struct ElectionShareCard: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [ElectionResultsPalette.header, ElectionResultsPalette.body],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            IntroducingElectionLiveView.KeypadPatternView()
+            background
 
             switch format {
             case .square: square
@@ -247,7 +250,45 @@ struct ElectionShareCard: View {
         }
         .foregroundStyle(.white)
         .environment(\.colorScheme, .dark)
+        // A picture has a fixed size: the same text whatever size the person reads at, in
+        // the preview and in the rendered image alike.
+        .dynamicTypeSize(.large)
         .frame(width: format.size.width, height: format.size.height)
+    }
+
+    /// Same colors as the results screen: green, red for the celebration, and the night sky,
+    /// every star already out, for the comfort. The keypad pattern would crowd the stars.
+    @ViewBuilder
+    private var background: some View {
+        switch theme {
+        case nil:
+            gradient(ElectionResultsPalette.header, ElectionResultsPalette.body)
+            IntroducingElectionLiveView.KeypadPatternView()
+        case .celebration:
+            gradient(ElectionResultsPalette.celebrationTop, ElectionResultsPalette.celebrationBottom)
+            IntroducingElectionLiveView.KeypadPatternView()
+        case .comfort:
+            gradient(ElectionResultsPalette.nightTop, ElectionResultsPalette.nightBottom)
+            ElectionNightSkyView(isStill: true, guidingStarPosition: guidingStarPosition)
+        }
+    }
+
+    /// Beside the right photo on the square. On Stories, the photo itself carries it
+    /// (`candidates`), so it stays on its corner however the layout falls.
+    private var guidingStarPosition: UnitPoint? {
+        switch format {
+        case .square: UnitPoint(x: 0.93, y: 0.22)
+        case .stories: nil
+        }
+    }
+
+    /// The runner-up's photo on Stories, for the comfort: that's Lula when it's shown.
+    private func carriesGuidingStar(_ candidate: ElectionActivityAttributes.Candidate) -> Bool {
+        theme == .comfort && format == .stories && candidate.id == state.candidates.dropFirst().first?.id
+    }
+
+    private func gradient(_ top: Color, _ bottom: Color) -> some View {
+        LinearGradient(colors: [top, bottom], startPoint: .topLeading, endPoint: .bottomTrailing)
     }
 
     /// Flexible spacers between the blocks, so the content fills the square whether names
@@ -260,15 +301,12 @@ struct ElectionShareCard: View {
 
             Spacer(minLength: 12)
 
-            candidates(photoSize: 84, percentSize: 30)
+            candidates(photoSize: 84, percentSize: 30, spacing: 8)
 
             Spacer(minLength: 12)
 
-            VStack(spacing: 10) {
-                counted(fontSize: 15)
-                    .padding(.horizontal, 12)
-                finalMessage(fontSize: 14)
-            }
+            counted(fontSize: 15)
+                .padding(.horizontal, 12)
 
             Spacer(minLength: 12)
 
@@ -285,48 +323,63 @@ struct ElectionShareCard: View {
     }
 
     /// Related blocks stay together, and flexible spacers split whatever height is left
-    /// between the groups, so the card breathes without spilling past the safe area.
+    /// between the groups, so the card breathes without spilling past the safe area. Roomier
+    /// than the square inside each block too: Stories are seen full screen.
     private var stories: some View {
         VStack(spacing: 0) {
-            VStack(spacing: 14) {
-                appBadge(iconSize: 30, fontSize: 14)
+            Text(storiesHeading)
+                .font(.system(size: 12, weight: .heavy))
+                .foregroundStyle(.white.opacity(0.85))
+                .multilineTextAlignment(.center)
 
-                Text(storiesHeading)
-                    .font(.system(size: 12, weight: .heavy))
-                    .foregroundStyle(.white.opacity(0.85))
-                    .multilineTextAlignment(.center)
+            Spacer(minLength: 32)
+
+            candidates(photoSize: 112, percentSize: 34, spacing: 12)
+
+            Spacer(minLength: 32)
+
+            counted(fontSize: 18, spacing: 12)
+
+            Spacer(minLength: 32)
+
+            // The podcast's logo signs the picture, next to the source and the app's credit.
+            HStack(alignment: .center, spacing: 12) {
+                Image("podcast_logo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: 40)
+
+                Spacer(minLength: 0)
+
+                VStack(alignment: .trailing, spacing: 6) {
+                    Text("Fonte: TSE · Atualizado às \(time)")
+                    Text("Criado com o app Medo e Delírio iOS")
+                }
+                .font(.system(size: 12, weight: .medium))
+                // One line each, shrinking a little rather than wrapping next to the logo.
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .foregroundStyle(.white.opacity(0.75))
+                .multilineTextAlignment(.trailing)
             }
-
-            Spacer(minLength: 24)
-
-            candidates(photoSize: 112, percentSize: 34)
-
-            Spacer(minLength: 24)
-
-            VStack(spacing: 20) {
-                counted(fontSize: 18)
-                finalMessage(fontSize: 17)
-            }
-
-            Spacer(minLength: 24)
-
-            VStack(spacing: 4) {
-                Text("Fonte: TSE · Atualizado às \(time)")
-                Text("Criado com o app Medo e Delírio para iOS")
-            }
-            .font(.system(size: 12, weight: .medium))
-            .foregroundStyle(.white.opacity(0.75))
         }
         .padding(.horizontal, 28)
         // Instagram covers roughly the top and bottom 13% (250 px of 1920) with its own controls.
         .padding(.vertical, 84)
     }
 
-    private func candidates(photoSize: CGFloat, percentSize: CGFloat) -> some View {
+    private func candidates(photoSize: CGFloat, percentSize: CGFloat, spacing: CGFloat) -> some View {
         HStack(alignment: .top, spacing: 12) {
             ForEach(Array(state.candidates.prefix(2))) { candidate in
-                VStack(spacing: 8) {
+                VStack(spacing: spacing) {
                     ElectionCandidatePhoto(number: candidate.number, colorHex: candidate.colorHex, size: photoSize)
+                        .overlay(alignment: .topTrailing) {
+                            if carriesGuidingStar(candidate) {
+                                // Just outside the circle, at 45°, over the frame's corner.
+                                ElectionGuidingStarView()
+                                    .offset(x: ElectionGuidingStarView.size / 4, y: -ElectionGuidingStarView.size / 4)
+                            }
+                        }
                     Text(ElectionResultsFormat.percent(candidate.percent))
                         .font(.system(size: percentSize, weight: .bold, design: .rounded))
                         .monospacedDigit()
@@ -341,23 +394,13 @@ struct ElectionShareCard: View {
         }
     }
 
-    private func counted(fontSize: CGFloat) -> some View {
-        VStack(spacing: 6) {
+    private func counted(fontSize: CGFloat, spacing: CGFloat = 6) -> some View {
+        VStack(spacing: spacing) {
             Text("\(ElectionResultsFormat.percent(state.sectionsCountedPercent)) TOTALIZADO")
                 .font(.system(size: fontSize, weight: .bold))
                 .monospacedDigit()
             ElectionResultsBar(fraction: state.sectionsCountedPercent / 100, color: ElectionResultsPalette.bar)
                 .frame(height: fontSize * 0.5)
-        }
-    }
-
-    @ViewBuilder
-    private func finalMessage(fontSize: CGFloat) -> some View {
-        if state.isFinal, let finalMessage = state.finalMessage {
-            Text(finalMessage)
-                .font(.system(size: fontSize, weight: .bold))
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
         }
     }
 
@@ -395,4 +438,16 @@ private let previewState = ElectionActivityAttributes.ContentState(
 
 #Preview("Stories Card") {
     ElectionShareCard(round: 1, state: previewState, format: .stories)
+}
+
+#Preview("Square Card, Comfort") {
+    ElectionShareCard(round: 1, state: previewState, format: .square, theme: .comfort)
+}
+
+#Preview("Stories Card, Comfort") {
+    ElectionShareCard(round: 1, state: previewState, format: .stories, theme: .comfort)
+}
+
+#Preview("Stories Card, Celebration") {
+    ElectionShareCard(round: 1, state: previewState, format: .stories, theme: .celebration)
 }

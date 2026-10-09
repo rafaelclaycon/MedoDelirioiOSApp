@@ -47,9 +47,8 @@ struct ElectionResultsView: View {
         demo.info ?? info
     }
 
-    /// Only from the demo for now; the server will send it with the final message.
     private var theme: ElectionFinalTheme? {
-        demo.theme
+        displayedInfo?.theme
     }
 
     /// Starts the party once there are numbers to celebrate.
@@ -187,47 +186,45 @@ struct ElectionResultsView: View {
 
     // MARK: - Subviews
 
+    /// Sharing leads: it's what people come here to do once they're following on the Lock
+    /// Screen. Stacked at full width: side by side, the labels had to go icon-over-text.
     private func actions(info: ElectionLiveInfo, state: ElectionActivityAttributes.ContentState) -> some View {
         VStack(spacing: .spacing(.small)) {
             Button {
-                Task { await toggleLiveActivity() }
+                shareSnapshot = ElectionShareSnapshot(round: info.round, state: state, theme: theme)
             } label: {
-                // The label stays in the layout while the spinner shows, so the button
-                // keeps its height.
-                Label(
-                    isRunning ? "Parar de Acompanhar" : "Acompanhar na Tela Bloqueada",
-                    systemImage: isRunning ? "stop.circle" : "lock.iphone"
-                )
-                .opacity(isWorking ? 0 : 1)
-                .overlay {
-                    if isWorking {
-                        ProgressView()
-                    }
-                }
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, .spacing(.xxSmall))
+                actionLabel("Compartilhar Imagem", systemImage: "square.and.arrow.up")
             }
             .electionButtonStyle(prominent: true)
-            .disabled(isWorking)
 
-            // Stacked at full width: side by side, the labels had to go icon-over-text.
             Group {
                 Button {
-                    shareSnapshot = ElectionShareSnapshot(round: info.round, state: state)
+                    Task { await toggleLiveActivity() }
                 } label: {
-                    secondaryLabel("Compartilhar Imagem", systemImage: "square.and.arrow.up")
+                    // The label stays in the layout while the spinner shows, so the button
+                    // keeps its height.
+                    actionLabel(
+                        isRunning ? "Parar de Acompanhar" : "Acompanhar na Tela Bloqueada",
+                        systemImage: isRunning ? "stop.circle" : "lock.iphone"
+                    )
+                    .opacity(isWorking ? 0 : 1)
+                    .overlay {
+                        if isWorking {
+                            ProgressView()
+                        }
+                    }
                 }
+                .disabled(isWorking)
 
                 Link(destination: info.officialResults) {
-                    secondaryLabel("App do TSE", systemImage: "arrow.up.forward.app")
+                    actionLabel("App do TSE", systemImage: "arrow.up.forward.app")
                 }
             }
             .electionButtonStyle(prominent: false)
         }
     }
 
-    private func secondaryLabel(_ title: String, systemImage: String) -> some View {
+    private func actionLabel(_ title: String, systemImage: String) -> some View {
         Label(title, systemImage: systemImage)
             .font(.headline)
             .frame(maxWidth: .infinity)
@@ -306,8 +303,9 @@ struct ElectionResultsHeader: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// The card goes from green to night blue for the comfort theme.
-    @State private var hasNightFallen = false
+    /// The theme the card's background has turned to: red for the celebration, night blue
+    /// for the comfort. Lags behind `theme` while it fades.
+    @State private var backgroundTheme: ElectionFinalTheme?
 
     /// One side of the duel, from `details` when the server sent it (it has the votes),
     /// otherwise from the Live Activity state.
@@ -356,10 +354,13 @@ struct ElectionResultsHeader: View {
             }
 
             if sides.count == 2 {
+                // A caption, like the label at the top: the final message is what people read.
                 lead(sides[0], over: sides[1])
-                    .font(.subheadline)
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .textCase(.uppercase)
                     .multilineTextAlignment(.center)
-                    .foregroundStyle(.white.opacity(0.9))
+                    .foregroundStyle(.white.opacity(0.75))
             }
 
             if state.isFinal, let finalMessage = state.finalMessage {
@@ -381,12 +382,18 @@ struct ElectionResultsHeader: View {
                     endPoint: .bottom
                 )
                 LinearGradient(
+                    colors: [ElectionResultsPalette.celebrationTop, ElectionResultsPalette.celebrationBottom],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .opacity(backgroundTheme == .celebration ? 1 : 0)
+                LinearGradient(
                     colors: [ElectionResultsPalette.nightTop, ElectionResultsPalette.nightBottom],
                     startPoint: .top,
                     endPoint: .bottom
                 )
-                .opacity(hasNightFallen ? 1 : 0)
-                if hasNightFallen {
+                .opacity(backgroundTheme == .comfort ? 1 : 0)
+                if backgroundTheme == .comfort {
                     ElectionNightSkyView()
                 }
             }
@@ -395,14 +402,15 @@ struct ElectionResultsHeader: View {
         .padding(.top, .spacing(.small))
         .accessibilityElement(children: .combine)
         .task(id: theme) {
-            let falls = theme == .comfort
-            if falls && !reduceMotion {
-                // A moment on the result before the night comes.
+            // The party turns red right away; the night takes its time, after a moment on
+            // the result.
+            let isComfort = theme == .comfort
+            if isComfort && !reduceMotion {
                 try? await Task.sleep(for: .seconds(0.8))
                 guard !Task.isCancelled else { return }
             }
-            withAnimation(reduceMotion ? nil : .easeInOut(duration: 3)) {
-                hasNightFallen = falls
+            withAnimation(reduceMotion ? nil : .easeInOut(duration: isComfort ? 3 : 1)) {
+                backgroundTheme = theme
             }
         }
     }
@@ -698,6 +706,9 @@ enum ElectionResultsPalette {
     static let body = Color(red: 0.06, green: 0.29, blue: 0.16)
     static let bar = Color(red: 1, green: 0.84, blue: 0)
     static let accent = Color(red: 0.13, green: 0.55, blue: 0.29)
+    /// The card in red, for the celebration theme.
+    static let celebrationTop = Color(red: 0.42, green: 0.02, blue: 0.06)
+    static let celebrationBottom = Color(red: 0.72, green: 0.06, blue: 0.11)
     /// The card at night, for the comfort theme.
     static let nightTop = Color(red: 0.04, green: 0.06, blue: 0.15)
     static let nightBottom = Color(red: 0.10, green: 0.14, blue: 0.27)
@@ -740,14 +751,6 @@ enum ElectionResultsDemo: String, CaseIterable, Identifiable {
         }
     }
 
-    var theme: ElectionFinalTheme? {
-        switch self {
-        case .server: nil
-        case .lulaWins: .celebration
-        case .flavioWins: .comfort
-        }
-    }
-
     var info: ElectionLiveInfo? {
         switch self {
         case .server: nil
@@ -759,19 +762,22 @@ enum ElectionResultsDemo: String, CaseIterable, Identifiable {
     private static let lulaWinsInfo = makeInfo(
         winner: (13, "LULA", "PT"),
         loser: (22, "FLAVIO BOLSONARO", "PL"),
-        finalMessage: "A esperança venceu o medo. E o delírio."
+        finalMessage: "Lula venceu por 2.003.696 votos. Um deles foi seu.",
+        theme: .celebration
     )
 
     private static let flavioWinsInfo = makeInfo(
         winner: (22, "FLAVIO BOLSONARO", "PL"),
         loser: (13, "LULA", "PT"),
-        finalMessage: "59.350.440 pessoas votaram como você. Ninguém solta a mão de ninguém."
+        finalMessage: "Hoje não precisa ser forte. Larga o celular, abraça alguém.",
+        theme: .comfort
     )
 
     private static func makeInfo(
         winner: (number: Int, name: String, party: String),
         loser: (number: Int, name: String, party: String),
-        finalMessage: String
+        finalMessage: String,
+        theme: ElectionFinalTheme
     ) -> ElectionLiveInfo {
         let winnerVotes = 61_354_136
         let loserVotes = 59_350_440
@@ -813,7 +819,7 @@ enum ElectionResultsDemo: String, CaseIterable, Identifiable {
                 nullPercent: Double(nullVotes) / Double(totalVotes) * 100
             )
         )
-        return ElectionLiveInfo(enabled: true, channelId: nil, round: 2, state: state, details: details, officialResultsURL: nil)
+        return ElectionLiveInfo(enabled: true, channelId: nil, round: 2, state: state, details: details, officialResultsURL: nil, finalTheme: theme.rawValue)
     }
 }
 

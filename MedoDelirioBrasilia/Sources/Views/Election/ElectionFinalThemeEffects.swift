@@ -9,8 +9,9 @@ import CoreHaptics
 import SwiftUI
 
 /// How the results screen dresses the final result. The numbers never change: like the final
-/// message, this is only what goes around them.
-enum ElectionFinalTheme {
+/// message, this is only what goes around them. Chosen on the server with the final message
+/// (`ElectionLiveInfo.finalTheme`).
+enum ElectionFinalTheme: String {
     /// Confetti, fireworks in the hand and the winner's badge pulsing.
     case celebration
     /// Night falls over the card and stars come out one by one. No sound, no haptics.
@@ -234,9 +235,24 @@ struct ElectionConfettiView: View {
 /// rest. With Reduce Motion, they are all there from the start and don't twinkle.
 struct ElectionNightSkyView: View {
 
+    /// Every star already out and none twinkling, for pictures.
+    let isStill: Bool
+    /// Where the five-pointed star goes, clear of whatever is drawn on top. Nil when the
+    /// view on top places it itself (`ElectionGuidingStarView`).
+    let guidingStarPosition: UnitPoint?
+
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var start = Date.now
+
+    init(isStill: Bool = false, guidingStarPosition: UnitPoint? = UnitPoint(x: 0.86, y: 0.09)) {
+        self.isStill = isStill
+        self.guidingStarPosition = guidingStarPosition
+    }
+
+    private var showsEverything: Bool {
+        isStill || reduceMotion
+    }
 
     private struct Star {
         let position: UnitPoint
@@ -264,39 +280,27 @@ struct ElectionNightSkyView: View {
         }
     }()
 
-    private static let guidingStarPosition = UnitPoint(x: 0.86, y: 0.09)
     private static let guidingStarAppearsAt: TimeInterval = 11
-    private static let guidingStarColor = Color(red: 1, green: 0.93, blue: 0.75)
     private static let fadeIn: TimeInterval = 1.8
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: reduceMotion)) { timeline in
+        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: showsEverything)) { timeline in
             Canvas { context, size in
-                let elapsed = reduceMotion ? .infinity : timeline.date.timeIntervalSince(start)
+                let elapsed = showsEverything ? .infinity : timeline.date.timeIntervalSince(start)
 
                 for star in Self.stars {
                     let shown = Self.shown(elapsed - star.appearsAt)
                     guard shown > 0 else { continue }
-                    let twinkle = reduceMotion ? 1 : 0.7 + 0.3 * sin(star.twinkleSpeed * elapsed + star.phase)
+                    let twinkle = showsEverything ? 1 : 0.7 + 0.3 * sin(star.twinkleSpeed * elapsed + star.phase)
                     let center = CGPoint(x: star.position.x * size.width, y: star.position.y * size.height)
                     let dot = CGRect(x: center.x - star.radius, y: center.y - star.radius, width: star.radius * 2, height: star.radius * 2)
                     context.fill(Path(ellipseIn: dot), with: .color(.white.opacity(star.brightness * shown * twinkle)))
                 }
 
                 let shown = Self.shown(elapsed - Self.guidingStarAppearsAt)
-                if shown > 0 {
-                    let center = CGPoint(x: Self.guidingStarPosition.x * size.width, y: Self.guidingStarPosition.y * size.height)
-                    context.drawLayer { glow in
-                        glow.addFilter(.blur(radius: 6))
-                        glow.fill(
-                            Path(ellipseIn: CGRect(x: center.x - 9, y: center.y - 9, width: 18, height: 18)),
-                            with: .color(Self.guidingStarColor.opacity(0.35 * shown))
-                        )
-                    }
-                    context.fill(
-                        ElectionConfettiView.starPath(in: CGRect(x: center.x - 6, y: center.y - 6, width: 12, height: 12)),
-                        with: .color(Self.guidingStarColor.opacity(shown))
-                    )
+                if let guidingStarPosition, shown > 0 {
+                    let center = CGPoint(x: guidingStarPosition.x * size.width, y: guidingStarPosition.y * size.height)
+                    ElectionGuidingStarView.draw(in: &context, at: center, opacity: shown)
                 }
             }
         }
@@ -308,6 +312,37 @@ struct ElectionNightSkyView: View {
     private static func shown(_ sinceAppearing: TimeInterval) -> Double {
         let progress = min(max(sinceAppearing / fadeIn, 0), 1)
         return progress * progress * (3 - 2 * progress)
+    }
+}
+
+/// The night sky's five-pointed star, warmer than the rest and with a soft glow, on its own
+/// for when it has to stay next to something, like a photo.
+struct ElectionGuidingStarView: View {
+
+    static let size: CGFloat = 24
+    private static let color = Color(red: 1, green: 0.93, blue: 0.75)
+
+    var body: some View {
+        Canvas { context, size in
+            Self.draw(in: &context, at: CGPoint(x: size.width / 2, y: size.height / 2), opacity: 1)
+        }
+        .frame(width: Self.size, height: Self.size)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    static func draw(in context: inout GraphicsContext, at center: CGPoint, opacity: Double) {
+        context.drawLayer { glow in
+            glow.addFilter(.blur(radius: 6))
+            glow.fill(
+                Path(ellipseIn: CGRect(x: center.x - 9, y: center.y - 9, width: 18, height: 18)),
+                with: .color(color.opacity(0.35 * opacity))
+            )
+        }
+        context.fill(
+            ElectionConfettiView.starPath(in: CGRect(x: center.x - 6, y: center.y - 6, width: 12, height: 12)),
+            with: .color(color.opacity(opacity))
+        )
     }
 }
 

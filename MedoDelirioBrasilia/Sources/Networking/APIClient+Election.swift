@@ -23,12 +23,22 @@ struct ElectionLiveInfo: Codable {
     let details: ElectionLiveDetails?
     /// Where "App do TSE" goes, set on the server so it can change without an app review.
     let officialResultsURL: String?
+    /// How the results screen dresses the final result, from the server's final message. A
+    /// plain string so a value this version doesn't know is ignored instead of failing the
+    /// whole response; see `theme`.
+    let finalTheme: String?
 
     /// The TSE's own Resultados app on the App Store.
     static let defaultOfficialResultsURL = URL(string: "https://apps.apple.com/br/app/resultados/id1136359313")!
 
     var officialResults: URL {
         officialResultsURL.flatMap(URL.init(string:)) ?? Self.defaultOfficialResultsURL
+    }
+
+    /// Only on the final result.
+    var theme: ElectionFinalTheme? {
+        guard state?.isFinal == true else { return nil }
+        return finalTheme.flatMap(ElectionFinalTheme.init(rawValue:))
     }
 }
 
