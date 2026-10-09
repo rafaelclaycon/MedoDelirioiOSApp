@@ -29,6 +29,8 @@ struct ElectionResultsView: View {
     @State private var showActivitiesDisabledAlert = false
     /// The count at the moment "Compartilhar Imagem" was tapped.
     @State private var shareSnapshot: ElectionShareSnapshot?
+    /// The support sheet's headline follows the count: still going, or over.
+    @State private var supportContext: StandaloneSupportView.Context?
     @State private var toast: Toast?
     @State private var confettiBursts: [ElectionConfettiBurst] = []
     @State private var haptics = ElectionFireworksHaptics()
@@ -66,6 +68,12 @@ struct ElectionResultsView: View {
                         ElectionResultsHeader(round: info.round, state: state, details: info.details, theme: theme) { location in
                             guard !reduceMotion else { return }
                             fireConfetti(.pop(at: location))
+                        }
+
+                        // Between the card and the actions: seen without scrolling, and still
+                        // outside the card, so the ask never mixes with the numbers.
+                        ElectionSupportPrompt(theme: theme) {
+                            supportContext = state.isFinal ? .electionFinal : .electionCounting
                         }
 
                         actions(info: info, state: state)
@@ -137,6 +145,9 @@ struct ElectionResultsView: View {
                     await load()
                     try? await Task.sleep(for: Self.refreshInterval)
                 }
+            }
+            .sheet(item: $supportContext) { context in
+                StandaloneSupportView(context: context)
             }
             .sheet(item: $shareSnapshot) { snapshot in
                 ElectionShareView(snapshot: snapshot) { activityType in
@@ -537,6 +548,89 @@ struct ElectionResultsHeader: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.top, .spacing(.xxSmall))
+    }
+}
+
+// MARK: - Support
+
+/// A small ask at the bottom of the screen. A plain row while counting, Puss in Boots begging
+/// once the celebration starts, and nothing at all for the comfort: asking for money from
+/// people who are sad would read as cashing in on it.
+struct ElectionSupportPrompt: View {
+
+    let theme: ElectionFinalTheme?
+    let action: () -> Void
+
+    var body: some View {
+        switch theme {
+        case .comfort:
+            EmptyView()
+        case .celebration:
+            celebration
+        case nil:
+            row
+        }
+    }
+
+    private var row: some View {
+        Button(action: action) {
+            HStack(spacing: .spacing(.small)) {
+                Image(systemName: "heart.fill")
+                    .foregroundStyle(.pink)
+                Text("Curtindo acompanhar por aqui? Apoie o app.")
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(.leading)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.forward")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.spacing(.medium))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16)
+                    .strokeBorder(Color(.separator), lineWidth: 1)
+            }
+            .contentShape(.rect(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var celebration: some View {
+        Button(action: action) {
+            HStack(spacing: .spacing(.medium)) {
+                Image("puss-in-boots-donation")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 84, height: 84)
+                    .clipShape(.rect(cornerRadius: 14))
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: .spacing(.xxSmall)) {
+                    Text("Comemorando?")
+                        .font(.headline)
+                    Text("Ajuda o app a chegar em 2030.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Text("Apoiar o App")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(ElectionResultsPalette.accent)
+                        .padding(.top, .spacing(.xxxSmall))
+                }
+                .multilineTextAlignment(.leading)
+
+                Spacer(minLength: 0)
+            }
+            .padding(.spacing(.medium))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16)
+                    .strokeBorder(Color(.separator), lineWidth: 1)
+            }
+            .contentShape(.rect(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
     }
 }
 
