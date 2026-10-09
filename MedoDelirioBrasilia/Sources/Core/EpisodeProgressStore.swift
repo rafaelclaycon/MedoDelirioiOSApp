@@ -18,6 +18,13 @@ final class EpisodeProgressStore {
     private static let legacyKey = "episodePlaybackProgress"
 
     @ObservationIgnored private let database: LocalDatabaseProtocol
+    /// Episodes whose progress was cleared, so `save` only touches the tombstone table
+    /// when there's something to remove.
+    @ObservationIgnored private var clearedIDs: Set<String>
+
+    /// Called after a clear, so it can reach the user's other devices right away.
+    /// Saves don't call it: they happen every few seconds during playback.
+    @ObservationIgnored var onLocalChange: (() -> Void)?
 
     private(set) var entries: [String: EpisodeProgress]
 
@@ -30,6 +37,7 @@ final class EpisodeProgressStore {
             converted[id] = EpisodeProgress(currentTime: value.currentTime, duration: value.duration)
         }
         self.entries = converted
+        self.clearedIDs = Set(((try? database.allEpisodeProgressTombstones()) ?? [:]).keys)
 
         migrateFromUserDefaultsIfNeeded()
     }
@@ -44,11 +52,15 @@ final class EpisodeProgressStore {
         guard duration > 0 else { return }
         entries[episodeID] = EpisodeProgress(currentTime: currentTime, duration: duration)
         try? database.upsertEpisodeProgress(episodeId: episodeID, currentTime: currentTime, duration: duration)
+        removeTombstone(for: episodeID)
     }
 
     func clear(episodeID: String) {
         entries.removeValue(forKey: episodeID)
         try? database.deleteEpisodeProgress(episodeId: episodeID)
+        try? database.upsertEpisodeProgressTombstone(episodeId: episodeID, clearedAt: Date())
+        clearedIDs.insert(episodeID)
+        onLocalChange?()
     }
 
     func fractionCompleted(for episodeID: String) -> Double? {
@@ -77,6 +89,58 @@ final class EpisodeProgressStore {
         } else {
             return "< 1 min restante"
         }
+    }
+
+    // MARK: - iCloud Sync
+
+    /// Every position and clearing this device knows about, as sent to iCloud.
+    func syncRecords() -> [String: EpisodeProgressRecord] {
+        var records = [String: EpisodeProgressRecord]()
+        for (id, clearedAt) in (try? database.allEpisodeProgressTombstones()) ?? [:] {
+            records[id] = .cleared(at: clearedAt)
+        }
+        for (id, value) in (try? database.allEpisodeProgress()) ?? [:] {
+            let record = EpisodeProgressRecord(
+                currentTime: value.currentTime,
+                duration: value.duration,
+                updatedAt: value.updatedAt,
+                isCleared: false
+            )
+            if let existing = records[id], existing.isNewer(than: record) { continue }
+            records[id] = record
+        }
+        return records
+    }
+
+    /// Takes in a newer record from another device, keeping its timestamp so later
+    /// merges compare against when it actually changed. Doesn't call `onLocalChange`.
+    func applyRemote(_ record: EpisodeProgressRecord, episodeID: String) {
+        if record.isCleared {
+            entries.removeValue(forKey: episodeID)
+            try? database.deleteEpisodeProgress(episodeId: episodeID)
+            try? database.upsertEpisodeProgressTombstone(episodeId: episodeID, clearedAt: record.updatedAt)
+            clearedIDs.insert(episodeID)
+        } else {
+            entries[episodeID] = EpisodeProgress(currentTime: record.currentTime, duration: record.duration)
+            try? database.upsertEpisodeProgress(
+                episodeId: episodeID,
+                currentTime: record.currentTime,
+                duration: record.duration,
+                updatedAt: record.updatedAt
+            )
+            removeTombstone(for: episodeID)
+        }
+    }
+
+    func pruneTombstones(olderThan date: Date) {
+        try? database.deleteEpisodeProgressTombstones(olderThan: date)
+        clearedIDs = Set(((try? database.allEpisodeProgressTombstones()) ?? [:]).keys)
+    }
+
+    private func removeTombstone(for episodeID: String) {
+        guard clearedIDs.contains(episodeID) else { return }
+        try? database.deleteEpisodeProgressTombstone(episodeId: episodeID)
+        clearedIDs.remove(episodeID)
     }
 
     // MARK: - Legacy Migration

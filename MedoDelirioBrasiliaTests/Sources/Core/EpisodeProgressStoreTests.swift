@@ -69,6 +69,79 @@ struct EpisodeProgressStoreTests {
         #expect(fakeDatabase.episodeProgress["ep-1"] == nil)
     }
 
+    @Test
+    func clear_shouldLeaveTombstoneAndNotifyLocalChange() {
+        var changeCount = 0
+        sut.onLocalChange = { changeCount += 1 }
+        sut.save(episodeID: "ep-1", currentTime: 30, duration: 120)
+
+        sut.clear(episodeID: "ep-1")
+
+        #expect(fakeDatabase.episodeProgressTombstones["ep-1"] != nil)
+        #expect(changeCount == 1)
+    }
+
+    @Test
+    func save_shouldNotNotifyLocalChange() {
+        var changeCount = 0
+        sut.onLocalChange = { changeCount += 1 }
+
+        sut.save(episodeID: "ep-1", currentTime: 30, duration: 120)
+
+        #expect(changeCount == 0)
+    }
+
+    @Test
+    func save_afterClear_shouldRemoveTombstone() {
+        sut.save(episodeID: "ep-1", currentTime: 30, duration: 120)
+        sut.clear(episodeID: "ep-1")
+
+        sut.save(episodeID: "ep-1", currentTime: 10, duration: 120)
+
+        #expect(fakeDatabase.episodeProgressTombstones["ep-1"] == nil)
+    }
+
+    // MARK: - iCloud sync
+
+    @Test
+    func syncRecords_shouldIncludeLiveProgressAndClearings() throws {
+        let date = Date(timeIntervalSince1970: 1_790_000_000)
+        try fakeDatabase.upsertEpisodeProgress(episodeId: "ep-1", currentTime: 30, duration: 120, updatedAt: date)
+        try fakeDatabase.upsertEpisodeProgressTombstone(episodeId: "ep-2", clearedAt: date)
+
+        let records = sut.syncRecords()
+
+        #expect(records["ep-1"] == EpisodeProgressRecord(currentTime: 30, duration: 120, updatedAt: date, isCleared: false))
+        #expect(records["ep-2"] == .cleared(at: date))
+    }
+
+    @Test
+    func applyRemote_shouldKeepTheRemoteTimestampAndNotNotify() {
+        var changeCount = 0
+        sut.onLocalChange = { changeCount += 1 }
+        let date = Date(timeIntervalSince1970: 1_790_000_000)
+
+        sut.applyRemote(
+            EpisodeProgressRecord(currentTime: 45, duration: 100, updatedAt: date, isCleared: false),
+            episodeID: "ep-1"
+        )
+
+        #expect(sut.progress(for: "ep-1")?.currentTime == 45)
+        #expect(fakeDatabase.episodeProgress["ep-1"]?.updatedAt == date)
+        #expect(changeCount == 0)
+    }
+
+    @Test
+    func applyRemote_withClearing_shouldRemoveProgressAndLeaveTombstone() {
+        sut.save(episodeID: "ep-1", currentTime: 30, duration: 120)
+        let date = Date(timeIntervalSince1970: 1_790_000_000)
+
+        sut.applyRemote(.cleared(at: date), episodeID: "ep-1")
+
+        #expect(sut.progress(for: "ep-1") == nil)
+        #expect(fakeDatabase.episodeProgressTombstones["ep-1"] == date)
+    }
+
     // MARK: - fractionCompleted
 
     @Test
