@@ -21,12 +21,24 @@ extension LocalDatabase {
         return ids
     }
 
-    func insertEpisodePlayed(episodeId: String) throws {
-        let episodeIdCol = Expression<String>("episodeId")
+    func allEpisodePlayedDates() throws -> [String: Date] {
+        let episodeId = Expression<String>("episodeId")
         let dateMarked = Expression<Date>("dateMarked")
-        try db.run(episodePlayedTable.insert(or: .ignore,
+
+        var result = [String: Date]()
+        for row in try db.prepare(episodePlayedTable) {
+            result[row[episodeId]] = row[dateMarked]
+        }
+        return result
+    }
+
+    func insertEpisodePlayed(episodeId: String, dateMarked: Date) throws {
+        let episodeIdCol = Expression<String>("episodeId")
+        let dateMarkedCol = Expression<Date>("dateMarked")
+        // Replace rather than ignore, so a newer mark from another device updates the date.
+        try db.run(episodePlayedTable.insert(or: .replace,
             episodeIdCol <- episodeId,
-            dateMarked <- Date()
+            dateMarkedCol <- dateMarked
         ))
     }
 
@@ -34,5 +46,39 @@ extension LocalDatabase {
         let episodeIdCol = Expression<String>("episodeId")
         let row = episodePlayedTable.filter(episodeIdCol == episodeId)
         try db.run(row.delete())
+    }
+
+    // MARK: - Tombstones
+
+    func allEpisodePlayedTombstones() throws -> [String: Date] {
+        let episodeId = Expression<String>("episodeId")
+        let unmarkedAt = Expression<Date>("unmarkedAt")
+
+        var result = [String: Date]()
+        for row in try db.prepare(episodePlayedTombstoneTable) {
+            result[row[episodeId]] = row[unmarkedAt]
+        }
+        return result
+    }
+
+    func upsertEpisodePlayedTombstone(episodeId: String, unmarkedAt: Date) throws {
+        let episodeIdCol = Expression<String>("episodeId")
+        let unmarkedAtCol = Expression<Date>("unmarkedAt")
+
+        try db.run(episodePlayedTombstoneTable.insert(or: .replace,
+            episodeIdCol <- episodeId,
+            unmarkedAtCol <- unmarkedAt
+        ))
+    }
+
+    func deleteEpisodePlayedTombstone(episodeId: String) throws {
+        let episodeIdCol = Expression<String>("episodeId")
+        let row = episodePlayedTombstoneTable.filter(episodeIdCol == episodeId)
+        try db.run(row.delete())
+    }
+
+    func deleteEpisodePlayedTombstones(olderThan date: Date) throws {
+        let unmarkedAt = Expression<Date>("unmarkedAt")
+        try db.run(episodePlayedTombstoneTable.filter(unmarkedAt < date).delete())
     }
 }

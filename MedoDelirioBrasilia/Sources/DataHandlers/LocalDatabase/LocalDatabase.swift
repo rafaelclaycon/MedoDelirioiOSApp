@@ -94,13 +94,22 @@ internal protocol LocalDatabaseProtocol {
 
     // Episode Played
     func allEpisodePlayedIDs() throws -> Set<String>
-    func insertEpisodePlayed(episodeId: String) throws
+    func allEpisodePlayedDates() throws -> [String: Date]
+    func insertEpisodePlayed(episodeId: String, dateMarked: Date) throws
     func deleteEpisodePlayed(episodeId: String) throws
+    func allEpisodePlayedTombstones() throws -> [String: Date]
+    func upsertEpisodePlayedTombstone(episodeId: String, unmarkedAt: Date) throws
+    func deleteEpisodePlayedTombstone(episodeId: String) throws
+    func deleteEpisodePlayedTombstones(olderThan date: Date) throws
 
     // Episode Progress
-    func allEpisodeProgress() throws -> [String: (currentTime: Double, duration: Double)]
-    func upsertEpisodeProgress(episodeId: String, currentTime: Double, duration: Double) throws
+    func allEpisodeProgress() throws -> [String: (currentTime: Double, duration: Double, updatedAt: Date)]
+    func upsertEpisodeProgress(episodeId: String, currentTime: Double, duration: Double, updatedAt: Date) throws
     func deleteEpisodeProgress(episodeId: String) throws
+    func allEpisodeProgressTombstones() throws -> [String: Date]
+    func upsertEpisodeProgressTombstone(episodeId: String, clearedAt: Date) throws
+    func deleteEpisodeProgressTombstone(episodeId: String) throws
+    func deleteEpisodeProgressTombstones(olderThan date: Date) throws
 
     // Episode Bookmark
     func allBookmarks(forEpisodeId episodeId: String) throws -> [EpisodeBookmark]
@@ -134,6 +143,17 @@ internal protocol LocalDatabaseProtocol {
     func markUserPlayLogsAsSent(logIds: [String]) throws
 }
 
+extension LocalDatabaseProtocol {
+
+    func insertEpisodePlayed(episodeId: String) throws {
+        try insertEpisodePlayed(episodeId: episodeId, dateMarked: Date())
+    }
+
+    func upsertEpisodeProgress(episodeId: String, currentTime: Double, duration: Double) throws {
+        try upsertEpisodeProgress(episodeId: episodeId, currentTime: currentTime, duration: duration, updatedAt: Date())
+    }
+}
+
 class LocalDatabase: LocalDatabaseProtocol {
 
     var db: Connection
@@ -155,6 +175,8 @@ class LocalDatabase: LocalDatabaseProtocol {
     var episodeFavoriteTable = Table("episodeFavorite")
     var episodePlayedTable = Table("episodePlayed")
     var episodeProgressTable = Table("episodeProgress")
+    var episodePlayedTombstoneTable = Table("episodePlayedTombstone")
+    var episodeProgressTombstoneTable = Table("episodeProgressTombstone")
     var podcastEpisodeTable = Table("podcastEpisode")
     var episodeBookmarkTable = Table("episodeBookmark")
     var episodeListenLogTable = Table("episodeListenLog")
@@ -214,7 +236,8 @@ extension LocalDatabase {
             AddEpisodeBookmarkTable(),
             AddEpisodeListenLogTable(),
             CleanUpSlashEpisodeId(),
-            AddUserPlayLogTable()
+            AddUserPlayLogTable(),
+            AddEpisodeSyncTombstoneTables()
         ]
     }
 

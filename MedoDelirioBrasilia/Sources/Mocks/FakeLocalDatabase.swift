@@ -345,20 +345,49 @@ class FakeLocalDatabase: LocalDatabaseProtocol {
 
     // Episode Played
 
-    func allEpisodePlayedIDs() throws -> Set<String> { [] }
-    func insertEpisodePlayed(episodeId: String) throws {}
-    func deleteEpisodePlayed(episodeId: String) throws {}
+    var episodePlayed: [String: Date] = [:]
+    var episodePlayedTombstones: [String: Date] = [:]
+
+    func allEpisodePlayedIDs() throws -> Set<String> { Set(episodePlayed.keys) }
+    func allEpisodePlayedDates() throws -> [String: Date] { episodePlayed }
+    func insertEpisodePlayed(episodeId: String, dateMarked: Date) throws {
+        episodePlayed[episodeId] = dateMarked
+    }
+    func deleteEpisodePlayed(episodeId: String) throws {
+        episodePlayed.removeValue(forKey: episodeId)
+    }
+    func allEpisodePlayedTombstones() throws -> [String: Date] { episodePlayedTombstones }
+    func upsertEpisodePlayedTombstone(episodeId: String, unmarkedAt: Date) throws {
+        episodePlayedTombstones[episodeId] = unmarkedAt
+    }
+    func deleteEpisodePlayedTombstone(episodeId: String) throws {
+        episodePlayedTombstones.removeValue(forKey: episodeId)
+    }
+    func deleteEpisodePlayedTombstones(olderThan date: Date) throws {
+        episodePlayedTombstones = episodePlayedTombstones.filter { $0.value >= date }
+    }
 
     // Episode Progress
 
-    var episodeProgress: [String: (currentTime: Double, duration: Double)] = [:]
+    var episodeProgress: [String: (currentTime: Double, duration: Double, updatedAt: Date)] = [:]
+    var episodeProgressTombstones: [String: Date] = [:]
 
-    func allEpisodeProgress() throws -> [String: (currentTime: Double, duration: Double)] { episodeProgress }
-    func upsertEpisodeProgress(episodeId: String, currentTime: Double, duration: Double) throws {
-        episodeProgress[episodeId] = (currentTime, duration)
+    func allEpisodeProgress() throws -> [String: (currentTime: Double, duration: Double, updatedAt: Date)] { episodeProgress }
+    func upsertEpisodeProgress(episodeId: String, currentTime: Double, duration: Double, updatedAt: Date) throws {
+        episodeProgress[episodeId] = (currentTime, duration, updatedAt)
     }
     func deleteEpisodeProgress(episodeId: String) throws {
         episodeProgress.removeValue(forKey: episodeId)
+    }
+    func allEpisodeProgressTombstones() throws -> [String: Date] { episodeProgressTombstones }
+    func upsertEpisodeProgressTombstone(episodeId: String, clearedAt: Date) throws {
+        episodeProgressTombstones[episodeId] = clearedAt
+    }
+    func deleteEpisodeProgressTombstone(episodeId: String) throws {
+        episodeProgressTombstones.removeValue(forKey: episodeId)
+    }
+    func deleteEpisodeProgressTombstones(olderThan date: Date) throws {
+        episodeProgressTombstones = episodeProgressTombstones.filter { $0.value >= date }
     }
 
     // Podcast Episode Cache
