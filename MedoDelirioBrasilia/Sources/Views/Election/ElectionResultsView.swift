@@ -40,7 +40,7 @@ struct ElectionResultsView: View {
 
                         actions(info: info, state: state)
 
-                        if let turnout = info.details?.turnout, turnout.totalVotes > 0 {
+                        if let turnout = info.details?.turnout {
                             ElectionTurnoutSection(turnout: turnout, isFinal: state.isFinal)
                         }
 
@@ -351,6 +351,11 @@ struct ElectionResultsHeader: View {
 
     /// "Lula à frente por 285.671 votos (1,68 ponto)". Votes only when the server sent them.
     private func lead(_ leader: Side, over runnerUp: Side) -> Text {
+        // The TSE publishes a file with every count at zero before the count starts.
+        let hasVotes = (leader.votes ?? 0) + (runnerUp.votes ?? 0) > 0 || leader.percent + runnerUp.percent > 0
+        guard hasVotes else {
+            return Text("Aguardando os primeiros votos")
+        }
         let points = leader.percent - runnerUp.percent
         let voteGap = leader.votes.flatMap { leaderVotes in runnerUp.votes.map { leaderVotes - $0 } }
         guard points > 0 || (voteGap ?? 0) > 0 else {
@@ -417,41 +422,52 @@ struct ElectionTurnoutSection: View {
             HStack(alignment: .top, spacing: .spacing(.small)) {
                 tile(
                     title: "Não foram votar",
-                    percent: turnout.abstentionPercent,
-                    detail: "\(ElectionResultsFormat.count(turnout.abstentions)) eleitores",
+                    percent: hasAttendance ? turnout.abstentionPercent : nil,
+                    detail: hasAttendance ? "\(ElectionResultsFormat.count(turnout.abstentions)) eleitores" : nil,
                     systemImage: "figure.walk.departure"
                 )
                 tile(
                     title: "Votos em branco",
-                    percent: turnout.blankPercent,
-                    detail: "\(ElectionResultsFormat.count(turnout.blankVotes)) votos",
+                    percent: hasVotes ? turnout.blankPercent : nil,
+                    detail: hasVotes ? "\(ElectionResultsFormat.count(turnout.blankVotes)) votos" : nil,
                     systemImage: "square.dashed"
                 )
                 tile(
                     title: "Votos nulos",
-                    percent: turnout.nullPercent,
-                    detail: "\(ElectionResultsFormat.count(turnout.nullVotes)) votos",
+                    percent: hasVotes ? turnout.nullPercent : nil,
+                    detail: hasVotes ? "\(ElectionResultsFormat.count(turnout.nullVotes)) votos" : nil,
                     systemImage: "xmark.square"
                 )
             }
             // Same height for the three, whatever wraps.
             .fixedSize(horizontal: false, vertical: true)
 
-            Text(isFinal
-                 ? "Brancos e nulos sobre o total de votos. A abstenção, sobre o eleitorado."
-                 : "Brancos e nulos sobre o total de votos, e a abstenção sobre o eleitorado, nas seções já apuradas.")
+            Text(footnote)
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
     }
 
-    private func tile(title: String, percent: Double, detail: String, systemImage: String) -> some View {
+    /// Before the count starts, every number is zero: the cards show a dash instead.
+    private var hasVotes: Bool { turnout.totalVotes > 0 }
+    private var hasAttendance: Bool { turnout.attended + turnout.abstentions > 0 }
+
+    private var footnote: String {
+        if !hasVotes && !hasAttendance {
+            return "Os números aparecem quando a contagem começar."
+        }
+        return isFinal
+            ? "Brancos e nulos sobre o total de votos. A abstenção, sobre o eleitorado."
+            : "Brancos e nulos sobre o total de votos, e a abstenção sobre o eleitorado, nas seções já apuradas."
+    }
+
+    private func tile(title: String, percent: Double?, detail: String?, systemImage: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Image(systemName: systemImage)
                 .font(.subheadline)
                 .foregroundStyle(ElectionResultsPalette.accent)
                 .frame(height: 20, alignment: .leading)
-            Text(ElectionResultsFormat.percent(percent))
+            Text(percent.map(ElectionResultsFormat.percent) ?? "—")
                 .font(.system(.title3, design: .rounded))
                 .fontWeight(.bold)
                 .monospacedDigit()
@@ -462,7 +478,7 @@ struct ElectionTurnoutSection: View {
                 .font(.footnote)
                 .fontWeight(.semibold)
                 .fixedSize(horizontal: false, vertical: true)
-            Text(detail)
+            Text(detail ?? "—")
                 .font(.caption2)
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
