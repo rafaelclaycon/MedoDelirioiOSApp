@@ -121,7 +121,7 @@ struct ChapterCanvas: View {
 
                 Button("Cancelar", role: .cancel) {}
             } message: {
-                Text("Os capítulos deixam de aparecer no player. Você pode reativá-los nos Ajustes.")
+                Text("Os capítulos deixam de aparecer no player. Você pode reativá-los em Configurações › Episódios.")
             }
             .sheet(isPresented: $showAIUsageDetails) {
                 AIUsageDetailsView()

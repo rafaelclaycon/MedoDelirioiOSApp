@@ -585,7 +585,7 @@ struct NowPlayingView: View {
     private func hideChapters() {
         chaptersHidden = true
         currentCanvasMode = .coverArt
-        showToast(Toast(message: "Capítulos ocultados. Reative nos Ajustes.", type: .success), from: .canvas)
+        showToast(Toast(message: "Capítulos ocultados. Reative em Configurações.", type: .success), from: .canvas)
         Task {
             await AnalyticsService().send(originatingScreen: "NowPlaying", action: "chapters_hidden")
         }

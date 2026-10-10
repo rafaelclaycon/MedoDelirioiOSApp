@@ -423,7 +423,7 @@ struct DevOptionsView: View {
             } header: {
                 Text("Episódios")
             } footer: {
-                Text("Apaga os números de ouvintes da semana e busca de novo depois de 15 segundos. Feche os Ajustes para ver a animação na lista.")
+                Text("Apaga os números de ouvintes da semana e busca de novo depois de 15 segundos. Feche as Configurações para ver a animação na lista.")
             }
 
             Section("Marketing") {

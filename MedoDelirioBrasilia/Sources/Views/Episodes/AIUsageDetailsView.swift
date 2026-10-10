@@ -23,7 +23,7 @@ struct AIUsageDetailsView: View {
 
                     Text("Em ambos os casos, o conteúdo processado é sempre o dos episódios oficiais do podcast. Nenhum dado pessoal seu ou conteúdo criado por você é utilizado.")
 
-                    Text("Não quer usar esses recursos? Você pode desativar os capítulos em Ajustes > Episódios, ou simplesmente não baixar as transcrições.")
+                    Text("Não quer usar esses recursos? Você pode desativar os capítulos em Configurações › Episódios, ou simplesmente não baixar as transcrições.")
 
                     GlassButton(
                         symbol: "doc.text",
