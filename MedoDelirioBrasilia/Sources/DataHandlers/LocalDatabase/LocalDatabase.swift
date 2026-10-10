@@ -64,6 +64,7 @@ internal protocol LocalDatabaseProtocol {
     func unsuccessfulUpdates() throws -> [UpdateEvent]
     func exists(withId updateEventId: UUID) throws -> Bool
     func dateTimeOfLastUpdate() -> String
+    func hasDeletionEvent(forContentId contentId: String, after dateTime: String) throws -> Bool
 
     // SyncLog
     func insert(syncLog newSyncLog: SyncLog)

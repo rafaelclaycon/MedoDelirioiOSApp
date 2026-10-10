@@ -111,11 +111,13 @@ class FakeAPIClient: APIClientProtocol {
     }
 
     func sound(_ id: String) async throws -> Sound {
-        sound!
+        guard let sound else { throw APIClientError.resourceNotFound }
+        return sound
     }
 
     func song(_ id: String) async throws -> Song {
-        song!
+        guard let song else { throw APIClientError.resourceNotFound }
+        return song
     }
 
     func author(_ id: String) async throws -> Author {

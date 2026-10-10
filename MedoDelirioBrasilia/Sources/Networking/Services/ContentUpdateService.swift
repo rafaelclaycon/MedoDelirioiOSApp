@@ -212,7 +212,8 @@ extension ContentUpdateService {
 
     private func retrieveServerUpdates() async throws -> Int {
         let lastUpdateDate = localDatabase.dateTimeOfLastUpdate()
-        serverUpdates = try await getUpdates(from: lastUpdateDate)
+        // The server only sorts dated requests; a first sync ("all") comes back unordered.
+        serverUpdates = try await getUpdates(from: lastUpdateDate).sorted { $0.dateTime < $1.dateTime }
 
         // Added to whatever the local retry phase already queued, so progress
         // reflects every event this run will process.
@@ -247,7 +248,8 @@ extension ContentUpdateService {
     }
 
     private func retrieveUnsuccessfulLocalUpdates() async throws -> Int {
-        localUnsuccessfulUpdates = try localDatabase.unsuccessfulUpdates()
+        // Replayed in server order: a deletion must never run before the creation it undoes.
+        localUnsuccessfulUpdates = try localDatabase.unsuccessfulUpdates().sorted { $0.dateTime < $1.dateTime }
         return localUnsuccessfulUpdates?.count ?? 0
     }
 
@@ -272,6 +274,14 @@ extension ContentUpdateService {
     }
 
     private func process(updateEvent: UpdateEvent) async {
+        if updateEvent.eventType != .deleted, isSupersededByDeletion(updateEvent) {
+            settle(
+                updateEvent,
+                reason: "\(updateEvent.mediaType.description) \(updateEvent.contentId) foi removide depois deste evento, ignorando."
+            )
+            return
+        }
+
         switch updateEvent.eventType {
         case .created:
             await createResource(for: updateEvent)
@@ -295,6 +305,37 @@ extension ContentUpdateService {
     }
 }
 
+// MARK: - Internal Functions - Stale Events
+
+extension ContentUpdateService {
+
+    /// A creation or update that failed and is retried after its content was deleted would
+    /// otherwise bring the content back, since the deletion already ran and won't run again.
+    private func isSupersededByDeletion(_ updateEvent: UpdateEvent) -> Bool {
+        (try? localDatabase.hasDeletionEvent(forContentId: updateEvent.contentId, after: updateEvent.dateTime)) ?? false
+    }
+
+    /// Marks an event that no longer applies as succeeded so it stops being retried.
+    private func settle(_ updateEvent: UpdateEvent, reason: String) {
+        do {
+            try localDatabase.markAsSucceeded(updateEventId: updateEvent.id)
+            logger.updateSuccess(reason, updateEventId: updateEvent.id.uuidString)
+        } catch {
+            logger.updateError(
+                "Erro ao tentar ignorar evento de \(updateEvent.mediaType.description) - \(updateEvent.contentId): \(error.localizedDescription)",
+                updateEventId: updateEvent.id.uuidString
+            )
+        }
+    }
+
+    private func settleAsGoneFromServer(_ updateEvent: UpdateEvent) {
+        settle(
+            updateEvent,
+            reason: "\(updateEvent.mediaType.description) \(updateEvent.contentId) não existe mais no servidor, ignorando."
+        )
+    }
+}
+
 // MARK: - Internal Functions - Processing Updates
 
 extension ContentUpdateService {
@@ -308,15 +349,19 @@ extension ContentUpdateService {
                 return
             }
 
+            // The file goes first: a row saved without its file would count as "already exists"
+            // on retry, leaving content that can't play.
             switch updateEvent.mediaType {
             case .sound:
-                try localDatabase.insert(sound: try await apiClient.sound(updateEvent.contentId))
+                let sound = try await apiClient.sound(updateEvent.contentId)
                 try await fileManager.downloadSound(withId: updateEvent.contentId)
+                try localDatabase.insert(sound: sound)
             case .author:
                 try localDatabase.insert(author: try await apiClient.author(updateEvent.contentId))
             case .song:
-                try localDatabase.insert(song: try await apiClient.song(updateEvent.contentId))
+                let song = try await apiClient.song(updateEvent.contentId)
                 try await fileManager.downloadSong(withId: updateEvent.contentId)
+                try localDatabase.insert(song: song)
             case .musicGenre:
                 try localDatabase.insert(genre: try await apiClient.musicGenre(updateEvent.contentId))
             }
@@ -326,6 +371,8 @@ extension ContentUpdateService {
                 "\(updateEvent.mediaType.description) \(updateEvent.contentId) criade com sucesso.",
                 updateEventId: updateEvent.id.uuidString
             )
+        } catch APIClientError.resourceNotFound {
+            settleAsGoneFromServer(updateEvent)
         } catch {
             logger.updateError(
                 "Erro ao tentar criar \(updateEvent.mediaType.description) - \(updateEvent.contentId): \(error.localizedDescription)",
@@ -363,6 +410,8 @@ extension ContentUpdateService {
                 "Dados de \(updateEvent.mediaType.description) \(updateEvent.contentId) atualizados com sucesso.",
                 updateEventId: updateEvent.id.uuidString
             )
+        } catch APIClientError.resourceNotFound {
+            settleAsGoneFromServer(updateEvent)
         } catch {
             logger.updateError(
                 "Erro ao tentar atualizar dados de \(updateEvent.mediaType.description) - \(updateEvent.contentId): \(error.localizedDescription)",

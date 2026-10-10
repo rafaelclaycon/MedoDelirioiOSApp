@@ -126,6 +126,55 @@ struct ContentUpdateServiceTests {
     }
 
     @Test
+    func update_whenRetryingACreationThatWasLaterDeleted_shouldSkipItAndMarkItAsSucceeded() async throws {
+        appMemory.hasAllowedContentUpdate(true)
+
+        let created = UpdateEvent(contentId: "ABC", dateTime: "2026-10-10T03:00:06.701Z", mediaType: .sound, eventType: .created, didSucceed: false)
+        let deleted = UpdateEvent(contentId: "ABC", dateTime: "2026-10-10T03:00:29.284Z", mediaType: .sound, eventType: .deleted, didSucceed: true)
+        localDatabase.localUpdates = [created, deleted]
+        apiClient.sound = Sound(id: "ABC", title: "")
+
+        await service.update()
+
+        #expect(service.lastUpdateStatus == .done)
+        #expect(!localDatabase.didCallInsertSound)
+        #expect(!fileManager.didCallDownloadSound)
+        #expect(try localDatabase.unsuccessfulUpdates().isEmpty)
+    }
+
+    @Test
+    func update_whenCreatedContentIsGoneFromServer_shouldMarkEventAsSucceededWithoutDownloading() async throws {
+        appMemory.hasAllowedContentUpdate(true)
+
+        let created = UpdateEvent(contentId: "ABC", mediaType: .sound, eventType: .created, didSucceed: false)
+        localDatabase.localUpdates = [created]
+        apiClient.sound = nil
+
+        await service.update()
+
+        #expect(service.lastUpdateStatus == .done)
+        #expect(!localDatabase.didCallInsertSound)
+        #expect(!fileManager.didCallDownloadSound)
+        #expect(try localDatabase.unsuccessfulUpdates().isEmpty)
+    }
+
+    @Test
+    func update_whenSoundIsCreatedAgainAfterBeingDeleted_shouldStillCreateIt() async throws {
+        appMemory.hasAllowedContentUpdate(true)
+
+        let deleted = UpdateEvent(contentId: "ABC", dateTime: "2026-10-10T03:00:29.284Z", mediaType: .sound, eventType: .deleted, didSucceed: true)
+        let created = UpdateEvent(contentId: "ABC", dateTime: "2026-10-10T04:00:00.000Z", mediaType: .sound, eventType: .created, didSucceed: false)
+        localDatabase.localUpdates = [deleted, created]
+        apiClient.sound = Sound(id: "ABC", title: "")
+
+        await service.update()
+
+        #expect(localDatabase.didCallInsertSound)
+        #expect(fileManager.didCallDownloadSound)
+        #expect(try localDatabase.unsuccessfulUpdates().isEmpty)
+    }
+
+    @Test
     func update_whenAuthorEventErroneouslySetAsFileUpdated_shouldNotProcessItAtAll() async throws {
         appMemory.hasAllowedContentUpdate(true)
 

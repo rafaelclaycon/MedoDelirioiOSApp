@@ -62,6 +62,19 @@ extension LocalDatabase {
         return count > 0
     }
 
+    /// Event dates share the server's ISO 8601 format, so comparing them as strings orders them by time.
+    func hasDeletionEvent(forContentId contentId: String, after dateTime: String) throws -> Bool {
+        let content_id = Expression<String>("contentId")
+        let date_time = Expression<String>("dateTime")
+        let event_type = Expression<Int>("eventType")
+        let query = updateEventTable.filter(
+            content_id == contentId
+            && event_type == EventType.deleted.rawValue
+            && date_time > dateTime
+        )
+        return try db.scalar(query.count) > 0
+    }
+
     func dateTimeOfLastUpdate() -> String {
         let dateTimeColumn = Expression<String>("dateTime")
         let query = updateEventTable.order(dateTimeColumn.desc).select(dateTimeColumn).limit(1)

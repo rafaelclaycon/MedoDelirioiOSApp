@@ -264,6 +264,10 @@ class FakeLocalDatabase: LocalDatabaseProtocol {
         return localUpdates.contains(where: { $0.id == updateEventId })
     }
 
+    func hasDeletionEvent(forContentId contentId: String, after dateTime: String) throws -> Bool {
+        localUpdates.contains { $0.contentId == contentId && $0.eventType == .deleted && $0.dateTime > dateTime }
+    }
+
     func dateTimeOfLastUpdate() -> String {
         let dateFormatter = ISO8601DateFormatter()
         let dateArray = localUpdates.compactMap { dateFormatter.date(from: $0.dateTime) }
