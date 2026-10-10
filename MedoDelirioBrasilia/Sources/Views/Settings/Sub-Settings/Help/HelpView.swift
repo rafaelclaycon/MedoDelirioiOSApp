@@ -51,6 +51,9 @@ struct HelpView: View {
                         Text("O básico")
                             .font(.title)
                             .bold()
+                            // `.primary` resolves to the tint inside the disclosure
+                            // button; a concrete color doesn't.
+                            .foregroundStyle(Color(uiColor: .label))
                     }
 
                     DisclosureGroup(isExpanded: $isEpisodesExpanded) {
@@ -96,6 +99,9 @@ struct HelpView: View {
                         Text("Episódios")
                             .font(.title)
                             .bold()
+                            // `.primary` resolves to the tint inside the disclosure
+                            // button; a concrete color doesn't.
+                            .foregroundStyle(Color(uiColor: .label))
                     }
 
                     DisclosureGroup(isExpanded: $isDifferentiatorsExpanded) {
@@ -138,6 +144,9 @@ struct HelpView: View {
                         Text("Diferenciais do app")
                             .font(.title)
                             .bold()
+                            // `.primary` resolves to the tint inside the disclosure
+                            // button; a concrete color doesn't.
+                            .foregroundStyle(Color(uiColor: .label))
                     }
                 }
                 .padding(.horizontal, .spacing(.medium))
