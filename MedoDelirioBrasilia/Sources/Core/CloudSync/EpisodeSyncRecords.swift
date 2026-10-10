@@ -47,15 +47,37 @@ struct EpisodeProgressRecord: EpisodeSyncRecord {
     }
 }
 
-/// Whether an episode is marked as played. Unmarking is a record too, with
-/// `isPlayed == false`, so it isn't undone by an older mark from another device.
-struct EpisodePlayedRecord: EpisodeSyncRecord {
+/// A yes/no mark on an episode, like played or favorite. Removing the mark is a record
+/// too, with `isMarked == false`, so it isn't undone by an older mark from another device.
+protocol EpisodeMarkRecord: EpisodeSyncRecord {
+
+    var isMarked: Bool { get }
+}
+
+/// Whether an episode is marked as played.
+struct EpisodePlayedRecord: EpisodeMarkRecord {
 
     var isPlayed: Bool
     var updatedAt: Date
 
+    var isMarked: Bool { isPlayed }
+
     enum CodingKeys: String, CodingKey {
         case isPlayed = "p"
+        case updatedAt = "u"
+    }
+}
+
+/// Whether an episode is a favorite.
+struct EpisodeFavoriteRecord: EpisodeMarkRecord {
+
+    var isFavorite: Bool
+    var updatedAt: Date
+
+    var isMarked: Bool { isFavorite }
+
+    enum CodingKeys: String, CodingKey {
+        case isFavorite = "f"
         case updatedAt = "u"
     }
 }
