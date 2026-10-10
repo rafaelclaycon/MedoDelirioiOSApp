@@ -26,6 +26,27 @@
 	</array>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>com.rafaelschmitt.MedoDelirioBrasilia.PlayAndShareSounds</string>
+		<string>com.rafaelschmitt.MedoDelirioBrasilia.ViewFavorites</string>
+		<string>com.rafaelschmitt.MedoDelirioBrasilia.ViewCollections</string>
+		<string>com.rafaelschmitt.MedoDelirioBrasilia.ViewAuthors</string>
+		<string>com.rafaelschmitt.MedoDelirioBrasilia.ViewReactions</string>
+		<string>com.rafaelschmitt.MedoDelirioBrasilia.ViewReaction</string>
+		<string>com.rafaelschmitt.MedoDelirioBrasilia.PlayAndShareSongs</string>
+		<string>com.rafaelschmitt.MedoDelirioBrasilia.ViewLast24HoursTopChart</string>
+		<string>com.rafaelschmitt.MedoDelirioBrasilia.ViewLast3DaysTopChart</string>
+		<string>com.rafaelschmitt.MedoDelirioBrasilia.ViewLastWeekTopChart</string>
+		<string>com.rafaelschmitt.MedoDelirioBrasilia.ViewLastMonthTopChart</string>
+		<string>com.rafaelschmitt.MedoDelirioBrasilia.View2026TopChart</string>
+		<string>com.rafaelschmitt.MedoDelirioBrasilia.View2025TopChart</string>
+		<string>com.rafaelschmitt.MedoDelirioBrasilia.View2024TopChart</string>
+		<string>com.rafaelschmitt.MedoDelirioBrasilia.View2023TopChart</string>
+		<string>com.rafaelschmitt.MedoDelirioBrasilia.View2022TopChart</string>
+		<string>com.rafaelschmitt.MedoDelirioBrasilia.ViewAllTimeTopChart</string>
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER).ContinueEpisode</string>
+	</array>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

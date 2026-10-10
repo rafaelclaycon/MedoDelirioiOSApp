@@ -99,6 +99,12 @@ struct Shared {
         static let view2023TopChart = "com.rafaelschmitt.MedoDelirioBrasilia.View2023TopChart"
         static let view2022TopChart = "com.rafaelschmitt.MedoDelirioBrasilia.View2022TopChart"
         static let viewAllTimeTopChart = "com.rafaelschmitt.MedoDelirioBrasilia.ViewAllTimeTopChart"
+
+        /// Handoff of the episode in the player. Unlike the Siri types above, this one
+        /// includes the bundle ID: Handoff matches apps by activity type and team, so a
+        /// shared name would let the beta hand off to the App Store app and vice versa.
+        /// Keep in sync with `NSUserActivityTypes` in Info.plist.
+        static let continueEpisode = "\(Bundle.main.bundleIdentifier ?? "com.rafaelschmitt.MedoDelirioBrasilia").ContinueEpisode"
     }
     
     static let addToFolderButtonText = "Adicionar a Pasta"
