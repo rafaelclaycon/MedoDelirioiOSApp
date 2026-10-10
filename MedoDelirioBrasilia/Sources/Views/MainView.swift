@@ -530,6 +530,10 @@ struct MainView: View {
             guard let reactionId = activity.userInfo?["reactionId"] as? String else { return }
             handleDeepLink(.reaction(id: reactionId))
         }
+        // Handoff from another device playing an episode.
+        .onContinueUserActivity(Shared.ActivityTypes.continueEpisode) { activity in
+            continueHandedOffEpisode(activity)
+        }
         .onContinueUserActivity(Shared.ActivityTypes.viewLast24HoursTopChart) { _ in
             goToTrends(timeInterval: .last24Hours)
         }
@@ -818,6 +822,57 @@ struct MainView: View {
             } else {
                 showElectionResults = true
             }
+        }
+    }
+
+    private func continueHandedOffEpisode(_ activity: NSUserActivity) {
+        guard let payload = EpisodeHandoffPayload(userInfo: activity.userInfo) else {
+            logger.error("[Handoff] couldn't read the handed-off episode: \(String(describing: activity.userInfo), privacy: .public)")
+            return
+        }
+        logger.info("[Handoff] continuing \(payload.episodeID, privacy: .public) at \(Int(payload.position))s")
+
+        let continuation = EpisodeHandoffContinuation.resolve(
+            payload,
+            loadedEpisodeID: episodePlayer.currentEpisode?.id
+        ) { id in
+            try? LocalDatabase.shared.podcastEpisode(id: id)
+        }
+
+        switch continuation {
+        case .resume(let position):
+            episodePlayer.seek(to: position)
+            if !episodePlayer.isPlaying {
+                episodePlayer.togglePlayPause()
+            }
+            showNowPlaying = true
+
+        case .start(let episode, let position):
+            // Saved first so the player resumes there, including after a download or
+            // the cellular prompt.
+            episodeProgressStore.save(episodeID: episode.id, currentTime: position, duration: payload.duration)
+
+            let isDownloaded = FileManager.default.fileExists(atPath: EpisodePlayer.localFileURL(for: episode).path)
+            if !isDownloaded {
+                // The episode screen shows the download's progress. The iPad's sidebar
+                // can't be switched from code, so there it just waits for Now Playing.
+                tabSelection.wrappedValue = .episodes
+                episodesPath.append(episode)
+            }
+
+            Task {
+                await episodePlayer.play(episode: episode)
+                guard episodePlayer.isCurrentEpisode(episode) else { return }
+                // On a cold launch the handoff can arrive before `onAppear` hands the
+                // player its progress store, so the saved position may have been missed.
+                episodePlayer.seek(to: position)
+                showNowPlaying = true
+            }
+
+        case .episodeNotFound:
+            deepLinkErrorTitle = "Opa! 😅"
+            deepLinkErrorMessage = "Esse episódio ainda não chegou neste aparelho. Abra Episódios, puxe a lista para baixo para atualizar e tente de novo."
+            showDeepLinkError = true
         }
     }
 

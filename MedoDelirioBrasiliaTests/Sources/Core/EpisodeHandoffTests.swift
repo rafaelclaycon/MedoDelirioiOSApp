@@ -29,18 +29,26 @@ struct EpisodeHandoffTests {
         #expect(Set(payload.userInfo.keys) == EpisodeHandoffPayload.requiredKeys)
     }
 
-    @Test(arguments: [
-        nil,
-        [:],
-        ["position": 10.0, "duration": 100.0],
-        ["episodeId": "", "position": 10.0, "duration": 100.0],
-        ["episodeId": "ep-1", "duration": 100.0],
-        ["episodeId": "ep-1", "position": Double.nan, "duration": 100.0],
-        ["episodeId": "ep-1", "position": 10.0, "duration": 0.0],
-        ["episodeId": "ep-1", "position": "10", "duration": 100.0]
-    ] as [[String: AnyHashable]?])
-    func payload_withMissingOrInvalidFields_shouldBeRejected(userInfo: [String: AnyHashable]?) {
-        #expect(EpisodeHandoffPayload(userInfo: userInfo) == nil)
+    enum InvalidUserInfo: CaseIterable {
+        case none, empty, missingID, emptyID, missingPosition, nanPosition, zeroDuration, positionAsString
+
+        var userInfo: [AnyHashable: Any]? {
+            switch self {
+            case .none: nil
+            case .empty: [:]
+            case .missingID: ["position": 10.0, "duration": 100.0]
+            case .emptyID: ["episodeId": "", "position": 10.0, "duration": 100.0]
+            case .missingPosition: ["episodeId": "ep-1", "duration": 100.0]
+            case .nanPosition: ["episodeId": "ep-1", "position": Double.nan, "duration": 100.0]
+            case .zeroDuration: ["episodeId": "ep-1", "position": 10.0, "duration": 0.0]
+            case .positionAsString: ["episodeId": "ep-1", "position": "10", "duration": 100.0]
+            }
+        }
+    }
+
+    @Test(arguments: InvalidUserInfo.allCases)
+    func payload_withMissingOrInvalidFields_shouldBeRejected(_ invalid: InvalidUserInfo) {
+        #expect(EpisodeHandoffPayload(userInfo: invalid.userInfo) == nil)
     }
 
     @Test
@@ -50,6 +58,40 @@ struct EpisodeHandoffTests {
 
         #expect(past?.position == 100)
         #expect(negative?.position == 0)
+    }
+
+    // MARK: - Continuation
+
+    private let episode = PodcastEpisode.mockRecent
+
+    @Test
+    func continuation_whenTheEpisodeIsAlreadyLoaded_shouldResumeIt() {
+        let payload = EpisodeHandoffPayload(episodeID: episode.id, position: 300, duration: 4000)
+
+        let result = EpisodeHandoffContinuation.resolve(payload, loadedEpisodeID: episode.id) { _ in nil }
+
+        #expect(result == .resume(at: 300))
+    }
+
+    @Test
+    func continuation_whenAnotherEpisodeIsLoaded_shouldStartTheHandedOffOne() {
+        let episode = episode
+        let payload = EpisodeHandoffPayload(episodeID: episode.id, position: 300, duration: 4000)
+
+        let result = EpisodeHandoffContinuation.resolve(payload, loadedEpisodeID: "another-episode") { id in
+            id == episode.id ? episode : nil
+        }
+
+        #expect(result == .start(episode, at: 300))
+    }
+
+    @Test
+    func continuation_whenTheEpisodeIsUnknownHere_shouldReportIt() {
+        let payload = EpisodeHandoffPayload(episodeID: "ep-new", position: 300, duration: 4000)
+
+        let result = EpisodeHandoffContinuation.resolve(payload, loadedEpisodeID: nil) { _ in nil }
+
+        #expect(result == .episodeNotFound)
     }
 
     // MARK: - Snapshot
