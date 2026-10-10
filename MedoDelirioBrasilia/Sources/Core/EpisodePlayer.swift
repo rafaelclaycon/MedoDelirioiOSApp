@@ -104,6 +104,9 @@ final class EpisodePlayer {
     @ObservationIgnored private var currentSessionStart: Date?
     @ObservationIgnored private var currentSessionStartTime: TimeInterval = 0
     @ObservationIgnored private var isSceneActive = true
+    @ObservationIgnored private lazy var handoff = EpisodeHandoff { [weak self] in
+        self?.pauseForHandoff()
+    }
 
     @ObservationIgnored private lazy var downloadCoordinator: DownloadCoordinator = {
         DownloadCoordinator { [weak self] progress in
@@ -277,6 +280,9 @@ final class EpisodePlayer {
             if isPlaying {
                 startTimer()
             }
+            // Screens visited while away may have taken Handoff for their own
+            // activities; coming back is when the user is most likely to hand off.
+            updateHandoff()
         } else {
             currentTime = currentPlaybackTime()
             stopTimer()
@@ -705,6 +711,30 @@ final class EpisodePlayer {
 
         syncChapterTimer()
         syncChapterFetchTimer()
+        updateHandoff()
+    }
+
+    // MARK: - Handoff
+
+    /// Handoff follows the lock screen: every change that updates Now Playing also
+    /// updates what a nearby device would pick up.
+    @MainActor
+    private func updateHandoff() {
+        guard let episode = currentEpisode else { return }
+        handoff.update(
+            episode: episode,
+            position: currentPlaybackTime(),
+            duration: duration,
+            isPlaying: isPlaying,
+            rate: playbackSpeed
+        )
+    }
+
+    /// Another device picked this episode up over Handoff; stop playing over it.
+    @MainActor
+    private func pauseForHandoff() {
+        guard isPlaying else { return }
+        togglePlayPause()
     }
 
     // MARK: - Chapters
@@ -867,6 +897,7 @@ final class EpisodePlayer {
         stopChapterFetchTimer()
         chaptersMayStillArrive = false
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+        handoff.end()
     }
 
     // MARK: - Artwork
