@@ -44,7 +44,7 @@ struct EpisodesSettingsView: View {
                         UserSettings().setEnableICloudEpisodeSync(to: iCloudSync)
                     }
             } footer: {
-                Text("Mantém sincronizados o ponto onde você parou em cada episódio e os episódios finalizados em todos os seus aparelhos com a mesma Conta Apple.")
+                Text("Mantém sincronizados o ponto onde você parou em cada episódio, os episódios finalizados e os favoritos em todos os seus aparelhos com a mesma Conta Apple.")
             }
 
             chaptersSection

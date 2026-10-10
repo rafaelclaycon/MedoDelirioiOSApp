@@ -10,8 +10,8 @@ import os
 
 private let logger = os.Logger(subsystem: "com.rafaelschmitt.MedoDelirioBrasilia", category: "EpisodeStateCloudSync")
 
-/// Keeps episode progress and played state in step across the user's devices through
-/// iCloud key-value storage.
+/// Keeps episode progress, played state and favorites in step across the user's
+/// devices through iCloud key-value storage.
 ///
 /// Each kind of state lives under one key as a `[episodeId: record]` dictionary. A sync
 /// reads the cloud copy, merges it with everything this device knows (newer record
@@ -27,6 +27,7 @@ final class EpisodeStateCloudSync {
 
     nonisolated static let progressKey = "episodeProgress.v1"
     nonisolated static let playedKey = "episodePlayed.v1"
+    nonisolated static let favoriteKey = "episodeFavorite.v1"
 
     /// Keeps the progress payload well under the store's 1 MB limit. Positions beyond
     /// this stay on the device that has them; they just stop syncing.
@@ -41,6 +42,7 @@ final class EpisodeStateCloudSync {
 
     private let progressStore: EpisodeProgressStore
     private let playedStore: EpisodePlayedStore
+    private let favoriteStore: EpisodeFavoritesStore
     private let cloudStore: CloudKeyValueStore
     private let isEnabled: () -> Bool
     private let now: () -> Date
@@ -68,12 +70,14 @@ final class EpisodeStateCloudSync {
     init(
         progressStore: EpisodeProgressStore,
         playedStore: EpisodePlayedStore,
+        favoriteStore: EpisodeFavoritesStore,
         cloudStore: CloudKeyValueStore = NSUbiquitousKeyValueStore.default,
         isEnabled: @escaping () -> Bool = { UserSettings().getEnableICloudEpisodeSync() },
         now: @escaping () -> Date = Date.init
     ) {
         self.progressStore = progressStore
         self.playedStore = playedStore
+        self.favoriteStore = favoriteStore
         self.cloudStore = cloudStore
         self.isEnabled = isEnabled
         self.now = now
@@ -91,6 +95,9 @@ final class EpisodeStateCloudSync {
             MainActor.assumeIsolated { self?.requestSync() }
         }
         playedStore.onLocalChange = { [weak self] in
+            MainActor.assumeIsolated { self?.requestSync() }
+        }
+        favoriteStore.onLocalChange = { [weak self] in
             MainActor.assumeIsolated { self?.requestSync() }
         }
 
@@ -139,7 +146,20 @@ final class EpisodeStateCloudSync {
         guard isEnabled() else { return }
         let date = now()
         syncProgress(now: date)
-        syncPlayed(now: date)
+        syncMarks(
+            key: Self.playedKey,
+            local: playedStore.syncRecords(),
+            apply: playedStore.applyRemote,
+            pruneLocalTombstones: playedStore.pruneTombstones,
+            now: date
+        )
+        syncMarks(
+            key: Self.favoriteKey,
+            local: favoriteStore.syncRecords(),
+            apply: favoriteStore.applyRemote,
+            pruneLocalTombstones: favoriteStore.pruneTombstones,
+            now: date
+        )
     }
 
     private func syncProgress(now date: Date) {
@@ -161,20 +181,28 @@ final class EpisodeStateCloudSync {
         }
     }
 
-    private func syncPlayed(now date: Date) {
-        let remote: [String: EpisodePlayedRecord] = read(Self.playedKey)
-        let result = Self.merge(local: playedStore.syncRecords(), remote: remote)
+    /// Played and favorite marks sync the same way; only the key and the store differ.
+    private func syncMarks<Record: EpisodeMarkRecord>(
+        key: String,
+        local: [String: Record],
+        apply: (Record, String) -> Void,
+        pruneLocalTombstones: (Date) -> Void,
+        now date: Date
+    ) {
+        let remote: [String: Record] = read(key)
+        let result = Self.merge(local: local, remote: remote)
         let horizon = date.addingTimeInterval(-Self.tombstoneLifetime)
 
         for (id, record) in result.toApply {
-            if !record.isPlayed && record.updatedAt < horizon { continue }
-            playedStore.applyRemote(record, episodeID: id)
+            // Same reasoning as expired clearings in `syncProgress`.
+            if !record.isMarked && record.updatedAt < horizon { continue }
+            apply(record, id)
         }
-        playedStore.pruneTombstones(olderThan: horizon)
+        pruneLocalTombstones(horizon)
 
-        let pruned = Self.prunePlayed(result.merged, now: date)
+        let pruned = Self.pruneMarks(result.merged, now: date)
         if pruned != remote {
-            write(pruned, forKey: Self.playedKey)
+            write(pruned, forKey: key)
         }
     }
 
@@ -241,14 +269,14 @@ final class EpisodeStateCloudSync {
         return pruned
     }
 
-    /// Keeps every played mark (a few hundred episodes is only tens of KB) and
-    /// unmarkings until they expire.
-    nonisolated static func prunePlayed(
-        _ records: [String: EpisodePlayedRecord],
+    /// Keeps every mark (a few hundred episodes is only tens of KB) and unmarkings
+    /// until they expire.
+    nonisolated static func pruneMarks<Record: EpisodeMarkRecord>(
+        _ records: [String: Record],
         now date: Date
-    ) -> [String: EpisodePlayedRecord] {
+    ) -> [String: Record] {
         let expiry = date.addingTimeInterval(-(tombstoneLifetime + cloudTombstoneGrace))
-        return records.filter { $0.value.isPlayed || $0.value.updatedAt >= expiry }
+        return records.filter { $0.value.isMarked || $0.value.updatedAt >= expiry }
     }
 
     // MARK: - Encoding

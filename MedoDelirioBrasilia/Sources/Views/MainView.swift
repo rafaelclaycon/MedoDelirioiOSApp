@@ -971,7 +971,8 @@ struct MainView: View {
         guard episodeStateCloudSync == nil else { return }
         let sync = EpisodeStateCloudSync(
             progressStore: episodeProgressStore,
-            playedStore: episodePlayedStore
+            playedStore: episodePlayedStore,
+            favoriteStore: episodeFavoritesStore
         )
         let player = episodePlayer
         sync.isEpisodeActive = { [weak player] episodeID in

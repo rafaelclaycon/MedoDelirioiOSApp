@@ -24,18 +24,20 @@ struct EpisodeStateCloudSyncTests {
     /// Built after seeding, since the stores load from the database on init.
     private func makeSUT(
         isEnabled: Bool = true
-    ) -> (sync: EpisodeStateCloudSync, progress: EpisodeProgressStore, played: EpisodePlayedStore) {
+    ) -> (sync: EpisodeStateCloudSync, progress: EpisodeProgressStore, played: EpisodePlayedStore, favorites: EpisodeFavoritesStore) {
         let progress = EpisodeProgressStore(database: fakeDatabase)
         let played = EpisodePlayedStore(database: fakeDatabase)
+        let favorites = EpisodeFavoritesStore(database: fakeDatabase)
         let fixedNow = now
         let sync = EpisodeStateCloudSync(
             progressStore: progress,
             playedStore: played,
+            favoriteStore: favorites,
             cloudStore: cloud,
             isEnabled: { isEnabled },
             now: { fixedNow }
         )
-        return (sync, progress, played)
+        return (sync, progress, played, favorites)
     }
 
     private func progress(_ time: Double, at date: Date, cleared: Bool = false) -> EpisodeProgressRecord {
@@ -147,13 +149,14 @@ struct EpisodeStateCloudSyncTests {
     func sync_calledAgainWithNothingNew_shouldNotWrite() throws {
         try fakeDatabase.upsertEpisodeProgress(episodeId: "ep-1", currentTime: 30, duration: 3600, updatedAt: now)
         try fakeDatabase.insertEpisodePlayed(episodeId: "ep-2", dateMarked: now)
+        try fakeDatabase.insertEpisodeFavorite(episodeId: "ep-3", dateAdded: now)
         let sut = makeSUT()
         sut.sync.sync()
         let writesAfterFirstSync = cloud.setDataCallCount
 
         sut.sync.sync()
 
-        #expect(writesAfterFirstSync == 2)
+        #expect(writesAfterFirstSync == 3)
         #expect(cloud.setDataCallCount == writesAfterFirstSync)
     }
 
@@ -232,6 +235,66 @@ struct EpisodeStateCloudSyncTests {
         #expect(pushed["ep-1"]?.isPlayed == false)
     }
 
+    // MARK: - Favorites
+
+    @Test
+    func sync_withEmptyCloud_shouldPushLocalFavorites() throws {
+        try fakeDatabase.insertEpisodeFavorite(episodeId: "ep-1", dateAdded: now)
+        let sut = makeSUT()
+
+        sut.sync.sync()
+
+        let pushed = try cloudRecords(EpisodeStateCloudSync.favoriteKey, as: EpisodeFavoriteRecord.self)
+        #expect(pushed["ep-1"]?.isFavorite == true)
+    }
+
+    @Test
+    func sync_withRemoteFavorite_shouldFavoriteTheEpisode() throws {
+        try putInCloud(["ep-1": EpisodeFavoriteRecord(isFavorite: true, updatedAt: now)], key: EpisodeStateCloudSync.favoriteKey)
+        let sut = makeSUT()
+
+        sut.sync.sync()
+
+        #expect(sut.favorites.isFavorite("ep-1"))
+        #expect(fakeDatabase.episodeFavorites["ep-1"] == now)
+    }
+
+    @Test
+    func sync_afterLocalUnfavorite_shouldNotBringBackOlderRemoteFavorite() throws {
+        try fakeDatabase.upsertEpisodeFavoriteTombstone(episodeId: "ep-1", unfavoritedAt: now)
+        try putInCloud(["ep-1": EpisodeFavoriteRecord(isFavorite: true, updatedAt: now.addingTimeInterval(-60))], key: EpisodeStateCloudSync.favoriteKey)
+        let sut = makeSUT()
+
+        sut.sync.sync()
+
+        #expect(!sut.favorites.isFavorite("ep-1"))
+        let pushed = try cloudRecords(EpisodeStateCloudSync.favoriteKey, as: EpisodeFavoriteRecord.self)
+        #expect(pushed["ep-1"]?.isFavorite == false)
+    }
+
+    @Test
+    func sync_withNewerRemoteUnfavorite_shouldBeatOlderLocalFavorite() throws {
+        try fakeDatabase.insertEpisodeFavorite(episodeId: "ep-1", dateAdded: now.addingTimeInterval(-60))
+        try putInCloud(["ep-1": EpisodeFavoriteRecord(isFavorite: false, updatedAt: now)], key: EpisodeStateCloudSync.favoriteKey)
+        let sut = makeSUT()
+
+        sut.sync.sync()
+
+        #expect(!sut.favorites.isFavorite("ep-1"))
+        #expect(fakeDatabase.episodeFavoriteTombstones["ep-1"] == now)
+    }
+
+    @Test
+    func sync_shouldPruneExpiredLocalFavoriteTombstones() throws {
+        let longAgo = now.addingTimeInterval(-EpisodeStateCloudSync.tombstoneLifetime - 60)
+        try fakeDatabase.upsertEpisodeFavoriteTombstone(episodeId: "ep-1", unfavoritedAt: longAgo)
+        let sut = makeSUT()
+
+        sut.sync.sync()
+
+        #expect(fakeDatabase.episodeFavoriteTombstones.isEmpty)
+    }
+
     // MARK: - Setting and bad data
 
     @Test
@@ -290,14 +353,14 @@ struct EpisodeStateCloudSyncTests {
     }
 
     @Test
-    func prunePlayed_shouldKeepOldMarksButDropExpiredUnmarks() {
+    func pruneMarks_shouldKeepOldMarksButDropExpiredUnmarks() {
         let expired = now.addingTimeInterval(-EpisodeStateCloudSync.tombstoneLifetime - EpisodeStateCloudSync.cloudTombstoneGrace - 1)
         let records = [
             "oldMark": EpisodePlayedRecord(isPlayed: true, updatedAt: expired),
             "oldUnmark": EpisodePlayedRecord(isPlayed: false, updatedAt: expired)
         ]
 
-        let pruned = EpisodeStateCloudSync.prunePlayed(records, now: now)
+        let pruned = EpisodeStateCloudSync.pruneMarks(records, now: now)
 
         #expect(pruned["oldMark"] != nil)
         #expect(pruned["oldUnmark"] == nil)
