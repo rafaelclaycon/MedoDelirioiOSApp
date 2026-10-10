@@ -37,6 +37,7 @@ struct MainView: View {
     @State private var updateFolderList: Bool = false
     @State private var currentContentListMode: ContentGridMode = .regular
     @State private var toast: Toast?
+    @State private var episodesToast: Toast?
     @State private var floatingOptions: FloatingContentOptions?
 
     @State private var subviewToOpen: MainViewModalToOpen = .onboarding
@@ -48,6 +49,7 @@ struct MainView: View {
     @State private var openElectionResultsAfterWhatsNew: Bool = false
 
     // iPad
+    @State private var sidebarSelection: SidebarTab = .sounds
     @State private var sidebarFoldersViewModel: SidebarFoldersViewModel
     @State private var authorSortOption: Int = 0
     @State private var authorSortAction: AuthorSortOption = .nameAscending
@@ -191,14 +193,8 @@ struct MainView: View {
                     }
 
                     Tab("Episódios", systemImage: "radio", value: .episodes) {
-                        NavigationStack(path: $episodesPath) {
-                            EpisodesView()
-                                .navigationDestination(for: PodcastEpisode.self) { episode in
-                                    EpisodeDetailView(episode: episode)
-                                }
-                        }
-                        .environment(\.push, PushAction { episodesPath.append($0) })
-                        .tag(PhoneTab.episodes)
+                        episodesTab
+                            .tag(PhoneTab.episodes)
                     }
                     .badge(episodesBadgeText)
 
@@ -262,236 +258,7 @@ struct MainView: View {
                 }
                 .tabBarMinimizeBehavior(.onScrollDown)
             } else {
-                TabView {
-                    Tab(Shared.TabInfo.name(.allSounds), systemImage: Shared.TabInfo.symbol(.allSounds)) {
-                        NavigationStack(path: $soundsPath) {
-                            MainContentView(
-                                viewModel: MainContentViewModel(
-                                    currentViewMode: .all,
-                                    contentSortOption: UserSettings().mainSoundListSoundSortOption(),
-                                    authorSortOption: UserSettings().authorSortOption(),
-                                    currentContentListMode: $currentContentListMode,
-                                    toast: $toast,
-                                    floatingOptions: $floatingOptions,
-                                    syncValues: syncValues,
-                                    contentRepository: contentRepository,
-                                    analyticsService: AnalyticsService()
-                                ),
-                                currentContentListMode: $currentContentListMode,
-                                toast: $toast,
-                                floatingOptions: $floatingOptions,
-                                openSettingsAction: {},
-                                contentRepository: contentRepository,
-                                userFolderRepository: userFolderRepository,
-                                bannerRepository: BannerRepository(),
-                                analyticsService: AnalyticsService()
-                            )
-                            .environment(trendsHelper)
-                            .environment(settingsHelper)
-                            .navigationDestination(for: GeneralNavigationDestination.self) { screen in
-                                GeneralRouter(destination: screen, contentRepository: contentRepository)
-                            }
-                        }
-                        .environment(\.push, PushAction { soundsPath.append($0) })
-                    }
-
-                    Tab(Shared.TabInfo.name(.favorites), systemImage: Shared.TabInfo.symbol(.favorites)) {
-                        NavigationStack(path: $favoritesPath) {
-                            StandaloneFavoritesView(
-                                viewModel: StandaloneFavoritesViewModel(
-                                    contentSortOption: UserSettings().mainSoundListSoundSortOption(),
-                                    toast: $toast,
-                                    floatingOptions: $floatingOptions,
-                                    contentRepository: contentRepository
-                                ),
-                                currentContentListMode: $currentContentListMode,
-                                openSettingsAction: {},
-                                contentRepository: contentRepository
-                            )
-                            .environment(trendsHelper)
-                            .environment(settingsHelper)
-                            .navigationDestination(for: GeneralNavigationDestination.self) { screen in
-                                GeneralRouter(destination: screen, contentRepository: contentRepository)
-                            }
-                        }
-                        .environment(\.push, PushAction { favoritesPath.append($0) })
-                    }
-
-                    Tab(Shared.TabInfo.name(PadScreen.reactions), systemImage: Shared.TabInfo.symbol(PadScreen.reactions)) {
-                        NavigationStack(path: $reactionsPath) {
-                            ReactionsView(
-                                // padSelection isn't wired to this TabView's own
-                                // selection yet, so this currently has no visible
-                                // effect on iPad — set anyway so the folders promo
-                                // banner's button starts working the moment it is.
-                                goToFolders: {
-                                    padSelection.wrappedValue = .allFolders
-                                }
-                            )
-                            .environment(trendsHelper)
-                            .navigationDestination(for: GeneralNavigationDestination.self) { screen in
-                                GeneralRouter(destination: screen, contentRepository: contentRepository)
-                            }
-                        }
-                        .environment(\.push, PushAction { reactionsPath.append($0) })
-                    }
-
-                    Tab(Shared.TabInfo.name(.groupedByAuthor), systemImage: Shared.TabInfo.symbol(.groupedByAuthor)) {
-                        NavigationStack(path: $authorsPath) {
-                            StandaloneAuthorsView()
-                                .navigationDestination(for: GeneralNavigationDestination.self) { screen in
-                                    GeneralRouter(destination: screen, contentRepository: contentRepository)
-                                }
-                        }
-                        .environment(\.push, PushAction { authorsPath.append($0) })
-                    }
-
-                    Tab("Episódios", systemImage: "radio") {
-                        NavigationStack(path: $episodesPath) {
-                            EpisodesView()
-                                .navigationDestination(for: PodcastEpisode.self) { episode in
-                                    EpisodeDetailView(episode: episode)
-                                }
-                        }
-                        .environment(\.push, PushAction { episodesPath.append($0) })
-                    }
-                    .badge(episodesBadgeText)
-
-                    TabSection("Minhas Pastas") {
-                        Tab(Shared.TabInfo.name(.allFolders), systemImage: Shared.TabInfo.symbol(.allFolders)) {
-                            NavigationStack(path: $foldersPath) {
-                                StandaloneFolderGridView(
-                                    folderForEditing: $folderForEditing,
-                                    updateFolderList: $updateFolderList,
-                                    contentRepository: contentRepository
-                                )
-                                .navigationDestination(for: GeneralNavigationDestination.self) { screen in
-                                    GeneralRouter(destination: screen, contentRepository: contentRepository)
-                                }
-                            }
-                            .environment(\.push, PushAction { foldersPath.append($0) })
-                        }
-
-                        switch sidebarFoldersViewModel.state {
-                        case .loading:
-                            Tab {
-                                EmptyView()
-                            } label: {
-                                ProgressView()
-                            }
-
-                        case .loaded(let folders):
-                            ForEach(folders) { folder in
-                                Tab {
-                                    NavigationStack {
-                                        FolderDetailView(
-                                            viewModel: FolderDetailViewModel(
-                                                folder: folder,
-                                                contentRepository: contentRepository
-                                            ),
-                                            folder: folder,
-                                            currentContentListMode: $currentContentListMode,
-                                            toast: $toast,
-                                            floatingOptions: $floatingOptions,
-                                            contentRepository: contentRepository
-                                        )
-                                    }
-                                } label: {
-                                    Text("\(folder.symbol)   \(folder.name)")
-                                        .padding()
-                                }
-                            }
-
-                        case .error(_):
-                            Tab {
-                                EmptyView()
-                            } label: {
-                                Text("Erro carregando as pastas.")
-                            }
-                        }
-                    }
-                    .sectionActions {
-                        Button {
-                            folderForEditing = UserFolder.newFolder()
-                        } label: {
-                            Label("Nova Pasta", systemImage: "plus")
-                                .foregroundColor(.accentColor)
-                        }
-                    }
-
-                    Tab(role: .search) {
-                        NavigationStack(path: $searchTabPath) {
-                            StandaloneSearchView(
-                                searchService: searchService,
-                                trendsService: trendsService,
-                                contentRepository: contentRepository,
-                                userFolderRepository: userFolderRepository,
-                                analyticsService: AnalyticsService()
-                            )
-                            .navigationDestination(for: GeneralNavigationDestination.self) { screen in
-                                GeneralRouter(destination: screen, contentRepository: contentRepository)
-                            }
-                            .navigationDestination(for: SearchNavigationDestination.self) { screen in
-                                switch screen {
-                                case .trends:
-                                    TrendsView(
-                                        audienceViewModel: MostSharedByAudienceView.ViewModel(trendsService: trendsService),
-                                        tabSelection: tabSelection,
-                                        activePadScreen: .constant(.trends)
-                                    )
-                                    .environment(trendsHelper)
-                                }
-                            }
-                        }
-                        .environment(\.push, PushAction { searchTabPath.append($0) })
-                    }
-                }
-                .tabViewStyle(.sidebarAdaptable)
-                .if_tabViewBottomAccessory(
-                    isEnabled: episodePlayer.currentEpisode != nil
-                ) {
-                    // No `matchedTransitionSource` here: in the sidebar layout Now
-                    // Playing presents full screen and the zoom morph from a
-                    // bottom-bar accessory misbehaves, so this layout uses the
-                    // standard animation (see `if_zoomNavigationTransition`).
-                    NowPlayingAccessoryView(
-                        episode: episodePlayer.currentEpisode,
-                        player: episodePlayer,
-                        onShare: { shareCurrentEpisode() },
-                        onGoToEpisode: { goToCurrentEpisode() }
-                    )
-                    .shareSheet(item: $accessoryShareMetadata) { [LinkMetadataItemSource(metadata: $0)] }
-                    .onTapGesture {
-                        showNowPlaying = true
-                    }
-                    .frame(maxWidth: 700)
-                }
-                .tabViewSidebarHeader {
-                    HStack {
-                        Text("Medo e Delírio")
-                            .font(.title)
-                            .bold()
-
-                        Spacer()
-                    }
-                }
-                .tabViewSidebarFooter {
-                    HStack {
-                        Button {
-                            isShowingSettingsSheet.toggle()
-                        } label: {
-                            Label("Configurações", systemImage: "gearshape")
-                        }
-
-                        Spacer()
-                    }
-                    .padding(.top, 30)
-                }
-                .onAppear {
-                    Task {
-                        await sidebarFoldersViewModel.onViewAppeared()
-                    }
-                }
+                sidebarLayout
             }
         }
         .environment(\.usesSidebarLayout, usesSidebarLayout)
@@ -730,6 +497,245 @@ struct MainView: View {
 
     // MARK: - Computed
 
+    /// Sidebar layout on iPad and Mac at regular width; see `usesSidebarLayout`.
+    /// Its own property because inline it pushed `body` past what the type
+    /// checker can handle.
+    private var sidebarLayout: some View {
+        TabView(selection: $sidebarSelection) {
+            Tab(Shared.TabInfo.name(.allSounds), systemImage: Shared.TabInfo.symbol(.allSounds), value: .sounds) {
+                NavigationStack(path: $soundsPath) {
+                    MainContentView(
+                        viewModel: MainContentViewModel(
+                            currentViewMode: .all,
+                            contentSortOption: UserSettings().mainSoundListSoundSortOption(),
+                            authorSortOption: UserSettings().authorSortOption(),
+                            currentContentListMode: $currentContentListMode,
+                            toast: $toast,
+                            floatingOptions: $floatingOptions,
+                            syncValues: syncValues,
+                            contentRepository: contentRepository,
+                            analyticsService: AnalyticsService()
+                        ),
+                        currentContentListMode: $currentContentListMode,
+                        toast: $toast,
+                        floatingOptions: $floatingOptions,
+                        openSettingsAction: {},
+                        contentRepository: contentRepository,
+                        userFolderRepository: userFolderRepository,
+                        bannerRepository: BannerRepository(),
+                        analyticsService: AnalyticsService()
+                    )
+                    .environment(trendsHelper)
+                    .environment(settingsHelper)
+                    .navigationDestination(for: GeneralNavigationDestination.self) { screen in
+                        GeneralRouter(destination: screen, contentRepository: contentRepository)
+                    }
+                }
+                .environment(\.push, PushAction { soundsPath.append($0) })
+            }
+
+            Tab(Shared.TabInfo.name(.favorites), systemImage: Shared.TabInfo.symbol(.favorites), value: .favorites) {
+                NavigationStack(path: $favoritesPath) {
+                    StandaloneFavoritesView(
+                        viewModel: StandaloneFavoritesViewModel(
+                            contentSortOption: UserSettings().mainSoundListSoundSortOption(),
+                            toast: $toast,
+                            floatingOptions: $floatingOptions,
+                            contentRepository: contentRepository
+                        ),
+                        currentContentListMode: $currentContentListMode,
+                        openSettingsAction: {},
+                        contentRepository: contentRepository
+                    )
+                    .environment(trendsHelper)
+                    .environment(settingsHelper)
+                    .navigationDestination(for: GeneralNavigationDestination.self) { screen in
+                        GeneralRouter(destination: screen, contentRepository: contentRepository)
+                    }
+                }
+                .environment(\.push, PushAction { favoritesPath.append($0) })
+            }
+
+            Tab(Shared.TabInfo.name(PadScreen.reactions), systemImage: Shared.TabInfo.symbol(PadScreen.reactions), value: .reactions) {
+                NavigationStack(path: $reactionsPath) {
+                    ReactionsView(
+                        goToFolders: {
+                            sidebarSelection = .allFolders
+                        }
+                    )
+                    .environment(trendsHelper)
+                    .navigationDestination(for: GeneralNavigationDestination.self) { screen in
+                        GeneralRouter(destination: screen, contentRepository: contentRepository)
+                    }
+                }
+                .environment(\.push, PushAction { reactionsPath.append($0) })
+            }
+
+            Tab(Shared.TabInfo.name(.groupedByAuthor), systemImage: Shared.TabInfo.symbol(.groupedByAuthor), value: .authors) {
+                NavigationStack(path: $authorsPath) {
+                    StandaloneAuthorsView()
+                        .navigationDestination(for: GeneralNavigationDestination.self) { screen in
+                            GeneralRouter(destination: screen, contentRepository: contentRepository)
+                        }
+                }
+                .environment(\.push, PushAction { authorsPath.append($0) })
+            }
+
+            Tab("Episódios", systemImage: "radio", value: .episodes) {
+                episodesTab
+            }
+            .badge(episodesBadgeText)
+
+            TabSection("Minhas Pastas") {
+                Tab(Shared.TabInfo.name(.allFolders), systemImage: Shared.TabInfo.symbol(.allFolders), value: SidebarTab.allFolders) {
+                    NavigationStack(path: $foldersPath) {
+                        StandaloneFolderGridView(
+                            folderForEditing: $folderForEditing,
+                            updateFolderList: $updateFolderList,
+                            contentRepository: contentRepository
+                        )
+                        .navigationDestination(for: GeneralNavigationDestination.self) { screen in
+                            GeneralRouter(destination: screen, contentRepository: contentRepository)
+                        }
+                    }
+                    .environment(\.push, PushAction { foldersPath.append($0) })
+                }
+
+                switch sidebarFoldersViewModel.state {
+                case .loading:
+                    Tab(value: SidebarTab.folderStatus) {
+                        EmptyView()
+                    } label: {
+                        ProgressView()
+                    }
+
+                case .loaded(let folders):
+                    ForEach(folders) { folder in
+                        Tab(value: SidebarTab.folder(id: folder.id)) {
+                            NavigationStack {
+                                FolderDetailView(
+                                    viewModel: FolderDetailViewModel(
+                                        folder: folder,
+                                        contentRepository: contentRepository
+                                    ),
+                                    folder: folder,
+                                    currentContentListMode: $currentContentListMode,
+                                    toast: $toast,
+                                    floatingOptions: $floatingOptions,
+                                    contentRepository: contentRepository
+                                )
+                            }
+                        } label: {
+                            Text("\(folder.symbol)   \(folder.name)")
+                                .padding()
+                        }
+                    }
+
+                case .error(_):
+                    Tab(value: SidebarTab.folderStatus) {
+                        EmptyView()
+                    } label: {
+                        Text("Erro carregando as pastas.")
+                    }
+                }
+            }
+            .sectionActions {
+                Button {
+                    folderForEditing = UserFolder.newFolder()
+                } label: {
+                    Label("Nova Pasta", systemImage: "plus")
+                        .foregroundColor(.accentColor)
+                }
+            }
+
+            Tab(value: .search, role: .search) {
+                NavigationStack(path: $searchTabPath) {
+                    StandaloneSearchView(
+                        searchService: searchService,
+                        trendsService: trendsService,
+                        contentRepository: contentRepository,
+                        userFolderRepository: userFolderRepository,
+                        analyticsService: AnalyticsService()
+                    )
+                    .navigationDestination(for: GeneralNavigationDestination.self) { screen in
+                        GeneralRouter(destination: screen, contentRepository: contentRepository)
+                    }
+                    .navigationDestination(for: SearchNavigationDestination.self) { screen in
+                        switch screen {
+                        case .trends:
+                            TrendsView(
+                                audienceViewModel: MostSharedByAudienceView.ViewModel(trendsService: trendsService),
+                                tabSelection: tabSelection,
+                                activePadScreen: .constant(.trends)
+                            )
+                            .environment(trendsHelper)
+                        }
+                    }
+                }
+                .environment(\.push, PushAction { searchTabPath.append($0) })
+            }
+        }
+        .tabViewStyle(.sidebarAdaptable)
+        .if_tabViewBottomAccessory(
+            isEnabled: episodePlayer.currentEpisode != nil
+        ) {
+            // No `matchedTransitionSource` here: in the sidebar layout Now
+            // Playing presents full screen and the zoom morph from a
+            // bottom-bar accessory misbehaves, so this layout uses the
+            // standard animation (see `if_zoomNavigationTransition`).
+            NowPlayingAccessoryView(
+                episode: episodePlayer.currentEpisode,
+                player: episodePlayer,
+                onShare: { shareCurrentEpisode() },
+                onGoToEpisode: { goToCurrentEpisode() }
+            )
+            .shareSheet(item: $accessoryShareMetadata) { [LinkMetadataItemSource(metadata: $0)] }
+            .onTapGesture {
+                showNowPlaying = true
+            }
+            .frame(maxWidth: 700)
+        }
+        .tabViewSidebarHeader {
+            HStack {
+                Text("Medo e Delírio")
+                    .font(.title)
+                    .bold()
+
+                Spacer()
+            }
+        }
+        .tabViewSidebarFooter {
+            HStack {
+                Button {
+                    isShowingSettingsSheet.toggle()
+                } label: {
+                    Label("Configurações", systemImage: "gearshape")
+                }
+
+                Spacer()
+            }
+            .padding(.top, 30)
+        }
+        .onAppear {
+            Task {
+                await sidebarFoldersViewModel.onViewAppeared()
+            }
+        }
+    }
+
+    /// The Episodes tab's content, shared by the tab bar and the sidebar.
+    private var episodesTab: some View {
+        NavigationStack(path: $episodesPath) {
+            EpisodesView()
+                .navigationDestination(for: PodcastEpisode.self) { episode in
+                    EpisodeDetailView(episode: episode)
+                }
+        }
+        // Episode toasts that start outside Episodes, like a handoff.
+        .topToast($episodesToast)
+        .environment(\.push, PushAction { episodesPath.append($0) })
+    }
+
     private var episodesBadgeText: Text? {
         switch episodesBadgeStore.badge {
         case .none:
@@ -768,7 +774,7 @@ struct MainView: View {
     /// Navigates to the currently playing episode's detail screen on the Episodes tab.
     private func goToCurrentEpisode() {
         guard let episode = episodePlayer.currentEpisode else { return }
-        tabSelection.wrappedValue = .episodes
+        showEpisodesTab()
         episodesPath.append(episode)
     }
 
@@ -800,7 +806,7 @@ struct MainView: View {
             }
 
         case .episode(let id):
-            tabSelection.wrappedValue = .episodes
+            showEpisodesTab()
             do {
                 guard let episode = try LocalDatabase.shared.podcastEpisode(id: id) else {
                     deepLinkErrorTitle = "Opa! 😅"
@@ -825,6 +831,12 @@ struct MainView: View {
         }
     }
 
+    /// Selects Episodes in whichever layout is showing: the tab bar or the sidebar.
+    private func showEpisodesTab() {
+        tabSelection.wrappedValue = .episodes
+        sidebarSelection = .episodes
+    }
+
     private func continueHandedOffEpisode(_ activity: NSUserActivity) {
         guard let payload = EpisodeHandoffPayload(userInfo: activity.userInfo) else {
             logger.error("[Handoff] couldn't read the handed-off episode: \(String(describing: activity.userInfo), privacy: .public)")
@@ -841,6 +853,7 @@ struct MainView: View {
 
         switch continuation {
         case .resume(let position):
+            showEpisodesTab()
             episodePlayer.seek(to: position)
             if !episodePlayer.isPlaying {
                 episodePlayer.togglePlayPause()
@@ -852,12 +865,13 @@ struct MainView: View {
             // the cellular prompt.
             episodeProgressStore.save(episodeID: episode.id, currentTime: position, duration: payload.duration)
 
+            showEpisodesTab()
             let isDownloaded = FileManager.default.fileExists(atPath: EpisodePlayer.localFileURL(for: episode).path)
             if !isDownloaded {
-                // The episode screen shows the download's progress. The iPad's sidebar
-                // can't be switched from code, so there it just waits for Now Playing.
-                tabSelection.wrappedValue = .episodes
+                // The episode screen shows the download's progress; the toast says why
+                // nothing is playing yet. Now Playing opens once the download is done.
                 episodesPath.append(episode)
+                episodesToast = Toast(message: "Baixando o episódio pra continuar daqui…", type: .wait)
             }
 
             Task {
