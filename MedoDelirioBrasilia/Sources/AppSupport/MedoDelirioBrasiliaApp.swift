@@ -43,11 +43,6 @@ struct MedoDelirioBrasiliaApp: App {
                 guard let url = userActivity.webpageURL else { return }
                 handleURL(url)
             }
-            .onReceive(NotificationCenter.default.publisher(for: .navigateToTab)) { notification in
-                if let tab = notification.userInfo?[NavigateToTabKey.phoneTab] as? PhoneTab {
-                    tabSelection = tab
-                }
-            }
             .environment(helper)
             .environment(transcriptDownloadService)
             .environment(chapterDownloadService)

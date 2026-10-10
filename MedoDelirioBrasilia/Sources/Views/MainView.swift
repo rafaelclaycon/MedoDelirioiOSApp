@@ -179,8 +179,7 @@ struct MainView: View {
                         NavigationStack(path: $reactionsPath) {
                             ReactionsView(
                                 goToFolders: {
-                                    tabSelection.wrappedValue = .sounds
-                                    trendsHelper.contentModeToGoTo = .folders
+                                    selectTab(.sounds, soundsMode: .folders)
                                 }
                             )
                             .environment(trendsHelper)
@@ -275,23 +274,19 @@ struct MainView: View {
         // Siri Suggestions. Attached here, on the shared ancestor, so they fire on
         // every device path (both iPhone TabView variants and iPad).
         .onContinueUserActivity(Shared.ActivityTypes.playAndShareSounds) { _ in
-            tabSelection.wrappedValue = .sounds
-            trendsHelper.contentModeToGoTo = .all
+            selectTab(.sounds, soundsMode: .all)
         }
         .onContinueUserActivity(Shared.ActivityTypes.viewFavorites) { _ in
-            tabSelection.wrappedValue = .sounds
-            trendsHelper.contentModeToGoTo = .favorites
+            selectTab(.sounds, soundsMode: .favorites)
         }
         .onContinueUserActivity(Shared.ActivityTypes.viewCollections) { _ in
-            tabSelection.wrappedValue = .sounds
-            trendsHelper.contentModeToGoTo = .folders
+            selectTab(.sounds, soundsMode: .folders)
         }
         .onContinueUserActivity(Shared.ActivityTypes.viewAuthors) { _ in
-            tabSelection.wrappedValue = .sounds
-            trendsHelper.contentModeToGoTo = .authors
+            selectTab(.sounds, soundsMode: .authors)
         }
         .onContinueUserActivity(Shared.ActivityTypes.viewReactions) { _ in
-            tabSelection.wrappedValue = .reactions
+            selectTab(.reactions)
         }
         .onContinueUserActivity(Shared.ActivityTypes.viewReaction) { activity in
             guard let reactionId = activity.userInfo?["reactionId"] as? String else { return }
@@ -332,8 +327,13 @@ struct MainView: View {
             handleDeepLink(deepLink)
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToTrends)) { _ in
-            tabSelection.wrappedValue = .search
+            selectTab(.search)
             searchTabPath.append(SearchNavigationDestination.trends)
+        }
+        // Push notifications and Pesquisar's "Ver Episódios".
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToTab)) { notification in
+            guard let tab = notification.userInfo?[NavigateToTabKey.phoneTab] as? PhoneTab else { return }
+            selectTab(tab)
         }
         .alert(deepLinkErrorTitle, isPresented: $showDeepLinkError) {
             Button("OK") { }
@@ -560,7 +560,7 @@ struct MainView: View {
                 NavigationStack(path: $reactionsPath) {
                     ReactionsView(
                         goToFolders: {
-                            sidebarSelection = .allFolders
+                            selectTab(.sounds, soundsMode: .folders)
                         }
                     )
                     .environment(trendsHelper)
@@ -666,7 +666,7 @@ struct MainView: View {
                             TrendsView(
                                 audienceViewModel: MostSharedByAudienceView.ViewModel(trendsService: trendsService),
                                 tabSelection: tabSelection,
-                                activePadScreen: .constant(.trends)
+                                activePadScreen: trendsSidebarScreen
                             )
                             .environment(trendsHelper)
                         }
@@ -774,7 +774,7 @@ struct MainView: View {
     /// Navigates to the currently playing episode's detail screen on the Episodes tab.
     private func goToCurrentEpisode() {
         guard let episode = episodePlayer.currentEpisode else { return }
-        showEpisodesTab()
+        selectTab(.episodes)
         episodesPath.append(episode)
     }
 
@@ -782,7 +782,7 @@ struct MainView: View {
     /// carrying the requested time interval via `TrendsHelper` for the view to apply.
     private func goToTrends(timeInterval: TrendsTimeInterval) {
         trendsHelper.timeIntervalToGoTo = timeInterval
-        tabSelection.wrappedValue = .search
+        selectTab(.search)
         if searchTabPath.isEmpty {
             searchTabPath.append(SearchNavigationDestination.trends)
         }
@@ -793,7 +793,7 @@ struct MainView: View {
 
         switch deepLink {
         case .reaction(let id):
-            tabSelection.wrappedValue = .reactions
+            selectTab(.reactions)
             Task {
                 do {
                     let reaction = try await reactionRepository.reaction(id)
@@ -806,7 +806,7 @@ struct MainView: View {
             }
 
         case .episode(let id):
-            showEpisodesTab()
+            selectTab(.episodes)
             do {
                 guard let episode = try LocalDatabase.shared.podcastEpisode(id: id) else {
                     deepLinkErrorTitle = "Opa! 😅"
@@ -831,10 +831,32 @@ struct MainView: View {
         }
     }
 
-    /// Selects Episodes in whichever layout is showing: the tab bar or the sidebar.
-    private func showEpisodesTab() {
-        tabSelection.wrappedValue = .episodes
-        sidebarSelection = .episodes
+    /// Goes to a tab in whichever layout is showing. Both selections move, so the right
+    /// tab is still selected if the window changes layout afterwards.
+    ///
+    /// On the tab bar, `soundsMode` picks the section inside Vírgulas. The sidebar has
+    /// its own item for each section, and its Vírgulas list would otherwise switch to
+    /// that section too and stay there.
+    private func selectTab(_ tab: PhoneTab, soundsMode: ContentModeOption? = nil) {
+        tabSelection.wrappedValue = tab
+        if let sidebarTab = SidebarTab(tab, soundsMode: soundsMode) {
+            sidebarSelection = sidebarTab
+        }
+        if let soundsMode, !usesSidebarLayout {
+            trendsHelper.contentModeToGoTo = soundsMode
+        }
+    }
+
+    /// Trends sends you to a sound or a reaction by setting a `PadScreen`; this turns
+    /// that into a sidebar selection. It reads as Trends, where it's shown.
+    private var trendsSidebarScreen: Binding<PadScreen?> {
+        Binding(
+            get: { .trends },
+            set: { screen in
+                guard let screen, let sidebarTab = SidebarTab(screen) else { return }
+                sidebarSelection = sidebarTab
+            }
+        )
     }
 
     private func continueHandedOffEpisode(_ activity: NSUserActivity) {
@@ -853,7 +875,7 @@ struct MainView: View {
 
         switch continuation {
         case .resume(let position):
-            showEpisodesTab()
+            selectTab(.episodes)
             episodePlayer.seek(to: position)
             if !episodePlayer.isPlaying {
                 episodePlayer.togglePlayPause()
@@ -865,7 +887,7 @@ struct MainView: View {
             // the cellular prompt.
             episodeProgressStore.save(episodeID: episode.id, currentTime: position, duration: payload.duration)
 
-            showEpisodesTab()
+            selectTab(.episodes)
             let isDownloaded = FileManager.default.fileExists(atPath: EpisodePlayer.localFileURL(for: episode).path)
             if !isDownloaded {
                 // The episode screen shows the download's progress; the toast says why
