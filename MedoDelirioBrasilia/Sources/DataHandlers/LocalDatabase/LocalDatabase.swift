@@ -89,8 +89,13 @@ internal protocol LocalDatabaseProtocol {
 
     // Episode Favorite
     func allEpisodeFavoriteIDs() throws -> Set<String>
-    func insertEpisodeFavorite(episodeId: String) throws
+    func allEpisodeFavoriteDates() throws -> [String: Date]
+    func insertEpisodeFavorite(episodeId: String, dateAdded: Date) throws
     func deleteEpisodeFavorite(episodeId: String) throws
+    func allEpisodeFavoriteTombstones() throws -> [String: Date]
+    func upsertEpisodeFavoriteTombstone(episodeId: String, unfavoritedAt: Date) throws
+    func deleteEpisodeFavoriteTombstone(episodeId: String) throws
+    func deleteEpisodeFavoriteTombstones(olderThan date: Date) throws
 
     // Episode Played
     func allEpisodePlayedIDs() throws -> Set<String>
@@ -145,6 +150,10 @@ internal protocol LocalDatabaseProtocol {
 
 extension LocalDatabaseProtocol {
 
+    func insertEpisodeFavorite(episodeId: String) throws {
+        try insertEpisodeFavorite(episodeId: episodeId, dateAdded: Date())
+    }
+
     func insertEpisodePlayed(episodeId: String) throws {
         try insertEpisodePlayed(episodeId: episodeId, dateMarked: Date())
     }
@@ -176,6 +185,7 @@ class LocalDatabase: LocalDatabaseProtocol {
     var episodePlayedTable = Table("episodePlayed")
     var episodeProgressTable = Table("episodeProgress")
     var episodePlayedTombstoneTable = Table("episodePlayedTombstone")
+    var episodeFavoriteTombstoneTable = Table("episodeFavoriteTombstone")
     var episodeProgressTombstoneTable = Table("episodeProgressTombstone")
     var podcastEpisodeTable = Table("podcastEpisode")
     var episodeBookmarkTable = Table("episodeBookmark")
@@ -237,7 +247,8 @@ extension LocalDatabase {
             AddEpisodeListenLogTable(),
             CleanUpSlashEpisodeId(),
             AddUserPlayLogTable(),
-            AddEpisodeSyncTombstoneTables()
+            AddEpisodeSyncTombstoneTables(),
+            AddEpisodeFavoriteTombstoneTable()
         ]
     }
 

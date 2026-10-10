@@ -339,9 +339,27 @@ class FakeLocalDatabase: LocalDatabaseProtocol {
 
     // Episode Favorite
 
-    func allEpisodeFavoriteIDs() throws -> Set<String> { [] }
-    func insertEpisodeFavorite(episodeId: String) throws {}
-    func deleteEpisodeFavorite(episodeId: String) throws {}
+    var episodeFavorites: [String: Date] = [:]
+    var episodeFavoriteTombstones: [String: Date] = [:]
+
+    func allEpisodeFavoriteIDs() throws -> Set<String> { Set(episodeFavorites.keys) }
+    func allEpisodeFavoriteDates() throws -> [String: Date] { episodeFavorites }
+    func insertEpisodeFavorite(episodeId: String, dateAdded: Date) throws {
+        episodeFavorites[episodeId] = dateAdded
+    }
+    func deleteEpisodeFavorite(episodeId: String) throws {
+        episodeFavorites.removeValue(forKey: episodeId)
+    }
+    func allEpisodeFavoriteTombstones() throws -> [String: Date] { episodeFavoriteTombstones }
+    func upsertEpisodeFavoriteTombstone(episodeId: String, unfavoritedAt: Date) throws {
+        episodeFavoriteTombstones[episodeId] = unfavoritedAt
+    }
+    func deleteEpisodeFavoriteTombstone(episodeId: String) throws {
+        episodeFavoriteTombstones.removeValue(forKey: episodeId)
+    }
+    func deleteEpisodeFavoriteTombstones(olderThan date: Date) throws {
+        episodeFavoriteTombstones = episodeFavoriteTombstones.filter { $0.value >= date }
+    }
 
     // Episode Played
 
