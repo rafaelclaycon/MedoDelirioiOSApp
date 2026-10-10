@@ -101,9 +101,9 @@ struct HelpView: View {
                     DisclosureGroup(isExpanded: $isDifferentiatorsExpanded) {
                         VStack(alignment: .leading, spacing: .spacing(.xxLarge)) {
                             HelpInstructionView(
-                                symbol: "bookmark.fill",
-                                color: .red,
-                                text: episodeBookmarkInstruction
+                                symbol: "list.bullet.indent",
+                                color: .purple,
+                                text: chaptersInstruction
                             )
 
                             Divider()
@@ -112,6 +112,14 @@ struct HelpView: View {
                                 symbol: "scissors",
                                 color: .orange,
                                 text: shareClipInstruction
+                            )
+
+                            Divider()
+
+                            HelpInstructionView(
+                                symbol: "bookmark.fill",
+                                color: .red,
+                                text: episodeBookmarkInstruction
                             )
 
                             Divider()
@@ -190,7 +198,26 @@ extension HelpView {
     }
 
     private var episodeBookmarkInstruction: String {
-        "Enquanto ouve, toque em \"Marcar Esse Ponto\" para salvar o momento atual. Os marcadores aparecem como linhas vermelhas na barra de progresso e em uma lista abaixo.\n\nToque no Play ao lado de qualquer marcador para pular até aquele ponto novamente. Você também pode dar um nome, adicionar uma nota e excluir marcadores tocando em um deles."
+        let toDelete = if UIDevice.deviceType == .mac {
+            "Para excluir, clique com o botão direito no marcador e escolha Excluir."
+        } else if canSwipeBookmarks {
+            "Para excluir, arraste o marcador para a esquerda."
+        } else {
+            "Para excluir, segure o marcador e escolha Excluir."
+        }
+        return "Enquanto ouve, toque no símbolo de marcador na tela Reproduzindo Agora para salvar o momento atual. Os marcadores aparecem como linhas vermelhas na barra de progresso e na aba Marcadores.\n\nNa aba, toque no Play ao lado de um marcador para voltar até aquele ponto, ou toque no marcador para dar um título e escrever uma anotação. \(toDelete)"
+    }
+
+    /// Mirrors `if_swipeActionsContainer`: swiping a bookmark needs both the iOS 27
+    /// SDK at build time and iOS 27 at run time. Without either, holding it is the
+    /// only way to delete.
+    private var canSwipeBookmarks: Bool {
+        #if compiler(>=6.4)
+        if #available(iOS 27.0, *) {
+            return true
+        }
+        #endif
+        return false
     }
 
     private var episodeDownloadInstruction: String {
@@ -207,8 +234,12 @@ extension HelpView {
 
     // MARK: - Differentiators
 
+    private var chaptersInstruction: String {
+        "Os capítulos dividem cada episódio por assunto. Na tela Reproduzindo Agora, as setas ao lado do título pulam para o capítulo anterior ou para o próximo, e o botão de avançar mostra quanto falta para o capítulo atual acabar.\n\nToque no título do capítulo, ou abra a aba Capítulos, para ver a lista completa e ir direto para qualquer um deles. Segure um capítulo para compartilhá-lo como clipe.\n\nOs capítulos são gerados por IA e podem conter erros. Para escondê-los, vá em Configurações › Episódios."
+    }
+
     private var shareClipInstruction: String {
-        "Enquanto ouve um episódio, toque em \"Compartilhar Trecho\" para escolher um pedaço específico do áudio e compartilhá-lo como vídeo.\n\nArraste a forma de onda para os lados para selecionar o trecho exato que você quer compartilhar."
+        "Enquanto ouve, toque no símbolo da tesoura na tela Reproduzindo Agora para transformar um trecho do episódio em vídeo.\n\nEscolha o trecho pela forma de onda, arrastando para os lados, ou pela transcrição, tocando na primeira e na última linha. Na transcrição, toque no título de um capítulo para selecionar o capítulo inteiro.\n\nEmbaixo da duração, o app mostra em quais redes o clipe cabe, como Stories, Reels e X, para você não ter surpresa na hora de postar. Um clipe pode ter até \(SocialVideoLimit.formatted(SocialVideoLimit.longest))."
     }
 
     private var reactionsInstruction: String {
