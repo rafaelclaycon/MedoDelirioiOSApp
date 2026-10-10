@@ -224,17 +224,25 @@ extension HelpView {
 
         let symbol: String
         var color: Color = .accentColor
-        let iconFrameWidth: CGFloat = 40
+        /// Fits every symbol here at `.largeTitle` except the wide theater masks, so
+        /// the text lines up across rows.
+        let iconFrameWidth: CGFloat = 56
         let text: String
 
         var body: some View {
             HStack {
-                Image(systemName: symbol)
-                    .font(.largeTitle)
-                    .foregroundColor(color)
-                    .frame(width: iconFrameWidth)
-                    .padding(.leading, .spacing(.xxxSmall))
-                    .padding(.trailing, .spacing(.xSmall))
+                // A symbol wider than the column steps down a size instead of
+                // spilling past it and getting cut off at the screen edge.
+                ViewThatFits(in: .horizontal) {
+                    Image(systemName: symbol)
+                        .font(.largeTitle)
+                    Image(systemName: symbol)
+                        .font(.title)
+                }
+                .foregroundStyle(color)
+                .frame(width: iconFrameWidth)
+                .padding(.leading, .spacing(.xxxSmall))
+                .padding(.trailing, .spacing(.xSmall))
 
                 Text(text)
             }
