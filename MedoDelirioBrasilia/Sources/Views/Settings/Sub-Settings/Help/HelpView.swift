@@ -103,6 +103,7 @@ struct HelpView: View {
                             HelpInstructionView(
                                 symbol: "list.bullet.indent",
                                 color: .purple,
+                                tag: .notOnSpotify,
                                 text: chaptersInstruction
                             )
 
@@ -111,6 +112,7 @@ struct HelpView: View {
                             HelpInstructionView(
                                 symbol: "scissors",
                                 color: .orange,
+                                tag: .notOnSpotify,
                                 text: shareClipInstruction
                             )
 
@@ -119,6 +121,7 @@ struct HelpView: View {
                             HelpInstructionView(
                                 symbol: "bookmark.fill",
                                 color: .red,
+                                tag: .betterThanSpotify,
                                 text: episodeBookmarkInstruction
                             )
 
@@ -251,10 +254,33 @@ extension HelpView {
 
 extension HelpView {
 
+    /// Why a differentiator is worth listening here rather than on Spotify, where the
+    /// show has far more listeners. Only for claims checked against Spotify's app.
+    enum SpotifyComparisonTag {
+        case notOnSpotify
+        case betterThanSpotify
+
+        var label: String {
+            switch self {
+            case .notOnSpotify: "NÃO TEM NO SPOTIFY"
+            case .betterThanSpotify: "MELHOR QUE O SPOTIFY"
+            }
+        }
+
+        /// Spotify's green ties "not on Spotify" to the brand at a glance.
+        var color: Color {
+            switch self {
+            case .notOnSpotify: .spotifyGreen
+            case .betterThanSpotify: .red
+            }
+        }
+    }
+
     struct HelpInstructionView: View {
 
         let symbol: String
         var color: Color = .accentColor
+        var tag: SpotifyComparisonTag? = nil
         /// Fits every symbol here at `.largeTitle` except the wide theater masks, so
         /// the text lines up across rows.
         let iconFrameWidth: CGFloat = 56
@@ -275,7 +301,18 @@ extension HelpView {
                 .padding(.leading, .spacing(.xxxSmall))
                 .padding(.trailing, .spacing(.xSmall))
 
-                Text(text)
+                VStack(alignment: .leading, spacing: .spacing(.xSmall)) {
+                    if let tag {
+                        Text(tag.label)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(tag.color)
+                            .padding(.horizontal, .spacing(.xSmall))
+                            .padding(.vertical, .spacing(.xxxSmall))
+                            .background(tag.color.opacity(0.15), in: Capsule())
+                    }
+
+                    Text(text)
+                }
             }
         }
     }

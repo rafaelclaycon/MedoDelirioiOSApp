@@ -14,6 +14,13 @@ public extension Color {
     static let darkerGreen = Color(UIColor(red: 0.00, green: 0.64, blue: 0.02, alpha: 1.00))
     static let darkestGreen = Color(UIColor(red: 0.01, green: 0.20, blue: 0.00, alpha: 1.00))
     static let hitsMedoDelirioSpotify = Color(UIColor(red: 0.02, green: 0.07, blue: 0.53, alpha: 1.00))
+    /// Spotify's brand green (#1ED760) in dark mode. It's too light to read as small text
+    /// on white, so light mode gets a darker shade of the same hue.
+    static let spotifyGreen = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0.12, green: 0.84, blue: 0.38, alpha: 1.00)
+            : UIColor(red: 0.07, green: 0.53, blue: 0.24, alpha: 1.00)
+    })
     static let systemBackground = Color(UIColor.systemBackground)
 
     // From the logo
