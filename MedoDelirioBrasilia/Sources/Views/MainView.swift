@@ -43,6 +43,7 @@ struct MainView: View {
     @State private var subviewToOpen: MainViewModalToOpen = .onboarding
     @State private var showingModalView: Bool = false
     @State private var showElectionLiveWhatsNew: Bool = false
+    @State private var showContinueListeningWhatsNew: Bool = false
     @State private var showElectionResults: Bool = false
     /// A sheet can't open while another one is leaving, so a results link that arrives
     /// during the election What's New waits for it to close.
@@ -354,9 +355,12 @@ struct MainView: View {
             sendUserPersonalTrendsToServerIfEnabled()
             sendPlayLogsToServerIfEnabled()
             displayOnboardingIfNeeded()
-            // The election is the only "what's new" shown on launch. The Share Clip and
+            // The election takes the launch slot until after the 2nd round, so the 13.4
+            // screen waits for a launch where it doesn't show. The Share Clip and
             // Transcripts ones are off; Dev Options can still show them.
-            displayElectionLiveWhatsNewIfNeeded()
+            if !displayElectionLiveWhatsNewIfNeeded() {
+                displayContinueListeningWhatsNewIfNeeded()
+            }
 
             Task {
 //                if AppPersistentMemory.shared.hasAllowedContentUpdate() {
@@ -461,6 +465,12 @@ struct MainView: View {
             }
         }) {
             IntroducingElectionLiveView(appMemory: AppPersistentMemory.shared)
+        }
+        // Swiping it away counts as seen too.
+        .sheet(isPresented: $showContinueListeningWhatsNew, onDismiss: {
+            AppPersistentMemory.shared.hasSeenContinueListeningWhatsNewScreen(true)
+        }) {
+            IntroducingContinueListeningView(appMemory: AppPersistentMemory.shared)
         }
         .sheetOrFullScreenCover(isPresented: $showNowPlaying, fullScreen: presentsNowPlayingFullScreen) {
             NowPlayingView(isFullScreen: presentsNowPlayingFullScreen)
@@ -998,6 +1008,20 @@ struct MainView: View {
 
         showElectionLiveWhatsNew = true
         return true
+    }
+
+    /// Only for people who've listened to an episode: Handoff, the Mac app and episode
+    /// sync mean nothing to someone who only plays Vírgulas.
+    private func displayContinueListeningWhatsNewIfNeeded() {
+        guard AppPersistentMemory.shared.hasShownNotificationsOnboarding() else { return }
+        guard !AppPersistentMemory.shared.hasSeenContinueListeningWhatsNewScreen() else { return }
+
+        let hasListenedToEpisodes = !episodeListenStore.allListenDates().isEmpty
+            || !episodeProgressStore.entries.isEmpty
+            || !episodePlayedStore.playedIDs.isEmpty
+        guard hasListenedToEpisodes else { return }
+
+        showContinueListeningWhatsNew = true
     }
 
     private func sendFolderResearchChanges() async {
