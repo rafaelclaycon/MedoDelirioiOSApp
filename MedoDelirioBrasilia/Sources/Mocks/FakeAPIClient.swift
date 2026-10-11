@@ -102,6 +102,12 @@ class FakeAPIClient: APIClientProtocol {
         []
     }
 
+    func getEpisodePlayStats(
+        in timeInterval: TrendsTimeInterval
+    ) async throws -> [TopEpisodeItem] {
+        []
+    }
+
     func top3Reactions() async throws -> [Reaction] {
         []
     }

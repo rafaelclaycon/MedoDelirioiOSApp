@@ -36,6 +36,9 @@ internal protocol APIClientProtocol {
         for contentType: TrendsContentType,
         in timeInterval: TrendsTimeInterval
     ) async throws -> [TopChartItem]
+    func getEpisodePlayStats(
+        in timeInterval: TrendsTimeInterval
+    ) async throws -> [TopEpisodeItem]
 }
 
 class APIClient: APIClientProtocol {

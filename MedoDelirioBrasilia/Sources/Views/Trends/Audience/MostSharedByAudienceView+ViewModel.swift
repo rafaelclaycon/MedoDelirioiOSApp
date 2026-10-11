@@ -22,6 +22,11 @@ extension MostSharedByAudienceView {
         var songsLastCheckDate: Date = Date(timeIntervalSince1970: 0)
         var songsLastCheckString: String = ""
 
+        var episodesState: LoadingState<[TopChartItem]> = .loading
+        var episodesTimeInterval: TrendsTimeInterval = TrendsService.defaultEpisodesTimeInterval
+        var episodesLastCheckDate: Date = Date(timeIntervalSince1970: 0)
+        var episodesLastCheckString: String = ""
+
         var reactionsState: LoadingState<[TopChartReaction]> = .loading
         var reactionsLastCheckDate: Date = Date(timeIntervalSince1970: 0)
         var reactionsLastCheckString: String = ""
@@ -77,6 +82,7 @@ extension MostSharedByAudienceView.ViewModel {
             await MainActor.run {
                 self.soundsState = .error("")
                 self.songsState = .error("")
+                self.episodesState = .error("")
                 self.showServerUnavailableAlert()
             }
             return
@@ -84,6 +90,7 @@ extension MostSharedByAudienceView.ViewModel {
 
         await loadSoundsList()
         await loadSongsList()
+        await loadEpisodesList()
         await loadReactionsGrid()
     }
 
@@ -123,6 +130,23 @@ extension MostSharedByAudienceView.ViewModel {
         }
     }
 
+    private func loadEpisodesList() async {
+        episodesState = .loading
+        do {
+            let episodeRanking = try await trendsService.episodePlayStats(
+                in: episodesTimeInterval
+            ).ranked
+
+            episodesState = .loaded(episodeRanking)
+
+            episodesLastCheckDate = .now
+            updateEpisodesLastUpdatedAtString()
+        } catch {
+            print(error)
+            episodesState = .error(error.localizedDescription)
+        }
+    }
+
     private func loadReactionsGrid() async {
         reactionsState = .loading
         do {
@@ -154,6 +178,16 @@ extension MostSharedByAudienceView.ViewModel {
             songsLastCheckString = lastCheckText + songsLastCheckDate.asRelativeDateTime
         } else {
             songsLastCheckString = lastCheckText + justNowText
+        }
+    }
+
+    private func updateEpisodesLastUpdatedAtString() {
+        if episodesLastCheckDate == Date(timeIntervalSince1970: 0) {
+            episodesLastCheckString = lastCheckText + unavailableText
+        } else if episodesLastCheckDate.minutesPassed(1) {
+            episodesLastCheckString = lastCheckText + episodesLastCheckDate.asRelativeDateTime
+        } else {
+            episodesLastCheckString = lastCheckText + justNowText
         }
     }
 
@@ -248,6 +282,10 @@ extension MostSharedByAudienceView.ViewModel {
         //donateActivity(forTimeInterval: newTimeInterval) // TODO: Adapt for Songs.
     }
 
+    public func onEpisodesSelectedTimeIntervalChanged() async {
+        await loadEpisodesList()
+    }
+
     public func onPullToRefreshLists() async {
         await loadAll(didPullDownToRefresh: true)
     }
@@ -259,6 +297,7 @@ extension MostSharedByAudienceView.ViewModel {
     public func onLastCheckStringUpdatingTimerFired() {
         updateSoundsLastUpdatedAtString()
         updateSongsLastUpdatedAtString()
+        updateEpisodesLastUpdatedAtString()
         updateReactionsLastUpdatedAtString()
     }
 }

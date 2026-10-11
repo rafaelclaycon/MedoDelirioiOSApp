@@ -13,51 +13,44 @@ extension APIClient {
         for contentType: TrendsContentType,
         in timeInterval: TrendsTimeInterval
     ) async throws -> [TopChartItem] {
-        var url: URL
-
         let keyword = contentType == .sounds ? "sound" : "song"
+        let url = URL(string: serverPath + "v3/\(keyword)-share-count-stats" + Self.statsPeriodPath(for: timeInterval))!
+        return try await self.get(from: url)
+    }
 
+    func getEpisodePlayStats(
+        in timeInterval: TrendsTimeInterval
+    ) async throws -> [TopEpisodeItem] {
+        let url = URL(string: serverPath + "v4/episode-play-count-stats" + Self.statsPeriodPath(for: timeInterval))!
+        return try await self.get(from: url)
+    }
+
+    /// The end of a ranking URL, shared by the share and play rankings.
+    private static func statsPeriodPath(for timeInterval: TrendsTimeInterval) -> String {
         switch timeInterval {
         case .last24Hours:
-            let refDate: String = Date.dateAsString(addingDays: -1)
-            url = URL(string: serverPath + "v3/\(keyword)-share-count-stats-from/\(refDate)")!
-
+            "-from/\(Date.dateAsString(addingDays: -1))"
         case .last3Days:
-            let refDate: String = Date.dateAsString(addingDays: -3)
-            url = URL(string: serverPath + "v3/\(keyword)-share-count-stats-from/\(refDate)")!
-
+            "-from/\(Date.dateAsString(addingDays: -3))"
         case .lastWeek:
-            let refDate: String = Date.dateAsString(addingDays: -7)
-            url = URL(string: serverPath + "v3/\(keyword)-share-count-stats-from/\(refDate)")!
-
+            "-from/\(Date.dateAsString(addingDays: -7))"
         case .lastMonth:
-            let refDate: String = Date.dateAsString(addingDays: -30)
-            url = URL(string: serverPath + "v3/\(keyword)-share-count-stats-from/\(refDate)")!
-
+            "-from/\(Date.dateAsString(addingDays: -30))"
         case .last3Months:
-            let refDate: String = Date.dateAsString(addingDays: -90)
-            url = URL(string: serverPath + "v3/\(keyword)-share-count-stats-from/\(refDate)")!
-
+            "-from/\(Date.dateAsString(addingDays: -90))"
         case .year2026:
-            url = URL(string: serverPath + "v3/\(keyword)-share-count-stats-from-to/2026-01-01/2026-12-31")!
-
+            "-from-to/2026-01-01/2026-12-31"
         case .year2025:
-            url = URL(string: serverPath + "v3/\(keyword)-share-count-stats-from-to/2025-01-01/2025-12-31")!
-
+            "-from-to/2025-01-01/2025-12-31"
         case .year2024:
-            url = URL(string: serverPath + "v3/\(keyword)-share-count-stats-from-to/2024-01-01/2024-12-31")!
-
+            "-from-to/2024-01-01/2024-12-31"
         case .year2023:
-            url = URL(string: serverPath + "v3/\(keyword)-share-count-stats-from-to/2023-01-01/2023-12-31")!
-
+            "-from-to/2023-01-01/2023-12-31"
         case .year2022:
-            url = URL(string: serverPath + "v3/\(keyword)-share-count-stats-from-to/2022-01-01/2022-12-31")!
-
+            "-from-to/2022-01-01/2022-12-31"
         case .allTime:
-            url = URL(string: serverPath + "v3/\(keyword)-share-count-stats-all-time")!
+            "-all-time"
         }
-
-        return try await self.get(from: url)
     }
 
     func top3Reactions() async throws -> [Reaction] {

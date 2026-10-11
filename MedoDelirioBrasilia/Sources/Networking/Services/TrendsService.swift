@@ -17,6 +17,10 @@ protocol TrendsServiceProtocol {
         in timeInterval: TrendsTimeInterval
     ) async throws -> [TopChartItem]
 
+    /// Most listened episodes, as chart rows: the count is unique listeners and the
+    /// subtitle the episode's date.
+    func episodePlayStats(in timeInterval: TrendsTimeInterval) async throws -> [TopChartItem]
+
     /// Returns top 3 most shared Content in the last week.
     func top3Content() async throws -> [AnyEquatableMedoContent]
     /// Returns top 3 most opened Reactions in the current day.
@@ -36,6 +40,8 @@ final class TrendsService: TrendsServiceProtocol {
 
     public nonisolated static let defaultSoundsTimeInterval: TrendsTimeInterval = .last24Hours
     public nonisolated static let defaultSongsTimeInterval: TrendsTimeInterval = .lastWeek
+    /// A month, since a week mostly ranks whichever episode came out last.
+    public nonisolated static let defaultEpisodesTimeInterval: TrendsTimeInterval = .lastMonth
 
     /// Shared singleton instance with default dependencies
     public static let shared = TrendsService(
@@ -44,6 +50,7 @@ final class TrendsService: TrendsServiceProtocol {
         contentRepository: ContentRepository(database: LocalDatabase.shared)
     )
 
+    private let database: LocalDatabaseProtocol
     private let apiClient: APIClientProtocol
     private let contentRepository: ContentRepositoryProtocol
 
@@ -66,7 +73,7 @@ final class TrendsService: TrendsServiceProtocol {
         apiClient: APIClientProtocol,
         contentRepository: ContentRepositoryProtocol
     ) {
-        // Note: database parameter kept for API compatibility but not currently used
+        self.database = database
         self.apiClient = apiClient
         self.contentRepository = contentRepository
         self.defaultSoundStats = []
@@ -118,6 +125,21 @@ final class TrendsService: TrendsServiceProtocol {
                     in: timeInterval
                 )
             }
+        }
+    }
+
+    func episodePlayStats(in timeInterval: TrendsTimeInterval) async throws -> [TopChartItem] {
+        try await apiClient.getEpisodePlayStats(in: timeInterval).map { item in
+            TopChartItem(
+                id: item.episodeId,
+                rankNumber: "",
+                contentId: item.episodeId,
+                contentName: item.episodeName,
+                contentAuthorId: "",
+                // Episodes not synced yet just go without a date.
+                contentAuthorName: (try? database.podcastEpisode(id: item.episodeId))?.formattedDate ?? "",
+                shareCount: item.uniqueListeners
+            )
         }
     }
 

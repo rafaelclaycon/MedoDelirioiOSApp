@@ -15,6 +15,7 @@ struct MostSharedByAudienceView: View {
     @Environment(TrendsHelper.self) private var trendsHelper
     @Environment(\.scenePhase) var scenePhase
     @Environment(\.usesSidebarLayout) private var usesSidebarLayout
+    @Environment(\.push) private var push
 
     private let timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
@@ -54,6 +55,25 @@ struct MostSharedByAudienceView: View {
                 }
             }
 
+            TitledRankingView(
+                title: "Episódios Mais Ouvidos",
+                state: viewModel.episodesState,
+                timeIntervalOption: $viewModel.episodesTimeInterval,
+                lastUpdatedText: viewModel.episodesLastCheckString,
+                navigateToText: "Abrir Episódio",
+                navigateToSystemImage: "radio",
+                // Episode plays started being counted in February 2026.
+                oldestYear: 2026,
+                navigateToAction: { episodeId in
+                    navigateTo(episode: episodeId)
+                }
+            )
+            .onChange(of: viewModel.episodesTimeInterval) {
+                Task {
+                    await viewModel.onEpisodesSelectedTimeIntervalChanged()
+                }
+            }
+
             ReactionsRankingView(
                 title: "Reações Mais Populares",
                 state: viewModel.reactionsState,
@@ -68,7 +88,7 @@ struct MostSharedByAudienceView: View {
                 }
             )
 
-            Text("Os dados se referem apenas à audiência das plataformas Apple.")
+            Text("Os dados se referem apenas à audiência das plataformas Apple. Episódios ouvidos no Spotify e em outros apps de podcast não entram na conta.")
                 .font(.subheadline)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.primary.opacity(0.7))
@@ -118,6 +138,12 @@ struct MostSharedByAudienceView: View {
         trendsHelper.contentIdToNavigateTo = contentId
     }
 
+    /// Trends always sits in the Search stack, which can show an episode's detail.
+    private func navigateTo(episode episodeId: String) {
+        guard let episode = try? LocalDatabase.shared.podcastEpisode(id: episodeId) else { return }
+        push(GeneralNavigationDestination.episodeDetail(episode))
+    }
+
     private func navigateTo(reaction reactionId: String) {
         if !usesSidebarLayout {
             tabSelection = .reactions
@@ -141,6 +167,9 @@ extension MostSharedByAudienceView {
         @Binding var timeIntervalOption: TrendsTimeInterval
         let lastUpdatedText: String
         let navigateToText: String
+        var navigateToSystemImage: String = "arrow.uturn.backward"
+        /// The year menu starts here, for rankings with no data before it.
+        var oldestYear: Int = 2022
         let navigateToAction: (String) -> Void
 
         // MARK: - Private Properties
@@ -222,7 +251,7 @@ extension MostSharedByAudienceView {
                                                 } label: {
                                                     Label(
                                                         navigateToText,
-                                                        systemImage: "arrow.uturn.backward"
+                                                        systemImage: navigateToSystemImage
                                                     )
                                                 }
                                             }
@@ -264,10 +293,18 @@ extension MostSharedByAudienceView {
 
                 Menu("Por Ano") {
                     menuItem(Shared.Trends.year2026, interval: .year2026)
-                    menuItem(Shared.Trends.year2025, interval: .year2025)
-                    menuItem(Shared.Trends.year2024, interval: .year2024)
-                    menuItem(Shared.Trends.year2023, interval: .year2023)
-                    menuItem(Shared.Trends.year2022, interval: .year2022)
+                    if oldestYear <= 2025 {
+                        menuItem(Shared.Trends.year2025, interval: .year2025)
+                    }
+                    if oldestYear <= 2024 {
+                        menuItem(Shared.Trends.year2024, interval: .year2024)
+                    }
+                    if oldestYear <= 2023 {
+                        menuItem(Shared.Trends.year2023, interval: .year2023)
+                    }
+                    if oldestYear <= 2022 {
+                        menuItem(Shared.Trends.year2022, interval: .year2022)
+                    }
                 }
 
                 menuItem(Shared.Trends.allTime, interval: .allTime)
