@@ -50,6 +50,7 @@ final class CloudStateSync {
     private let favoriteStore: EpisodeFavoritesStore
     private let contentFavoriteStore: ContentFavoritesSyncStore
     private let favoritesBackup: FavoritesBackupStore
+    private let deviceRegistry: CloudDeviceRegistry?
     private let cloudStore: CloudKeyValueStore
     private let isEnabled: () -> Bool
     private let now: () -> Date
@@ -80,6 +81,7 @@ final class CloudStateSync {
         favoriteStore: EpisodeFavoritesStore,
         contentFavoriteStore: ContentFavoritesSyncStore,
         favoritesBackup: FavoritesBackupStore,
+        deviceRegistry: CloudDeviceRegistry? = nil,
         cloudStore: CloudKeyValueStore = NSUbiquitousKeyValueStore.default,
         isEnabled: @escaping () -> Bool = { UserSettings().getEnableICloudSync() },
         now: @escaping () -> Date = Date.init
@@ -89,6 +91,7 @@ final class CloudStateSync {
         self.favoriteStore = favoriteStore
         self.contentFavoriteStore = contentFavoriteStore
         self.favoritesBackup = favoritesBackup
+        self.deviceRegistry = deviceRegistry
         self.cloudStore = cloudStore
         self.isEnabled = isEnabled
         self.now = now
@@ -159,6 +162,7 @@ final class CloudStateSync {
 
     func sync() {
         guard isEnabled() else { return }
+        deviceRegistry?.checkIn()
         let date = now()
         syncProgress(now: date)
         syncMarks(

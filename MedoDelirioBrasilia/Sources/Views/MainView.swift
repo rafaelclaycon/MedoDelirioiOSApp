@@ -984,7 +984,8 @@ struct MainView: View {
             playedStore: episodePlayedStore,
             favoriteStore: episodeFavoritesStore,
             contentFavoriteStore: ContentFavoritesSyncStore(),
-            favoritesBackup: FavoritesBackupStore()
+            favoritesBackup: FavoritesBackupStore(),
+            deviceRegistry: CloudDeviceRegistry()
         )
         let player = episodePlayer
         sync.isEpisodeActive = { [weak player] episodeID in
