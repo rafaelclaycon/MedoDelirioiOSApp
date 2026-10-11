@@ -49,6 +49,8 @@ final class PlayableContentState {
 
     public var toast: Binding<Toast?>
 
+    @ObservationIgnored private var externalFavoritesTask: Task<Void, Never>?
+
     // MARK: - Initializer
 
     init(
@@ -65,6 +67,18 @@ final class PlayableContentState {
         self.toast = toast
 
         loadFavorites()
+
+        // Another device's change, or a backup restored in Diagnostics, should show on
+        // every card without waiting for the screen to reappear.
+        externalFavoritesTask = Task { [weak self] in
+            for await _ in NotificationCenter.default.notifications(named: ContentFavoritesSyncStore.didChangeExternally) {
+                self?.loadFavorites()
+            }
+        }
+    }
+
+    deinit {
+        externalFavoritesTask?.cancel()
     }
 }
 
@@ -295,8 +309,11 @@ extension PlayableContentState {
         let newFavorite = Favorite(contentId: contentId, dateAdded: Date())
 
         do {
-            let favoriteAlreadyExists = try contentRepository.favoriteExists(contentId)
-            guard favoriteAlreadyExists == false else { return }
+            // Already a favorite, from another device or another screen: just show it.
+            guard try !contentRepository.favoriteExists(contentId) else {
+                favoritesKeeper.insert(contentId)
+                return
+            }
 
             try contentRepository.insert(favorite: newFavorite)
             favoritesKeeper.insert(newFavorite.contentId)

@@ -77,7 +77,7 @@ struct MainView: View {
     @State private var episodesBadgeStore = EpisodesBadgeStore()
     @State private var episodePopularityStore = EpisodePopularityStore()
     /// Created on first appear, since it needs the stores above.
-    @State private var episodeStateCloudSync: EpisodeStateCloudSync?
+    @State private var cloudStateSync: CloudStateSync?
     @State private var showNowPlaying = false
     /// Set once the Now Playing bar's share preview is ready; the share sheet shows,
     /// anchored to the bar, while it's non-nil.
@@ -350,7 +350,7 @@ struct MainView: View {
             episodePlayer.analyticsService = AnalyticsService()
             episodePlayer.chapterDownloadService = chapterDownloadService
             episodeBookmarkStore.analyticsService = AnalyticsService()
-            startEpisodeStateCloudSyncIfNeeded()
+            startCloudStateSyncIfNeeded()
             logger.debug("MainView appeared")
             sendUserPersonalTrendsToServerIfEnabled()
             sendPlayLogsToServerIfEnabled()
@@ -394,9 +394,9 @@ struct MainView: View {
             // missed while sync was off in Settings). Leaving sends what changed here,
             // right away rather than scheduled, while the app still gets to run.
             if newPhase == .active {
-                episodeStateCloudSync?.requestSync()
+                cloudStateSync?.requestSync()
             } else if newPhase == .background {
-                episodeStateCloudSync?.sync()
+                cloudStateSync?.sync()
             }
             if newPhase == .active {
                 episodesBadgeStore.recompute()
@@ -977,19 +977,21 @@ struct MainView: View {
         }
     }
 
-    private func startEpisodeStateCloudSyncIfNeeded() {
-        guard episodeStateCloudSync == nil else { return }
-        let sync = EpisodeStateCloudSync(
+    private func startCloudStateSyncIfNeeded() {
+        guard cloudStateSync == nil else { return }
+        let sync = CloudStateSync(
             progressStore: episodeProgressStore,
             playedStore: episodePlayedStore,
-            favoriteStore: episodeFavoritesStore
+            favoriteStore: episodeFavoritesStore,
+            contentFavoriteStore: ContentFavoritesSyncStore(),
+            favoritesBackup: FavoritesBackupStore()
         )
         let player = episodePlayer
         sync.isEpisodeActive = { [weak player] episodeID in
             player?.currentEpisode?.id == episodeID
         }
         episodePlayer.cloudSync = sync
-        episodeStateCloudSync = sync
+        cloudStateSync = sync
         sync.start()
     }
 

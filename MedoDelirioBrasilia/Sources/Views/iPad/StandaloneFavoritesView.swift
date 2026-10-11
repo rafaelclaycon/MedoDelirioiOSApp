@@ -109,6 +109,9 @@ struct StandaloneFavoritesView: View {
                 .onAppear {
                     viewModel.onViewDidAppear()
                 }
+                .onReceive(NotificationCenter.default.publisher(for: ContentFavoritesSyncStore.didChangeExternally)) { _ in
+                    viewModel.onFavoritesChangedExternally()
+                }
             }
             .toast(contentGridViewModel.toast)
             .floatingContentOptions(contentGridViewModel.floatingOptions)

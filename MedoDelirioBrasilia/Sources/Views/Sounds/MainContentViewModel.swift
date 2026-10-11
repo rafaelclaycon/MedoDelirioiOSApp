@@ -124,6 +124,13 @@ extension MainContentViewModel {
         loadContent()
     }
 
+    /// Another device's change arrived, or a backup was restored. Only the Favorites
+    /// list shows something different.
+    public func onFavoritesChangedExternally() {
+        guard currentViewMode == .favorites else { return }
+        loadContent()
+    }
+
     /// Donates a Siri Suggestion for the active mode. Folders and Authors modes
     /// donate from their own embedded view models, so only `.all` and `.favorites`
     /// are handled here.

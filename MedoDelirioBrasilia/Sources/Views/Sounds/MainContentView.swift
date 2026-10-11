@@ -114,6 +114,9 @@ struct MainContentView: View {
             .floatingContentOptions(viewModel.floatingOptions)
             .toolbarVisibility(contentGridViewModel.tabBarVisibility, for: .tabBar)
         }
+        .onReceive(NotificationCenter.default.publisher(for: ContentFavoritesSyncStore.didChangeExternally)) { _ in
+            viewModel.onFavoritesChangedExternally()
+        }
     }
 }
 

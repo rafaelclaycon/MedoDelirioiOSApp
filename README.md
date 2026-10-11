@@ -31,7 +31,7 @@ Prefer to do it in Reais? [Here you go](https://apoia.se/app-medo-delirio-ios).
 
 ## Top Features
 
-1. **Play and Share Sounds:** Enjoy snippets from the podcast and share them instantly with friends.
+1. **Play and Share Sounds:** Enjoy snippets from the podcast and share them instantly with friends. Favorite sounds and songs follow you across your devices through iCloud.
 1. **Listen to Episodes:** Educate yourself and keep tabs with Brasil through the integrated audio player, episode feed, episode favoriting, moment bookmarking, and listening progress, finished and favorite episodes that follow you across your devices through iCloud.
 1. **Find the Quote:** Search the full transcripts of all episodes to revisit arguments, verify claims, or check if a topic was ever covered.
 1. **React with Ease:** Find perfect responses for group chats in the **Reactions** tab, featuring sounds categorized by emotions, famous characters, and current events.

@@ -64,20 +64,38 @@ class FakeLocalDatabase: LocalDatabaseProtocol {
 
     // Favorite
 
+    var favoriteDates: [String: Date] = [:]
+    var favoriteTombstones: [String: Date] = [:]
+
     func isFavorite(contentId: String) throws -> Bool {
-        false
+        favoriteDates[contentId] != nil
     }
 
     func insert(favorite newFavorite: Favorite) throws {
-        //
+        favoriteDates[newFavorite.contentId] = newFavorite.dateAdded
     }
 
     func favorites() throws -> [Favorite] {
-        []
+        favoriteDates.map { Favorite(contentId: $0.key, dateAdded: $0.value) }
     }
 
     func deleteFavorite(withId contentId: String) throws {
-        //
+        favoriteDates.removeValue(forKey: contentId)
+    }
+
+    func allFavoriteDates() throws -> [String: Date] { favoriteDates }
+    func upsertFavorite(contentId: String, dateAdded: Date) throws {
+        favoriteDates[contentId] = dateAdded
+    }
+    func allFavoriteTombstones() throws -> [String: Date] { favoriteTombstones }
+    func upsertFavoriteTombstone(contentId: String, unfavoritedAt: Date) throws {
+        favoriteTombstones[contentId] = unfavoritedAt
+    }
+    func deleteFavoriteTombstone(contentId: String) throws {
+        favoriteTombstones.removeValue(forKey: contentId)
+    }
+    func deleteFavoriteTombstones(olderThan date: Date) throws {
+        favoriteTombstones = favoriteTombstones.filter { $0.value >= date }
     }
 
     // Sound

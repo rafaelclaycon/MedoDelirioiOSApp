@@ -33,6 +33,17 @@ struct DiagnosticsView: View {
             ImportFavoritesView(database: database, analyticsService: analyticsService)
 
             Section {
+                NavigationLink("Backups das favoritas") {
+                    FavoritesBackupsView(
+                        backupStore: FavoritesBackupStore(database: database),
+                        database: database
+                    )
+                }
+            } footer: {
+                Text("Cópias das favoritas feitas antes de sincronizar com o iCloud, para conferir e restaurar.")
+            }
+
+            Section {
                 NavigationLink("Logs de compartilhamento") {
                     ShareLogsView()
                 }
@@ -250,8 +261,13 @@ extension DiagnosticsView {
                     guard try database.contentExists(withId: id) else { return }
                     guard try !database.isFavorite(contentId: id) else { return }
                     try database.insert(favorite: Favorite(contentId: id, dateAdded: .now))
+                    try? database.deleteFavoriteTombstone(contentId: id)
                     print("Successfully imported \(id)")
                     counter += 1
+                }
+                if counter > 0 {
+                    NotificationCenter.default.post(name: ContentFavoritesSyncStore.didChangeLocally, object: nil)
+                    NotificationCenter.default.post(name: ContentFavoritesSyncStore.didChangeExternally, object: nil)
                 }
                 return ImportResult(importCount: counter, errorMessage: nil)
             } catch {

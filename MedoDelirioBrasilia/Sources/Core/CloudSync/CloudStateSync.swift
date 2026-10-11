@@ -1,5 +1,5 @@
 //
-//  EpisodeStateCloudSync.swift
+//  CloudStateSync.swift
 //  MedoDelirioBrasilia
 //
 //  Created by Rafael Schmitt on 09/10/26.
@@ -8,12 +8,12 @@
 import Foundation
 import os
 
-private let logger = os.Logger(subsystem: "com.rafaelschmitt.MedoDelirioBrasilia", category: "EpisodeStateCloudSync")
+private let logger = os.Logger(subsystem: "com.rafaelschmitt.MedoDelirioBrasilia", category: "CloudStateSync")
 
-/// Keeps episode progress, played state and favorites in step across the user's
-/// devices through iCloud key-value storage.
+/// Keeps episode progress, played state and favorites, and the sound and song
+/// favorites, in step across the user's devices through iCloud key-value storage.
 ///
-/// Each kind of state lives under one key as a `[episodeId: record]` dictionary. A sync
+/// Each kind of state lives under one key as a `[id: record]` dictionary. A sync
 /// reads the cloud copy, merges it with everything this device knows (newer record
 /// wins per episode), applies what the other devices changed, and writes the merged
 /// result back only if it differs. Pushing the full merged state, rather than just the
@@ -23,15 +23,20 @@ private let logger = os.Logger(subsystem: "com.rafaelschmitt.MedoDelirioBrasilia
 /// The store syncs on its own schedule, usually within seconds to minutes. That's
 /// enough for picking up on the iPad where the iPhone left off.
 @MainActor
-final class EpisodeStateCloudSync {
+final class CloudStateSync {
 
     nonisolated static let progressKey = "episodeProgress.v1"
     nonisolated static let playedKey = "episodePlayed.v1"
     nonisolated static let favoriteKey = "episodeFavorite.v1"
+    nonisolated static let contentFavoriteKey = "contentFavorite.v1"
 
     /// Keeps the progress payload well under the store's 1 MB limit. Positions beyond
     /// this stay on the device that has them; they just stop syncing.
     nonisolated static let maxLiveProgressRecords = 300
+    /// About twice the catalog, which only had some 1,500 sounds and songs in 2026, so
+    /// in practice every favorite syncs. A bound all the same, since the store's 1 MB is
+    /// shared with the episode state.
+    nonisolated static let maxLiveContentFavoriteRecords = 3000
     /// How long a clearing or unmarking is remembered. A device that comes back after
     /// longer than this can bring an old position back, which is an acceptable miss.
     nonisolated static let tombstoneLifetime: TimeInterval = 60 * 24 * 60 * 60
@@ -43,6 +48,8 @@ final class EpisodeStateCloudSync {
     private let progressStore: EpisodeProgressStore
     private let playedStore: EpisodePlayedStore
     private let favoriteStore: EpisodeFavoritesStore
+    private let contentFavoriteStore: ContentFavoritesSyncStore
+    private let favoritesBackup: FavoritesBackupStore
     private let cloudStore: CloudKeyValueStore
     private let isEnabled: () -> Bool
     private let now: () -> Date
@@ -71,13 +78,17 @@ final class EpisodeStateCloudSync {
         progressStore: EpisodeProgressStore,
         playedStore: EpisodePlayedStore,
         favoriteStore: EpisodeFavoritesStore,
+        contentFavoriteStore: ContentFavoritesSyncStore,
+        favoritesBackup: FavoritesBackupStore,
         cloudStore: CloudKeyValueStore = NSUbiquitousKeyValueStore.default,
-        isEnabled: @escaping () -> Bool = { UserSettings().getEnableICloudEpisodeSync() },
+        isEnabled: @escaping () -> Bool = { UserSettings().getEnableICloudSync() },
         now: @escaping () -> Date = Date.init
     ) {
         self.progressStore = progressStore
         self.playedStore = playedStore
         self.favoriteStore = favoriteStore
+        self.contentFavoriteStore = contentFavoriteStore
+        self.favoritesBackup = favoritesBackup
         self.cloudStore = cloudStore
         self.isEnabled = isEnabled
         self.now = now
@@ -98,6 +109,10 @@ final class EpisodeStateCloudSync {
             MainActor.assumeIsolated { self?.requestSync() }
         }
         favoriteStore.onLocalChange = { [weak self] in
+            MainActor.assumeIsolated { self?.requestSync() }
+        }
+        // Posted on the main queue, by `ContentRepository` and backup restores.
+        contentFavoriteStore.onLocalChange = { [weak self] in
             MainActor.assumeIsolated { self?.requestSync() }
         }
 
@@ -131,9 +146,9 @@ final class EpisodeStateCloudSync {
     func handleExternalChange(reason: Int?) {
         switch reason {
         case NSUbiquitousKeyValueStoreQuotaViolationChange:
-            logger.error("iCloud key-value quota exceeded; episode state may stop syncing.")
+            logger.error("iCloud key-value quota exceeded; episode state and favorites may stop syncing.")
         case NSUbiquitousKeyValueStoreAccountChange:
-            logger.info("iCloud account changed; merging local episode state into the new account.")
+            logger.info("iCloud account changed; merging local episode state and favorites into the new account.")
         default:
             break
         }
@@ -160,6 +175,19 @@ final class EpisodeStateCloudSync {
             pruneLocalTombstones: favoriteStore.pruneTombstones,
             now: date
         )
+
+        // Before anything from the cloud can touch them.
+        let contentFavorites = contentFavoriteStore.favoriteDates()
+        favoritesBackup.backUpBeforeSync(favorites: contentFavorites)
+        syncMarks(
+            key: Self.contentFavoriteKey,
+            local: contentFavoriteStore.syncRecords(),
+            apply: contentFavoriteStore.applyRemote,
+            pruneLocalTombstones: contentFavoriteStore.pruneTombstones,
+            maxLiveRecords: Self.maxLiveContentFavoriteRecords,
+            didApply: contentFavoriteStore.didApplyRemoteChanges,
+            now: date
+        )
     }
 
     private func syncProgress(now date: Date) {
@@ -182,25 +210,36 @@ final class EpisodeStateCloudSync {
     }
 
     /// Played and favorite marks sync the same way; only the key and the store differ.
-    private func syncMarks<Record: EpisodeMarkRecord>(
+    ///
+    /// - Parameters:
+    ///   - maxLiveRecords: keeps only the most recent marks in the cloud, when set.
+    ///   - didApply: called once after taking in at least one remote record.
+    private func syncMarks<Record: CloudMarkRecord>(
         key: String,
         local: [String: Record],
         apply: (Record, String) -> Void,
         pruneLocalTombstones: (Date) -> Void,
+        maxLiveRecords: Int? = nil,
+        didApply: () -> Void = {},
         now date: Date
     ) {
         let remote: [String: Record] = read(key)
         let result = Self.merge(local: local, remote: remote)
         let horizon = date.addingTimeInterval(-Self.tombstoneLifetime)
 
+        var appliedCount = 0
         for (id, record) in result.toApply {
             // Same reasoning as expired clearings in `syncProgress`.
             if !record.isMarked && record.updatedAt < horizon { continue }
             apply(record, id)
+            appliedCount += 1
         }
         pruneLocalTombstones(horizon)
+        if appliedCount > 0 {
+            didApply()
+        }
 
-        let pruned = Self.pruneMarks(result.merged, now: date)
+        let pruned = Self.pruneMarks(result.merged, maxLiveRecords: maxLiveRecords, now: date)
         if pruned != remote {
             write(pruned, forKey: key)
         }
@@ -208,7 +247,7 @@ final class EpisodeStateCloudSync {
 
     // MARK: - Merge
 
-    struct MergeResult<Record: EpisodeSyncRecord> {
+    struct MergeResult<Record: CloudSyncRecord> {
         /// What the cloud should hold: the newer copy of every episode on either side.
         var merged: [String: Record]
         /// Remote records newer than (or missing from) this device's copy.
@@ -217,7 +256,7 @@ final class EpisodeStateCloudSync {
 
     /// Picks the newer record per episode. When both copies are within the timestamp
     /// slack, the cloud's copy stays, so a sync that changed nothing writes nothing.
-    nonisolated static func merge<Record: EpisodeSyncRecord>(
+    nonisolated static func merge<Record: CloudSyncRecord>(
         local: [String: Record],
         remote: [String: Record]
     ) -> MergeResult<Record> {
@@ -269,21 +308,38 @@ final class EpisodeStateCloudSync {
         return pruned
     }
 
-    /// Keeps every mark (a few hundred episodes is only tens of KB) and unmarkings
-    /// until they expire.
-    nonisolated static func pruneMarks<Record: EpisodeMarkRecord>(
+    /// Keeps every mark (a few hundred episodes is only tens of KB), or the most recent
+    /// `maxLiveRecords` of them, and unmarkings until they expire. Ties sort by ID so
+    /// every device prunes to the same result.
+    nonisolated static func pruneMarks<Record: CloudMarkRecord>(
         _ records: [String: Record],
+        maxLiveRecords: Int? = nil,
         now date: Date
     ) -> [String: Record] {
         let expiry = date.addingTimeInterval(-(tombstoneLifetime + cloudTombstoneGrace))
-        return records.filter { $0.value.isMarked || $0.value.updatedAt >= expiry }
+        let unmarked = records.filter { !$0.value.isMarked && $0.value.updatedAt >= expiry }
+        var marked = records.filter { $0.value.isMarked }
+
+        if let maxLiveRecords, marked.count > maxLiveRecords {
+            logger.info("\(marked.count) marks are over the cap of \(maxLiveRecords); the oldest stay on their devices.")
+            let kept = marked
+                .sorted { lhs, rhs in
+                    lhs.value.updatedAt != rhs.value.updatedAt
+                        ? lhs.value.updatedAt > rhs.value.updatedAt
+                        : lhs.key < rhs.key
+                }
+                .prefix(maxLiveRecords)
+            marked = Dictionary(uniqueKeysWithValues: kept.map { ($0.key, $0.value) })
+        }
+
+        return unmarked.merging(marked) { _, live in live }
     }
 
     // MARK: - Encoding
 
     /// Missing or unreadable data reads as empty, so the next write replaces it with
     /// this device's state instead of failing forever.
-    private func read<Record: EpisodeSyncRecord>(_ key: String) -> [String: Record] {
+    private func read<Record: CloudSyncRecord>(_ key: String) -> [String: Record] {
         guard let data = cloudStore.data(forKey: key) else { return [:] }
         do {
             return try Self.decoder.decode([String: Record].self, from: data)
@@ -293,7 +349,7 @@ final class EpisodeStateCloudSync {
         }
     }
 
-    private func write<Record: EpisodeSyncRecord>(_ records: [String: Record], forKey key: String) {
+    private func write<Record: CloudSyncRecord>(_ records: [String: Record], forKey key: String) {
         do {
             let data = try Self.encoder.encode(records)
             cloudStore.setData(data, forKey: key)

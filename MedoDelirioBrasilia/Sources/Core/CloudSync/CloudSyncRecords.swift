@@ -1,5 +1,5 @@
 //
-//  EpisodeSyncRecords.swift
+//  CloudSyncRecords.swift
 //  MedoDelirioBrasilia
 //
 //  Created by Rafael Schmitt on 09/10/26.
@@ -7,14 +7,14 @@
 
 import Foundation
 
-/// A piece of per-episode state that travels through iCloud. Whichever copy was
-/// changed last wins, so every record carries the moment it changed.
-protocol EpisodeSyncRecord: Codable, Equatable {
+/// A piece of state, per episode or per sound or song, that travels through iCloud.
+/// Whichever copy was changed last wins, so every record carries the moment it changed.
+protocol CloudSyncRecord: Codable, Equatable {
 
     var updatedAt: Date { get }
 }
 
-extension EpisodeSyncRecord {
+extension CloudSyncRecord {
 
     /// SQLite keeps dates to the millisecond and the round trip can shave one off, so
     /// copies this close together count as the same change. Without the slack, two
@@ -26,7 +26,7 @@ extension EpisodeSyncRecord {
 
 /// One episode's playback position. The short keys keep the payload small, since the
 /// whole dictionary is rewritten on every push.
-struct EpisodeProgressRecord: EpisodeSyncRecord {
+struct EpisodeProgressRecord: CloudSyncRecord {
 
     var currentTime: TimeInterval
     var duration: TimeInterval
@@ -47,15 +47,15 @@ struct EpisodeProgressRecord: EpisodeSyncRecord {
     }
 }
 
-/// A yes/no mark on an episode, like played or favorite. Removing the mark is a record
+/// A yes/no mark, like an episode played or a favorite. Removing the mark is a record
 /// too, with `isMarked == false`, so it isn't undone by an older mark from another device.
-protocol EpisodeMarkRecord: EpisodeSyncRecord {
+protocol CloudMarkRecord: CloudSyncRecord {
 
     var isMarked: Bool { get }
 }
 
 /// Whether an episode is marked as played.
-struct EpisodePlayedRecord: EpisodeMarkRecord {
+struct EpisodePlayedRecord: CloudMarkRecord {
 
     var isPlayed: Bool
     var updatedAt: Date
@@ -69,7 +69,22 @@ struct EpisodePlayedRecord: EpisodeMarkRecord {
 }
 
 /// Whether an episode is a favorite.
-struct EpisodeFavoriteRecord: EpisodeMarkRecord {
+struct EpisodeFavoriteRecord: CloudMarkRecord {
+
+    var isFavorite: Bool
+    var updatedAt: Date
+
+    var isMarked: Bool { isFavorite }
+
+    enum CodingKeys: String, CodingKey {
+        case isFavorite = "f"
+        case updatedAt = "u"
+    }
+}
+
+/// A sound or song favorite, keyed by content ID. Same shape as `EpisodeFavoriteRecord`,
+/// a separate type so the two stores can never be mixed up.
+struct ContentFavoriteRecord: CloudMarkRecord {
 
     var isFavorite: Bool
     var updatedAt: Date

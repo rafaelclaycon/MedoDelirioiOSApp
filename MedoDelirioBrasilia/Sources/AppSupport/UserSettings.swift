@@ -142,7 +142,9 @@ extension UserSettings {
         return Bool(value as! Bool)
     }
 
-    func getEnableICloudEpisodeSync() -> Bool {
+    /// Episode state and sound and song favorites. Still read from the key it had when it
+    /// only covered episodes, so whoever turned that off keeps it off.
+    func getEnableICloudSync() -> Bool {
         guard let value = userDefaults.object(forKey: "enableICloudEpisodeSync") else {
             return true
         }
@@ -225,7 +227,7 @@ extension UserSettings {
         userDefaults.set(newValue, forKey: "autoDeletePlayedEpisodes")
     }
 
-    func setEnableICloudEpisodeSync(to newValue: Bool) {
+    func setEnableICloudSync(to newValue: Bool) {
         userDefaults.set(newValue, forKey: "enableICloudEpisodeSync")
     }
 

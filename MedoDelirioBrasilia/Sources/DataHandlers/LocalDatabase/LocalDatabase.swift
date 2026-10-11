@@ -13,6 +13,12 @@ internal protocol LocalDatabaseProtocol {
     func insert(favorite newFavorite: Favorite) throws
     func favorites() throws -> [Favorite]
     func deleteFavorite(withId contentId: String) throws
+    func allFavoriteDates() throws -> [String: Date]
+    func upsertFavorite(contentId: String, dateAdded: Date) throws
+    func allFavoriteTombstones() throws -> [String: Date]
+    func upsertFavoriteTombstone(contentId: String, unfavoritedAt: Date) throws
+    func deleteFavoriteTombstone(contentId: String) throws
+    func deleteFavoriteTombstones(olderThan date: Date) throws
 
     // Sound
     func insert(sound newSound: Sound) throws
@@ -170,6 +176,7 @@ class LocalDatabase: LocalDatabaseProtocol {
     var migrationManager: SQLiteMigrationManager
     
     var favorite = Table("favorite")
+    var favoriteTombstoneTable = Table("favoriteTombstone")
     var userShareLog = Table("userShareLog")
     var audienceSharingStatistic = Table("audienceSharingStatistic")
     var networkCallLog = Table("networkCallLog")
@@ -249,7 +256,8 @@ extension LocalDatabase {
             CleanUpSlashEpisodeId(),
             AddUserPlayLogTable(),
             AddEpisodeSyncTombstoneTables(),
-            AddEpisodeFavoriteTombstoneTable()
+            AddEpisodeFavoriteTombstoneTable(),
+            AddFavoriteTombstoneTable()
         ]
     }
 

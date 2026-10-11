@@ -68,7 +68,7 @@ final class EpisodePlayer {
     @ObservationIgnored var playedStore: EpisodePlayedStore?
     @ObservationIgnored var analyticsService: AnalyticsServiceProtocol?
     @ObservationIgnored var chapterDownloadService: ChapterDownloadService?
-    @ObservationIgnored var cloudSync: EpisodeStateCloudSync?
+    @ObservationIgnored var cloudSync: CloudStateSync?
 
     /// Set to `true` when a bookmark is added from the lock screen remote command.
     /// Observed by `MainView` to auto-open the Now Playing screen.

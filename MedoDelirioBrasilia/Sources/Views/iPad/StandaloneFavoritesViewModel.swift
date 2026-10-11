@@ -59,6 +59,11 @@ extension StandaloneFavoritesViewModel {
         loadContent()
     }
 
+    /// Another device's change arrived, or a backup was restored.
+    public func onFavoritesChangedExternally() {
+        loadContent()
+    }
+
     public func onContentSortOptionChanged() {
         loadContent()
     }

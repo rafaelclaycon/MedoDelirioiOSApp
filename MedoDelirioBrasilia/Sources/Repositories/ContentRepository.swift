@@ -218,12 +218,19 @@ final class ContentRepository: ContentRepositoryProtocol {
         try database.isFavorite(contentId: contentId)
     }
 
+    /// Clears any earlier removal and tells iCloud sync, so the favorite reaches the
+    /// user's other devices.
     func insert(favorite: Favorite) throws {
         try database.insert(favorite: favorite)
+        try? database.deleteFavoriteTombstone(contentId: favorite.contentId)
+        NotificationCenter.default.post(name: ContentFavoritesSyncStore.didChangeLocally, object: nil)
     }
 
+    /// Remembers the removal, so it beats the older favorite still on the other devices.
     func deleteFavorite(_ contentId: String) throws {
         try database.deleteFavorite(withId: contentId)
+        try? database.upsertFavoriteTombstone(contentId: contentId, unfavoritedAt: Date())
+        NotificationCenter.default.post(name: ContentFavoritesSyncStore.didChangeLocally, object: nil)
     }
 
     // MARK: - Song
