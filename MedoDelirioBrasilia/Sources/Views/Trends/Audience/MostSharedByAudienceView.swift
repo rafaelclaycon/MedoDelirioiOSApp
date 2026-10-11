@@ -22,100 +22,109 @@ struct MostSharedByAudienceView: View {
     // MARK: - View Body
 
     var body: some View {
-        // Every section ends with the same room under it (see `ErrorView`), so this
-        // is the whole gap before the next title.
         VStack(spacing: .spacing(.xLarge)) {
-            TitledRankingView(
-                title: viewModel.soundsMetric == .shares ? "Vírgulas Mais Compartilhadas" : "Vírgulas Mais Tocadas",
-                state: viewModel.soundsState,
-                timeIntervalOption: $viewModel.soundsTimeInterval,
-                lastUpdatedText: viewModel.soundsLastCheckString,
-                navigateToText: "Ir para Conteúdo",
-                metric: $viewModel.soundsMetric,
-                navigateToAction: { soundId in
-                    navigateTo(content: soundId)
-                },
-                retryAction: {
+            // On a wide window (Mac, iPad or iPhone Duo in landscape) the sections
+            // sit side by side instead of each ranking stretching across the screen.
+            // Their own side padding already separates the columns. Every section
+            // ends with the same room under it (see `ErrorView`), so the vertical
+            // spacing is the whole gap before the next title.
+            SectionColumns(
+                minColumnWidth: 400,
+                horizontalSpacing: 0,
+                verticalSpacing: .spacing(.xLarge)
+            ) {
+                TitledRankingView(
+                    title: viewModel.soundsMetric == .shares ? "Vírgulas Mais Compartilhadas" : "Vírgulas Mais Tocadas",
+                    state: viewModel.soundsState,
+                    timeIntervalOption: $viewModel.soundsTimeInterval,
+                    lastUpdatedText: viewModel.soundsLastCheckString,
+                    navigateToText: "Ir para Conteúdo",
+                    metric: $viewModel.soundsMetric,
+                    navigateToAction: { soundId in
+                        navigateTo(content: soundId)
+                    },
+                    retryAction: {
+                        Task {
+                            await viewModel.onSoundsRetrySelected()
+                        }
+                    }
+                )
+                .onChange(of: viewModel.soundsTimeInterval) {
                     Task {
-                        await viewModel.onSoundsRetrySelected()
+                        await viewModel.onSoundsSelectedTimeIntervalChanged(newTimeInterval: viewModel.soundsTimeInterval)
                     }
                 }
-            )
-            .onChange(of: viewModel.soundsTimeInterval) {
-                Task {
-                    await viewModel.onSoundsSelectedTimeIntervalChanged(newTimeInterval: viewModel.soundsTimeInterval)
+                .onChange(of: viewModel.soundsMetric) {
+                    Task {
+                        await viewModel.onSoundsMetricChanged()
+                    }
                 }
-            }
-            .onChange(of: viewModel.soundsMetric) {
-                Task {
-                    await viewModel.onSoundsMetricChanged()
-                }
-            }
 
-            TitledRankingView(
-                title: viewModel.songsMetric == .shares ? "Músicas Mais Compartilhadas" : "Músicas Mais Tocadas",
-                state: viewModel.songsState,
-                timeIntervalOption: $viewModel.songsTimeInterval,
-                lastUpdatedText: viewModel.songsLastCheckString,
-                navigateToText: "Ir para Conteúdo",
-                metric: $viewModel.songsMetric,
-                navigateToAction: { songId in
-                    navigateTo(content: songId)
-                },
-                retryAction: {
+                TitledRankingView(
+                    title: viewModel.songsMetric == .shares ? "Músicas Mais Compartilhadas" : "Músicas Mais Tocadas",
+                    state: viewModel.songsState,
+                    timeIntervalOption: $viewModel.songsTimeInterval,
+                    lastUpdatedText: viewModel.songsLastCheckString,
+                    navigateToText: "Ir para Conteúdo",
+                    metric: $viewModel.songsMetric,
+                    navigateToAction: { songId in
+                        navigateTo(content: songId)
+                    },
+                    retryAction: {
+                        Task {
+                            await viewModel.onSongsRetrySelected()
+                        }
+                    }
+                )
+                .onChange(of: viewModel.songsTimeInterval) {
                     Task {
-                        await viewModel.onSongsRetrySelected()
+                        await viewModel.onSongsSelectedTimeIntervalChanged(newTimeInterval: viewModel.songsTimeInterval)
                     }
                 }
-            )
-            .onChange(of: viewModel.songsTimeInterval) {
-                Task {
-                    await viewModel.onSongsSelectedTimeIntervalChanged(newTimeInterval: viewModel.songsTimeInterval)
+                .onChange(of: viewModel.songsMetric) {
+                    Task {
+                        await viewModel.onSongsMetricChanged()
+                    }
                 }
-            }
-            .onChange(of: viewModel.songsMetric) {
-                Task {
-                    await viewModel.onSongsMetricChanged()
-                }
-            }
 
-            TitledRankingView(
-                title: "Episódios Mais Ouvidos",
-                state: viewModel.episodesState,
-                timeIntervalOption: $viewModel.episodesTimeInterval,
-                lastUpdatedText: viewModel.episodesLastCheckString,
-                navigateToText: "Abrir Episódio",
-                navigateToSystemImage: "radio",
-                // Episode plays started being counted in February 2026.
-                oldestYear: 2026,
-                navigateToAction: { episodeId in
-                    navigateTo(episode: episodeId)
-                },
-                retryAction: {
+                TitledRankingView(
+                    title: "Episódios Mais Ouvidos",
+                    state: viewModel.episodesState,
+                    timeIntervalOption: $viewModel.episodesTimeInterval,
+                    lastUpdatedText: viewModel.episodesLastCheckString,
+                    navigateToText: "Abrir Episódio",
+                    navigateToSystemImage: "radio",
+                    // Episode plays started being counted in February 2026.
+                    oldestYear: 2026,
+                    navigateToAction: { episodeId in
+                        navigateTo(episode: episodeId)
+                    },
+                    retryAction: {
+                        Task {
+                            await viewModel.onEpisodesRetrySelected()
+                        }
+                    }
+                )
+                .onChange(of: viewModel.episodesTimeInterval) {
                     Task {
-                        await viewModel.onEpisodesRetrySelected()
+                        await viewModel.onEpisodesSelectedTimeIntervalChanged()
                     }
                 }
-            )
-            .onChange(of: viewModel.episodesTimeInterval) {
-                Task {
-                    await viewModel.onEpisodesSelectedTimeIntervalChanged()
-                }
-            }
 
-            ReactionsRankingView(
-                title: "Reações Mais Populares",
-                state: viewModel.reactionsState,
-                lastUpdatedText: viewModel.reactionsLastCheckString,
-                navigateToAction: { reactionId in
-                    navigateTo(reaction: reactionId)
-                },
-                reloadAction: {
-                    Task {
-                        await viewModel.onReloadPopularReactionsSelected()
+                ReactionsRankingView(
+                    title: "Reações Mais Populares",
+                    state: viewModel.reactionsState,
+                    lastUpdatedText: viewModel.reactionsLastCheckString,
+                    navigateToAction: { reactionId in
+                        navigateTo(reaction: reactionId)
+                    },
+                    reloadAction: {
+                        Task {
+                            await viewModel.onReloadPopularReactionsSelected()
+                        }
                     }
-                }
-            )
+                )
+            }
 
             Text("Os dados se referem apenas à audiência das plataformas Apple. Episódios ouvidos no Spotify e em outros apps de podcast não entram na conta.")
                 .font(.subheadline)
@@ -209,7 +218,6 @@ extension MostSharedByAudienceView {
         // MARK: - Private Properties
 
         private let columns = [GridItem(.flexible())]
-        private let columnsMac = [GridItem(.fixed(500))]
         private let collapsedItemCount = 3
 
         @State private var isExpanded: Bool = false
@@ -275,12 +283,18 @@ extension MostSharedByAudienceView {
                 // narrow iPhone or with a large text size.
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: .spacing(.small)) {
-                        selectors()
+                        selectors(shortMetricLabel: hSizeClass == .compact)
+                        Spacer()
+                    }
+
+                    // A narrow column on a regular width, like on iPad.
+                    HStack(spacing: .spacing(.small)) {
+                        selectors(shortMetricLabel: true)
                         Spacer()
                     }
 
                     VStack(alignment: .leading, spacing: .spacing(.small)) {
-                        selectors()
+                        selectors(shortMetricLabel: true)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -297,7 +311,7 @@ extension MostSharedByAudienceView {
                         if items.isEmpty {
                             NoDataToDisplayView()
                         } else {
-                            LazyVGrid(columns: UIDevice.deviceType == .mac ? columnsMac : columns, spacing: 10) {
+                            LazyVGrid(columns: columns, spacing: 10) {
                                 ForEach(isExpanded ? items : Array(items.prefix(collapsedItemCount))) { item in
                                     TopChartRow(item: item)
                                         .onTapGesture {
@@ -339,11 +353,11 @@ extension MostSharedByAudienceView {
 
         // MARK: - Subviews
 
-        @ViewBuilder func selectors() -> some View {
+        @ViewBuilder func selectors(shortMetricLabel: Bool) -> some View {
             timeIntervalSelector()
 
             if let metric {
-                metricSelector(metric)
+                metricSelector(metric, shortLabel: shortMetricLabel)
             }
         }
 
@@ -380,14 +394,14 @@ extension MostSharedByAudienceView {
             }
         }
 
-        private func metricSelector(_ metric: Binding<TrendsMetric>) -> some View {
+        private func metricSelector(_ metric: Binding<TrendsMetric>, shortLabel: Bool) -> some View {
             Menu {
                 metricItem("Compartilhadas", systemImage: "square.and.arrow.up", value: .shares, selection: metric)
                 metricItem("Tocadas", systemImage: "play.fill", value: .plays, selection: metric)
             } label: {
                 HStack(spacing: .spacing(.xxSmall)) {
                     Image(systemName: metric.wrappedValue == .shares ? "square.and.arrow.up" : "play.fill")
-                    Text(metricLabel(metric.wrappedValue))
+                    Text(metricLabel(metric.wrappedValue, short: shortLabel))
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(metric.wrappedValue == .shares ? "Compartilhadas" : "Tocadas")
@@ -397,10 +411,11 @@ extension MostSharedByAudienceView {
             }
         }
 
-        /// Shortened on compact widths so it fits on the same line as the period.
-        private func metricLabel(_ metric: TrendsMetric) -> String {
+        /// Shortened on compact widths, or wherever the full name keeps it off the
+        /// period's line.
+        private func metricLabel(_ metric: TrendsMetric, short: Bool) -> String {
             switch metric {
-            case .shares: hSizeClass == .compact ? "Compart." : "Compartilhadas"
+            case .shares: short ? "Compart." : "Compartilhadas"
             case .plays: "Tocadas"
             }
         }
