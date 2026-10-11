@@ -71,7 +71,7 @@ struct MostSharedByAudienceView: View {
             Text("Os dados se referem apenas à audiência das plataformas Apple.")
                 .font(.subheadline)
                 .multilineTextAlignment(.center)
-                .foregroundColor(.gray)
+                .foregroundStyle(.primary.opacity(0.7))
                 .padding(.horizontal, .spacing(.xxLarge))
                 .padding(.bottom, .spacing(.xxLarge))
                 .padding(.top, -5)
@@ -143,10 +143,13 @@ extension MostSharedByAudienceView {
         let navigateToText: String
         let navigateToAction: (String) -> Void
 
-        // MARK: - Private Properti
+        // MARK: - Private Properties
 
         private let columns = [GridItem(.flexible())]
         private let columnsMac = [GridItem(.fixed(500))]
+        private let collapsedItemCount = 3
+
+        @State private var isExpanded: Bool = false
 
         @Environment(\.usesSidebarLayout) private var usesSidebarLayout
 
@@ -207,7 +210,7 @@ extension MostSharedByAudienceView {
                             NoDataToDisplayView()
                         } else {
                             LazyVGrid(columns: UIDevice.deviceType == .mac ? columnsMac : columns, spacing: 10) {
-                                ForEach(items) { item in
+                                ForEach(isExpanded ? items : Array(items.prefix(collapsedItemCount))) { item in
                                     TopChartRow(item: item)
                                         .onTapGesture {
                                             navigateToAction(item.contentId)
@@ -228,6 +231,10 @@ extension MostSharedByAudienceView {
                             }
                             .padding(.horizontal, .spacing(.medium))
                             .padding(.top, -8)
+
+                            if items.count > collapsedItemCount {
+                                showMoreOrLessButton()
+                            }
                         }
 
                         Text(lastUpdatedText)
@@ -275,6 +282,20 @@ extension MostSharedByAudienceView {
             }
         }
 
+        private func showMoreOrLessButton() -> some View {
+            Button {
+                withAnimation {
+                    isExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: .spacing(.xxSmall)) {
+                    Text(isExpanded ? "Ver Menos" : "Ver Mais")
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.caption)
+                }
+            }
+        }
+
         private func menuItem(_ title: String, interval: TrendsTimeInterval) -> some View {
             Button {
                 timeIntervalOption = interval
@@ -296,7 +317,10 @@ extension MostSharedByAudienceView {
         let navigateToAction: (String) -> Void
         let reloadAction: () -> Void
 
-        @State private var columns: [GridItem] = [GridItem(.flexible()), GridItem(.flexible())]
+        @State private var columns: [GridItem] = [
+            GridItem(.flexible(), alignment: .top),
+            GridItem(.flexible(), alignment: .top)
+        ]
         @Environment(\.horizontalSizeClass) private var hSizeClass
         //@Environment(\.sizeCategory) var sizeCategory
 
@@ -358,8 +382,6 @@ extension MostSharedByAudienceView {
                 Text(item.description)
                     .bold()
                     .multilineTextAlignment(.center)
-
-                Spacer()
             }
         }
     }
