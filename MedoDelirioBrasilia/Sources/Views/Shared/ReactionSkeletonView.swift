@@ -28,8 +28,11 @@ struct ReactionSkeletonView: View {
                     .fill(Color.gray.opacity(0.3))
                     .frame(width: 80, height: 20)
             }
-            .opacity(isAnimating ? 0.6 : 1.0)
-            .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: isAnimating)
+            // Scoped to the opacity: a `.animation(_:value:)` here also caught the
+            // tile's own move while the screen laid out, and repeated it forever.
+            .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) { content in
+                content.opacity(isAnimating ? 0.6 : 1.0)
+            }
             .onAppear { isAnimating = true }
     }
 }

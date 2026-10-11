@@ -39,9 +39,13 @@ private struct SkeletonContentTile: View {
 
     var body: some View {
         RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .fill(Color.secondary.opacity(animating ? 0.15 : 0.07))
+            .fill(Color.secondary.opacity(0.15))
             .frame(height: itemHeight)
-            .animation(.easeInOut(duration: 0.85).repeatForever(autoreverses: true), value: animating)
+            // Pulses between 0.07 and 0.15, like the fill used to. Scoped to the opacity
+            // so the tile's own move while the screen lays out isn't repeated forever.
+            .animation(.easeInOut(duration: 0.85).repeatForever(autoreverses: true)) { content in
+                content.opacity(animating ? 1 : 0.07 / 0.15)
+            }
             .onAppear { animating = true }
     }
 }
