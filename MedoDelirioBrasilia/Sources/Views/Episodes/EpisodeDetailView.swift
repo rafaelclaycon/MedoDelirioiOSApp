@@ -24,6 +24,8 @@ struct EpisodeDetailView: View {
     @State private var pendingChapterID: Int?
     @State private var showSupportSheet: Bool = false
     @State private var showListenersInfo: Bool = false
+    @AppStorage(ChapterPreferences.coverageStartKey)
+    private var chapterCoverageStartRaw: String = ChapterPreferences.defaultCoverageStart
     /// Set when there's room for two panes (unfolded iPhone Duo in landscape, a wide iPad
     /// or Mac window): chapters and bookmarks get the trailing one.
     @State private var paneSplit: PaneSplit?
@@ -73,6 +75,14 @@ struct EpisodeDetailView: View {
     /// Whether there is anything to put in the chapters pane: the list or its empty state.
     private var hasChaptersContent: Bool {
         loadedChapters != nil || showsChaptersEmptyState
+    }
+
+    /// Every episode from the coverage start on gets chapters, generated a while after
+    /// it comes out. One without them yet is waiting for them, not left out.
+    private var chaptersAreOnTheWay: Bool {
+        let coverageStart = ChapterPreferences.coverageDate(from: chapterCoverageStartRaw)
+            ?? ChapterPreferences.coverageStart
+        return episode.pubDate >= coverageStart
     }
 
     private var loadedChapters: [EpisodeChapter]? {
@@ -383,8 +393,33 @@ struct EpisodeDetailView: View {
         if let chapters = loadedChapters {
             chaptersList(chapters)
         } else if showsChaptersEmptyState {
-            chaptersEmptyState
+            if chaptersAreOnTheWay {
+                chaptersOnTheWayState
+            } else {
+                chaptersEmptyState
+            }
         }
+    }
+
+    /// The list reloads when a sync brings new chapters (`chaptersDidUpdate`), so these
+    /// replace this message on their own.
+    private var chaptersOnTheWayState: some View {
+        VStack(alignment: .leading, spacing: .spacing(.small)) {
+            Text("Capítulos")
+                .font(.headline)
+
+            Label {
+                Text("Os capítulos deste episódio ainda estão sendo preparados. Eles aparecem aqui assim que ficarem prontos. Gerar capítulos custa dinheiro, então apoie o app para que eles continuem chegando.")
+            } icon: {
+                Image(systemName: "hourglass")
+            }
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+
+            supportAppButton
+                .padding(.top, .spacing(.xSmall))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// Chapters are generated with a paid service, so coverage grows with support.
@@ -397,15 +432,19 @@ struct EpisodeDetailView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
-            Button {
-                showSupportSheet = true
-            } label: {
-                Label("Apoiar o app", systemImage: "heart.fill")
-            }
-            .buttonStyle(.bordered)
-            .padding(.top, .spacing(.xSmall))
+            supportAppButton
+                .padding(.top, .spacing(.xSmall))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var supportAppButton: some View {
+        Button {
+            showSupportSheet = true
+        } label: {
+            Label("Apoiar o app", systemImage: "heart.fill")
+        }
+        .buttonStyle(.bordered)
     }
 
     private func chaptersList(_ chapters: [EpisodeChapter]) -> some View {
