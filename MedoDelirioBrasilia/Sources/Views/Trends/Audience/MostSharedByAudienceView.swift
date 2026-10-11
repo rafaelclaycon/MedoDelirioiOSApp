@@ -456,12 +456,24 @@ extension MostSharedByAudienceView {
         let navigateToAction: (String) -> Void
         let reloadAction: () -> Void
 
-        @State private var columns: [GridItem] = [
-            GridItem(.flexible(), alignment: .top),
-            GridItem(.flexible(), alignment: .top)
-        ]
+        @State private var width: CGFloat = 0
         @Environment(\.horizontalSizeClass) private var hSizeClass
-        //@Environment(\.sizeCategory) var sizeCategory
+        @Environment(\.sizeCategory) private var sizeCategory
+
+        private var spacing: CGFloat {
+            hSizeClass == .regular ? .spacing(.large) : .spacing(.small)
+        }
+
+        /// The same columns as the Reactions tab, so a wide window gets more cards
+        /// instead of bigger ones. Top-aligned for descriptions that wrap.
+        private var columns: [GridItem] {
+            GridHelper.adaptableColumns(
+                gridWidth: width,
+                sizeCategory: sizeCategory,
+                spacing: spacing,
+                alignment: .top
+            )
+        }
 
         var body: some View {
             VStack(spacing: .spacing(.xxSmall)) {
@@ -477,11 +489,9 @@ extension MostSharedByAudienceView {
                     LoadingView()
 
                 case .loaded(let items):
-                    VStack(spacing: .spacing(.xxxSmall)) {
-                        LazyVGrid(
-                            columns: columns,
-                            spacing: hSizeClass == .regular ? .spacing(.large) : .spacing(.small)
-                        ) {
+                    // Same gap above "Última consulta" as the rankings above.
+                    VStack(spacing: .spacing(.large)) {
+                        LazyVGrid(columns: columns, spacing: spacing) {
                             ForEach(items) { item in
                                 RankedReactionItem(
                                     item: item
@@ -504,6 +514,12 @@ extension MostSharedByAudienceView {
                         // This section has no menus above, so it needs its own gap.
                         .padding(.top, .spacing(.large))
                 }
+            }
+            // The full section width, like the Reactions tab measures its whole screen.
+            .onGeometryChange(for: CGFloat.self) { proxy in
+                proxy.size.width
+            } action: { newWidth in
+                width = newWidth
             }
         }
     }

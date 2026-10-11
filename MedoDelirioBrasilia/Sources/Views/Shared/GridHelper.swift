@@ -12,16 +12,17 @@ enum GridHelper {
     static func adaptableColumns(
         gridWidth: CGFloat,
         sizeCategory: ContentSizeCategory,
-        spacing: CGFloat
+        spacing: CGFloat,
+        alignment: Alignment = .center
     ) -> [GridItem] {
         if sizeCategory > ContentSizeCategory.large && gridWidth < 440 {
-            return [GridItem(.flexible(), spacing: spacing, alignment: .center)]
+            return [GridItem(.flexible(), spacing: spacing, alignment: alignment)]
         }
         let qty = Int(gridWidth / 190)
         guard qty > 0 else {
-            return [GridItem(.flexible(), spacing: spacing, alignment: .center)]
+            return [GridItem(.flexible(), spacing: spacing, alignment: alignment)]
         }
-        return Array(repeating: GridItem(.flexible(), spacing: spacing, alignment: .center), count: qty)
+        return Array(repeating: GridItem(.flexible(), spacing: spacing, alignment: alignment), count: qty)
     }
 
     static func authorColumns(
