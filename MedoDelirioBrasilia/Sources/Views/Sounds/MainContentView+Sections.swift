@@ -42,6 +42,11 @@ extension MainContentView {
                         toast: viewModel.toast
                     )
                 }
+
+                // Not over the empty state: there's nothing to sync yet.
+                if viewModel.currentViewMode == .favorites && !loadedContent.isEmpty {
+                    FavoritesICloudSyncBanner()
+                }
             }
 
             ContentGrid(

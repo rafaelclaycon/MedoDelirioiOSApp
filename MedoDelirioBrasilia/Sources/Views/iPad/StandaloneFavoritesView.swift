@@ -53,6 +53,11 @@ struct StandaloneFavoritesView: View {
         GeometryReader { geometry in
             ScrollView {
                 VStack(spacing: .spacing(.xSmall)) {
+                    // Not over the empty state: there's nothing to sync yet.
+                    if !loadedContent.isEmpty {
+                        FavoritesICloudSyncBanner()
+                    }
+
                     ContentGrid(
                         state: viewModel.state,
                         viewModel: contentGridViewModel,

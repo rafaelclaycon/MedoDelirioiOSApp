@@ -225,6 +225,10 @@ extension AppPersistentMemory {
         return Bool(value as! Bool)
     }
 
+    func hasDismissedFavoritesICloudSyncBanner() -> Bool {
+        userDefaults.bool(forKey: "hasDismissedFavoritesICloudSyncBanner")
+    }
+
     func hasSeenFoldersPromoBanner() -> Bool {
         guard let value = userDefaults.object(forKey: "hasSeenFoldersPromoBanner") else {
             return false
@@ -445,6 +449,10 @@ extension AppPersistentMemory {
 
     func setHasSeenPinReactionsBanner(to newValue: Bool) {
         userDefaults.set(newValue, forKey: "hasSeenPinReactionsBanner")
+    }
+
+    func setHasDismissedFavoritesICloudSyncBanner(to newValue: Bool) {
+        userDefaults.set(newValue, forKey: "hasDismissedFavoritesICloudSyncBanner")
     }
 
     func setHasSeenFoldersPromoBanner(to newValue: Bool) {
