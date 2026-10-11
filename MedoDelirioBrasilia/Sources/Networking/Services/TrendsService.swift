@@ -17,6 +17,12 @@ protocol TrendsServiceProtocol {
         in timeInterval: TrendsTimeInterval
     ) async throws -> [TopChartItem]
 
+    /// Most played sounds or songs, as chart rows: the count is plays.
+    func playCountStats(
+        for contentType: TrendsContentType,
+        in timeInterval: TrendsTimeInterval
+    ) async throws -> [TopChartItem]
+
     /// Most listened episodes, as chart rows: the count is unique listeners and the
     /// subtitle the episode's date.
     func episodePlayStats(in timeInterval: TrendsTimeInterval) async throws -> [TopChartItem]
@@ -125,6 +131,23 @@ final class TrendsService: TrendsServiceProtocol {
                     in: timeInterval
                 )
             }
+        }
+    }
+
+    func playCountStats(
+        for contentType: TrendsContentType,
+        in timeInterval: TrendsTimeInterval
+    ) async throws -> [TopChartItem] {
+        try await apiClient.getPlayCountStats(for: contentType, in: timeInterval).map { item in
+            TopChartItem(
+                id: item.contentId,
+                rankNumber: "",
+                contentId: item.contentId,
+                contentName: item.contentName,
+                contentAuthorId: item.contentAuthorId,
+                contentAuthorName: item.contentAuthorName,
+                shareCount: item.playCount
+            )
         }
     }
 

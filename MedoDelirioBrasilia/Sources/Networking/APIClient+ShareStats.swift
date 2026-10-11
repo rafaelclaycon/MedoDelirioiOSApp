@@ -18,6 +18,15 @@ extension APIClient {
         return try await self.get(from: url)
     }
 
+    func getPlayCountStats(
+        for contentType: TrendsContentType,
+        in timeInterval: TrendsTimeInterval
+    ) async throws -> [TopPlayedItem] {
+        let keyword = contentType == .sounds ? "sound" : "song"
+        let url = URL(string: serverPath + "v4/\(keyword)-play-count-stats" + Self.statsPeriodPath(for: timeInterval))!
+        return try await self.get(from: url)
+    }
+
     func getEpisodePlayStats(
         in timeInterval: TrendsTimeInterval
     ) async throws -> [TopEpisodeItem] {

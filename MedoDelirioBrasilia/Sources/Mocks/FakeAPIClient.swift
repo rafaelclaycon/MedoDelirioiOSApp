@@ -102,6 +102,13 @@ class FakeAPIClient: APIClientProtocol {
         []
     }
 
+    func getPlayCountStats(
+        for contentType: TrendsContentType,
+        in timeInterval: TrendsTimeInterval
+    ) async throws -> [TopPlayedItem] {
+        []
+    }
+
     func getEpisodePlayStats(
         in timeInterval: TrendsTimeInterval
     ) async throws -> [TopEpisodeItem] {

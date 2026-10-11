@@ -22,15 +22,23 @@ struct MostSharedByAudienceView: View {
     // MARK: - View Body
 
     var body: some View {
-        VStack(spacing: .spacing(.large)) {
+        // Every section ends with the same room under it (see `ErrorView`), so this
+        // is the whole gap before the next title.
+        VStack(spacing: .spacing(.xLarge)) {
             TitledRankingView(
-                title: "Vírgulas Mais Compartilhadas",
+                title: viewModel.soundsMetric == .shares ? "Vírgulas Mais Compartilhadas" : "Vírgulas Mais Tocadas",
                 state: viewModel.soundsState,
                 timeIntervalOption: $viewModel.soundsTimeInterval,
                 lastUpdatedText: viewModel.soundsLastCheckString,
                 navigateToText: "Ir para Conteúdo",
+                metric: $viewModel.soundsMetric,
                 navigateToAction: { soundId in
                     navigateTo(content: soundId)
+                },
+                retryAction: {
+                    Task {
+                        await viewModel.onSoundsRetrySelected()
+                    }
                 }
             )
             .onChange(of: viewModel.soundsTimeInterval) {
@@ -38,20 +46,36 @@ struct MostSharedByAudienceView: View {
                     await viewModel.onSoundsSelectedTimeIntervalChanged(newTimeInterval: viewModel.soundsTimeInterval)
                 }
             }
+            .onChange(of: viewModel.soundsMetric) {
+                Task {
+                    await viewModel.onSoundsMetricChanged()
+                }
+            }
 
             TitledRankingView(
-                title: "Músicas Mais Compartilhadas",
+                title: viewModel.songsMetric == .shares ? "Músicas Mais Compartilhadas" : "Músicas Mais Tocadas",
                 state: viewModel.songsState,
                 timeIntervalOption: $viewModel.songsTimeInterval,
                 lastUpdatedText: viewModel.songsLastCheckString,
                 navigateToText: "Ir para Conteúdo",
+                metric: $viewModel.songsMetric,
                 navigateToAction: { songId in
                     navigateTo(content: songId)
+                },
+                retryAction: {
+                    Task {
+                        await viewModel.onSongsRetrySelected()
+                    }
                 }
             )
             .onChange(of: viewModel.songsTimeInterval) {
                 Task {
                     await viewModel.onSongsSelectedTimeIntervalChanged(newTimeInterval: viewModel.songsTimeInterval)
+                }
+            }
+            .onChange(of: viewModel.songsMetric) {
+                Task {
+                    await viewModel.onSongsMetricChanged()
                 }
             }
 
@@ -66,6 +90,11 @@ struct MostSharedByAudienceView: View {
                 oldestYear: 2026,
                 navigateToAction: { episodeId in
                     navigateTo(episode: episodeId)
+                },
+                retryAction: {
+                    Task {
+                        await viewModel.onEpisodesRetrySelected()
+                    }
                 }
             )
             .onChange(of: viewModel.episodesTimeInterval) {
@@ -123,8 +152,10 @@ struct MostSharedByAudienceView: View {
 
     /// Applies a time interval requested by a Trends Siri Suggestion. Setting `soundsTimeInterval`
     /// triggers the existing `.onChange` that reloads the sounds ranking for that interval.
+    /// The suggestions are for the most shared, so the ranking goes back to shares too.
     private func applyTimeIntervalFromSiriIfNeeded() {
         guard let interval = trendsHelper.timeIntervalToGoTo else { return }
+        viewModel.soundsMetric = .shares
         viewModel.soundsTimeInterval = interval
         trendsHelper.timeIntervalToGoTo = nil
     }
@@ -170,7 +201,10 @@ extension MostSharedByAudienceView {
         var navigateToSystemImage: String = "arrow.uturn.backward"
         /// The year menu starts here, for rankings with no data before it.
         var oldestYear: Int = 2022
+        /// Shows a menu to switch between shares and plays, next to the period.
+        var metric: Binding<TrendsMetric>? = nil
         let navigateToAction: (String) -> Void
+        let retryAction: () -> Void
 
         // MARK: - Private Properties
 
@@ -181,9 +215,26 @@ extension MostSharedByAudienceView {
         @State private var isExpanded: Bool = false
 
         @Environment(\.usesSidebarLayout) private var usesSidebarLayout
+        @Environment(\.horizontalSizeClass) private var hSizeClass
 
         private var dropDownText: String {
-            switch timeIntervalOption {
+            title(for: timeIntervalOption)
+        }
+
+        /// Whether the period menu offers `interval`: not before `oldestYear`, and only
+        /// when the selected metric has a ranking of its own for it.
+        private func isOffered(_ interval: TrendsTimeInterval) -> Bool {
+            if let year = interval.year, year < oldestYear {
+                return false
+            }
+            return metric?.wrappedValue.isAvailable(interval) ?? true
+        }
+
+        private func title(for interval: TrendsTimeInterval) -> String {
+            if let label = metric?.wrappedValue.label(for: interval) {
+                return label
+            }
+            return switch interval {
             case .last24Hours:
                 Shared.Trends.last24Hours
             case .last3Days:
@@ -220,10 +271,18 @@ extension MostSharedByAudienceView {
                 }
                 .padding(.horizontal)
 
-                HStack(spacing: .spacing(.large)) {
-                    timeIntervalSelector()
+                // The two menus stack when they don't fit side by side, like on a
+                // narrow iPhone or with a large text size.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: .spacing(.small)) {
+                        selectors()
+                        Spacer()
+                    }
 
-                    Spacer()
+                    VStack(alignment: .leading, spacing: .spacing(.small)) {
+                        selectors()
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .padding(.horizontal)
                 .padding(.top, 1)
@@ -272,42 +331,44 @@ extension MostSharedByAudienceView {
                             .padding(.bottom)
                     }
 
-                case .error(let errorMessage):
-                    Text(errorMessage)
+                case .error:
+                    ErrorView(retryAction: retryAction)
                 }
             }
         }
 
         // MARK: - Subviews
 
+        @ViewBuilder func selectors() -> some View {
+            timeIntervalSelector()
+
+            if let metric {
+                metricSelector(metric)
+            }
+        }
+
         @ViewBuilder func timeIntervalSelector() -> some View {
             Menu {
-                menuItem(Shared.Trends.last24Hours, interval: .last24Hours)
-                menuItem(Shared.Trends.last3Days, interval: .last3Days)
-                menuItem(Shared.Trends.lastWeek, interval: .lastWeek)
-                menuItem(Shared.Trends.lastMonth, interval: .lastMonth)
+                menuItem(.last24Hours)
+                menuItem(.last3Days)
+                menuItem(.lastWeek)
+                menuItem(.lastMonth)
 
                 if CommandLine.arguments.contains("-SHOW_MORE_DEV_OPTIONS") {
-                    menuItem(Shared.Trends.last3Months, interval: .last3Months)
+                    menuItem(.last3Months)
                 }
 
-                Menu("Por Ano") {
-                    menuItem(Shared.Trends.year2026, interval: .year2026)
-                    if oldestYear <= 2025 {
-                        menuItem(Shared.Trends.year2025, interval: .year2025)
-                    }
-                    if oldestYear <= 2024 {
-                        menuItem(Shared.Trends.year2024, interval: .year2024)
-                    }
-                    if oldestYear <= 2023 {
-                        menuItem(Shared.Trends.year2023, interval: .year2023)
-                    }
-                    if oldestYear <= 2022 {
-                        menuItem(Shared.Trends.year2022, interval: .year2022)
+                let years: [TrendsTimeInterval] = [.year2026, .year2025, .year2024, .year2023, .year2022]
+                    .filter(isOffered)
+                if !years.isEmpty {
+                    Menu("Por Ano") {
+                        ForEach(years, id: \.self) { year in
+                            menuItem(year)
+                        }
                     }
                 }
 
-                menuItem(Shared.Trends.allTime, interval: .allTime)
+                menuItem(.allTime)
             } label: {
                 HStack(spacing: .spacing(.xxSmall)) {
                     Image(systemName: "line.3.horizontal.decrease")
@@ -316,6 +377,44 @@ extension MostSharedByAudienceView {
                 .padding(.vertical, .spacing(.xSmall))
                 .padding(.horizontal, .spacing(.small))
                 .glassEffect(.regular.interactive())
+            }
+        }
+
+        private func metricSelector(_ metric: Binding<TrendsMetric>) -> some View {
+            Menu {
+                metricItem("Compartilhadas", systemImage: "square.and.arrow.up", value: .shares, selection: metric)
+                metricItem("Tocadas", systemImage: "play.fill", value: .plays, selection: metric)
+            } label: {
+                HStack(spacing: .spacing(.xxSmall)) {
+                    Image(systemName: metric.wrappedValue == .shares ? "square.and.arrow.up" : "play.fill")
+                    Text(metricLabel(metric.wrappedValue))
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(metric.wrappedValue == .shares ? "Compartilhadas" : "Tocadas")
+                .padding(.vertical, .spacing(.xSmall))
+                .padding(.horizontal, .spacing(.small))
+                .glassEffect(.regular.interactive())
+            }
+        }
+
+        /// Shortened on compact widths so it fits on the same line as the period.
+        private func metricLabel(_ metric: TrendsMetric) -> String {
+            switch metric {
+            case .shares: hSizeClass == .compact ? "Compart." : "Compartilhadas"
+            case .plays: "Tocadas"
+            }
+        }
+
+        private func metricItem(
+            _ title: String,
+            systemImage: String,
+            value: TrendsMetric,
+            selection: Binding<TrendsMetric>
+        ) -> some View {
+            Button {
+                selection.wrappedValue = value
+            } label: {
+                Label(title, systemImage: selection.wrappedValue == value ? "checkmark" : systemImage)
             }
         }
 
@@ -333,14 +432,17 @@ extension MostSharedByAudienceView {
             }
         }
 
-        private func menuItem(_ title: String, interval: TrendsTimeInterval) -> some View {
-            Button {
-                timeIntervalOption = interval
-            } label: {
-                if timeIntervalOption == interval {
-                    Label(title, systemImage: "checkmark")
-                } else {
-                    Text(title)
+        @ViewBuilder
+        private func menuItem(_ interval: TrendsTimeInterval) -> some View {
+            if isOffered(interval) {
+                Button {
+                    timeIntervalOption = interval
+                } label: {
+                    if timeIntervalOption == interval {
+                        Label(title(for: interval), systemImage: "checkmark")
+                    } else {
+                        Text(title(for: interval))
+                    }
                 }
             }
         }
@@ -397,11 +499,10 @@ extension MostSharedByAudienceView {
                             .padding(.bottom)
                     }
 
-                case .error(let errorMessage):
-                    ErrorView(
-                        message: errorMessage,
-                        retryAction: reloadAction
-                    )
+                case .error:
+                    ErrorView(retryAction: reloadAction)
+                        // This section has no menus above, so it needs its own gap.
+                        .padding(.top, .spacing(.large))
                 }
             }
         }
@@ -426,17 +527,18 @@ extension MostSharedByAudienceView {
     struct NoDataToDisplayView: View {
 
         var body: some View {
-            HStack {
-                Spacer()
+            VStack(spacing: .spacing(.medium)) {
+                Image(systemName: "chart.bar")
+                    .font(.largeTitle)
+                    .foregroundStyle(.secondary)
 
-                VStack(spacing: .spacing(.large)) {
-                    Text("Sem Dados para o Período Selecionado")
-                        .font(.headline)
-                        .padding(.vertical, .spacing(.xxxLarge))
-                }
-
-                Spacer()
+                Text("Sem Dados para o Período Selecionado")
+                    .font(.headline)
+                    .multilineTextAlignment(.center)
             }
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, .spacing(.xxLarge))
+            .padding(.vertical, .spacing(.xLarge))
         }
     }
 
@@ -457,33 +559,35 @@ extension MostSharedByAudienceView {
 
     struct ErrorView: View {
 
-        let message: String
         let retryAction: () -> Void
 
         var body: some View {
-            HStack {
-                Spacer()
+            VStack(spacing: .spacing(.medium)) {
+                Image(systemName: "exclamationmark.icloud")
+                    .font(.largeTitle)
+                    .foregroundStyle(.secondary)
 
-                VStack(spacing: .spacing(.xxLarge)) {
-                    Text("Não Foi Possível Obter os Dados Mais Recentes")
+                VStack(spacing: .spacing(.xxSmall)) {
+                    Text("Não Foi Possível Obter os Dados")
                         .font(.headline)
-                        .multilineTextAlignment(.center)
 
-                    Text(message)
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(.gray)
-
-                    Button {
-                        retryAction()
-                    } label: {
-                        Label("Tentar Novamente", systemImage: "arrow.clockwise")
-                    }
-                    .borderedButton(colored: .accentColor)
+                    Text("Infelizmente o ranking não carregou desta vez. Tente de novo daqui a pouco.")
+                        .foregroundStyle(.secondary)
                 }
+                .multilineTextAlignment(.center)
 
-                Spacer()
+                Button {
+                    retryAction()
+                } label: {
+                    Label("Tentar Novamente", systemImage: "arrow.clockwise")
+                }
+                .borderedButton(colored: .accentColor)
+                .padding(.top, .spacing(.xxSmall))
             }
-            .padding(.vertical, .spacing(.xxLarge))
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, .spacing(.xxLarge))
+            // Same room below as a loaded ranking leaves under "Última consulta".
+            .padding(.bottom, .spacing(.medium))
         }
     }
 }

@@ -14,11 +14,13 @@ extension MostSharedByAudienceView {
 
         var soundsState: LoadingState<[TopChartItem]> = .loading
         var soundsTimeInterval: TrendsTimeInterval = TrendsService.defaultSoundsTimeInterval
+        var soundsMetric: TrendsMetric = .shares
         var soundsLastCheckDate: Date = Date(timeIntervalSince1970: 0)
         var soundsLastCheckString: String = ""
 
         var songsState: LoadingState<[TopChartItem]> = .loading
         var songsTimeInterval: TrendsTimeInterval = TrendsService.defaultSongsTimeInterval
+        var songsMetric: TrendsMetric = .shares
         var songsLastCheckDate: Date = Date(timeIntervalSince1970: 0)
         var songsLastCheckString: String = ""
 
@@ -97,8 +99,9 @@ extension MostSharedByAudienceView.ViewModel {
     private func loadSoundsList() async {
         soundsState = .loading
         do {
-            let soundRanking = try await trendsService.shareCountStats(
+            let soundRanking = try await ranking(
                 for: .sounds,
+                metric: soundsMetric,
                 in: soundsTimeInterval
             ).ranked
 
@@ -115,8 +118,9 @@ extension MostSharedByAudienceView.ViewModel {
     private func loadSongsList() async {
         songsState = .loading
         do {
-            let songRanking = try await trendsService.shareCountStats(
+            let songRanking = try await ranking(
                 for: .songs,
+                metric: songsMetric,
                 in: songsTimeInterval
             ).ranked
 
@@ -127,6 +131,19 @@ extension MostSharedByAudienceView.ViewModel {
         } catch {
             print(error)
             songsState = .error(error.localizedDescription)
+        }
+    }
+
+    private func ranking(
+        for contentType: TrendsContentType,
+        metric: TrendsMetric,
+        in timeInterval: TrendsTimeInterval
+    ) async throws -> [TopChartItem] {
+        switch metric {
+        case .shares:
+            try await trendsService.shareCountStats(for: contentType, in: timeInterval)
+        case .plays:
+            try await trendsService.playCountStats(for: contentType, in: timeInterval)
         }
     }
 
@@ -274,7 +291,29 @@ extension MostSharedByAudienceView.ViewModel {
 
     public func onSoundsSelectedTimeIntervalChanged(newTimeInterval: TrendsTimeInterval) async {
         await loadSoundsList()
-        donateActivity(forTimeInterval: newTimeInterval)
+        // The Siri Suggestions are all about the most shared.
+        if soundsMetric == .shares {
+            donateActivity(forTimeInterval: newTimeInterval)
+        }
+    }
+
+    /// A period the new metric doesn't offer moves to its fallback, and the period's
+    /// own change handler reloads the list.
+    public func onSoundsMetricChanged() async {
+        if soundsMetric.isAvailable(soundsTimeInterval) {
+            await loadSoundsList()
+        } else {
+            soundsTimeInterval = soundsMetric.fallbackInterval()
+        }
+    }
+
+    /// See `onSoundsMetricChanged()`.
+    public func onSongsMetricChanged() async {
+        if songsMetric.isAvailable(songsTimeInterval) {
+            await loadSongsList()
+        } else {
+            songsTimeInterval = songsMetric.fallbackInterval()
+        }
     }
 
     public func onSongsSelectedTimeIntervalChanged(newTimeInterval: TrendsTimeInterval) async {
@@ -288,6 +327,18 @@ extension MostSharedByAudienceView.ViewModel {
 
     public func onPullToRefreshLists() async {
         await loadAll(didPullDownToRefresh: true)
+    }
+
+    public func onSoundsRetrySelected() async {
+        await loadSoundsList()
+    }
+
+    public func onSongsRetrySelected() async {
+        await loadSongsList()
+    }
+
+    public func onEpisodesRetrySelected() async {
+        await loadEpisodesList()
     }
 
     public func onReloadPopularReactionsSelected() async {
