@@ -544,4 +544,12 @@ class FakeLocalDatabase: LocalDatabaseProtocol {
             playLogs[index].sentToServer = true
         }
     }
+
+    // MARK: - Profile
+
+    var earliestActivity: Date?
+
+    func earliestActivityDate() throws -> Date? {
+        earliestActivity
+    }
 }

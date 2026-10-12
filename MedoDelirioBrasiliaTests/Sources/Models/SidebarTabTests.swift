@@ -27,7 +27,8 @@ struct SidebarTabTests {
     @Test(arguments: [
         (PhoneTab.reactions, SidebarTab.reactions),
         (.episodes, .episodes),
-        (.search, .search)
+        (.search, .search),
+        (.you, .you)
     ])
     func phoneTab_shouldMapToTheMatchingSidebarItem(tab: PhoneTab, expected: SidebarTab) {
         #expect(SidebarTab(tab) == expected)

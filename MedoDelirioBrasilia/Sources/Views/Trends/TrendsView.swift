@@ -7,18 +7,14 @@
 
 import SwiftUI
 
+/// The audience's rankings. The user's own moved to the Você tab.
 struct TrendsView: View {
-
-    enum ViewMode: Int {
-        case audience, me
-    }
 
     @State public var audienceViewModel: MostSharedByAudienceView.ViewModel
     @State private var toast: Toast?
 
     @Binding var tabSelection: PhoneTab
     @Binding var activePadScreen: PadScreen?
-    @State var currentViewMode: ViewMode = .audience
 
     @Environment(TrendsHelper.self) private var trendsHelper
 
@@ -42,44 +38,19 @@ struct TrendsView: View {
         VStack {
             if showTrends {
                 ScrollView {
-                    Picker("Exibição", selection: $currentViewMode) {
-                        Text("🏆  Da Audiência")
-                            .tag(ViewMode.audience)
-
-                        Text("🧑  Pessoais")
-                            .tag(ViewMode.me)
-                    }
-                    .pickerStyle(.segmented)
-                    .padding(.all)
-
-                    if currentViewMode == .audience {
-                        VStack(alignment: .leading, spacing: 10) {
-                            if showSoundsMostSharedByTheAudience {
-                                MostSharedByAudienceView(
-                                    viewModel: audienceViewModel,
-                                    tabSelection: $tabSelection,
-                                    activePadScreen: $activePadScreen
-                                )
-                                .environment(trendsHelper)
-                            }
-                        }
-                    } else {
-                        VStack(alignment: .leading, spacing: 10) {
-                            MostSharedByMeView()
-                                .environment(trendsHelper)
-
-                            Divider()
-                                .padding(.horizontal)
-                                .padding(.vertical, .spacing(.small))
-
-                            EpisodeStatsView()
+                    VStack(alignment: .leading, spacing: 10) {
+                        if showSoundsMostSharedByTheAudience {
+                            MostSharedByAudienceView(
+                                viewModel: audienceViewModel,
+                                tabSelection: $tabSelection,
+                                activePadScreen: $activePadScreen
+                            )
+                            .environment(trendsHelper)
                         }
                     }
                 }
-                .if(currentViewMode == .audience) {
-                    $0.refreshable {
-                        await audienceViewModel.onPullToRefreshLists()
-                    }
+                .refreshable {
+                    await audienceViewModel.onPullToRefreshLists()
                 }
             } else {
                 TrendsDisabledView()

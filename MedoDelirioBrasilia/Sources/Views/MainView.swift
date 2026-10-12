@@ -29,6 +29,7 @@ struct MainView: View {
     @State private var searchTabPath = NavigationPath()
     @State private var foldersPath = NavigationPath()
     @State private var episodesPath = NavigationPath()
+    @State private var youPath = NavigationPath()
 
     @State private var isShowingSettingsSheet: Bool = false
     @State private var isShowingSupportSheet: Bool = false
@@ -78,6 +79,7 @@ struct MainView: View {
     @State private var episodePopularityStore = EpisodePopularityStore()
     /// Created on first appear, since it needs the stores above.
     @State private var cloudStateSync: CloudStateSync?
+    @State private var profileStore = ProfileStore()
     @State private var showNowPlaying = false
     /// Set once the Now Playing bar's share preview is ready; the share sheet shows,
     /// anchored to the bar, while it's non-nil.
@@ -198,6 +200,10 @@ struct MainView: View {
                     }
                     .badge(episodesBadgeText)
 
+                    Tab(Shared.TabInfo.name(PhoneTab.you), systemImage: Shared.TabInfo.symbol(PhoneTab.you), value: .you) {
+                        youTab
+                    }
+
                     let searchNavStack = NavigationStack(path: $searchTabPath) {
                         StandaloneSearchView(
                             searchService: searchService,
@@ -272,6 +278,7 @@ struct MainView: View {
         .environment(episodeListenStore)
         .environment(episodesBadgeStore)
         .environment(episodePopularityStore)
+        .environment(profileStore)
         // Siri Suggestions. Attached here, on the shared ancestor, so they fire on
         // every device path (both iPhone TabView variants and iPad).
         .onContinueUserActivity(Shared.ActivityTypes.playAndShareSounds) { _ in
@@ -351,6 +358,7 @@ struct MainView: View {
             episodePlayer.chapterDownloadService = chapterDownloadService
             episodeBookmarkStore.analyticsService = AnalyticsService()
             startCloudStateSyncIfNeeded()
+            profileStore.start()
             logger.debug("MainView appeared")
             sendUserPersonalTrendsToServerIfEnabled()
             sendPlayLogsToServerIfEnabled()
@@ -395,6 +403,7 @@ struct MainView: View {
             // right away rather than scheduled, while the app still gets to run.
             if newPhase == .active {
                 cloudStateSync?.requestSync()
+                profileStore.sync()
             } else if newPhase == .background {
                 cloudStateSync?.sync()
             }
@@ -596,6 +605,10 @@ struct MainView: View {
             }
             .badge(episodesBadgeText)
 
+            Tab(Shared.TabInfo.name(PhoneTab.you), systemImage: Shared.TabInfo.symbol(PhoneTab.you), value: .you) {
+                youTab
+            }
+
             TabSection("Minhas Pastas") {
                 Tab(Shared.TabInfo.name(.allFolders), systemImage: Shared.TabInfo.symbol(.allFolders), value: SidebarTab.allFolders) {
                     NavigationStack(path: $foldersPath) {
@@ -744,6 +757,19 @@ struct MainView: View {
         // Episode toasts that start outside Episodes, like a handoff.
         .topToast($episodesToast)
         .environment(\.push, PushAction { episodesPath.append($0) })
+    }
+
+    /// The Você tab's content, shared by the tab bar and the sidebar.
+    private var youTab: some View {
+        NavigationStack(path: $youPath) {
+            YouView(openSettingsAction: {
+                isShowingSettingsSheet.toggle()
+            })
+            .navigationDestination(for: GeneralNavigationDestination.self) { screen in
+                GeneralRouter(destination: screen, contentRepository: contentRepository)
+            }
+        }
+        .environment(\.push, PushAction { youPath.append($0) })
     }
 
     private var episodesBadgeText: Text? {

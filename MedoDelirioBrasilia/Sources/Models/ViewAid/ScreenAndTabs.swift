@@ -14,14 +14,14 @@ enum PadScreen: Int {
 
 enum PhoneTab: Int {
 
-    case sounds, reactions, episodes, settings, search
+    case sounds, reactions, episodes, settings, search, you
 }
 
 /// What's selected in the iPad and Mac sidebar. Separate from `PadScreen`, which
 /// predates the sidebar and has no room for episodes or for each user folder.
 enum SidebarTab: Hashable {
 
-    case sounds, favorites, reactions, authors, episodes, allFolders, search
+    case sounds, favorites, reactions, authors, episodes, allFolders, search, you
     case folder(id: String)
     /// The placeholder row shown while folders load, or when they fail to.
     case folderStatus
@@ -41,6 +41,7 @@ enum SidebarTab: Hashable {
         case .reactions: self = .reactions
         case .episodes: self = .episodes
         case .search: self = .search
+        case .you: self = .you
         // A sheet in the sidebar layout, not a destination.
         case .settings: return nil
         }

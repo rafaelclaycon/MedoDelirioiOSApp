@@ -153,6 +153,9 @@ internal protocol LocalDatabaseProtocol {
     func insert(userPlayLog newLog: UserPlayLog) throws
     func pendingPlayLogsNotSentToServer(limit: Int) throws -> [UserPlayLog]
     func markUserPlayLogsAsSent(logIds: [String]) throws
+
+    // Profile
+    func earliestActivityDate() throws -> Date?
 }
 
 extension LocalDatabaseProtocol {

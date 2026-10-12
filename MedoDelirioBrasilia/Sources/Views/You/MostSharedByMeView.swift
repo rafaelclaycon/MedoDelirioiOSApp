@@ -82,7 +82,7 @@ extension MostSharedByMeView {
                     .bold()
                     .multilineTextAlignment(.center)
 
-                Text("Compartilhe sons na aba Sons para ver o seu ranking pessoal.")
+                Text("Compartilhe vírgulas para ver o seu ranking pessoal.")
                     .foregroundColor(.gray)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)

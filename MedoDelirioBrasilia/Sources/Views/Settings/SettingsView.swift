@@ -111,15 +111,6 @@ struct SettingsView: View {
                         }
                     }
 
-                    NavigationLink(value: SettingsDestination.devicesSettings) {
-                        Label {
-                            Text("Seus aparelhos")
-                        } icon: {
-                            Image(systemName: "laptopcomputer.and.iphone")
-                                .foregroundColor(.teal)
-                        }
-                    }
-
                     if showChangeAppIcon {
                         NavigationLink(value: SettingsDestination.changeAppIcon) {
                             Label {
@@ -310,9 +301,6 @@ struct SettingsView: View {
                 case .privacySettings:
                     PrivacySettingsView()
 
-                case .devicesSettings:
-                    DevicesSettingsView()
-
                 case .storageSettings:
                     StorageSettingsView()
                 }
@@ -339,7 +327,6 @@ struct SettingsView: View {
 enum SettingsDestination: Hashable {
 
     case changeAppIcon
-    case devicesSettings
     case devOptions
     case diagnostics
     case episodesSettings

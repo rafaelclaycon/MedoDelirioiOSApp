@@ -1,5 +1,5 @@
 //
-//  DevicesSettingsView.swift
+//  DevicesView.swift
 //  MedoDelirioBrasilia
 //
 //  Created by Rafael Schmitt on 11/10/26.
@@ -9,7 +9,7 @@ import SwiftUI
 
 /// How this device works with the user's other ones: iCloud sync, and the devices taking
 /// part in it.
-struct DevicesSettingsView: View {
+struct DevicesView: View {
 
     @State private var iCloudSync: Bool = UserSettings().getEnableICloudSync()
     @State private var devices: [CloudDevice] = []
@@ -58,7 +58,7 @@ struct DevicesSettingsView: View {
 
 // MARK: - Row
 
-extension DevicesSettingsView {
+extension DevicesView {
 
     struct DeviceRow: View {
 
@@ -100,6 +100,6 @@ extension DevicesSettingsView {
 
 #Preview {
     NavigationStack {
-        DevicesSettingsView()
+        DevicesView()
     }
 }

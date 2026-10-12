@@ -16,6 +16,8 @@ struct Shared {
                 "Configurações"
             case .search:
                 "Pesquisar"
+            case .you:
+                "Você"
             }
         }
 
@@ -31,6 +33,8 @@ struct Shared {
                 ""
             case .search:
                 "magnifyingglass"
+            case .you:
+                "person.crop.circle"
             }
         }
 

@@ -26,7 +26,7 @@ struct FavoritesICloudSyncBanner: View {
                     .foregroundStyle(.red)
                     .bold()
 
-                Text("Suas vírgulas e músicas favoritas agora sincronizam com seus outros aparelhos pelo iCloud. Para desativar, vá em Configurações > Seus aparelhos.")
+                Text("Suas vírgulas e músicas favoritas agora sincronizam com seus outros aparelhos pelo iCloud. Para desativar, vá em Você > Seus aparelhos.")
                     .foregroundStyle(.red)
                     .opacity(0.8)
                     .font(.callout)
