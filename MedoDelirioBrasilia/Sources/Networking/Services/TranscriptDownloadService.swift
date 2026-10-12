@@ -98,7 +98,7 @@ final class TranscriptDownloadService {
     ///   check is more recent than this. Zero — the launch sync — always checks.
     @MainActor
     func syncNewTranscriptsIfNeeded(minimumInterval: TimeInterval = 0) async {
-        guard transcriptsDownloaded, !isDownloading else { return }
+        guard transcriptsDownloaded, !isDownloading, TranscriptPreferences.isEnabled else { return }
 
         if minimumInterval > 0,
            let lastManifestCheck,
@@ -136,6 +136,10 @@ final class TranscriptDownloadService {
             var stoppedEarly = false
 
             for (index, entry) in filesToDownload.enumerated() {
+                if TranscriptPreferences.isDisabled {
+                    discardAfterDisabling()
+                    return
+                }
                 if shouldStopForBackground {
                     stoppedEarly = true
                     appendLog("Sync interrompido em segundo plano: \(index) de \(filesToDownload.count)")
@@ -151,6 +155,12 @@ final class TranscriptDownloadService {
                 if showProgress {
                     state = .downloading(progress: Double(index + 1) / Double(filesToDownload.count))
                 }
+            }
+
+            // Switched off while the last file was on its way.
+            if TranscriptPreferences.isDisabled {
+                discardAfterDisabling()
+                return
             }
 
             if stoppedEarly {
@@ -190,9 +200,27 @@ final class TranscriptDownloadService {
         NotificationCenter.default.post(name: Self.transcriptsDidUpdate, object: nil)
     }
 
+    /// Turns transcripts off: deletes what's downloaded and keeps every download, sync
+    /// and readiness check from running until they're turned back on. A download
+    /// already under way stops at the next file and cleans up after itself.
+    @MainActor
+    func disableTranscripts() throws {
+        UserDefaults.standard.set(true, forKey: TranscriptPreferences.disabledKey)
+        appendLog("Transcrições desativadas")
+        try deleteAllTranscripts()
+    }
+
+    /// Lets transcripts be offered again. Downloads nothing by itself: the invitations
+    /// come back, and the user decides.
+    @MainActor
+    func enableTranscripts() {
+        UserDefaults.standard.set(false, forKey: TranscriptPreferences.disabledKey)
+        appendLog("Transcrições reativadas")
+    }
+
     @MainActor
     func downloadTranscripts(priorityEpisodeId: String? = nil) async {
-        guard !isDownloading else { return }
+        guard !isDownloading, TranscriptPreferences.isEnabled else { return }
         isDownloading = true
         shouldStopForBackground = false
         observeBackgroundingIfNeeded()
@@ -224,6 +252,10 @@ final class TranscriptDownloadService {
             var stoppedEarly = false
 
             for (index, entry) in filesToDownload.enumerated() {
+                if TranscriptPreferences.isDisabled {
+                    discardAfterDisabling()
+                    return
+                }
                 if shouldStopForBackground {
                     stoppedEarly = true
                     appendLog("Download interrompido em segundo plano: \(index) de \(filesToDownload.count)")
@@ -244,6 +276,12 @@ final class TranscriptDownloadService {
                     UserDefaults.standard.set(true, forKey: userDefaultsKey)
                     NotificationCenter.default.post(name: Self.transcriptsDidUpdate, object: nil)
                 }
+            }
+
+            // Switched off while the last file was on its way.
+            if TranscriptPreferences.isDisabled {
+                discardAfterDisabling()
+                return
             }
 
             if stoppedEarly {
@@ -285,7 +323,7 @@ final class TranscriptDownloadService {
     /// would bury the operation log.
     @MainActor
     func fetchTranscriptIfReady(episodeId: String) async -> Bool {
-        guard transcriptsDownloaded, !isDownloading else { return false }
+        guard transcriptsDownloaded, !isDownloading, TranscriptPreferences.isEnabled else { return false }
         guard TranscriptProvider.findSRTFile(for: episodeId) == nil else { return false }
 
         do {
@@ -378,7 +416,18 @@ final class TranscriptDownloadService {
     }
 
     @MainActor
+    /// A run that finds transcripts were switched off mid-way: whatever it wrote since
+    /// the delete goes too, and it must not mark them as downloaded on the way out.
+    private func discardAfterDisabling() {
+        appendLog("Download interrompido: transcrições desativadas")
+        try? deleteAllTranscripts()
+    }
+
     private func markCompleted() {
+        guard TranscriptPreferences.isEnabled else {
+            discardAfterDisabling()
+            return
+        }
         transcriptsDownloaded = true
         UserDefaults.standard.set(true, forKey: userDefaultsKey)
         state = .completed

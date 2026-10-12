@@ -40,6 +40,7 @@ struct ShareClipView: View {
     @State private var chapters: [EpisodeChapter] = []
     /// Persisted so the sheet always opens on the user's preferred pick mode.
     @AppStorage("shareClipSelectionSource") private var storedSelectionSource: SelectionSource = .waveform
+    @AppStorage(TranscriptPreferences.disabledKey) private var transcriptsDisabled: Bool = false
     /// Forces the transcript tab for a chapter-launched presentation without
     /// touching the stored preference — arriving here from a chapter shouldn't
     /// silently rewrite which tab the share button opens next time.
@@ -250,12 +251,28 @@ struct ShareClipView: View {
 
     /// Routes between the opt-in prompt, download progress, an unavailable
     /// notice, and the actual line-picking list.
+    ///
+    /// Stays even when transcripts are switched off, unlike everywhere else: picking a
+    /// clip by its text is the best reason to have them, so this is where someone who
+    /// opted out gets to reconsider.
     @ViewBuilder
     private var transcriptPane: some View {
         if !transcriptDownloadService.transcriptsDownloaded {
             if case .downloading = transcriptDownloadService.state {
                 TranscriptDownloadingView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if transcriptsDisabled {
+                ScrollView {
+                    TranscriptDownloadPromptView(
+                        icon: "text.quote",
+                        title: "As transcrições estão desativadas",
+                        subtitle: "Com elas, você escolhe o trecho do clipe lendo o que foi dito, em vez de procurar na forma de onda. Quer reativar?",
+                        priorityEpisodeId: episode.id,
+                        analyticsSource: "ShareClip",
+                        buttonTitle: "Reativar e Baixar"
+                    )
+                    .padding(.top, .spacing(.xxLarge))
+                }
             } else {
                 ScrollView {
                     TranscriptDownloadPromptView(

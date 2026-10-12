@@ -61,6 +61,7 @@ struct NowPlayingView: View {
     @AppStorage("nowPlayingCanvasMode") private var currentCanvasMode: CanvasMode = .coverArt
     /// Set from the chapter list's "Ocultar capítulos" action.
     @AppStorage(ChapterPreferences.hiddenKey) private var chaptersHidden: Bool = false
+    @AppStorage(TranscriptPreferences.disabledKey) private var transcriptsDisabled: Bool = false
     /// Dev option (see `ShareClipConfirmView`): simulated shares skip the analytics event.
     @AppStorage("devMockShareClipGeneration") private var mockShareClipGeneration: Bool = false
     /// Set when there's room for two panes (unfolded iPhone Duo in landscape, a wide iPad
@@ -125,6 +126,9 @@ struct NowPlayingView: View {
         if mode == .chapters, !chaptersEnabled {
             mode = .coverArt
         }
+        if mode == .transcription, transcriptsDisabled {
+            mode = .coverArt
+        }
         if mode == .coverArt, isSplitLayout {
             mode = displayedCanvasModes.first ?? .transcription
         }
@@ -138,7 +142,10 @@ struct NowPlayingView: View {
         if chaptersEnabled {
             modes.append(.chapters)
         }
-        modes.append(contentsOf: [.transcription, .bookmarks, .details])
+        if !transcriptsDisabled {
+            modes.append(.transcription)
+        }
+        modes.append(contentsOf: [.bookmarks, .details])
         return modes
     }
 
@@ -454,7 +461,10 @@ struct NowPlayingView: View {
             case .coverArt:
                 NowPlayingArtworkCanvas()
             case .transcription:
-                NowPlayingTranscriptCanvas(transcriptProvider: transcriptProvider)
+                NowPlayingTranscriptCanvas(
+                    transcriptProvider: transcriptProvider,
+                    onDisableTranscripts: disableTranscripts
+                )
             case .bookmarks:
                 NowPlayingBookmarksCanvas(
                     sortAscending: $bookmarksSortAscending,
@@ -545,7 +555,7 @@ struct NowPlayingView: View {
             NowPlayingActions.Share(episode: player.currentEpisode, image: shareImage)
         }
 
-        if FeatureFlag.isEnabled(.transcriptFullView) {
+        if FeatureFlag.isEnabled(.transcriptFullView), !transcriptsDisabled {
             ToolbarItem(id: "transcript", placement: .bottomBar) {
                 NowPlayingActions.Transcript(onOpen: { showFullTranscript = true })
             }
@@ -588,6 +598,17 @@ struct NowPlayingView: View {
         showToast(Toast(message: "Capítulos ocultados. Reative em Configurações.", type: .success), from: .canvas)
         Task {
             await AnalyticsService().send(originatingScreen: "NowPlaying", action: "chapters_hidden")
+        }
+    }
+
+    /// Deletes the downloaded transcripts and drops the tab, the same way hiding
+    /// chapters works.
+    private func disableTranscripts() {
+        try? transcriptDownloadService.disableTranscripts()
+        currentCanvasMode = .coverArt
+        showToast(Toast(message: "Transcrições desativadas. Reative em Configurações.", type: .success), from: .canvas)
+        Task {
+            await AnalyticsService().send(originatingScreen: "NowPlaying", action: "transcripts_disabled")
         }
     }
 

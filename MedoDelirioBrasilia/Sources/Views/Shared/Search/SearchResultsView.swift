@@ -27,6 +27,7 @@ struct SearchResultsView: View {
     private let itemCountWhenCollapsed: Int = 4
 
     @Environment(TranscriptDownloadService.self) private var transcriptService
+    @AppStorage(TranscriptPreferences.disabledKey) private var transcriptsDisabled: Bool = false
 
     private var hasAnyNonReactionResults: Bool {
         switch searchMode {
@@ -331,7 +332,8 @@ struct SearchResultsView: View {
                         TranscriptDownloadBannerView()
                     } else if case .failed = transcriptService.state {
                         TranscriptDownloadBannerView()
-                    } else {
+                    } else if !transcriptsDisabled {
+                        // Switched off: no invitation here, only episode titles.
                         TranscriptDownloadPromptView()
                     }
 
@@ -1109,6 +1111,7 @@ struct TranscriptDownloadPromptView: View {
     var subtitle: String = "Para pesquisar nas transcrições dos episódios, é necessário baixar os arquivos primeiro. Isso usa poucos dados."
     var priorityEpisodeId: String? = nil
     var analyticsSource: String = "Search"
+    var buttonTitle: String = "Baixar Transcrições"
 
     @Environment(TranscriptDownloadService.self) private var service
     @Environment(\.colorScheme) private var colorScheme
@@ -1134,10 +1137,15 @@ struct TranscriptDownloadPromptView: View {
                 .padding(.horizontal, .spacing(.large))
 
             Button {
+                // Someone who switched transcripts off is turning them back on.
+                if TranscriptPreferences.isDisabled {
+                    service.enableTranscripts()
+                    Task { await AnalyticsService().send(originatingScreen: analyticsSource, action: "transcripts_reenabled") }
+                }
                 Task { await service.downloadTranscripts(priorityEpisodeId: priorityEpisodeId) }
                 Task { await AnalyticsService().send(originatingScreen: analyticsSource, action: "transcripts_opted_in") }
             } label: {
-                Text("Baixar Transcrições")
+                Text(buttonTitle)
                     .font(.callout)
                     .bold()
                     .foregroundStyle(colorScheme == .dark ? .primary : Color.darkestGreen)
