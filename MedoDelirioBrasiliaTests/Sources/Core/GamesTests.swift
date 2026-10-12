@@ -414,6 +414,80 @@ struct GameSessionPointsTests {
     }
 }
 
+// MARK: - Game Result
+
+@MainActor
+struct GameResultTests {
+
+    private let start = Date(timeIntervalSince1970: 1_790_000_000)
+
+    private func playedFaceGame() throws -> GameSession {
+        var generator = SeededGenerator(state: 30)
+        let rounds = GameRoundFactory.faceRounds(authors: authors(20), count: 2, using: &generator)
+        let sut = GameSession(kind: .whoseFace, rounds: rounds)
+
+        // Right in 2 seconds, then wrong in 4.
+        sut.startClock(at: start)
+        sut.pick(try #require(sut.current?.answer), at: start.addingTimeInterval(2))
+        sut.advance()
+        sut.startClock(at: start)
+        let round = try #require(sut.current)
+        sut.pick(try #require(round.options.first { $0.id != round.answer.id }), at: start.addingTimeInterval(4))
+        sut.advance()
+        return sut
+    }
+
+    @Test
+    func init_fromAFinishedSession_shouldRecordHowItWent() throws {
+        let session = try playedFaceGame()
+
+        let result = GameResult(session: session, finishedAt: start, appVersion: "13.6")
+
+        #expect(result.gameKind == "whoseFace")
+        #expect(result.rounds == 2)
+        #expect(result.hits == 1)
+        #expect(result.points == GameScoring.points(afterElapsed: 2))
+        #expect(result.averageAnswerSeconds == 3)
+        #expect(result.appVersion == "13.6")
+        #expect(result.score == result.points)
+    }
+
+    @Test
+    func averageAnswerSeconds_whenTheClockNeverStarted_shouldBeNil() throws {
+        var generator = SeededGenerator(state: 31)
+        let sut = GameSession(kind: .whoseFace, rounds: GameRoundFactory.faceRounds(authors: authors(20), count: 1, using: &generator))
+
+        sut.pick(try #require(sut.current?.answer))
+
+        #expect(sut.averageAnswerSeconds == nil)
+    }
+
+    @Test
+    func restart_shouldForgetAnswerTimes() throws {
+        let sut = try playedFaceGame()
+        var generator = SeededGenerator(state: 32)
+
+        sut.restart(with: GameRoundFactory.faceRounds(authors: authors(20), count: 2, using: &generator))
+
+        #expect(sut.averageAnswerSeconds == nil)
+    }
+
+    @Test
+    func score_forTheVoiceGame_shouldBeHits() {
+        let result = GameResult(
+            gameKind: GameKind.whoseVoice.rawValue,
+            finishedAt: start,
+            rounds: 10,
+            hits: 7,
+            points: 4200,
+            averageAnswerSeconds: nil,
+            appVersion: "13.6"
+        )
+
+        #expect(result.score == 7)
+    }
+}
+
 // MARK: - Scores
 
 struct GameScoreStoreTests {

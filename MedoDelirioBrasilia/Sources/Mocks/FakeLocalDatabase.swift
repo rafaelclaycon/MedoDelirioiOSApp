@@ -552,4 +552,18 @@ class FakeLocalDatabase: LocalDatabaseProtocol {
     func earliestActivityDate() throws -> Date? {
         earliestActivity
     }
+
+    // MARK: - Game Result
+
+    var gameResults = [GameResult]()
+
+    func insert(gameResult result: GameResult) throws {
+        gameResults.append(result)
+    }
+
+    func gameResults(forKind gameKind: String) throws -> [GameResult] {
+        gameResults
+            .filter { $0.gameKind == gameKind }
+            .sorted { $0.finishedAt > $1.finishedAt }
+    }
 }

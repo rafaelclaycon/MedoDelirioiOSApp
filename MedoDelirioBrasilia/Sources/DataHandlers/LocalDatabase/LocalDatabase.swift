@@ -156,6 +156,10 @@ internal protocol LocalDatabaseProtocol {
 
     // Profile
     func earliestActivityDate() throws -> Date?
+
+    // Game Result
+    func insert(gameResult result: GameResult) throws
+    func gameResults(forKind gameKind: String) throws -> [GameResult]
 }
 
 extension LocalDatabaseProtocol {
@@ -202,6 +206,7 @@ class LocalDatabase: LocalDatabaseProtocol {
     var episodeBookmarkTable = Table("episodeBookmark")
     var episodeListenLogTable = Table("episodeListenLog")
     var userPlayLogTable = Table("userPlayLog")
+    var gameResultTable = Table("gameResult")
 
     static let shared = LocalDatabase()
     
@@ -260,7 +265,8 @@ extension LocalDatabase {
             AddUserPlayLogTable(),
             AddEpisodeSyncTombstoneTables(),
             AddEpisodeFavoriteTombstoneTable(),
-            AddFavoriteTombstoneTable()
+            AddFavoriteTombstoneTable(),
+            AddGameResultTable()
         ]
     }
 

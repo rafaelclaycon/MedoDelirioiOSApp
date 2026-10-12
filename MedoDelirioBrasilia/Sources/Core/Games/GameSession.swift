@@ -28,6 +28,13 @@ final class GameSession {
     private(set) var roundStartedAt: Date?
     /// What the current round earned, once answered.
     private(set) var roundPoints: Int?
+    /// Seconds from prompt to answer, for each answered round whose clock had started.
+    private(set) var answerTimes: [TimeInterval] = []
+
+    var averageAnswerSeconds: Double? {
+        guard !answerTimes.isEmpty else { return nil }
+        return answerTimes.reduce(0, +) / Double(answerTimes.count)
+    }
 
     /// What the game is scored by: points for the face game, right answers otherwise.
     var score: Int {
@@ -71,6 +78,9 @@ final class GameSession {
     func pick(_ author: Author, at date: Date = .now) -> Bool {
         guard pickedID == nil, let current else { return false }
         pickedID = author.id
+        if let roundStartedAt {
+            answerTimes.append(max(0, date.timeIntervalSince(roundStartedAt)))
+        }
         let isRight = author.id == current.answer.id
         if isRight {
             hits += 1
@@ -122,5 +132,6 @@ final class GameSession {
         pickedID = nil
         roundStartedAt = nil
         roundPoints = nil
+        answerTimes = []
     }
 }

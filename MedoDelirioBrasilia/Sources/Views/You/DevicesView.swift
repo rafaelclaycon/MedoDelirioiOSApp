@@ -45,7 +45,13 @@ struct DevicesView: View {
         }
         .navigationTitle("Seus aparelhos")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear(perform: loadDevices)
+        .onAppear {
+            loadDevices()
+            // Its only way in is the card in Você, since it left Settings.
+            Task {
+                await AnalyticsService().send(originatingScreen: "DevicesView", action: "didViewDevices")
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: NSUbiquitousKeyValueStore.didChangeExternallyNotification)) { _ in
             loadDevices()
         }

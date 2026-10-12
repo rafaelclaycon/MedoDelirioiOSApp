@@ -81,7 +81,7 @@ struct ProfileEditView: View {
 
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Salvar") {
-                        profileStore.update(avatarAuthorID: selectedAuthorID, nickname: nickname)
+                        save()
                         dismiss()
                     }
                 }
@@ -93,6 +93,31 @@ struct ProfileEditView: View {
                     .filter { $0.photo?.isEmpty == false }
                     .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
             }
+        }
+    }
+}
+
+// MARK: - Saving
+
+extension ProfileEditView {
+
+    /// Saves, and reports what changed, so it shows whether people take to having a
+    /// profile at all. Nothing is reported when nothing changed.
+    private func save() {
+        let avatarChanged = selectedAuthorID != profileStore.avatarAuthorID
+        let trimmed = nickname.trimmingCharacters(in: .whitespacesAndNewlines)
+        let nicknameChanged = (trimmed.isEmpty ? nil : trimmed) != profileStore.nickname
+
+        profileStore.update(avatarAuthorID: selectedAuthorID, nickname: nickname)
+
+        guard avatarChanged || nicknameChanged else { return }
+        // Whose photo it is, by name, to see which faces people pick. "nenhuma" for
+        // "Sem foto".
+        let avatar = authors.first { $0.id == selectedAuthorID }?.name ?? "nenhuma"
+        let action = "didEditProfile(avatarChanged: \(avatarChanged), nicknameChanged: \(nicknameChanged), "
+            + "avatar: \(avatar), hasNickname: \(profileStore.nickname != nil))"
+        Task {
+            await AnalyticsService().send(originatingScreen: "ProfileEditView", action: action)
         }
     }
 }

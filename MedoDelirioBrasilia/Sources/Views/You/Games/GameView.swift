@@ -90,6 +90,10 @@ struct GameView: View {
                     ToolbarItem(placement: .primaryAction) {
                         Button {
                             musicPlayer.toggleMute()
+                            let action = musicPlayer.isMuted ? "game_music_muted" : "game_music_unmuted"
+                            Task {
+                                await AnalyticsService().send(originatingScreen: "GameView", action: action)
+                            }
                         } label: {
                             Image(systemName: musicPlayer.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
                                 .contentTransition(.symbolEffect(.replace))
@@ -109,6 +113,7 @@ struct GameView: View {
         .onDisappear {
             soundPlayer.stop()
             musicPlayer.stop()
+            reportAbandonmentIfNeeded()
         }
         // Also reached by dropping a last round whose photo failed, not only by "Ver
         // resultado".
@@ -163,14 +168,31 @@ struct GameView: View {
 
     private func finish(_ session: GameSession) {
         isNewRecord = scoreStore.record(session.score, for: kind)
+        do {
+            try LocalDatabase.shared.insert(gameResult: GameResult(session: session))
+        } catch {
+            logger.error("Couldn't save the game result: \(error.localizedDescription, privacy: .public)")
+        }
         if isNewRecord {
             HapticFeedback.success()
         }
+        // Enough to tell whether a game is too hard or too easy, not just how it ended.
+        let averageSeconds = session.averageAnswerSeconds.map { String(format: "%.1f", $0) } ?? "nil"
+        let action = "didFinishGame(\(kind.rawValue), score: \(session.score), hits: \(session.hits), "
+            + "rounds: \(session.rounds.count), avgSeconds: \(averageSeconds), newRecord: \(isNewRecord))"
         Task {
-            await AnalyticsService().send(
-                originatingScreen: "GameView",
-                action: "didFinishGame(\(kind.rawValue), score: \(session.score))"
-            )
+            await AnalyticsService().send(originatingScreen: "GameView", action: action)
+        }
+    }
+
+    /// Leaving before the result, so it shows where people give up. A finished game,
+    /// or one that never had rounds, isn't one.
+    private func reportAbandonmentIfNeeded() {
+        guard let session, !session.rounds.isEmpty, !session.isFinished else { return }
+        let action = "didAbandonGame(\(kind.rawValue), round: \(session.index + 1), of: \(session.rounds.count), "
+            + "answered: \(session.isRevealed))"
+        Task {
+            await AnalyticsService().send(originatingScreen: "GameView", action: action)
         }
     }
 
@@ -298,6 +320,7 @@ extension GameView {
                     Text("Pergunta \(session.index + 1) de \(session.rounds.count)")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.secondary)
+                        .contentTransition(.numericText())
 
                     Spacer()
 
@@ -371,34 +394,57 @@ extension GameView {
                     .buttonStyle(.plain)
                     .accessibilityLabel("Ouvir de novo")
 
-                    if session.isRevealed {
+                    // Both lines always laid out in one fixed-height slot, one of them
+                    // hidden, so revealing the title doesn't push anything around.
+                    ZStack {
+                        Text("Toque para ouvir de novo")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .opacity(session.isRevealed ? 0 : 1)
+
                         Text("“\(sound.title)”")
                             .font(.headline)
                             .multilineTextAlignment(.center)
                             .lineLimit(2)
-                            .transition(.opacity)
-                    } else {
-                        Text("Toque para ouvir de novo")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
+                            .minimumScaleFactor(0.8)
+                            .opacity(session.isRevealed ? 1 : 0)
+                            .accessibilityHidden(!session.isRevealed)
                     }
+                    .frame(height: Self.soundCaptionHeight)
                 }
                 .id(round.id)
                 .transition(.asymmetric(insertion: .scale(scale: 0.9).combined(with: .opacity), removal: .opacity))
                 .task(id: round.id) {
                     soundPlayer.play(sound)
+                    // Answer times count from the sound, like the face game's from
+                    // the photo.
+                    session.startClock()
                 }
             }
         }
 
         /// Always laid out, so revealing the answer doesn't push the options around.
+        /// Two lines of headline, the most the sound's title takes.
+        private static let soundCaptionHeight: CGFloat = 48
+
+        /// Empty unless the round is answered: the footer fades out as the next round
+        /// comes in, and a text worked out from the current round would show the next
+        /// answer on its way out.
+        private var verdict: String {
+            guard session.isRevealed else { return " " }
+            return session.pickedCorrectly ? "Acertou!" : "Era \(round.answer.name)."
+        }
+
         private var footer: some View {
             VStack(spacing: .spacing(.small)) {
                 // The face game says it on the card.
                 if session.kind == .whoseVoice {
-                    Text(session.pickedCorrectly ? "Acertou!" : "Era \(round.answer.name).")
+                    Text(verdict)
                         .font(.headline)
                         .foregroundStyle(session.pickedCorrectly ? .green : .red)
+                        // One line, so a long name can't make the footer taller.
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                 }
 
                 Button {
