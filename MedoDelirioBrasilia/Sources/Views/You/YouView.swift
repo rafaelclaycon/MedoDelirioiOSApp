@@ -14,6 +14,7 @@ struct YouView: View {
     let openSettingsAction: () -> Void
 
     @Environment(ProfileStore.self) private var profileStore
+    @Environment(\.usesSidebarLayout) private var usesSidebarLayout
 
     @State private var isEditingProfile = false
 
@@ -57,14 +58,17 @@ struct YouView: View {
         .toolbar(removing: .title)
         .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
         .toolbar {
-            // Same corner as the gear in Vírgulas (`LeadingToolbarControls`).
-            ToolbarItem(placement: .topBarLeading) {
-                Button {
-                    openSettingsAction()
-                } label: {
-                    Image(systemName: "gearshape")
+            // Same corner as the gear in Vírgulas (`LeadingToolbarControls`), and hidden
+            // the same way in the sidebar layout, whose footer already has Configurações.
+            if !usesSidebarLayout {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        openSettingsAction()
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .accessibilityLabel("Configurações")
                 }
-                .accessibilityLabel("Configurações")
             }
         }
         .sheet(isPresented: $isEditingProfile) {

@@ -13,6 +13,7 @@ import SwiftUI
 struct YouHeaderView: View {
 
     @Environment(ProfileStore.self) private var profileStore
+    @Environment(\.colorScheme) private var colorScheme
 
     @State private var avatarAuthor: Author?
 
@@ -33,7 +34,7 @@ struct YouHeaderView: View {
     }
 
     var body: some View {
-        VStack(spacing: .spacing(.medium)) {
+        VStack(spacing: .spacing(.small)) {
             avatar
 
             Text(profileStore.nickname ?? "Escolha um apelido")
@@ -49,7 +50,6 @@ struct YouHeaderView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, .spacing(.large))
-        .padding(.top, .spacing(.medium))
         .padding(.bottom, .spacing(.small))
         .background(alignment: .bottom) {
             // Masked before the negative padding, so the mask covers the whole reach
@@ -77,7 +77,7 @@ struct YouHeaderView: View {
     // MARK: - Subviews
 
     private var avatar: some View {
-        ProfileAvatarView(photo: avatarAuthor?.photo, size: 116)
+        ProfileAvatarView(photo: avatarAuthor?.photo, size: 92)
             .background(Circle().fill(.white.opacity(0.25)))
             .overlay {
                 Circle()
@@ -88,7 +88,7 @@ struct YouHeaderView: View {
                 Image(systemName: "pencil")
                     .font(.footnote.bold())
                     .foregroundStyle(Color.darkestGreen)
-                    .frame(width: 34, height: 34)
+                    .frame(width: 30, height: 30)
                     .background(Circle().fill(.white))
                     .shadow(color: .black.opacity(0.2), radius: 4, y: 2)
                     .offset(x: 2, y: 2)
@@ -97,10 +97,12 @@ struct YouHeaderView: View {
 
     /// The symbol sits inline with the text, so the whole thing centers, also when it
     /// wraps at large text sizes.
+    ///
+    /// In light mode the glass turns pale over the green, so white text washes out there.
     private var badge: some View {
         Text("\(Image(systemName: profileStore.memberSince == nil ? "hand.wave.fill" : "heart.fill"))  \(memberSinceText)")
             .font(.subheadline.weight(.semibold))
-            .foregroundStyle(.white)
+            .foregroundStyle(colorScheme == .light ? Color.primary : .white)
             .multilineTextAlignment(.center)
             .padding(.horizontal, .spacing(.medium))
             .padding(.vertical, .spacing(.xSmall))

@@ -210,11 +210,6 @@ extension EpisodeStatsView {
         let value: String
         let label: String
         let systemImage: String
-        /// Stretches to the height it's offered, for rows of cards that should match.
-        var fillsHeight: Bool = false
-        /// Keeps a long single-word label on one line, shrinking it instead of breaking
-        /// it mid-word. Only shrinks when the card is too narrow for it.
-        var shrinksLabelToFit: Bool = false
 
         var body: some View {
             cardContent
@@ -241,14 +236,12 @@ extension EpisodeStatsView {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
-                    .lineLimit(shrinksLabelToFit ? 1 : 2)
-                    .minimumScaleFactor(shrinksLabelToFit ? 0.6 : 1)
+                    .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, .spacing(.small))
             .padding(.horizontal, .spacing(.xSmall))
-            .frame(maxHeight: fillsHeight ? .infinity : nil)
             .accessibilityElement(children: .combine)
             .accessibilityLabel("\(label): \(value)")
         }
