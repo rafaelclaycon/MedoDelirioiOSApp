@@ -22,6 +22,8 @@ enum PhoneTab: Int {
 enum SidebarTab: Hashable {
 
     case sounds, favorites, reactions, authors, episodes, allFolders, search, you
+    /// Its own item in the sidebar; on the tab bar it's reached through Pesquisar.
+    case trends
     case folder(id: String)
     /// The placeholder row shown while folders load, or when they fail to.
     case folderStatus
@@ -55,7 +57,7 @@ enum SidebarTab: Hashable {
         case .favorites: self = .favorites
         case .groupedByAuthor: self = .authors
         case .reactions: self = .reactions
-        case .trends: self = .search
+        case .trends: self = .trends
         case .allFolders, .specificFolder: self = .allFolders
         case .songs, .settings: return nil
         }

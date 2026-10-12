@@ -46,7 +46,7 @@ struct SidebarTabTests {
         (.favorites, .favorites),
         (.groupedByAuthor, .authors),
         (.reactions, .reactions),
-        (.trends, .search),
+        (.trends, .trends),
         (.allFolders, .allFolders),
         (.specificFolder, .allFolders)
     ])

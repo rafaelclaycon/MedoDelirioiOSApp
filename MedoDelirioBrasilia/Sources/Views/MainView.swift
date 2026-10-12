@@ -30,6 +30,7 @@ struct MainView: View {
     @State private var foldersPath = NavigationPath()
     @State private var episodesPath = NavigationPath()
     @State private var youPath = NavigationPath()
+    @State private var trendsPath = NavigationPath()
 
     @State private var isShowingSettingsSheet: Bool = false
     @State private var isShowingSupportSheet: Bool = false
@@ -335,6 +336,10 @@ struct MainView: View {
             handleDeepLink(deepLink)
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToTrends)) { _ in
+            if usesSidebarLayout {
+                sidebarSelection = .trends
+                return
+            }
             selectTab(.search)
             searchTabPath.append(SearchNavigationDestination.trends)
         }
@@ -605,8 +610,27 @@ struct MainView: View {
             }
             .badge(episodesBadgeText)
 
-            Tab(Shared.TabInfo.name(PhoneTab.you), systemImage: Shared.TabInfo.symbol(PhoneTab.you), value: .you) {
-                youTab
+            // The user and everyone else: Você, plus Tendências without going through
+            // Pesquisar.
+            TabSection("Audiência") {
+                Tab(Shared.TabInfo.name(PhoneTab.you), systemImage: Shared.TabInfo.symbol(PhoneTab.you), value: SidebarTab.you) {
+                    youTab
+                }
+
+                Tab(Shared.TabInfo.name(PadScreen.trends), systemImage: Shared.TabInfo.symbol(PadScreen.trends), value: SidebarTab.trends) {
+                    NavigationStack(path: $trendsPath) {
+                        TrendsView(
+                            audienceViewModel: MostSharedByAudienceView.ViewModel(trendsService: trendsService),
+                            tabSelection: tabSelection,
+                            activePadScreen: trendsSidebarScreen
+                        )
+                        .environment(trendsHelper)
+                        .navigationDestination(for: GeneralNavigationDestination.self) { screen in
+                            GeneralRouter(destination: screen, contentRepository: contentRepository)
+                        }
+                    }
+                    .environment(\.push, PushAction { trendsPath.append($0) })
+                }
             }
 
             TabSection("Minhas Pastas") {
@@ -814,10 +838,15 @@ struct MainView: View {
         episodesPath.append(episode)
     }
 
-    /// Routes a Trends top-chart Siri Suggestion to the Trends screen (under the Search tab),
-    /// carrying the requested time interval via `TrendsHelper` for the view to apply.
+    /// Routes a Trends top-chart Siri Suggestion to the Trends screen (its own sidebar
+    /// item, or under the Search tab on the tab bar), carrying the requested time
+    /// interval via `TrendsHelper` for the view to apply.
     private func goToTrends(timeInterval: TrendsTimeInterval) {
         trendsHelper.timeIntervalToGoTo = timeInterval
+        if usesSidebarLayout {
+            sidebarSelection = .trends
+            return
+        }
         selectTab(.search)
         if searchTabPath.isEmpty {
             searchTabPath.append(SearchNavigationDestination.trends)
