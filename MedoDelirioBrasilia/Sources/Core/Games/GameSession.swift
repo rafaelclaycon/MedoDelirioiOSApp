@@ -18,9 +18,21 @@ final class GameSession {
     /// longer loads.
     private(set) var spares: [GameRound]
     private(set) var index = 0
-    private(set) var score = 0
+    private(set) var hits = 0
+    private(set) var points = 0
     /// The author picked in the current round; nil until the user answers.
     private(set) var pickedID: String?
+    /// When the current round's prompt became visible. Time, and so points, count from
+    /// here, not from when the round began: a photo still loading isn't the player's
+    /// delay. Nil until `startClock`.
+    private(set) var roundStartedAt: Date?
+    /// What the current round earned, once answered.
+    private(set) var roundPoints: Int?
+
+    /// What the game is scored by: points for the face game, right answers otherwise.
+    var score: Int {
+        kind.scoring == .points ? points : hits
+    }
 
     private let length: Int
 
@@ -45,14 +57,29 @@ final class GameSession {
         return pickedID == current.answer.id
     }
 
-    /// Only the first pick in a round counts. Returns whether it was right.
+    /// Starts timing the current round. Only the first call counts, and only before
+    /// it's answered.
+    func startClock(at date: Date = .now) {
+        guard roundStartedAt == nil, !isRevealed, current != nil else { return }
+        roundStartedAt = date
+    }
+
+    /// Only the first pick in a round counts. Returns whether it was right. A right
+    /// pick earns points by how long it took since `startClock`; one made before the
+    /// clock started (the photo never showed) earns the minimum.
     @discardableResult
-    func pick(_ author: Author) -> Bool {
+    func pick(_ author: Author, at date: Date = .now) -> Bool {
         guard pickedID == nil, let current else { return false }
         pickedID = author.id
         let isRight = author.id == current.answer.id
         if isRight {
-            score += 1
+            hits += 1
+            let elapsed = roundStartedAt.map { date.timeIntervalSince($0) } ?? GameScoring.revealDuration
+            let earned = GameScoring.points(afterElapsed: elapsed)
+            roundPoints = earned
+            points += earned
+        } else {
+            roundPoints = 0
         }
         return isRight
     }
@@ -61,6 +88,8 @@ final class GameSession {
     func advance() {
         guard isRevealed else { return }
         pickedID = nil
+        roundStartedAt = nil
+        roundPoints = nil
         index += 1
     }
 
@@ -77,6 +106,10 @@ final class GameSession {
         } else {
             rounds[position] = spares.removeFirst()
         }
+        // A swapped current round starts over, clock included.
+        if position == index {
+            roundStartedAt = nil
+        }
         return true
     }
 
@@ -84,7 +117,10 @@ final class GameSession {
         self.rounds = Array(rounds.prefix(length))
         spares = Array(rounds.dropFirst(length))
         index = 0
-        score = 0
+        hits = 0
+        points = 0
         pickedID = nil
+        roundStartedAt = nil
+        roundPoints = nil
     }
 }

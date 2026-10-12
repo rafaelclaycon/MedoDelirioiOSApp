@@ -16,6 +16,8 @@ struct CardDeckView: View {
 
     let session: GameSession
     let photoFailed: (GameRound.ID, String) -> Void
+    /// The front photo is on screen, so the clock can start.
+    let photoLoaded: (GameRound.ID) -> Void
 
     /// Square, whatever shape the photo is.
     static let cardSide: CGFloat = 230
@@ -59,7 +61,9 @@ struct CardDeckView: View {
                     kind: session.kind,
                     side: Self.cardSide,
                     reveal: depth == 0 && session.isRevealed ? (session.pickedCorrectly ? .right : .wrong) : nil,
-                    photoFailed: photoFailed
+                    clockStart: depth == 0 ? session.roundStartedAt : nil,
+                    photoFailed: photoFailed,
+                    photoLoaded: photoLoaded
                 )
                 .scaleEffect(1 - 0.06 * Double(depth))
                 .rotationEffect(.degrees(Self.tilt(depth)))
@@ -142,7 +146,10 @@ extension CardDeckView {
         @AnimatableIgnored let kind: GameKind
         @AnimatableIgnored let side: CGFloat
         @AnimatableIgnored let reveal: Reveal?
+        /// When the front photo started showing, for the pixelation. Nil while it hasn't.
+        @AnimatableIgnored let clockStart: Date?
         @AnimatableIgnored let photoFailed: (GameRound.ID, String) -> Void
+        @AnimatableIgnored let photoLoaded: (GameRound.ID) -> Void
 
         private static let cornerRadius: CGFloat = 26
 
@@ -175,7 +182,14 @@ extension CardDeckView {
                 // shape.
                 Color.clear
                     .overlay {
-                        photoImage(photo)
+                        // Only the photo; the name and the badge drawn over it stay sharp.
+                        PixelatedPhoto(
+                            photo: photo,
+                            start: clockStart,
+                            isSharp: reveal != nil,
+                            onLoaded: { photoLoaded(round.id) },
+                            onFailed: { photoFailed(round.id, photo) }
+                        )
                     }
                     .clipped()
                     .overlay(alignment: .bottomLeading) {
@@ -201,24 +215,6 @@ extension CardDeckView {
             }
         }
 
-        private func photoImage(_ photo: String) -> some View {
-            KFImage(URL(string: photo))
-                .requestModifier { $0.timeoutInterval = GameView.photoTimeout }
-                .onFailure { error in
-                    // Leaving the round mid-load cancels it; that's not a broken photo.
-                    guard !error.isTaskCancelled else { return }
-                    photoFailed(round.id, photo)
-                }
-                .placeholder {
-                    ZStack {
-                        Color(.secondarySystemGroupedBackground)
-                        ProgressView()
-                    }
-                }
-                .resizable()
-                .scaledToFill()
-        }
-
         /// Who it was, over a dark fade at the bottom of the photo, once answered.
         private var nameCaption: some View {
             VStack(alignment: .leading, spacing: 2) {
@@ -239,6 +235,117 @@ extension CardDeckView {
             .background(
                 LinearGradient(colors: [.clear, .black.opacity(0.75)], startPoint: .top, endPoint: .bottom)
             )
+        }
+    }
+
+    /// The front photo, drawn in blocks that shrink each second of the reveal: fully
+    /// blocky until the clock starts, so it can't be recognized before it counts, and
+    /// sharp once answered.
+    ///
+    /// Each step is the photo drawn into a tiny square image, one pixel per block (so
+    /// each block is the average color of its area), then scaled up without smoothing.
+    /// No shader, so building the app doesn't need the Metal toolchain.
+    struct PixelatedPhoto: View {
+
+        let photo: String
+        let start: Date?
+        let isSharp: Bool
+        let onLoaded: () -> Void
+        let onFailed: () -> Void
+
+        @State private var image: UIImage?
+        @State private var blocks = BlockCache()
+
+        var body: some View {
+            Group {
+                if let image {
+                    TimelineView(.periodic(from: .now, by: 0.25)) { context in
+                        let size = blockSize(at: context.date)
+                        if size <= 1 {
+                            Image(uiImage: image)
+                                .resizable()
+                                .scaledToFill()
+                        } else {
+                            Image(uiImage: blocks.image(from: image, blockSize: size, side: CardDeckView.cardSide))
+                                .resizable()
+                                .interpolation(.none)
+                                .scaledToFill()
+                        }
+                    }
+                } else {
+                    ZStack {
+                        Color(.secondarySystemGroupedBackground)
+                        ProgressView()
+                    }
+                }
+            }
+            .task(id: photo) {
+                await load()
+            }
+        }
+
+        private func blockSize(at date: Date) -> Double {
+            if isSharp { return 1 }
+            guard let start else { return GameScoring.pixelSteps[0] }
+            return GameScoring.pixelSize(afterElapsed: date.timeIntervalSince(start))
+        }
+
+        private func load() async {
+            guard let url = URL(string: photo) else {
+                onFailed()
+                return
+            }
+            do {
+                let result = try await KingfisherManager.shared.retrieveImage(
+                    with: url,
+                    options: [.requestModifier(AnyModifier { request in
+                        var request = request
+                        request.timeoutInterval = GameView.photoTimeout
+                        return request
+                    })]
+                )
+                image = result.image
+                onLoaded()
+            } catch {
+                // Leaving the round mid-load cancels it; that's not a broken photo.
+                guard !Task.isCancelled else { return }
+                onFailed()
+            }
+        }
+    }
+
+    /// The blocky versions of one photo, made once per block size. A reference type in
+    /// `@State`, so filling it while drawing doesn't count as a state change.
+    final class BlockCache {
+
+        private var photo: UIImage?
+        private var images: [Double: UIImage] = [:]
+
+        func image(from photo: UIImage, blockSize: Double, side: CGFloat) -> UIImage {
+            if photo !== self.photo {
+                self.photo = photo
+                images = [:]
+            }
+            if let cached = images[blockSize] {
+                return cached
+            }
+            let made = Self.blocky(photo, blocksPerSide: max(1, Int((side / blockSize).rounded())))
+            images[blockSize] = made
+            return made
+        }
+
+        /// The photo cropped to a square like the card's aspect fill, at one pixel per
+        /// block.
+        private static func blocky(_ photo: UIImage, blocksPerSide: Int) -> UIImage {
+            let side = CGFloat(blocksPerSide)
+            let format = UIGraphicsImageRendererFormat()
+            format.scale = 1
+            return UIGraphicsImageRenderer(size: CGSize(width: side, height: side), format: format).image { _ in
+                let scale = max(side / photo.size.width, side / photo.size.height)
+                let size = CGSize(width: photo.size.width * scale, height: photo.size.height * scale)
+                let origin = CGPoint(x: (side - size.width) / 2, y: (side - size.height) / 2)
+                photo.draw(in: CGRect(origin: origin, size: size))
+            }
         }
     }
 

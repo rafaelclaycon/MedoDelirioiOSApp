@@ -4,11 +4,11 @@ Ideias para os jogos da aba Você. A regra é começar simples e expandir: cada 
 
 ## O que já existe
 
-- **De quem é essa fuça?** Uma foto, quatro nomes. As fotos vêm em cartas de baralho que viram a cada rodada, com uma música do app tocando no fundo (dá pra silenciar).
-- **Eu já ouvi essa voz antes…** Um som, quatro autores.
-- Partidas de 10 rodadas, pontuação = acertos, recorde salvo só no aparelho.
+- **De quem é essa fuça?** Uma foto, quatro nomes. As fotos vêm em cartas de baralho que viram a cada rodada, com uma música do app tocando no fundo (dá pra silenciar). A foto começa pixelada e fica nítida em 10 segundos; quanto antes a resposta, mais pontos (de 1.000 a 100 por acerto, 0 no erro).
+- **Eu já ouvi essa voz antes…** Um som, quatro autores. Pontuação = acertos.
+- Partidas de 10 rodadas, recorde salvo só no aparelho.
 - Rodadas reserva substituem fotos que não carregam.
-- Peças reaproveitáveis: `GameRoundFactory`, `GameSession`, `GameScoreStore`, `GameEntryCard`, `CardDeckView`, `GameMusicPlayer`, `GameSoundPlayer` (em `Sources/Core/Games` e `Sources/Views/You/Games`).
+- Peças reaproveitáveis: `GameRoundFactory`, `GameSession`, `GameScoring`, `GameScoreStore`, `GameEntryCard`, `CardDeckView`, `GameMusicPlayer`, `GameSoundPlayer` (em `Sources/Core/Games` e `Sources/Views/You/Games`).
 
 ## Ideias escolhidas
 
@@ -20,14 +20,6 @@ Toca uns 3 segundos de uma música do app; a pessoa escolhe o título entre quat
 - **Reaproveita:** quase tudo do jogo de voz. A diferença é o trecho: começar num ponto aleatório (não na introdução) e parar depois de 3 segundos.
 - **Cuidados:** músicas com títulos parecidos ou versões da mesma música não podem aparecer juntas como opções. Pular músicas curtas demais.
 - **Por que primeiro:** é o mais barato e tem a cara do app, puro programa de auditório.
-
-### Fuça pixelada
-
-Uma evolução da fuça: a foto começa pixelada e vai ficando nítida; quanto antes a resposta, mais pontos.
-
-- **Pontuação:** deixa de ser só acertos e passa a ser pontos por velocidade, o que espalha as notas (pré-requisito para rankings, ver SCH-437).
-- **Reaproveita:** o baralho de cartas; a carta da frente ganha o efeito de pixelização (shader ou redução de resolução animada).
-- **Cuidados:** decidir se vira um modo separado ou substitui a fuça atual. Mudar a pontuação quebra a comparação com recordes antigos.
 
 ### Voz em modo difícil
 
@@ -57,10 +49,9 @@ Um trecho de transcrição ou o título de um capítulo; a pessoa escolhe o epis
 ## Ordem sugerida
 
 1. **Qual é a música?** Pouco esforço, prova que o motor aguenta um terceiro jogo.
-2. **Fuça pixelada** com pontos por velocidade. Prepara a pontuação para o Game Center.
-3. **Desafio do dia** com compartilhamento.
-4. **Voz em modo difícil.**
-5. **Em que episódio foi?**
+2. **Desafio do dia** com compartilhamento.
+3. **Voz em modo difícil.**
+4. **Em que episódio foi?**
 
 ## Outras ideias (não escolhidas por enquanto)
 

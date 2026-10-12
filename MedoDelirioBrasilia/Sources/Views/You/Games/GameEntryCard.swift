@@ -19,7 +19,10 @@ struct GameEntryCard: View {
 
     private var status: String {
         guard let bestScore else { return "Nunca jogado" }
-        return "Melhor pontuação: \(bestScore) de \(GameRoundFactory.roundCount)"
+        switch kind.scoring {
+        case .hits: return "Melhor pontuação: \(bestScore) de \(GameRoundFactory.roundCount)"
+        case .points: return "Melhor pontuação: \(GameScoring.formattedPoints(bestScore))"
+        }
     }
 
     var body: some View {

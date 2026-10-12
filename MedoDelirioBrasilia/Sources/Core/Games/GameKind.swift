@@ -17,6 +17,13 @@ enum GameKind: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    var scoring: GameScoring.Unit {
+        switch self {
+        case .whoseFace: .points
+        case .whoseVoice: .hits
+        }
+    }
+
     var title: String {
         switch self {
         case .whoseFace: "De quem é essa fuça?"

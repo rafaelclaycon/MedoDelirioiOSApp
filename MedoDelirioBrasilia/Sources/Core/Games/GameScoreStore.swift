@@ -42,7 +42,12 @@ final class GameScoreStore {
         return previous != nil || score > 0
     }
 
+    /// Points games keep their best under a key of their own, so a best from before
+    /// the face game counted points (right answers, out of ten) never shows as points.
     private static func key(for kind: GameKind) -> String {
-        "gameBestScore.\(kind.rawValue)"
+        switch kind.scoring {
+        case .hits: "gameBestScore.\(kind.rawValue)"
+        case .points: "gameBestScore.\(kind.rawValue).points"
+        }
     }
 }

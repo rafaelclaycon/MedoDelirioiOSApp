@@ -33,7 +33,8 @@ struct GameView: View {
                     if session.isFinished {
                         ResultView(
                             kind: kind,
-                            score: session.score,
+                            hits: session.hits,
+                            points: session.points,
                             total: session.rounds.count,
                             isNewRecord: isNewRecord,
                             playAgain: { start() },
@@ -71,6 +72,9 @@ struct GameView: View {
                 .ignoresSafeArea()
             }
             .navigationTitle(kind.title)
+            // The background song, under the title: out of the game's way, but there
+            // for anyone wondering what's playing.
+            .navigationSubtitle(musicPlayer.songTitle.map { "♪ \($0)" } ?? "")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -266,6 +270,10 @@ extension GameView {
                     .font(.system(.title2, design: .rounded))
                     .bold()
 
+                if session.kind.scoring == .points {
+                    PointsChip(session: session)
+                }
+
                 Spacer(minLength: 0)
 
                 VStack(spacing: .spacing(.small)) {
@@ -293,11 +301,11 @@ extension GameView {
 
                     Spacer()
 
-                    Label("\(session.score)", systemImage: "star.fill")
+                    Label(scoreText, systemImage: "star.fill")
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(session.kind.accentColor)
                         .contentTransition(.numericText())
-                        .accessibilityLabel("\(session.score) acertos")
+                        .accessibilityLabel(scoreAccessibilityLabel)
                 }
 
                 ProgressView(
@@ -308,13 +316,36 @@ extension GameView {
             }
         }
 
+        private var scoreText: String {
+            switch session.kind.scoring {
+            case .hits: "\(session.hits)"
+            case .points: GameScoring.formattedPoints(session.points)
+            }
+        }
+
+        private var scoreAccessibilityLabel: String {
+            switch session.kind.scoring {
+            case .hits: "\(session.hits) acertos"
+            case .points: GameScoring.formattedPoints(session.points)
+            }
+        }
+
         @ViewBuilder
         private var prompt: some View {
             switch round.prompt {
             case .photo:
                 // One deck across rounds, not one per round, so the cards can move up
                 // and flip as the game goes.
-                CardDeckView(session: session, photoFailed: photoFailed)
+                CardDeckView(
+                    session: session,
+                    photoFailed: photoFailed,
+                    photoLoaded: { id in
+                        // A late load for a round already gone shouldn't start the next.
+                        if id == session.current?.id {
+                            session.startClock()
+                        }
+                    }
+                )
 
             case .sound(let sound):
                 VStack(spacing: .spacing(.small)) {
@@ -395,6 +426,44 @@ extension GameView {
     }
 }
 
+// MARK: - Points Chip
+
+extension GameView {
+
+    /// What answering now is worth, ticking down while the photo sharpens; once
+    /// answered, what the round earned.
+    struct PointsChip: View {
+
+        let session: GameSession
+
+        var body: some View {
+            TimelineView(.periodic(from: .now, by: 0.2)) { context in
+                let content = content(at: context.date)
+                Label(content.text, systemImage: content.symbol)
+                    .font(.subheadline.weight(.bold))
+                    .monospacedDigit()
+                    .foregroundStyle(content.color)
+                    .contentTransition(.numericText(countsDown: true))
+                    .padding(.horizontal, .spacing(.small))
+                    .padding(.vertical, .spacing(.xxSmall))
+                    .background(Capsule().fill(content.color.opacity(0.15)))
+                    .animation(.snappy, value: content.text)
+            }
+        }
+
+        private func content(at date: Date) -> (text: String, symbol: String, color: Color) {
+            if let earned = session.roundPoints {
+                return earned > 0
+                    ? ("+\(GameScoring.formattedPoints(earned))", "checkmark", .green)
+                    : ("Nenhum ponto", "xmark", .red)
+            }
+            let elapsed = session.roundStartedAt.map { date.timeIntervalSince($0) } ?? 0
+            let worth = GameScoring.points(afterElapsed: elapsed)
+            return ("Vale \(GameScoring.formattedPoints(worth))", "timer", session.kind.accentColor)
+        }
+    }
+}
+
 // MARK: - Option
 
 extension GameView {
@@ -464,15 +533,18 @@ extension GameView {
     struct ResultView: View {
 
         let kind: GameKind
-        let score: Int
+        let hits: Int
+        let points: Int
         /// Usually ten; fewer if rounds had to be dropped.
         let total: Int
         let isNewRecord: Bool
         let playAgain: () -> Void
         let close: () -> Void
 
+        /// By right answers, whatever the game scores by: points also reward speed,
+        /// but "Gabaritou" is about knowing everyone.
         private var message: String {
-            switch score {
+            switch hits {
             case total: "Gabaritou! Você é da casa."
             case 7...: "Mandou muito bem!"
             case 4...6: "Nada mal. Dá pra melhorar."
@@ -484,14 +556,27 @@ extension GameView {
             VStack(spacing: .spacing(.large)) {
                 Spacer()
 
-                Image(systemName: score == total ? "trophy.fill" : kind.systemImage)
+                Image(systemName: hits == total ? "trophy.fill" : kind.systemImage)
                     .font(.system(size: 56, weight: .semibold))
                     .foregroundStyle(kind.accentColor)
 
                 VStack(spacing: .spacing(.xSmall)) {
-                    Text("\(score) de \(total)")
-                        .font(.system(size: 56, weight: .bold, design: .rounded))
-                        .monospacedDigit()
+                    switch kind.scoring {
+                    case .hits:
+                        Text("\(hits) de \(total)")
+                            .font(.system(size: 56, weight: .bold, design: .rounded))
+                            .monospacedDigit()
+                    case .points:
+                        Text(GameScoring.formattedPoints(points))
+                            .font(.system(size: 44, weight: .bold, design: .rounded))
+                            .monospacedDigit()
+                            .minimumScaleFactor(0.7)
+                            .lineLimit(1)
+
+                        Text("\(hits) de \(total) acertos")
+                            .font(.headline)
+                            .foregroundStyle(.secondary)
+                    }
 
                     Text(message)
                         .font(.title3)

@@ -164,7 +164,7 @@ struct GameSessionTests {
         let answer = try #require(sut.current?.answer)
 
         #expect(sut.pick(answer))
-        #expect(sut.score == 1)
+        #expect(sut.hits == 1)
         #expect(sut.pickedCorrectly)
     }
 
@@ -175,7 +175,7 @@ struct GameSessionTests {
         let wrong = try #require(round.options.first { $0.id != round.answer.id })
 
         #expect(!sut.pick(wrong))
-        #expect(sut.score == 0)
+        #expect(sut.hits == 0)
         #expect(!sut.pickedCorrectly)
     }
 
@@ -188,7 +188,7 @@ struct GameSessionTests {
         sut.pick(wrong)
         sut.pick(round.answer)
 
-        #expect(sut.score == 0)
+        #expect(sut.hits == 0)
         #expect(sut.pickedID == wrong.id)
     }
 
@@ -211,7 +211,7 @@ struct GameSessionTests {
         }
 
         #expect(sut.isFinished)
-        #expect(sut.score == 2)
+        #expect(sut.hits == 2)
         #expect(sut.current == nil)
     }
 
@@ -268,7 +268,7 @@ struct GameSessionTests {
         sut.replaceRound(id: try #require(sut.current?.id))
 
         #expect(sut.isFinished)
-        #expect(sut.score == 1)
+        #expect(sut.hits == 1)
     }
 
     @Test
@@ -281,8 +281,136 @@ struct GameSessionTests {
         sut.restart(with: GameRoundFactory.faceRounds(authors: authors(20), count: 3, using: &generator))
 
         #expect(sut.index == 0)
-        #expect(sut.score == 0)
+        #expect(sut.hits == 0)
         #expect(sut.pickedID == nil)
+    }
+}
+
+// MARK: - Scoring
+
+struct GameScoringTests {
+
+    @Test(arguments: [
+        (0.0, 1000),
+        (5.0, 550),
+        (10.0, 100),
+        (60.0, 100),
+        (-1.0, 1000)
+    ])
+    func points_shouldFallFromMaxToMinOverTheReveal(elapsed: Double, expected: Int) {
+        #expect(GameScoring.points(afterElapsed: elapsed) == expected)
+    }
+
+    @Test
+    func points_shouldBeRoundedToTens() {
+        #expect(GameScoring.points(afterElapsed: 1.234) % 10 == 0)
+    }
+
+    @Test
+    func pixelSize_shouldShrinkStepByStepAndEndSharp() {
+        let sizes = stride(from: 0.0, to: GameScoring.revealDuration, by: 0.5).map(GameScoring.pixelSize(afterElapsed:))
+
+        #expect(sizes.first == GameScoring.pixelSteps.first)
+        #expect(zip(sizes, sizes.dropFirst()).allSatisfy { $0 >= $1 })
+        #expect(GameScoring.pixelSize(afterElapsed: GameScoring.revealDuration) == 1)
+    }
+
+    @Test
+    func formattedPoints_shouldGroupTheBrazilianWay() {
+        #expect(GameScoring.formattedPoints(7450) == "7.450 pontos")
+        #expect(GameScoring.formattedPoints(1) == "1 ponto")
+    }
+}
+
+// MARK: - Session Points
+
+@MainActor
+struct GameSessionPointsTests {
+
+    private let start = Date(timeIntervalSince1970: 1_790_000_000)
+
+    private func session() -> GameSession {
+        var generator = SeededGenerator(state: 20)
+        let rounds = GameRoundFactory.faceRounds(authors: authors(20), count: 3, using: &generator)
+        return GameSession(kind: .whoseFace, rounds: rounds)
+    }
+
+    @Test
+    func pick_rightAway_shouldEarnTheMostPoints() throws {
+        let sut = session()
+        sut.startClock(at: start)
+
+        sut.pick(try #require(sut.current?.answer), at: start)
+
+        #expect(sut.roundPoints == GameScoring.maxPoints)
+        #expect(sut.score == GameScoring.maxPoints)
+    }
+
+    @Test
+    func pick_later_shouldEarnFewerPoints() throws {
+        let sut = session()
+        sut.startClock(at: start)
+
+        sut.pick(try #require(sut.current?.answer), at: start.addingTimeInterval(5))
+
+        #expect(sut.points == GameScoring.points(afterElapsed: 5))
+    }
+
+    @Test
+    func pick_beforeThePhotoShowed_shouldEarnTheMinimum() throws {
+        let sut = session()
+
+        sut.pick(try #require(sut.current?.answer), at: start)
+
+        #expect(sut.points == GameScoring.minPoints)
+    }
+
+    @Test
+    func pick_wrong_shouldEarnNothing() throws {
+        let sut = session()
+        sut.startClock(at: start)
+        let round = try #require(sut.current)
+
+        sut.pick(try #require(round.options.first { $0.id != round.answer.id }), at: start)
+
+        #expect(sut.roundPoints == 0)
+        #expect(sut.points == 0)
+    }
+
+    @Test
+    func startClock_twice_shouldKeepTheFirstStart() throws {
+        let sut = session()
+        sut.startClock(at: start)
+        sut.startClock(at: start.addingTimeInterval(8))
+
+        sut.pick(try #require(sut.current?.answer), at: start.addingTimeInterval(8))
+
+        #expect(sut.points == GameScoring.points(afterElapsed: 8))
+    }
+
+    @Test
+    func advance_shouldResetTheClockForTheNextRound() throws {
+        let sut = session()
+        sut.startClock(at: start)
+        sut.pick(try #require(sut.current?.answer), at: start)
+
+        sut.advance()
+
+        #expect(sut.roundStartedAt == nil)
+        #expect(sut.roundPoints == nil)
+        #expect(sut.points == GameScoring.maxPoints)
+    }
+
+    @Test
+    func score_inTheVoiceGame_shouldCountHits() throws {
+        var generator = SeededGenerator(state: 21)
+        let pool = authors(8, withPhotos: false)
+        let rounds = GameRoundFactory.voiceRounds(sounds: sounds(for: pool), authors: pool, count: 3, using: &generator)
+        let sut = GameSession(kind: .whoseVoice, rounds: rounds)
+
+        sut.pick(try #require(sut.current?.answer))
+
+        #expect(sut.score == 1)
     }
 }
 
@@ -314,6 +442,13 @@ struct GameScoreStoreTests {
 
         #expect(!sut.record(0, for: .whoseVoice))
         #expect(sut.bestScore(for: .whoseVoice) == 0)
+    }
+
+    @Test
+    func bestScore_forThePointsGame_shouldIgnoreABestFromWhenItCountedHits() {
+        defaults.set(9, forKey: "gameBestScore.whoseFace")
+
+        #expect(GameScoreStore(defaults: defaults).bestScore(for: .whoseFace) == nil)
     }
 
     @Test

@@ -24,6 +24,8 @@ final class GameMusicPlayer {
     static let minimumDuration: TimeInterval = 30
 
     private(set) var isMuted: Bool
+    /// The title of the song playing, for the screen to show. Nil when nothing plays.
+    private(set) var songTitle: String?
 
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private var player: AVAudioPlayer?
@@ -46,10 +48,10 @@ final class GameMusicPlayer {
             .shuffled()
 
         // The file's own duration decides, since the catalog's can be missing or off.
-        guard let player = songs.lazy
-            .compactMap({ try? $0.fileURL() })
-            .compactMap({ try? AVAudioPlayer(contentsOf: $0) })
-            .first(where: { $0.duration > Self.minimumDuration })
+        guard let (song, player) = songs.lazy
+            .compactMap({ song in (try? song.fileURL()).map { (song, $0) } })
+            .compactMap({ song, url in (try? AVAudioPlayer(contentsOf: url)).map { (song, $0) } })
+            .first(where: { $0.1.duration > Self.minimumDuration })
         else { return }
 
         do {
@@ -59,6 +61,7 @@ final class GameMusicPlayer {
             player.volume = isMuted ? 0 : Self.volume
             player.play()
             self.player = player
+            songTitle = song.title
         } catch {
             // No audio session, no music; the game plays on without it.
             self.player = nil
@@ -74,5 +77,6 @@ final class GameMusicPlayer {
     func stop() {
         player?.stop()
         player = nil
+        songTitle = nil
     }
 }
