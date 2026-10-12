@@ -30,6 +30,8 @@ struct YouView: View {
 
                 YouNumbersView()
 
+                YouGamesSection()
+
                 VStack(spacing: .spacing(.small)) {
                     NavigationLink {
                         PersonalTrendsView()
