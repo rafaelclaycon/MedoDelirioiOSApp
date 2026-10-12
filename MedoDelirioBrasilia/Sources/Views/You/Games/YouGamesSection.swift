@@ -17,7 +17,7 @@ struct YouGamesSection: View {
 
 
     var body: some View {
-        VStack(alignment: .leading, spacing: .spacing(.small)) {
+        VStack(alignment: .leading, spacing: .spacing(.medium)) {
             Text("Jogos")
                 .font(.title2)
                 .bold()
@@ -49,7 +49,6 @@ struct YouGamesSection: View {
             // The cards' colored shadows spill past the scroll view's bounds.
             .scrollClipDisabled()
         }
-        .padding(.top, .spacing(.medium))
         .padding(.bottom, .spacing(.large))
         .fullScreenCover(item: $activeGame) { kind in
             GameView(kind: kind, scoreStore: scoreStore)
@@ -87,9 +86,9 @@ extension YouGamesSection {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
-                Text("Toque no card para ver as opções.")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                Text("Toque aqui para ver as opções.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                     .padding(.top, .spacing(.xxSmall))
             }
             .multilineTextAlignment(.center)
@@ -98,6 +97,11 @@ extension YouGamesSection {
             .background(
                 RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
                     .fill(Color(.systemGray5))
+            )
+            // A darker edge, so it reads as a physical card rather than a gray patch.
+            .overlay(
+                RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
+                    .strokeBorder(Color(.systemGray3), lineWidth: 1.5)
             )
             .contentShape(RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous))
             .accessibilityElement(children: .combine)

@@ -48,6 +48,9 @@ struct TrendsView: View {
                             .environment(trendsHelper)
                         }
                     }
+                    // Breathing room under the large title, which the Da Audiência /
+                    // Pessoais picker used to give before it went away.
+                    .padding(.top, .spacing(.xLarge))
                 }
                 .refreshable {
                     await audienceViewModel.onPullToRefreshLists()
