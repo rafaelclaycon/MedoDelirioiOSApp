@@ -61,6 +61,7 @@ extension StandaloneSupportView {
         case episodeChapters
         case electionCounting
         case electionFinal
+        case games
 
         var id: String { rawValue }
 
@@ -72,6 +73,7 @@ extension StandaloneSupportView {
             case .episodeChapters: "Quer capítulos em mais episódios? Apoie o app."
             case .electionCounting: "Acompanhando a apuração com a gente? Que tal apoiar o app."
             case .electionFinal: "Acompanhou a apuração com a gente? Que tal apoiar o app."
+            case .games: "Os jogos foram feitos com muito carinho. Obrigado pelo apoio!"
             }
         }
     }
