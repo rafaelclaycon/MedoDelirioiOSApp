@@ -211,7 +211,7 @@ struct NowPlayingView: View {
 
                     // The user just experienced the app's value end to end —
                     // the moment to ask for support, capped by the shared cooldown.
-                    if AppPersistentMemory.shared.shouldShowShareClipSupportPrompt() {
+                    if DonationGate.shared.isAllowed, AppPersistentMemory.shared.shouldShowShareClipSupportPrompt() {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
                             showClipSupportSheet = true
                         }

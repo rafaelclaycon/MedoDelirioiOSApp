@@ -438,13 +438,17 @@ struct EpisodeDetailView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    /// Nothing in the version under App Review; see `DonationGate`.
+    @ViewBuilder
     private var supportAppButton: some View {
-        Button {
-            showSupportSheet = true
-        } label: {
-            Label("Apoiar o app", systemImage: "heart.fill")
+        if DonationGate.shared.isAllowed {
+            Button {
+                showSupportSheet = true
+            } label: {
+                Label("Apoiar o app", systemImage: "heart.fill")
+            }
+            .buttonStyle(.bordered)
         }
-        .buttonStyle(.bordered)
     }
 
     private func chaptersList(_ chapters: [EpisodeChapter]) -> some View {

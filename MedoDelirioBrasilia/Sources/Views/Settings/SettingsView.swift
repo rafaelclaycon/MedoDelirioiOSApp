@@ -310,6 +310,8 @@ struct SettingsView: View {
 
     // MARK: - Functions
 
+    /// The same check as every other ask (`DonationGate`), made with this view's
+    /// client so previews can fake it.
     private func onViewAppeared() async {
         showAskForMoneyView = await apiClient.displayAskForMoneyView(appVersion: Versioneer.appVersion)
         let copy = await apiClient.getDonorNames()?.shuffled()

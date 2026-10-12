@@ -451,7 +451,7 @@ final class EpisodePlayer {
 
         let memory = AppPersistentMemory.shared
         memory.setEpisodesCompletedCount(memory.getEpisodesCompletedCount() + 1)
-        if memory.shouldShowEpisodeSupportPrompt() {
+        if DonationGate.shared.isAllowed, memory.shouldShowEpisodeSupportPrompt() {
             showSupportPrompt = true
         }
     }

@@ -72,8 +72,11 @@ struct ElectionResultsView: View {
 
                         // Between the card and the actions: seen without scrolling, and still
                         // outside the card, so the ask never mixes with the numbers.
-                        ElectionSupportPrompt(theme: theme) {
-                            supportContext = state.isFinal ? .electionFinal : .electionCounting
+                        // Hidden in the version under App Review; see `DonationGate`.
+                        if DonationGate.shared.isAllowed {
+                            ElectionSupportPrompt(theme: theme) {
+                                supportContext = state.isFinal ? .electionFinal : .electionCounting
+                            }
                         }
 
                         actions(info: info, state: state)
