@@ -34,12 +34,15 @@ struct YouGamesSection: View {
                         .buttonStyle(.plain)
                     }
 
-                    Button {
-                        isShowingSupport = true
-                    } label: {
-                        SupportCard()
+                    // Hidden in the version under App Review; see `DonationGate`.
+                    if DonationGate.shared.isAllowed {
+                        Button {
+                            isShowingSupport = true
+                        } label: {
+                            SupportCard()
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
                 .scrollTargetLayout()
             }

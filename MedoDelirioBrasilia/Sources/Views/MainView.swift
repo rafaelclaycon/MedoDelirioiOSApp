@@ -364,6 +364,9 @@ struct MainView: View {
             episodeBookmarkStore.analyticsService = AnalyticsService()
             startCloudStateSyncIfNeeded()
             profileStore.start()
+            Task {
+                await DonationGate.shared.refresh()
+            }
             logger.debug("MainView appeared")
             sendUserPersonalTrendsToServerIfEnabled()
             sendPlayLogsToServerIfEnabled()
@@ -409,6 +412,9 @@ struct MainView: View {
             if newPhase == .active {
                 cloudStateSync?.requestSync()
                 profileStore.sync()
+                Task {
+                    await DonationGate.shared.refresh()
+                }
             } else if newPhase == .background {
                 cloudStateSync?.sync()
             }
