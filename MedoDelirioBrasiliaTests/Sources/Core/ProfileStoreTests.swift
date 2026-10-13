@@ -19,69 +19,100 @@ struct ProfileStoreTests {
     private let clock = Clock()
     private let cloud = FakeCloudKeyValueStore()
     private let database = FakeLocalDatabase()
-    private let defaults = UserDefaults(suiteName: "ProfileStoreTests-\(UUID().uuidString)")!
 
-    private func store(syncEnabled: Bool = true, defaults: UserDefaults? = nil) -> ProfileStore {
+    private static func freshDefaults() -> UserDefaults {
+        UserDefaults(suiteName: "ProfileStoreTests-\(UUID().uuidString)")!
+    }
+
+    private let defaults = ProfileStoreTests.freshDefaults()
+
+    private func store(
+        syncEnabled: Bool = true,
+        defaults: UserDefaults? = nil,
+        database: FakeLocalDatabase? = nil
+    ) -> ProfileStore {
         let clock = clock
         return ProfileStore(
             cloudStore: cloud,
             defaults: defaults ?? self.defaults,
-            database: database,
+            database: database ?? self.database,
             isEnabled: { syncEnabled },
             now: { clock.now }
         )
     }
 
-    private func cloudRecord() throws -> ProfileRecord? {
-        guard let data = cloud.values[ProfileStore.cloudKey] else { return nil }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .secondsSince1970
-        return try decoder.decode(ProfileRecord.self, from: data)
-    }
-
-    private func setCloudRecord(_ record: ProfileRecord) throws {
+    private static let encoder: JSONEncoder = {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .secondsSince1970
-        cloud.values[ProfileStore.cloudKey] = try encoder.encode(record)
+        return encoder
+    }()
+
+    private static let decoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .secondsSince1970
+        return decoder
+    }()
+
+    private func cloudIdentity() throws -> ProfileIdentity? {
+        guard let data = cloud.values[ProfileStore.identityKey] else { return nil }
+        return try Self.decoder.decode(ProfileIdentity.self, from: data)
+    }
+
+    private func cloudMemberSince() throws -> Date? {
+        guard let data = cloud.values[ProfileStore.memberSinceKey] else { return nil }
+        return try Self.decoder.decode(ProfileMemberSince.self, from: data).date
+    }
+
+    private func setCloudIdentity(_ identity: ProfileIdentity) throws {
+        cloud.values[ProfileStore.identityKey] = try Self.encoder.encode(identity)
+    }
+
+    private func setCloudMemberSince(_ date: Date) throws {
+        cloud.values[ProfileStore.memberSinceKey] = try Self.encoder.encode(ProfileMemberSince(date: date))
     }
 
     // MARK: - Merge
 
     @Test
-    func merge_shouldTakeTheIdentityFromTheNewerRecord() {
-        let older = ProfileRecord(avatarAuthorID: "a", nickname: "Velho", updatedAt: Date(timeIntervalSince1970: 100), memberSince: nil)
-        let newer = ProfileRecord(avatarAuthorID: "b", nickname: "Novo", updatedAt: Date(timeIntervalSince1970: 200), memberSince: nil)
+    func merge_shouldTakeTheIdentityFromTheNewerSide() {
+        let local = ProfileRecord(avatarAuthorID: "a", nickname: "Velho", updatedAt: Date(timeIntervalSince1970: 100), memberSince: nil)
+        let cloud = ProfileIdentity(avatarAuthorID: "b", nickname: "Novo", updatedAt: Date(timeIntervalSince1970: 200))
 
-        #expect(ProfileStore.merge(local: older, remote: newer).nickname == "Novo")
-        #expect(ProfileStore.merge(local: newer, remote: older).avatarAuthorID == "b")
+        let merged = ProfileStore.merge(local: local, cloudIdentity: cloud, cloudMemberSince: nil)
+
+        #expect(merged.avatarAuthorID == "b")
+        #expect(merged.nickname == "Novo")
     }
 
     @Test
-    func merge_onATie_shouldKeepTheLocalRecord() {
+    func merge_withAnOlderOrEqualCloudIdentity_shouldKeepTheLocalOne() {
         let date = Date(timeIntervalSince1970: 100)
         let local = ProfileRecord(avatarAuthorID: "a", nickname: "Aqui", updatedAt: date, memberSince: nil)
-        let remote = ProfileRecord(avatarAuthorID: "b", nickname: "Lá", updatedAt: date, memberSince: nil)
 
-        #expect(ProfileStore.merge(local: local, remote: remote) == local)
+        let tie = ProfileStore.merge(local: local, cloudIdentity: ProfileIdentity(avatarAuthorID: "b", nickname: "Lá", updatedAt: date), cloudMemberSince: nil)
+        let older = ProfileStore.merge(local: local, cloudIdentity: ProfileIdentity(avatarAuthorID: "b", nickname: "Lá", updatedAt: .distantPast), cloudMemberSince: nil)
+
+        #expect(tie == local)
+        #expect(older == local)
     }
 
     @Test
     func merge_shouldKeepTheEarliestMemberSince() {
         let early = Date(timeIntervalSince1970: 1_600_000_000)
         let late = Date(timeIntervalSince1970: 1_700_000_000)
-        let local = ProfileRecord(avatarAuthorID: nil, nickname: nil, updatedAt: Date(timeIntervalSince1970: 300), memberSince: late)
-        let remote = ProfileRecord(avatarAuthorID: nil, nickname: nil, updatedAt: Date(timeIntervalSince1970: 100), memberSince: early)
+        let local = ProfileRecord(avatarAuthorID: nil, nickname: nil, updatedAt: .distantPast, memberSince: late)
 
-        #expect(ProfileStore.merge(local: local, remote: remote).memberSince == early)
+        #expect(ProfileStore.merge(local: local, cloudIdentity: nil, cloudMemberSince: early).memberSince == early)
+        #expect(ProfileStore.merge(local: local, cloudIdentity: nil, cloudMemberSince: nil).memberSince == late)
     }
 
     @Test
-    func merge_whenOnlyOneSideKnowsMemberSince_shouldKeepIt() {
-        let date = Date(timeIntervalSince1970: 1_600_000_000)
-        let local = ProfileRecord(avatarAuthorID: nil, nickname: nil, updatedAt: .distantPast, memberSince: nil)
-        let remote = ProfileRecord(avatarAuthorID: nil, nickname: nil, updatedAt: .distantPast, memberSince: date)
+    func shouldWriteIdentity_onlyForAnEditNewerThanTheCloud() {
+        let cloud = ProfileIdentity(avatarAuthorID: "a", nickname: nil, updatedAt: Date(timeIntervalSince1970: 200))
 
-        #expect(ProfileStore.merge(local: local, remote: remote).memberSince == date)
+        #expect(ProfileStore.shouldWriteIdentity(ProfileIdentity(avatarAuthorID: "b", nickname: nil, updatedAt: Date(timeIntervalSince1970: 300)), over: cloud))
+        #expect(!ProfileStore.shouldWriteIdentity(ProfileIdentity(avatarAuthorID: "b", nickname: nil, updatedAt: Date(timeIntervalSince1970: 200)), over: cloud))
+        #expect(!ProfileStore.shouldWriteIdentity(ProfileRecord.empty.identity, over: nil))
     }
 
     // MARK: - Editing
@@ -94,8 +125,8 @@ struct ProfileStoreTests {
 
         #expect(sut.avatarAuthorID == "author-1")
         #expect(sut.nickname == "Ouvinte")
-        #expect(try cloudRecord()?.nickname == "Ouvinte")
-        #expect(try cloudRecord()?.updatedAt == clock.now)
+        #expect(try cloudIdentity()?.nickname == "Ouvinte")
+        #expect(try cloudIdentity()?.updatedAt == clock.now)
     }
 
     @Test
@@ -144,7 +175,7 @@ struct ProfileStoreTests {
     @Test
     func sync_shouldApplyAnEditFromAnotherDevice() throws {
         let sut = store()
-        try setCloudRecord(ProfileRecord(avatarAuthorID: "author-2", nickname: "Do iPad", updatedAt: clock.now, memberSince: nil))
+        try setCloudIdentity(ProfileIdentity(avatarAuthorID: "author-2", nickname: "Do iPad", updatedAt: clock.now))
 
         sut.sync()
 
@@ -153,15 +184,15 @@ struct ProfileStoreTests {
     }
 
     @Test
-    func sync_withAnOlderCloudCopy_shouldKeepTheLocalEditAndPushIt() throws {
+    func sync_withAnOlderCloudIdentity_shouldKeepTheLocalEditAndPushIt() throws {
         let sut = store()
         sut.update(avatarAuthorID: "author-1", nickname: "Novo")
-        try setCloudRecord(ProfileRecord(avatarAuthorID: "author-2", nickname: "Velho", updatedAt: clock.now.addingTimeInterval(-60), memberSince: nil))
+        try setCloudIdentity(ProfileIdentity(avatarAuthorID: "author-2", nickname: "Velho", updatedAt: clock.now.addingTimeInterval(-60)))
 
         sut.sync()
 
         #expect(sut.nickname == "Novo")
-        #expect(try cloudRecord()?.nickname == "Novo")
+        #expect(try cloudIdentity()?.nickname == "Novo")
     }
 
     @Test
@@ -171,6 +202,47 @@ struct ProfileStoreTests {
         sut.sync()
 
         #expect(cloud.setDataCallCount == 0)
+    }
+
+    /// The bug from the TestFlight build: the iPad opened before the iPhone's avatar
+    /// reached it, wrote its own record (no avatar, its own "desde") and erased the
+    /// iPhone's choice in iCloud.
+    @Test
+    func sync_onADeviceThatNeverEdited_shouldNeverWriteTheAvatar() throws {
+        let iPadDatabase = FakeLocalDatabase()
+        iPadDatabase.earliestActivity = Date(timeIntervalSince1970: 1_700_000_000)
+        let iPad = store(defaults: Self.freshDefaults(), database: iPadDatabase)
+
+        iPad.start()
+
+        #expect(cloud.values[ProfileStore.identityKey] == nil)
+        #expect(try cloudMemberSince() == iPadDatabase.earliestActivity)
+    }
+
+    @Test
+    func sync_twoDevices_shouldEndWithTheAvatarFromWhereItWasPicked() throws {
+        let iPhone = store(defaults: Self.freshDefaults())
+        iPhone.update(avatarAuthorID: "cristiano", nickname: nil)
+
+        let iPadDatabase = FakeLocalDatabase()
+        iPadDatabase.earliestActivity = Date(timeIntervalSince1970: 1_700_000_000)
+        let iPad = store(defaults: Self.freshDefaults(), database: iPadDatabase)
+        iPad.start()
+
+        #expect(iPad.avatarAuthorID == "cristiano")
+        #expect(try cloudIdentity()?.avatarAuthorID == "cristiano")
+    }
+
+    @Test
+    func sync_shouldStillPickUpAChoiceFromTheFirstBetaBuilds() throws {
+        let legacy = ProfileRecord(avatarAuthorID: "cristiano", nickname: "Rafa", updatedAt: clock.now, memberSince: nil)
+        cloud.values[ProfileStore.legacyCloudKey] = try Self.encoder.encode(legacy)
+        let sut = store()
+
+        sut.sync()
+
+        #expect(sut.avatarAuthorID == "cristiano")
+        #expect(sut.nickname == "Rafa")
     }
 
     // MARK: - Member Since
@@ -184,19 +256,30 @@ struct ProfileStoreTests {
         sut.start()
 
         #expect(sut.memberSince == firstShare)
-        #expect(try cloudRecord()?.memberSince == firstShare)
+        #expect(try cloudMemberSince() == firstShare)
     }
 
     @Test
     func start_shouldKeepAnEarlierDateFromAnotherDevice() throws {
         let fromOtherDevice = Date(timeIntervalSince1970: 1_600_000_000)
         database.earliestActivity = Date(timeIntervalSince1970: 1_750_000_000)
-        try setCloudRecord(ProfileRecord(avatarAuthorID: nil, nickname: nil, updatedAt: .distantPast, memberSince: fromOtherDevice))
+        try setCloudMemberSince(fromOtherDevice)
         let sut = store()
 
         sut.start()
 
         #expect(sut.memberSince == fromOtherDevice)
+        #expect(try cloudMemberSince() == fromOtherDevice)
+    }
+
+    @Test
+    func start_withNoActivity_shouldLeaveMemberSinceEmpty() {
+        let sut = store()
+
+        sut.start()
+
+        #expect(sut.memberSince == nil)
+        #expect(cloud.setDataCallCount == 0)
     }
 
     @Test
@@ -209,16 +292,6 @@ struct ProfileStoreTests {
         database.earliestActivity = earlier
         sut.foldInEarliestActivity()
 
-        #expect(try cloudRecord()?.memberSince == earlier)
-    }
-
-    @Test
-    func start_withNoActivity_shouldLeaveMemberSinceEmpty() {
-        let sut = store()
-
-        sut.start()
-
-        #expect(sut.memberSince == nil)
-        #expect(cloud.setDataCallCount == 0)
+        #expect(try cloudMemberSince() == earlier)
     }
 }

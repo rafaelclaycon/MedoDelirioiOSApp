@@ -22,19 +22,48 @@ struct ProfileRecord: Codable, Equatable {
     var memberSince: Date?
 
     static let empty = ProfileRecord(avatarAuthorID: nil, nickname: nil, updatedAt: .distantPast, memberSince: nil)
+
+    var identity: ProfileIdentity {
+        ProfileIdentity(avatarAuthorID: avatarAuthorID, nickname: nickname, updatedAt: updatedAt)
+    }
+}
+
+/// The avatar and nickname, as kept in iCloud under their own key. Only a device that
+/// edited them writes it.
+struct ProfileIdentity: Codable, Equatable {
+
+    var avatarAuthorID: String?
+    var nickname: String?
+    var updatedAt: Date
+}
+
+/// "Com a gente desde", as kept in iCloud under its own key. Any device can lower it.
+struct ProfileMemberSince: Codable, Equatable {
+
+    var date: Date
 }
 
 /// The user's avatar, nickname and "Com a gente desde", in step across their devices
 /// through iCloud key-value storage. There's no account: the Apple Account is the
 /// identity.
 ///
-/// A single record under one key, so it syncs on its own rather than through
-/// `CloudStateSync`, which is built around `[id: record]` dictionaries.
+/// Two keys, because iCloud keeps whichever write to a key came last. With one key, a
+/// device that opened before another's avatar arrived wrote back its own record (no
+/// avatar, just its "desde") and erased the choice. Now the avatar and nickname are
+/// written only by a device that edited them, and only when its edit is newer than the
+/// cloud's; "desde" has its own key, which any device may lower.
+///
+/// Syncs on its own rather than through `CloudStateSync`, which is built around
+/// `[id: record]` dictionaries.
 @Observable
 @MainActor
 final class ProfileStore {
 
-    nonisolated static let cloudKey = "profile.v1"
+    nonisolated static let identityKey = "profileIdentity.v1"
+    nonisolated static let memberSinceKey = "profileMemberSince.v1"
+    /// The single key the first beta builds used. Read, never written, so a choice made
+    /// there still arrives.
+    nonisolated static let legacyCloudKey = "profile.v1"
     nonisolated static let defaultsKey = "profile.v1"
 
     private(set) var record: ProfileRecord
@@ -132,33 +161,61 @@ final class ProfileStore {
 
     // MARK: - Sync
 
-    /// Merges with the cloud copy, keeps the result here and writes it back only if the
-    /// cloud copy differs. Does nothing while iCloud sync is off in Settings.
+    /// Takes in what the cloud has, keeps the result here, and writes back only what
+    /// this device knows better: an avatar or nickname it edited after the cloud's, or
+    /// an earlier "desde". Does nothing while iCloud sync is off in Settings.
     func sync() {
         guard isEnabled() else { return }
 
-        let remote = Self.decode(cloudStore.data(forKey: Self.cloudKey))
-        let merged = remote.map { Self.merge(local: record, remote: $0) } ?? record
+        let legacy: ProfileRecord? = read(Self.legacyCloudKey)
+        let cloudIdentity: ProfileIdentity? = read(Self.identityKey)
+        let cloudMemberSince: ProfileMemberSince? = read(Self.memberSinceKey)
 
+        let merged = Self.merge(
+            local: record,
+            cloudIdentity: cloudIdentity ?? legacy?.identity,
+            cloudMemberSince: cloudMemberSince?.date ?? legacy?.memberSince
+        )
         if merged != record {
             save(merged)
         }
-        if merged != remote, merged != .empty {
-            do {
-                cloudStore.setData(try Self.encoder.encode(merged), forKey: Self.cloudKey)
-            } catch {
-                logger.error("Couldn't encode the profile: \(error.localizedDescription, privacy: .public)")
-            }
+
+        if Self.shouldWriteIdentity(merged.identity, over: cloudIdentity) {
+            write(merged.identity, forKey: Self.identityKey)
+        }
+        if let memberSince = merged.memberSince,
+           Self.shouldWriteMemberSince(memberSince, over: cloudMemberSince?.date) {
+            write(ProfileMemberSince(date: memberSince), forKey: Self.memberSinceKey)
         }
     }
 
-    /// The avatar and nickname come together from whichever record changed them last,
-    /// so a device never ends up with one person's avatar and another edit's nickname.
-    /// A tie keeps the local one. "Com a gente desde" is the earliest either knows.
-    nonisolated static func merge(local: ProfileRecord, remote: ProfileRecord) -> ProfileRecord {
-        var merged = remote.updatedAt > local.updatedAt ? remote : local
-        merged.memberSince = earliest(local.memberSince, remote.memberSince)
+    /// The avatar and nickname come together from whichever side changed them last, so a
+    /// device never ends up with one edit's avatar and another's nickname. A tie keeps
+    /// the local one. "Com a gente desde" is the earliest either knows.
+    nonisolated static func merge(
+        local: ProfileRecord,
+        cloudIdentity: ProfileIdentity?,
+        cloudMemberSince: Date?
+    ) -> ProfileRecord {
+        var merged = local
+        if let cloudIdentity, cloudIdentity.updatedAt > local.updatedAt {
+            merged.avatarAuthorID = cloudIdentity.avatarAuthorID
+            merged.nickname = cloudIdentity.nickname
+            merged.updatedAt = cloudIdentity.updatedAt
+        }
+        merged.memberSince = earliest(local.memberSince, cloudMemberSince)
         return merged
+    }
+
+    /// Only an edit newer than the cloud's. A device that never edited (`distantPast`)
+    /// never writes, which is what kept erasing another device's choice.
+    nonisolated static func shouldWriteIdentity(_ identity: ProfileIdentity, over cloud: ProfileIdentity?) -> Bool {
+        identity.updatedAt > (cloud?.updatedAt ?? .distantPast)
+    }
+
+    nonisolated static func shouldWriteMemberSince(_ date: Date, over cloud: Date?) -> Bool {
+        guard let cloud else { return true }
+        return date < cloud
     }
 
     // MARK: - Helpers
@@ -169,6 +226,24 @@ final class ProfileStore {
             defaults.set(try Self.encoder.encode(updated), forKey: Self.defaultsKey)
         } catch {
             logger.error("Couldn't save the profile: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    private func read<Value: Decodable>(_ key: String) -> Value? {
+        guard let data = cloudStore.data(forKey: key) else { return nil }
+        do {
+            return try Self.decoder.decode(Value.self, from: data)
+        } catch {
+            logger.error("Couldn't decode \(key, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            return nil
+        }
+    }
+
+    private func write<Value: Encodable>(_ value: Value, forKey key: String) {
+        do {
+            cloudStore.setData(try Self.encoder.encode(value), forKey: key)
+        } catch {
+            logger.error("Couldn't encode \(key, privacy: .public): \(error.localizedDescription, privacy: .public)")
         }
     }
 
