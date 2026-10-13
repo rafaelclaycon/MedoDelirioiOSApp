@@ -343,6 +343,16 @@ final class CloudStateSync {
 
     /// Missing or unreadable data reads as empty, so the next write replaces it with
     /// this device's state instead of failing forever.
+    /// What a key holds in iCloud right now, as this device last received it. For
+    /// Diagnostics, which compares it with what's stored here.
+    static func cloudRecords<Record: CloudSyncRecord>(
+        forKey key: String,
+        in cloudStore: CloudKeyValueStore = NSUbiquitousKeyValueStore.default
+    ) -> [String: Record]? {
+        guard let data = cloudStore.data(forKey: key) else { return nil }
+        return try? decoder.decode([String: Record].self, from: data)
+    }
+
     private func read<Record: CloudSyncRecord>(_ key: String) -> [String: Record] {
         guard let data = cloudStore.data(forKey: key) else { return [:] }
         do {

@@ -33,6 +33,10 @@ struct DiagnosticsView: View {
             ImportFavoritesView(database: database, analyticsService: analyticsService)
 
             Section {
+                NavigationLink("Favoritas no iCloud") {
+                    FavoritesSyncStatusView(database: database)
+                }
+
                 NavigationLink("Backups das favoritas") {
                     FavoritesBackupsView(
                         backupStore: FavoritesBackupStore(database: database),
@@ -40,7 +44,7 @@ struct DiagnosticsView: View {
                     )
                 }
             } footer: {
-                Text("Cópias das favoritas feitas antes de sincronizar com o iCloud, para conferir e restaurar.")
+                Text("Compare as favoritas deste aparelho com as do iCloud, e as cópias feitas antes de sincronizar, para conferir e restaurar.")
             }
 
             Section {
