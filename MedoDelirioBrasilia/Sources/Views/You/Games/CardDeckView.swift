@@ -79,8 +79,9 @@ struct CardDeckView: View {
             }
         }
         .frame(width: Self.deckSize.width, height: Self.deckSize.height)
-        // A new game, or a first card swapped for a broken photo, is dealt again.
-        .task(id: session.rounds.first?.id) {
+        // Each new game is dealt. A card swapped for a broken photo isn't: it just takes
+        // the old one's place, unseen.
+        .task(id: session.gameID) {
             isDealt = false
             try? await Task.sleep(for: .milliseconds(250))
             withAnimation(.spring(duration: 0.6, bounce: 0.2)) {

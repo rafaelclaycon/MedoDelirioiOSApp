@@ -231,6 +231,10 @@ struct GameView: View {
     static let photoTimeout: TimeInterval = 8
 
     /// Swaps the round for a spare, and reports the photo so it can be fixed.
+    ///
+    /// Without any animation: a card flying out of the deck for no reason the player can
+    /// see would raise a question there's no good way to answer on screen. The swap
+    /// just happens, a card behind the front one looking like any other.
     private func photoFailed(roundID: GameRound.ID, photo: String, in session: GameSession) {
         guard let authorID = session.rounds.first(where: { $0.id == roundID })?.answer.id else { return }
         Self.brokenPhotos.insert(photo)
@@ -238,7 +242,9 @@ struct GameView: View {
         Task {
             await AnalyticsService().send(originatingScreen: "GameView", action: "didFindBrokenAuthorPhoto(\(authorID))")
         }
-        withAnimation(.smooth) {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
             _ = session.replaceRound(id: roundID)
         }
     }

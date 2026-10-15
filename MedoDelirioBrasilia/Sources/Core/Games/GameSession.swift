@@ -13,6 +13,9 @@ import Foundation
 final class GameSession {
 
     let kind: GameKind
+    /// New for every play-through, including "Jogar de novo", so views can tell a new
+    /// game from rounds being swapped within one.
+    private(set) var gameID = UUID()
     private(set) var rounds: [GameRound]
     /// Rounds kept aside to stand in for one that can't be played, like a photo that no
     /// longer loads.
@@ -124,6 +127,7 @@ final class GameSession {
     }
 
     func restart(with rounds: [GameRound]) {
+        gameID = UUID()
         self.rounds = Array(rounds.prefix(length))
         spares = Array(rounds.dropFirst(length))
         index = 0

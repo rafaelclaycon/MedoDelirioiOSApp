@@ -272,6 +272,27 @@ struct GameSessionTests {
     }
 
     @Test
+    func replaceRound_shouldStayTheSameGame() {
+        let sut = session(rounds: 3)
+        let game = sut.gameID
+
+        sut.replaceRound(id: sut.rounds[0].id)
+
+        #expect(sut.gameID == game)
+    }
+
+    @Test
+    func restart_shouldBeANewGame() {
+        let sut = session(rounds: 3)
+        let game = sut.gameID
+        var generator = SeededGenerator(state: 14)
+
+        sut.restart(with: GameRoundFactory.faceRounds(authors: authors(20), count: 3, using: &generator))
+
+        #expect(sut.gameID != game)
+    }
+
+    @Test
     func restart_shouldStartOver() throws {
         let sut = session()
         sut.pick(try #require(sut.current?.answer))
