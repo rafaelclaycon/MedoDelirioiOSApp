@@ -367,9 +367,7 @@ extension CardDeckView {
                     .strokeBorder(.white.opacity(0.35), lineWidth: 2)
                     .padding(.spacing(.small))
 
-                Image(systemName: kind.systemImage)
-                    .font(.system(size: 64, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.85))
+                GameSymbol(kind: kind, size: 64, style: .white.opacity(0.85))
             }
             .accessibilityHidden(true)
         }

@@ -602,9 +602,13 @@ extension GameView {
             VStack(spacing: .spacing(.large)) {
                 Spacer()
 
-                Image(systemName: hits == total ? "trophy.fill" : kind.systemImage)
-                    .font(.system(size: 56, weight: .semibold))
-                    .foregroundStyle(kind.accentColor)
+                if hits == total {
+                    Image(systemName: "trophy.fill")
+                        .font(.system(size: 56, weight: .semibold))
+                        .foregroundStyle(kind.accentColor)
+                } else {
+                    GameSymbol(kind: kind, size: 56, style: kind.accentColor)
+                }
 
                 VStack(spacing: .spacing(.xSmall)) {
                     switch kind.scoring {

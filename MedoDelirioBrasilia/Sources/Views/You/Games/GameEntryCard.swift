@@ -43,19 +43,19 @@ struct GameEntryCard: View {
             Spacer(minLength: 0)
 
             HStack(spacing: .spacing(.small)) {
-                Image(systemName: kind.systemImage)
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(kind.accentColor)
+                GameSymbol(kind: kind, size: 20, style: kind.accentColor)
                     .frame(width: 44, height: 44)
                     .background(Circle().fill(.white))
                     .shadow(color: .black.opacity(0.2), radius: 4, y: 2)
 
                 VStack(alignment: .leading, spacing: 2) {
+                    // "Melhor pontuação: 10.000 pontos" is the longest it gets, and needs
+                    // about 0.72 to fit next to the symbol.
                     Text(status)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.white)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+                        .minimumScaleFactor(0.7)
 
                     Text(kind.subtitle)
                         .font(.caption)

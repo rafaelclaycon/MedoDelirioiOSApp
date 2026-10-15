@@ -45,6 +45,15 @@ enum GameKind: String, CaseIterable, Identifiable {
         }
     }
 
+    /// Drawn as is where the symbol stands out (`GameSymbol`). Nil uses `systemImage`.
+    var emoji: String? {
+        switch self {
+        case .whoseFace: "👀"
+        case .whoseVoice: nil
+        }
+    }
+
+    /// For tinted uses: faint watermarks, and wherever there's no emoji.
     var systemImage: String {
         switch self {
         case .whoseFace: "eyes"
