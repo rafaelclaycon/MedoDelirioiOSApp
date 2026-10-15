@@ -266,7 +266,8 @@ extension LocalDatabase {
             AddEpisodeSyncTombstoneTables(),
             AddEpisodeFavoriteTombstoneTable(),
             AddFavoriteTombstoneTable(),
-            AddGameResultTable()
+            AddGameResultTable(),
+            AddFeaturedRankFieldToAuthorTable()
         ]
     }
 

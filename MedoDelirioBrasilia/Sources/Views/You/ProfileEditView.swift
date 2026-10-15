@@ -21,6 +21,18 @@ struct ProfileEditView: View {
 
     private let columns = [GridItem(.adaptive(minimum: 76), spacing: .spacing(.medium))]
 
+    /// The favorites, curated on the server, in their order. Shown in their own row
+    /// before everyone, for quick access.
+    private var featuredAuthors: [Author] {
+        authors
+            .filter { $0.featuredRank != nil }
+            .sorted { lhs, rhs in
+                lhs.featuredRank != rhs.featuredRank
+                    ? (lhs.featuredRank ?? .max) < (rhs.featuredRank ?? .max)
+                    : lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
+            }
+    }
+
     private var selectedPhoto: String? {
         authors.first { $0.id == selectedAuthorID }?.photo
     }
@@ -34,8 +46,12 @@ struct ProfileEditView: View {
 
                     NicknameField(nickname: $nickname, limit: Self.nicknameLimit)
 
+                    if !featuredAuthors.isEmpty {
+                        featuredRow
+                    }
+
                     VStack(alignment: .leading, spacing: .spacing(.small)) {
-                        Text("Foto")
+                        Text(featuredAuthors.isEmpty ? "Foto" : "Todos")
                             .font(.headline)
 
                         LazyVGrid(columns: columns, spacing: .spacing(.medium)) {
@@ -85,6 +101,38 @@ struct ProfileEditView: View {
                     .filter { $0.photo?.isEmpty == false }
                     .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
             }
+        }
+    }
+}
+
+// MARK: - Featured Row
+
+extension ProfileEditView {
+
+    /// Sideways, edge to edge, so it reads as a shelf apart from the grid below.
+    private var featuredRow: some View {
+        VStack(alignment: .leading, spacing: .spacing(.small)) {
+            Text("Destaques")
+                .font(.headline)
+
+            ScrollView(.horizontal) {
+                HStack(alignment: .top, spacing: .spacing(.medium)) {
+                    ForEach(featuredAuthors) { author in
+                        AvatarChoice(
+                            photo: author.photo,
+                            name: author.name,
+                            isSelected: selectedAuthorID == author.id
+                        ) {
+                            selectedAuthorID = author.id
+                        }
+                        .frame(width: 80)
+                    }
+                }
+            }
+            .scrollIndicators(.hidden)
+            .contentMargins(.horizontal, .spacing(.medium), for: .scrollContent)
+            // Out to the screen's edges, past the page's own padding.
+            .padding(.horizontal, -.spacing(.medium))
         }
     }
 }

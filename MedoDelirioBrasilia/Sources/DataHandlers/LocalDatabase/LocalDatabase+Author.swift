@@ -51,7 +51,8 @@ extension LocalDatabase {
             Expression<String>("name") <- updatedAuthor.name,
             Expression<String?>("photo") <- updatedAuthor.photo,
             Expression<String?>("description") <- updatedAuthor.description,
-            Expression<String?>("externalLinks") <- updatedAuthor.externalLinks
+            Expression<String?>("externalLinks") <- updatedAuthor.externalLinks,
+            Expression<Int?>("featuredRank") <- updatedAuthor.featuredRank
         )
         try db.run(updateQuery)
     }

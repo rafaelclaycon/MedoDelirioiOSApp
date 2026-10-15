@@ -15,6 +15,9 @@ public struct Author: Hashable, Codable, Identifiable {
     let description: String?
     var soundCount: Int?
     var externalLinks: String?
+    /// Position in the row of favorite profile photos in Você, from 1. Nil when not in the
+    /// row. Curated on the server, through MedoHelper.
+    var featuredRank: Int?
 
     init(
         id: String,
@@ -22,7 +25,8 @@ public struct Author: Hashable, Codable, Identifiable {
         photo: String? = nil,
         description: String? = nil,
         soundCount: Int? = nil,
-        externalLinks: String? = nil
+        externalLinks: String? = nil,
+        featuredRank: Int? = nil
     ) {
         self.id = id
         self.name = name
@@ -30,6 +34,7 @@ public struct Author: Hashable, Codable, Identifiable {
         self.description = description
         self.soundCount = soundCount
         self.externalLinks = externalLinks
+        self.featuredRank = featuredRank
     }
 
     var links: [ExternalLink] {
