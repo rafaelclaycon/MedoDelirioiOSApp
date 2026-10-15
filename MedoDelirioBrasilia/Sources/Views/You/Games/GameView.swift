@@ -20,11 +20,13 @@ struct GameView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(EpisodePlayer.self) private var episodePlayer
+    @Environment(ProfileStore.self) private var profileStore
 
     @State private var session: GameSession?
     @State private var soundPlayer = GameSoundPlayer()
     @State private var musicPlayer = GameMusicPlayer()
     @State private var isNewRecord = false
+    @State private var shareSnapshot: GameShareSnapshot?
 
     var body: some View {
         NavigationStack {
@@ -38,6 +40,7 @@ struct GameView: View {
                             total: session.rounds.count,
                             isNewRecord: isNewRecord,
                             playAgain: { start() },
+                            share: { shareSnapshot = GameShareSnapshot(session: session, isNewRecord: isNewRecord, profile: profileStore) },
                             close: { dismiss() }
                         )
                     } else if let round = session.current {
@@ -114,6 +117,9 @@ struct GameView: View {
             soundPlayer.stop()
             musicPlayer.stop()
             reportAbandonmentIfNeeded()
+        }
+        .sheet(item: $shareSnapshot) { snapshot in
+            GameShareView(snapshot: snapshot)
         }
         // Also reached by dropping a last round whose photo failed, not only by "Ver
         // resultado".
@@ -585,17 +591,11 @@ extension GameView {
         let total: Int
         let isNewRecord: Bool
         let playAgain: () -> Void
+        let share: () -> Void
         let close: () -> Void
 
-        /// By right answers, whatever the game scores by: points also reward speed,
-        /// but "Gabaritou" is about knowing everyone.
         private var message: String {
-            switch hits {
-            case total: "Gabaritou! Você é da casa."
-            case 7...: "Mandou muito bem!"
-            case 4...6: "Nada mal. Dá pra melhorar."
-            default: "Hora de maratonar uns episódios."
-            }
+            GameScoring.verdict(hits: hits, total: total)
         }
 
         var body: some View {
@@ -653,6 +653,12 @@ extension GameView {
                     .buttonStyle(.glassProminent)
                     .tint(kind.accentColor)
 
+                    Button(action: share) {
+                        Label("Compartilhar resultado", systemImage: "square.and.arrow.up")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.glass)
+
                     Button(action: close) {
                         Text("Fechar")
                             .frame(maxWidth: .infinity)
@@ -702,4 +708,5 @@ final class GameSoundPlayer {
 #Preview {
     GameView(kind: .whoseFace, scoreStore: GameScoreStore())
         .environment(EpisodePlayer())
+        .environment(ProfileStore(cloudStore: FakeCloudKeyValueStore(), database: FakeLocalDatabase()))
 }

@@ -46,9 +46,26 @@ enum GameScoring {
         return pixelSteps[min(step, pixelSteps.count - 1)]
     }
 
-    /// "7.450 pontos", grouped the Brazilian way.
+    /// The line under a result, by right answers whatever the game scores by: points
+    /// also reward speed, but "Gabaritou" is about knowing everyone. Shown on the
+    /// result screen and on the picture shared from it.
+    static func verdict(hits: Int, total: Int) -> String {
+        switch hits {
+        case total: "Gabaritou! Você é da casa."
+        case 7...: "Mandou muito bem!"
+        case 4...6: "Nada mal. Dá pra melhorar."
+        default: "Hora de maratonar uns episódios."
+        }
+    }
+
+    /// "7.450", grouped the Brazilian way.
+    static func formattedNumber(_ points: Int) -> String {
+        points.formatted(.number.grouping(.automatic).locale(Locale(identifier: "pt_BR")))
+    }
+
+    /// "7.450 pontos".
     static func formattedPoints(_ points: Int) -> String {
-        let number = points.formatted(.number.grouping(.automatic).locale(Locale(identifier: "pt_BR")))
+        let number = formattedNumber(points)
         return points == 1 ? "\(number) ponto" : "\(number) pontos"
     }
 }
