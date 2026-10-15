@@ -18,31 +18,6 @@ struct ElectionShareSnapshot: Identifiable {
     var theme: ElectionFinalTheme? = nil
 }
 
-enum ElectionShareFormat: String, CaseIterable, Identifiable {
-
-    /// Feed posts and chats.
-    case square
-    /// Instagram and WhatsApp stories.
-    case stories
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .square: "Quadrada"
-        case .stories: "Stories (9:16)"
-        }
-    }
-
-    /// Rendered at 3x: 1080 × 1080 and 1080 × 1920.
-    var size: CGSize {
-        switch self {
-        case .square: CGSize(width: 360, height: 360)
-        case .stories: CGSize(width: 360, height: 640)
-        }
-    }
-}
-
 /// Shows exactly what gets shared, a picture of the count as it is now, and lets people pick
 /// the square or the stories format before sharing.
 struct ElectionShareView: View {
@@ -54,12 +29,9 @@ struct ElectionShareView: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    @State private var format: ElectionShareFormat = .square
+    @State private var format: ShareImageFormat = .square
     @State private var shareItem: ImageShareItemSource?
     @State private var isRendering = false
-    @State private var copiedHandle = false
-
-    private static let instagramHandle = "@medoedelirioembrasiliapodcast"
 
     /// From the tap until the share sheet closes: the render and the sheet's own startup
     /// together take a second or two.
@@ -94,7 +66,7 @@ struct ElectionShareView: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                 Picker("Formato", selection: $format) {
-                    ForEach(ElectionShareFormat.allCases) { format in
+                    ForEach(ShareImageFormat.allCases) { format in
                         Text(format.title).tag(format)
                     }
                 }
@@ -115,7 +87,7 @@ struct ElectionShareView: View {
                 .animation(.snappy, value: format)
 
                 if format == .stories {
-                    tagCallout
+                    StoriesTagCallout(tint: ElectionResultsPalette.accent)
                 }
 
                 Button {
@@ -161,44 +133,7 @@ struct ElectionShareView: View {
                 onShared(activityType)
                 dismiss()
             }
-            .task(id: copiedHandle) {
-                guard copiedHandle else { return }
-                try? await Task.sleep(for: .seconds(2))
-                copiedHandle = false
-            }
         }
-    }
-
-    /// Asks people posting to Stories to tag the podcast. Tapping the handle copies it, since
-    /// typing it into Instagram's mention sticker is a chore.
-    private var tagCallout: some View {
-        VStack(spacing: .spacing(.small)) {
-            Text("Vai postar nos Stories? Marca o podcast!")
-                .font(.subheadline.weight(.semibold))
-
-            Button {
-                UIPasteboard.general.string = Self.instagramHandle
-                HapticFeedback.success()
-                copiedHandle = true
-            } label: {
-                // The handle's label stays in the layout underneath, so the shorter
-                // checkmark doesn't shrink the button.
-                Label(Self.instagramHandle, systemImage: "doc.on.doc")
-                    .hidden()
-                    .overlay {
-                        Label(
-                            copiedHandle ? "Copiado" : Self.instagramHandle,
-                            systemImage: copiedHandle ? "checkmark" : "doc.on.doc"
-                        )
-                        .contentTransition(.symbolEffect(.replace))
-                    }
-                    .font(.subheadline)
-            }
-            .tint(ElectionResultsPalette.accent)
-            .accessibilityHint("Copia o nome da conta do podcast no Instagram")
-        }
-        .multilineTextAlignment(.center)
-        .padding(.vertical, .spacing(.small))
     }
 }
 
@@ -210,14 +145,14 @@ struct ElectionShareCard: View {
 
     let round: Int
     let state: ElectionActivityAttributes.ContentState
-    let format: ElectionShareFormat
+    let format: ShareImageFormat
     var theme: ElectionFinalTheme? = nil
 
     @MainActor
     static func render(
         round: Int,
         state: ElectionActivityAttributes.ContentState,
-        format: ElectionShareFormat,
+        format: ShareImageFormat,
         theme: ElectionFinalTheme? = nil
     ) -> UIImage? {
         let renderer = ImageRenderer(content: ElectionShareCard(round: round, state: state, format: format, theme: theme))
@@ -364,8 +299,7 @@ struct ElectionShareCard: View {
             }
         }
         .padding(.horizontal, 28)
-        // Instagram covers roughly the top and bottom 13% (250 px of 1920) with its own controls.
-        .padding(.vertical, 84)
+        .padding(.vertical, ShareImageFormat.storiesSafeVerticalPadding)
     }
 
     private func candidates(photoSize: CGFloat, percentSize: CGFloat, spacing: CGFloat) -> some View {
