@@ -32,15 +32,7 @@ struct ProfileEditView: View {
                     ProfileAvatarView(photo: selectedPhoto, size: 120)
                         .padding(.top, .spacing(.medium))
 
-                    TextField("Apelido", text: $nickname)
-                        .textFieldStyle(.roundedBorder)
-                        .textInputAutocapitalization(.words)
-                        .submitLabel(.done)
-                        .onChange(of: nickname) {
-                            if nickname.count > Self.nicknameLimit {
-                                nickname = String(nickname.prefix(Self.nicknameLimit))
-                            }
-                        }
+                    NicknameField(nickname: $nickname, limit: Self.nicknameLimit)
 
                     VStack(alignment: .leading, spacing: .spacing(.small)) {
                         Text("Foto")
@@ -92,6 +84,89 @@ struct ProfileEditView: View {
                 authors = ((try? LocalDatabase.shared.allAuthors()) ?? [])
                     .filter { $0.photo?.isEmpty == false }
                     .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+            }
+        }
+    }
+}
+
+// MARK: - Nickname Field
+
+extension ProfileEditView {
+
+    /// The nickname, set apart from the photo grid: a title, a tall field that outlines in
+    /// the accent color while typing, a clear button, and a line saying where the
+    /// nickname shows, with a character count.
+    struct NicknameField: View {
+
+        @Binding var nickname: String
+        let limit: Int
+
+        @FocusState private var isFocused: Bool
+
+        private static let cornerRadius: CGFloat = 16
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: .spacing(.xSmall)) {
+                Text("Apelido")
+                    .font(.headline)
+
+                HStack(spacing: .spacing(.small)) {
+                    TextField("Como você quer aparecer", text: $nickname)
+                        .font(.title3.weight(.semibold))
+                        .textInputAutocapitalization(.words)
+                        .submitLabel(.done)
+                        .focused($isFocused)
+
+                    if !nickname.isEmpty {
+                        Button {
+                            nickname = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.title3)
+                                .foregroundStyle(.tertiary)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Apagar apelido")
+                        .transition(.opacity)
+                    }
+                }
+                .padding(.horizontal, .spacing(.medium))
+                .frame(minHeight: 56)
+                .background(
+                    RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
+                        .fill(Color(.secondarySystemGroupedBackground))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
+                        .strokeBorder(
+                            isFocused ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.separator),
+                            lineWidth: isFocused ? 2 : 1
+                        )
+                )
+                .contentShape(RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous))
+                .onTapGesture {
+                    isFocused = true
+                }
+                .animation(.snappy(duration: 0.2), value: isFocused)
+                .animation(.snappy(duration: 0.2), value: nickname.isEmpty)
+
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Aparece no topo do Você e nas imagens que você compartilhar.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+
+                    Spacer(minLength: .spacing(.small))
+
+                    Text("\(nickname.count)/\(limit)")
+                        .font(.footnote.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel("\(nickname.count) de \(limit) caracteres")
+                }
+            }
+            .onChange(of: nickname) {
+                if nickname.count > limit {
+                    nickname = String(nickname.prefix(limit))
+                }
             }
         }
     }
