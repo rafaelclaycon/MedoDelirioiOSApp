@@ -8,11 +8,14 @@
 import SwiftUI
 import Kingfisher
 
-/// The user's avatar: an author's photo in a circle, or a person symbol until they
-/// pick one.
+/// The user's avatar: their own photo or an author's in a circle, or a person symbol
+/// until they pick one.
 struct ProfileAvatarView: View {
 
+    /// An author's photo URL.
     let photo: String?
+    /// The user's own photo, which wins over `photo`.
+    var customPhoto: Data? = nil
     var size: CGFloat = 72
 
     private var photoURL: URL? {
@@ -22,7 +25,11 @@ struct ProfileAvatarView: View {
 
     var body: some View {
         Group {
-            if let photoURL {
+            if let customPhoto, let image = UIImage(data: customPhoto) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else if let photoURL {
                 KFImage(photoURL)
                     .placeholder {
                         placeholder

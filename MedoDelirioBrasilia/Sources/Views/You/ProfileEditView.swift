@@ -5,9 +5,11 @@
 //  Created by Rafael Schmitt on 11/10/26.
 //
 
+import PhotosUI
 import SwiftUI
 
-/// Picks the avatar from the podcast's cast and sets the nickname.
+/// Picks the avatar, the user's own photo or one from the podcast's cast, and sets the
+/// nickname.
 struct ProfileEditView: View {
 
     @Environment(ProfileStore.self) private var profileStore
@@ -16,6 +18,13 @@ struct ProfileEditView: View {
     @State private var nickname: String = ""
     @State private var selectedAuthorID: String?
     @State private var authors: [Author] = []
+    /// Kept while browsing the cast, so picking an author and coming back to "Sua foto"
+    /// doesn't mean choosing the photo again.
+    @State private var customPhoto: Data?
+    @State private var usesCustomPhoto = false
+    @State private var isShowingPhotoPicker = false
+    @State private var pickedItem: PhotosPickerItem?
+    @State private var photoToCrop: PhotoToCrop?
 
     private static let nicknameLimit = 30
 
@@ -41,7 +50,11 @@ struct ProfileEditView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: .spacing(.large)) {
-                    ProfileAvatarView(photo: selectedPhoto, size: 120)
+                    ProfileAvatarView(
+                        photo: usesCustomPhoto ? nil : selectedPhoto,
+                        customPhoto: usesCustomPhoto ? customPhoto : nil,
+                        size: 120
+                    )
                         .padding(.top, .spacing(.medium))
 
                     NicknameField(nickname: $nickname, limit: Self.nicknameLimit)
@@ -55,21 +68,23 @@ struct ProfileEditView: View {
                             .font(.headline)
 
                         LazyVGrid(columns: columns, spacing: .spacing(.medium)) {
+                            ownPhotoChoice
+
                             AvatarChoice(
                                 photo: nil,
                                 name: "Sem foto",
-                                isSelected: selectedAuthorID == nil
+                                isSelected: !usesCustomPhoto && selectedAuthorID == nil
                             ) {
-                                selectedAuthorID = nil
+                                select(authorID: nil)
                             }
 
                             ForEach(authors) { author in
                                 AvatarChoice(
                                     photo: author.photo,
                                     name: author.name,
-                                    isSelected: selectedAuthorID == author.id
+                                    isSelected: !usesCustomPhoto && selectedAuthorID == author.id
                                 ) {
-                                    selectedAuthorID = author.id
+                                    select(authorID: author.id)
                                 }
                             }
                         }
@@ -94,14 +109,98 @@ struct ProfileEditView: View {
                     }
                 }
             }
+            .photosPicker(isPresented: $isShowingPhotoPicker, selection: $pickedItem, matching: .images)
+            .onChange(of: pickedItem) {
+                guard let pickedItem else { return }
+                Task {
+                    await loadForCropping(pickedItem)
+                }
+            }
+            .sheet(item: $photoToCrop) { photo in
+                ProfilePhotoCropView(image: photo.image) { data in
+                    customPhoto = data
+                    usesCustomPhoto = true
+                }
+            }
             .onAppear {
                 nickname = profileStore.nickname ?? ""
                 selectedAuthorID = profileStore.avatarAuthorID
+                customPhoto = profileStore.customPhoto
+                usesCustomPhoto = profileStore.customPhoto != nil
                 authors = ((try? LocalDatabase.shared.allAuthors()) ?? [])
                     .filter { $0.photo?.isEmpty == false }
                     .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
             }
         }
+    }
+}
+
+// MARK: - Own Photo
+
+extension ProfileEditView {
+
+    /// A photo from the library, waiting to be framed.
+    struct PhotoToCrop: Identifiable {
+        let id = UUID()
+        let image: UIImage
+    }
+
+    /// First in the grid. With no photo of their own yet, it opens the library; with
+    /// one, a tap selects it and a second tap picks another.
+    private var ownPhotoChoice: some View {
+        Button {
+            if customPhoto != nil && !usesCustomPhoto {
+                usesCustomPhoto = true
+            } else {
+                isShowingPhotoPicker = true
+            }
+        } label: {
+            VStack(spacing: .spacing(.xxSmall)) {
+                Group {
+                    if customPhoto != nil {
+                        ProfileAvatarView(photo: nil, customPhoto: customPhoto, size: 64)
+                    } else {
+                        Image(systemName: "photo.badge.plus")
+                            .font(.title2)
+                            .foregroundStyle(Color.accentColor)
+                            .frame(width: 64, height: 64)
+                            .background(Circle().fill(Color(.secondarySystemGroupedBackground)))
+                    }
+                }
+                .overlay {
+                    Circle()
+                        .strokeBorder(Color.accentColor, lineWidth: usesCustomPhoto ? 3 : 0)
+                }
+
+                Text(usesCustomPhoto ? "Trocar foto" : "Sua foto")
+                    .font(.caption)
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(customPhoto == nil ? "Usar uma foto sua" : (usesCustomPhoto ? "Trocar sua foto" : "Sua foto"))
+        .accessibilityAddTraits(usesCustomPhoto ? .isSelected : [])
+    }
+
+    private func select(authorID: String?) {
+        selectedAuthorID = authorID
+        usesCustomPhoto = false
+    }
+
+    /// Scaled down on the way in: a camera photo is far bigger than the crop needs, and
+    /// the cropper redraws it on every gesture.
+    private func loadForCropping(_ item: PhotosPickerItem) async {
+        defer { pickedItem = nil }
+        guard let data = try? await item.loadTransferable(type: Data.self),
+              let image = UIImage(data: data)
+        else { return }
+        let longest = max(image.size.width, image.size.height)
+        let scale = min(1, 1600 / max(longest, 1))
+        let target = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        let prepared = await image.byPreparingThumbnail(ofSize: target) ?? image
+        photoToCrop = PhotoToCrop(image: prepared)
     }
 }
 
@@ -121,9 +220,9 @@ extension ProfileEditView {
                         AvatarChoice(
                             photo: author.photo,
                             name: author.name,
-                            isSelected: selectedAuthorID == author.id
+                            isSelected: !usesCustomPhoto && selectedAuthorID == author.id
                         ) {
-                            selectedAuthorID = author.id
+                            select(authorID: author.id)
                         }
                         .frame(width: 80)
                     }
@@ -227,16 +326,20 @@ extension ProfileEditView {
     /// Saves, and reports what changed, so it shows whether people take to having a
     /// profile at all. Nothing is reported when nothing changed.
     private func save() {
-        let avatarChanged = selectedAuthorID != profileStore.avatarAuthorID
+        let newAuthorID = usesCustomPhoto ? nil : selectedAuthorID
+        let newPhoto = usesCustomPhoto ? customPhoto : nil
+        let avatarChanged = newAuthorID != profileStore.avatarAuthorID || newPhoto != profileStore.customPhoto
         let trimmed = nickname.trimmingCharacters(in: .whitespacesAndNewlines)
         let nicknameChanged = (trimmed.isEmpty ? nil : trimmed) != profileStore.nickname
 
-        profileStore.update(avatarAuthorID: selectedAuthorID, nickname: nickname)
+        profileStore.update(avatarAuthorID: newAuthorID, nickname: nickname, customPhoto: newPhoto)
 
         guard avatarChanged || nicknameChanged else { return }
-        // Whose photo it is, by name, to see which faces people pick. "nenhuma" for
-        // "Sem foto".
-        let avatar = authors.first { $0.id == selectedAuthorID }?.name ?? "nenhuma"
+        // Whose photo it is, by name, to see which faces people pick. "própria" for the
+        // user's own (never the photo itself), "nenhuma" for "Sem foto".
+        let avatar = usesCustomPhoto
+            ? "própria"
+            : authors.first { $0.id == selectedAuthorID }?.name ?? "nenhuma"
         let action = "didEditProfile(avatarChanged: \(avatarChanged), nicknameChanged: \(nicknameChanged), "
             + "avatar: \(avatar), hasNickname: \(profileStore.nickname != nil))"
         Task {

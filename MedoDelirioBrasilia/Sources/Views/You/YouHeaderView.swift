@@ -77,7 +77,7 @@ struct YouHeaderView: View {
     // MARK: - Subviews
 
     private var avatar: some View {
-        ProfileAvatarView(photo: avatarAuthor?.photo, size: 92)
+        ProfileAvatarView(photo: avatarAuthor?.photo, customPhoto: profileStore.customPhoto, size: 92)
             .background(Circle().fill(.white.opacity(0.25)))
             .overlay {
                 Circle()

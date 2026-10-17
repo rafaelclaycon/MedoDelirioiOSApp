@@ -21,6 +21,8 @@ struct GameShareSnapshot: Identifiable {
     let nickname: String?
     /// The profile photo's URL; the picture is loaded by the share screen.
     let avatarPhoto: String?
+    /// The user's own photo, which wins over `avatarPhoto`.
+    var customPhoto: Data? = nil
 
     @MainActor
     init(session: GameSession, isNewRecord: Bool, profile: ProfileStore) {
@@ -31,6 +33,7 @@ struct GameShareSnapshot: Identifiable {
         self.isNewRecord = isNewRecord
         self.nickname = profile.nickname
         self.avatarPhoto = profile.avatarAuthorID.flatMap { try? LocalDatabase.shared.author(withId: $0)?.photo }
+        self.customPhoto = profile.customPhoto
     }
 
     init(kind: GameKind, hits: Int, points: Int, total: Int, isNewRecord: Bool, nickname: String?, avatarPhoto: String?) {
@@ -171,6 +174,10 @@ struct GameShareView: View {
     }
 
     private func loadAvatar() async {
+        if let data = snapshot.customPhoto, let image = UIImage(data: data) {
+            avatar = image
+            return
+        }
         guard let photo = snapshot.avatarPhoto, let url = URL(string: photo) else { return }
         avatar = try? await KingfisherManager.shared.retrieveImage(with: url).image
     }

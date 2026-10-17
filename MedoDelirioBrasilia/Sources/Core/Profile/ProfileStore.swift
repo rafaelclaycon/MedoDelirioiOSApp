@@ -20,11 +20,15 @@ struct ProfileRecord: Codable, Equatable {
     /// them, so any device that has an edit wins.
     var updatedAt: Date
     var memberSince: Date?
+    /// The user's own photo, as a small square JPEG (`ProfilePhoto`). When set, it's the
+    /// avatar instead of an author's. Never leaves the user's devices, except in the
+    /// pictures they choose to share.
+    var customPhoto: Data? = nil
 
     static let empty = ProfileRecord(avatarAuthorID: nil, nickname: nil, updatedAt: .distantPast, memberSince: nil)
 
     var identity: ProfileIdentity {
-        ProfileIdentity(avatarAuthorID: avatarAuthorID, nickname: nickname, updatedAt: updatedAt)
+        ProfileIdentity(avatarAuthorID: avatarAuthorID, nickname: nickname, updatedAt: updatedAt, customPhoto: customPhoto)
     }
 }
 
@@ -35,6 +39,8 @@ struct ProfileIdentity: Codable, Equatable {
     var avatarAuthorID: String?
     var nickname: String?
     var updatedAt: Date
+    /// Travels with the avatar and nickname, so the three always change together.
+    var customPhoto: Data? = nil
 }
 
 /// "Com a gente desde", as kept in iCloud under its own key. Any device can lower it.
@@ -70,6 +76,7 @@ final class ProfileStore {
 
     var avatarAuthorID: String? { record.avatarAuthorID }
     var nickname: String? { record.nickname }
+    var customPhoto: Data? { record.customPhoto }
     var memberSince: Date? { record.memberSince }
 
     @ObservationIgnored private let cloudStore: CloudKeyValueStore
@@ -129,14 +136,23 @@ final class ProfileStore {
 
     // MARK: - Editing
 
-    /// An empty or blank nickname clears it.
-    func update(avatarAuthorID: String?, nickname: String?) {
+    /// An empty or blank nickname clears it. A custom photo replaces the author's, so
+    /// passing one clears `avatarAuthorID`; one over `ProfilePhoto.maxBytes` is dropped
+    /// rather than risk iCloud's storage limit.
+    func update(avatarAuthorID: String?, nickname: String?, customPhoto: Data? = nil) {
         let trimmed = nickname?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let photo = customPhoto.flatMap { $0.count <= ProfilePhoto.maxBytes ? $0 : nil }
         var updated = record
-        updated.avatarAuthorID = avatarAuthorID
+        updated.avatarAuthorID = photo == nil ? avatarAuthorID : nil
         updated.nickname = (trimmed?.isEmpty ?? true) ? nil : trimmed
-        guard updated.avatarAuthorID != record.avatarAuthorID || updated.nickname != record.nickname else { return }
-        updated.updatedAt = now()
+        updated.customPhoto = photo
+        guard updated.avatarAuthorID != record.avatarAuthorID
+                || updated.nickname != record.nickname
+                || updated.customPhoto != record.customPhoto
+        else { return }
+        // Always later than the last edit, even within the same instant: only a newer
+        // edit is written to iCloud, so a tie would never leave this device.
+        updated.updatedAt = max(now(), record.updatedAt.addingTimeInterval(0.001))
         save(updated)
         sync()
     }
@@ -201,6 +217,7 @@ final class ProfileStore {
         if let cloudIdentity, cloudIdentity.updatedAt > local.updatedAt {
             merged.avatarAuthorID = cloudIdentity.avatarAuthorID
             merged.nickname = cloudIdentity.nickname
+            merged.customPhoto = cloudIdentity.customPhoto
             merged.updatedAt = cloudIdentity.updatedAt
         }
         merged.memberSince = earliest(local.memberSince, cloudMemberSince)

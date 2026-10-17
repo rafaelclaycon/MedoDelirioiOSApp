@@ -7,6 +7,7 @@
 
 import Testing
 import Foundation
+import UIKit
 @testable import MedoDelirio
 
 @MainActor
@@ -243,6 +244,68 @@ struct ProfileStoreTests {
 
         #expect(sut.avatarAuthorID == "cristiano")
         #expect(sut.nickname == "Rafa")
+    }
+
+    // MARK: - Custom Photo
+
+    private let photo = Data(repeating: 7, count: 2_000)
+
+    @Test
+    func update_withACustomPhoto_shouldReplaceTheAuthorsAndSyncIt() throws {
+        let sut = store()
+        sut.update(avatarAuthorID: "cristiano", nickname: nil)
+
+        sut.update(avatarAuthorID: "cristiano", nickname: nil, customPhoto: photo)
+
+        #expect(sut.customPhoto == photo)
+        #expect(sut.avatarAuthorID == nil)
+        #expect(try cloudIdentity()?.customPhoto == photo)
+        #expect(try cloudIdentity()?.avatarAuthorID == nil)
+    }
+
+    @Test
+    func update_pickingAnAuthorAfterAPhoto_shouldDropThePhoto() {
+        let sut = store()
+        sut.update(avatarAuthorID: nil, nickname: nil, customPhoto: photo)
+
+        sut.update(avatarAuthorID: "cristiano", nickname: nil)
+
+        #expect(sut.customPhoto == nil)
+        #expect(sut.avatarAuthorID == "cristiano")
+    }
+
+    @Test
+    func update_withAPhotoTooBigForICloud_shouldNotKeepIt() {
+        let sut = store()
+
+        sut.update(avatarAuthorID: nil, nickname: "Rafa", customPhoto: Data(count: ProfilePhoto.maxBytes + 1))
+
+        #expect(sut.customPhoto == nil)
+        #expect(sut.nickname == "Rafa")
+    }
+
+    @Test
+    func sync_shouldBringAPhotoPickedOnAnotherDevice() throws {
+        let sut = store()
+        try setCloudIdentity(ProfileIdentity(avatarAuthorID: nil, nickname: "Rafa", updatedAt: clock.now, customPhoto: photo))
+
+        sut.sync()
+
+        #expect(sut.customPhoto == photo)
+    }
+
+    @Test
+    func thumbnailData_shouldBeASmallSquareJPEG() throws {
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 1200, height: 1200)).image { context in
+            UIColor.systemGreen.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 1200, height: 1200))
+        }
+
+        let data = try #require(ProfilePhoto.thumbnailData(from: image))
+        let thumbnail = try #require(UIImage(data: data))
+
+        #expect(thumbnail.size == CGSize(width: ProfilePhoto.side, height: ProfilePhoto.side))
+        #expect(data.count <= ProfilePhoto.maxBytes)
     }
 
     // MARK: - Member Since
