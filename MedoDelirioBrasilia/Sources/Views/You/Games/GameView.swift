@@ -27,6 +27,10 @@ struct GameView: View {
     @State private var musicPlayer = GameMusicPlayer()
     @State private var isNewRecord = false
     @State private var shareSnapshot: GameShareSnapshot?
+    /// The first game starts once, when the screen opens. On the Mac, a sheet over the
+    /// game (sharing the result) makes it disappear and appear again, which used to
+    /// start a new game underneath the sheet. Later games come from "Jogar de novo".
+    @State private var hasStarted = false
 
     var body: some View {
         NavigationStack {
@@ -107,6 +111,8 @@ struct GameView: View {
             }
         }
         .onAppear {
+            guard !hasStarted else { return }
+            hasStarted = true
             // Both games play audio (sounds or music), which shouldn't fight an episode.
             if episodePlayer.isPlaying {
                 episodePlayer.togglePlayPause()
@@ -114,6 +120,9 @@ struct GameView: View {
             start()
         }
         .onDisappear {
+            // On the Mac, the share sheet coming up counts as disappearing too; the game
+            // is still there underneath, music and all.
+            guard shareSnapshot == nil else { return }
             soundPlayer.stop()
             musicPlayer.stop()
             reportAbandonmentIfNeeded()
