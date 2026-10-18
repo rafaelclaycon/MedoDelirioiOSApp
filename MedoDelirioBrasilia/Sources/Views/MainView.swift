@@ -618,7 +618,7 @@ struct MainView: View {
 
             // The user and everyone else: Você, plus Tendências without going through
             // Pesquisar.
-            TabSection("Audiência") {
+            TabSection("Ouvintes") {
                 Tab(Shared.TabInfo.name(PhoneTab.you), systemImage: Shared.TabInfo.symbol(PhoneTab.you), value: SidebarTab.you) {
                     youTab
                 }
