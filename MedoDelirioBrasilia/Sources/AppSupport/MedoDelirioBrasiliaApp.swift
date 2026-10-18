@@ -121,6 +121,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         UNUserNotificationCenter.current().delegate = self
         BackgroundContentSync.registerRefreshTask()
         ContentUpdateContinuation.register()
+        TranscriptDownloadContinuation.register()
         ContentUpdateService.shared.onLongUpdateDetected = {
             ContentUpdateContinuation.begin()
         }

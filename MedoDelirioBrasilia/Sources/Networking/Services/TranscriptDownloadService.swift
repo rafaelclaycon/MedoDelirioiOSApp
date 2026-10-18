@@ -111,6 +111,11 @@ final class TranscriptDownloadService {
 
     private static let visibleSyncThreshold = 5
 
+    /// How many files the opt-in download needs before it asks the system to keep it
+    /// running in the background, with progress in the Dynamic Island. Anything smaller
+    /// finishes within the grace period, and would only flash the system UI.
+    private static let continuedDownloadThreshold = 20
+
     /// How a sync ended, for callers that report on it — the background refresh logs it,
     /// since nobody is looking at the app when that one runs.
     enum SyncOutcome: Equatable {
@@ -321,6 +326,10 @@ final class TranscriptDownloadService {
                let idx = filesToDownload.firstIndex(where: { $0.episodeId == priorityId }) {
                 let priority = filesToDownload.remove(at: idx)
                 filesToDownload.insert(priority, at: 0)
+            }
+
+            if filesToDownload.count >= Self.continuedDownloadThreshold {
+                TranscriptDownloadContinuation.beginContinuedDownload()
             }
 
             var failedCount = 0

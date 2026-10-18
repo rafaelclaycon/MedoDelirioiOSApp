@@ -6,6 +6,7 @@
 	<array>
 		<string>com.rafaelschmitt.MedoDelirioBrasilia.contentRefresh</string>
 		<string>$(PRODUCT_BUNDLE_IDENTIFIER).contentUpdate.*</string>
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER).transcriptDownload.*</string>
 	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
