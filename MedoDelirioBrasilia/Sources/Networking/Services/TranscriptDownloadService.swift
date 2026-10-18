@@ -76,9 +76,9 @@ final class TranscriptDownloadService {
     /// In-memory on purpose: a fresh process always checks on launch.
     @ObservationIgnored private var lastManifestCheck: Date?
 
-    /// Set when the grace period runs out, and cleared at the start of each run. The
-    /// download loops check it between files so an interrupted sync stops at a whole
-    /// file rather than being killed mid-write.
+    /// Set when the grace period or a background refresh runs out of time, and cleared
+    /// at the start of each run. The download loops check it between files so an
+    /// interrupted sync stops at a whole file rather than being killed mid-write.
     @ObservationIgnored private var shouldStopForBackground = false
 
     /// What's known to be on disk, as `episodeId → SHA-256` of each transcript file,
@@ -91,6 +91,10 @@ final class TranscriptDownloadService {
     @ObservationIgnored private var backgroundObserver: NSObjectProtocol?
 
     static let transcriptsDidUpdate = Notification.Name("TranscriptDownloadService.transcriptsDidUpdate")
+
+    /// The one the app runs on. A scheduled background refresh has no view hierarchy to
+    /// pull it from the environment, so it reaches it here.
+    static let shared = TranscriptDownloadService()
 
     init() {
         transcriptsDownloaded = UserDefaults.standard.bool(forKey: userDefaultsKey)
@@ -107,16 +111,45 @@ final class TranscriptDownloadService {
 
     private static let visibleSyncThreshold = 5
 
+    /// How a sync ended, for callers that report on it — the background refresh logs it,
+    /// since nobody is looking at the app when that one runs.
+    enum SyncOutcome: Equatable {
+        /// Not opted in, already running, or checked recently enough.
+        case skipped
+        /// The server says the catalog hasn't changed since the last complete sync.
+        case unchanged
+        /// The catalog changed, but every file on disk already matches it.
+        case upToDate
+        case downloaded(succeeded: Int, failed: Int)
+        case stopped(downloaded: Int, of: Int)
+        /// Transcripts were switched off while it ran; what it wrote is gone again.
+        case disabled
+        case failed
+
+        var debugLabel: String {
+            switch self {
+            case .skipped: "pulado"
+            case .unchanged: "sem mudanças"
+            case .upToDate: "tudo atualizado"
+            case .downloaded(let succeeded, let failed): "\(succeeded) baixado(s), \(failed) falha(s)"
+            case .stopped(let downloaded, let total): "interrompido com \(downloaded) de \(total)"
+            case .disabled: "desativado"
+            case .failed: "falhou"
+            }
+        }
+    }
+
     /// - Parameter minimumInterval: skips the round trip when the last successful manifest
     ///   check is more recent than this. Zero — the launch sync — always checks.
     @MainActor
-    func syncNewTranscriptsIfNeeded(minimumInterval: TimeInterval = 0) async {
-        guard transcriptsDownloaded, !isDownloading, TranscriptPreferences.isEnabled else { return }
+    @discardableResult
+    func syncNewTranscriptsIfNeeded(minimumInterval: TimeInterval = 0) async -> SyncOutcome {
+        guard transcriptsDownloaded, !isDownloading, TranscriptPreferences.isEnabled else { return .skipped }
 
         if minimumInterval > 0,
            let lastManifestCheck,
            Date().timeIntervalSince(lastManifestCheck) < minimumInterval {
-            return
+            return .skipped
         }
 
         isDownloading = true
@@ -137,12 +170,12 @@ final class TranscriptDownloadService {
             // a while doesn't leave the next online trigger throttled out.
             lastManifestCheck = Date()
 
-            guard case .modified(let manifest, let etag) = fetchResult else { return }
+            guard case .modified(let manifest, let etag) = fetchResult else { return .unchanged }
 
             let filesToDownload = await filesToDownload(for: manifest)
             guard !filesToDownload.isEmpty else {
                 confirmManifest(etag: etag)
-                return
+                return .upToDate
             }
 
             appendLog("Sync: \(filesToDownload.count) arquivo(s) para atualizar")
@@ -153,15 +186,16 @@ final class TranscriptDownloadService {
                 state = .downloading(progress: 0)
             }
 
+            var downloadedCount = 0
             var failedCount = 0
             var stoppedEarly = false
 
             for (index, entry) in filesToDownload.enumerated() {
                 if TranscriptPreferences.isDisabled {
                     discardAfterDisabling()
-                    return
+                    return .disabled
                 }
-                if shouldStopForBackground {
+                if shouldStopForBackground || Task.isCancelled {
                     stoppedEarly = true
                     appendLog("Sync interrompido em segundo plano: \(index) de \(filesToDownload.count)")
                     break
@@ -169,7 +203,11 @@ final class TranscriptDownloadService {
                 do {
                     let hash = try await downloadSRT(entry: entry)
                     recordHash(hash, for: entry.episodeId)
+                    downloadedCount += 1
                 } catch {
+                    // Cut off by the background refresh running out of time, not a
+                    // problem with the file: the check at the top of the loop stops it.
+                    if Task.isCancelled { continue }
                     failedCount += 1
                     appendLog("Sync falha no arquivo \(entry.episodeId): \(error.localizedDescription)")
                     continue
@@ -182,7 +220,7 @@ final class TranscriptDownloadService {
             // Switched off while the last file was on its way.
             if TranscriptPreferences.isDisabled {
                 discardAfterDisabling()
-                return
+                return .disabled
             }
 
             if stoppedEarly {
@@ -193,11 +231,10 @@ final class TranscriptDownloadService {
                     state = .idle
                 }
                 NotificationCenter.default.post(name: Self.transcriptsDidUpdate, object: nil)
-                return
+                return .stopped(downloaded: downloadedCount, of: filesToDownload.count)
             }
 
-            let successCount = filesToDownload.count - failedCount
-            appendLog("Sync concluído: \(successCount) arquivo(s), \(failedCount) falha(s)")
+            appendLog("Sync concluído: \(downloadedCount) arquivo(s), \(failedCount) falha(s)")
 
             if failedCount == 0 {
                 confirmManifest(etag: etag)
@@ -208,11 +245,13 @@ final class TranscriptDownloadService {
             } else {
                 NotificationCenter.default.post(name: Self.transcriptsDidUpdate, object: nil)
             }
+            return .downloaded(succeeded: downloadedCount, failed: failedCount)
         } catch {
             appendLog("Sync falhou: \(error.localizedDescription)")
             if case .downloading = state {
                 state = .failed(message: error.localizedDescription)
             }
+            return .failed
         }
     }
 
@@ -386,6 +425,12 @@ final class TranscriptDownloadService {
     }
 
     // MARK: - Backgrounding
+
+    /// Asks a sync in progress to stop at the next whole file. For a background refresh
+    /// that is running out of time.
+    func stopAtNextFile() {
+        shouldStopForBackground = true
+    }
 
     /// Starts watching for the app being backgrounded, once, the first time a download
     /// runs. Registering lazily keeps it off the many `TranscriptDownloadService()`

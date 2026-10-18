@@ -21,7 +21,7 @@ struct MedoDelirioBrasiliaApp: App {
     @State private var state: PadScreen? = PadScreen.allSounds
 
     @State private var helper = PlayRandomSoundHelper()
-    @State private var transcriptDownloadService = TranscriptDownloadService()
+    @State private var transcriptDownloadService = TranscriptDownloadService.shared
     @State private var chapterDownloadService = ChapterDownloadService()
     @State private var deepLinkHandler = DeepLinkHandler()
 

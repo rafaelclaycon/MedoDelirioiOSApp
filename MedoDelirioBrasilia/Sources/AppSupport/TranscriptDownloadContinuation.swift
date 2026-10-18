@@ -12,12 +12,12 @@ import UIKit
 /// they leave.
 ///
 /// **Grace period only, by design.** Unlike `ContentUpdateContinuation`, this never
-/// submits a `BGContinuedProcessingTask` and never schedules a background wake:
-/// transcripts are an opt-in extra that nobody is watching a progress banner for, and
-/// waking the app for them isn't wanted. The system grants a matter of seconds here —
-/// enough to finish a handful of files. Whatever doesn't fit is picked up by the next
-/// foreground sync, since every SRT is written atomically and the manifest diff simply
-/// sees the remainder as still missing.
+/// submits a `BGContinuedProcessingTask` and never schedules a background wake of its
+/// own: transcripts are an opt-in extra that nobody is watching a progress banner for.
+/// The system grants a matter of seconds here — enough to finish a handful of files.
+/// Whatever doesn't fit is picked up by the next check, in the foreground or on the
+/// scheduled content refresh (`BackgroundContentSync`), since every SRT is written
+/// atomically and the manifest diff simply sees the remainder as still missing.
 @MainActor
 enum TranscriptDownloadContinuation {
 
