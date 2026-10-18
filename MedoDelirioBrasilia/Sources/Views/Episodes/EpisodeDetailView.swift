@@ -286,7 +286,7 @@ struct EpisodeDetailView: View {
             }
 
             HStack(spacing: .spacing(.medium)) {
-                EpisodeDetailPlaybackControls(episode: episode)
+                EpisodeDetailPlaybackControls(episode: episode, hasProgress: hasProgress)
 
                 if isPlayed {
                     Image(systemName: "checkmark")
@@ -675,9 +675,16 @@ private struct EpisodeDetailPlaybackControls: View {
     @Environment(EpisodePlayer.self) private var episodePlayer
 
     let episode: PodcastEpisode
+    /// Saved progress, which may come from another device before the episode is downloaded here.
+    let hasProgress: Bool
 
     private var isThisEpisodePlaying: Bool {
         episodePlayer.isCurrentEpisode(episode) && episodePlayer.isPlaying
+    }
+
+    private var playButtonTitle: String {
+        if isThisEpisodePlaying { return "Pausar" }
+        return hasProgress ? "Continuar" : "Ouvir"
     }
 
     var body: some View {
@@ -690,7 +697,7 @@ private struct EpisodeDetailPlaybackControls: View {
                 }
             } label: {
                 Label(
-                    isThisEpisodePlaying ? "Pausar" : "Ouvir",
+                    playButtonTitle,
                     systemImage: isThisEpisodePlaying ? "pause.fill" : "play.fill"
                 )
                 .font(.subheadline)
