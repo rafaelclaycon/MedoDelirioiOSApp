@@ -201,8 +201,9 @@ struct GameShareCard: View {
         return renderer.uiImage
     }
 
-    /// About the height of Instagram's link sticker on a 1080 × 1920 story, plus air.
-    static let linkStickerSpace: CGFloat = 76
+    /// About the height of Instagram's link sticker on a 1080 × 1920 story, plus a
+    /// little air.
+    static let linkStickerSpace: CGFloat = 62
 
     private var hasPlayer: Bool {
         avatar != nil || snapshot.nickname != nil
@@ -230,36 +231,33 @@ struct GameShareCard: View {
         .frame(width: format.size.width, height: format.size.height)
     }
 
+    /// A poster: the game as a small outlined pill at the top, the player and their
+    /// score as the centerpiece (sized so even the fullest case, with photo, nickname,
+    /// hits and a record, fits Instagram's safe area without shrinking), the dare below, then room for Instagram's link sticker
+    /// and the app's credit. The two flexible spaces split what's left evenly around the
+    /// centerpiece, whatever's shown in it.
     private var stories: some View {
         VStack(spacing: 0) {
-            // The app's full name, iOS included: it sets it apart from the podcast, and
-            // saves explaining to Android users why they can't find it.
-            Text("JOGOS DO MEDO E DELÍRIO iOS")
-                .font(.system(size: 12, weight: .heavy))
-                .foregroundStyle(.white.opacity(0.85))
+            gamePill
 
-            Spacer(minLength: 16)
+            Spacer(minLength: 12)
 
-            gameBadge(iconSize: 64, titleSize: 26)
+            VStack(spacing: 14) {
+                if hasPlayer {
+                    player(avatarSize: 52, nameSize: 20)
+                }
 
-            Spacer(minLength: 16)
+                storiesScore
 
-            if hasPlayer {
-                player(avatarSize: 56, nameSize: 18)
-                    .padding(.bottom, 16)
+                if snapshot.isNewRecord {
+                    newRecordBadge(fontSize: 15)
+                }
             }
 
-            score(size: 58, detailSize: 17)
-
-            if snapshot.isNewRecord {
-                newRecordBadge(fontSize: 15)
-                    .padding(.top, 14)
-            }
-
-            Spacer(minLength: 16)
+            Spacer(minLength: 12)
 
             Text("Duvido você fazer melhor!")
-                .font(.system(size: 17, weight: .semibold))
+                .font(.system(size: 20, weight: .bold, design: .rounded))
 
             // Left empty for Instagram's link sticker, so the link to the app has a home
             // that doesn't cover the score. The share screen offers to copy the link.
@@ -274,6 +272,8 @@ struct GameShareCard: View {
 
                 Spacer(minLength: 0)
 
+                // The app's full name, iOS included: it sets it apart from the podcast,
+                // and saves explaining to Android users why they can't find it.
                 Text("Jogue no app Medo e Delírio iOS")
                     .font(.system(size: 12, weight: .medium))
                     .lineLimit(1)
@@ -284,6 +284,55 @@ struct GameShareCard: View {
         .multilineTextAlignment(.center)
         .padding(.horizontal, 28)
         .padding(.vertical, ShareImageFormat.storiesSafeVerticalPadding)
+    }
+
+    /// The score as a poster reads it, top to bottom: "Fiz" / "7.450" / "pontos!", or
+    /// "Acertei" / "7 de 10!". Stacked, the number gets the whole width instead of
+    /// shrinking to fit a sentence on one line.
+    private var storiesScore: some View {
+        VStack(spacing: 4) {
+            Text(snapshot.kind.scoring == .points ? "Fiz" : "Acertei")
+                .font(.system(size: 24, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.9))
+
+            Text(snapshot.kind.scoring == .points
+                 ? GameScoring.formattedNumber(snapshot.points)
+                 : "\(snapshot.hits) de \(snapshot.total)!")
+                .font(.system(size: 84, weight: .heavy, design: .rounded))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+                .shadow(color: .black.opacity(0.25), radius: 10, y: 4)
+
+            if snapshot.kind.scoring == .points {
+                Text(snapshot.points == 1 ? "ponto!" : "pontos!")
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
+            }
+
+            if let detail {
+                Text(detail)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.8))
+                    .padding(.top, 10)
+            }
+        }
+    }
+
+    /// The game's symbol and name on one line, in a faint outline: it says what this is
+    /// without competing with the score.
+    private var gamePill: some View {
+        HStack(spacing: 8) {
+            GameSymbol(kind: snapshot.kind, size: 14, style: .white)
+
+            Text(snapshot.kind.title)
+                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 9)
+        .background(Capsule().fill(.white.opacity(0.06)))
+        .overlay(Capsule().strokeBorder(.white.opacity(0.3), lineWidth: 1))
     }
 
     /// Flexible spacers between the blocks, so the content fills the square however long
