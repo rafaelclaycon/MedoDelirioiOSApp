@@ -92,6 +92,24 @@ else
     fi
 fi
 
+# The inline Python and helper scripts need 3.10+ (`X | None` annotations).
+# A bare `python3` isn't safe: Homebrew only links it for its current default
+# version, so a `brew upgrade` can leave it pointing at macOS's 3.9. Take the
+# first 3.10+ interpreter on PATH (override with PYTHON in .env).
+if [[ -z "${PYTHON:-}" ]]; then
+    for candidate in python3 python3.{20..10}; do
+        if command -v "$candidate" >/dev/null 2>&1 \
+            && "$candidate" -c 'import sys; sys.exit(sys.version_info < (3, 10))' 2>/dev/null; then
+            PYTHON="$(command -v "$candidate")"
+            break
+        fi
+    done
+fi
+if [[ -z "${PYTHON:-}" ]]; then
+    echo "ERROR: no Python 3.10+ found on PATH (set PYTHON in $ENV_FILE)"
+    exit 1
+fi
+
 # ---------------------------------------------------------------------------
 # Time-window guard: exit silently outside 6 PM – 8 AM (skip with --force)
 # TEMPORARILY DISABLED (dedicated machine during vacation) — re-enable by
@@ -132,7 +150,7 @@ cleanup() {
 # ---------------------------------------------------------------------------
 list_recent_episodes() {
     local n="$1"
-    python3 << PYEOF
+    "$PYTHON" << PYEOF
 import xml.etree.ElementTree as ET
 import urllib.request
 import sys
@@ -198,7 +216,7 @@ PYEOF
 # ---------------------------------------------------------------------------
 fetch_audio_url_for_id() {
     local target_id="$1"
-    python3 << PYEOF
+    "$PYTHON" << PYEOF
 import xml.etree.ElementTree as ET
 import urllib.request
 import sys
@@ -258,7 +276,7 @@ PYEOF
 # Inline Python: parse feed and find new episodes
 # ---------------------------------------------------------------------------
 find_new_episodes() {
-    python3 << 'PYEOF'
+    "$PYTHON" << 'PYEOF'
 import xml.etree.ElementTree as ET
 import urllib.request
 import sys
@@ -397,7 +415,7 @@ if [[ -n "$RETRANSCRIBE_ID" ]]; then
     done
 
     log "Applying name fixes..."
-    python3 "${PROJECT_DIR}/scripts/transcripts/fix_srt_names.py" \
+    "$PYTHON" "${PROJECT_DIR}/scripts/transcripts/fix_srt_names.py" \
         "${WORK_DIR}/srt" \
         -o "${WORK_DIR}/fixed" \
         "${FIX_ARGS[@]}" 2>&1 || {
@@ -415,7 +433,7 @@ if [[ -n "$RETRANSCRIBE_ID" ]]; then
     log "SRT written to mirror."
 
     log "Regenerating manifest.json..."
-    python3 "${PROJECT_DIR}/scripts/transcripts/generate_manifest.py" "$MIRROR_DIR" || {
+    "$PYTHON" "${PROJECT_DIR}/scripts/transcripts/generate_manifest.py" "$MIRROR_DIR" || {
         notify_error "Failed to generate manifest"
         exit 1
     }
@@ -436,7 +454,7 @@ if [[ -n "$RETRANSCRIBE_ID" ]]; then
 
     log "Verifying manifest on server..."
     sleep 3
-    if curl -sf "$MANIFEST_URL" | python3 -c "import json,sys; m=json.load(sys.stdin); print(f'Manifest OK: {len(m[\"files\"])} file(s), version {m[\"version\"]}')" 2>/dev/null; then
+    if curl -sf "$MANIFEST_URL" | "$PYTHON" -c "import json,sys; m=json.load(sys.stdin); print(f'Manifest OK: {len(m[\"files\"])} file(s), version {m[\"version\"]}')" 2>/dev/null; then
         log "Verification passed."
     else
         log "Warning: could not verify manifest. Check manually."
@@ -534,7 +552,7 @@ while IFS=$'\t' read -r EP_ID AUDIO_URL TITLE; do
     done
 
     log "Applying name fixes..."
-    python3 "${PROJECT_DIR}/scripts/transcripts/fix_srt_names.py" \
+    "$PYTHON" "${PROJECT_DIR}/scripts/transcripts/fix_srt_names.py" \
         "${WORK_DIR}/srt" \
         -o "${WORK_DIR}/fixed" \
         "${FIX_ARGS[@]}" 2>&1 || {
@@ -567,7 +585,7 @@ fi
 
 # Step 6: Regenerate manifest
 log "Regenerating manifest.json..."
-python3 "${PROJECT_DIR}/scripts/transcripts/generate_manifest.py" "$MIRROR_DIR" || {
+"$PYTHON" "${PROJECT_DIR}/scripts/transcripts/generate_manifest.py" "$MIRROR_DIR" || {
     notify_error "Failed to generate manifest"
     exit 1
 }
@@ -593,7 +611,7 @@ rm -f "$SFTP_BATCH"
 # Step 8: Verify manifest is live
 log "Verifying manifest on server..."
 sleep 3
-if curl -sf "$MANIFEST_URL" | python3 -c "import json,sys; m=json.load(sys.stdin); print(f'Manifest OK: {len(m[\"files\"])} file(s), version {m[\"version\"]}')" 2>/dev/null; then
+if curl -sf "$MANIFEST_URL" | "$PYTHON" -c "import json,sys; m=json.load(sys.stdin); print(f'Manifest OK: {len(m[\"files\"])} file(s), version {m[\"version\"]}')" 2>/dev/null; then
     log "Verification passed."
 else
     log "Warning: could not verify manifest. Check manually."

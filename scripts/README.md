@@ -488,6 +488,7 @@ cp .env.example .env
 | `CHAPTERS_REMOTE_DIR` | Remote `chapters/v1/` |
 | `ANTHROPIC_API_KEY` | Chapter generation — leave empty to disable it |
 | `CHAPTERS_PYTHON` | Python with `anthropic` and `pydantic` installed |
+| `PYTHON` | Optional. Python 3.10+ for the feed parsing and manifest steps. By default the script picks the first 3.10+ `python3`/`python3.x` on PATH |
 
 `CHAPTERS_PYTHON` matters because **launchd does not inherit your shell**. A
 `python3` that works in Terminal may not be the one the job runs, and a global
