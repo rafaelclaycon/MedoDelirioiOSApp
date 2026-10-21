@@ -14,17 +14,30 @@ extension ContentUpdateStatusView {
         var body: some View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: .spacing(.large)) {
+                        MSTWordmark()
+                        MSTMotto()
+                    }
+                    .mstBanner()
+                    .padding(.bottom, .spacing(.xSmall))
+
                     Text("O que é?")
                         .font(.title2)
                         .bold()
 
-                    Text("O sistema de atualização de conteúdos do app Medo e Delírio baixa e atualiza os dados do app automaticamente quando o seu \(UIDevice.deviceGenericName) está conectado à Internet. O consumo de dados é baixíssimo (na casa dos poucos MBs) e é oferecido sem custo para os usuários.")
+                    Text("O M.S.T. (Medo Sync Technology) é o sistema de atualização de conteúdos do app Medo e Delírio. Ele baixa e atualiza os dados do app automaticamente quando o seu \(UIDevice.deviceGenericName) está conectado à Internet. O consumo de dados é baixíssimo (na casa dos poucos MBs) e é oferecido sem custo para os usuários.")
 
                     Text("Histórico")
                         .font(.title2)
                         .bold()
 
                     Text("Quando o app foi lançado em maio de 2022, os sons eram colocados dentro do pacote do app, tornando obrigatório que o app fosse atualizado para que novos conteúdos chegassem ao público.\n\nA partir de setembro de 2023, com a introdução do sistema de atualização na versão 7, novos sons aparecem automaticamente na lista ao abrir o app.\n\nAcabava assim a obrigação de atualizar o app na App Store para receber novos conteúdos.")
+
+                    Text("Por que M.S.T.?")
+                        .font(.title2)
+                        .bold()
+
+                    Text("É uma homenagem ao Movimento dos Trabalhadores Rurais Sem Terra. Antes do sistema, os sons não tinham chão próprio: dependiam de uma versão nova na App Store para chegar até você. Com o M.S.T., eles ocuparam o caminho direto até o seu \(UIDevice.deviceGenericName).")
 
                     Text("Importância")
                         .font(.title2)
@@ -68,7 +81,7 @@ extension ContentUpdateStatusView {
                 .padding(.vertical)
                 .padding(.horizontal, 30)
             }
-            .navigationTitle("Sobre a atualização de conteúdos")
+            .navigationTitle("Sobre o M.S.T.")
             .onAppear {
                 Task {
                     await AnalyticsService().send(action: "didViewSyncSystemAboutScreen")

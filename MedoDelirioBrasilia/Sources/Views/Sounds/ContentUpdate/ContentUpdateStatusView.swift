@@ -64,23 +64,12 @@ extension ContentUpdateStatusView {
     struct UpdatingView: View {
 
         var body: some View {
-            VStack(spacing: .spacing(.xxLarge)) {
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle())
-                    .scaleEffect(2)
-                    .padding()
-
-                Text("Atualização de conteúdos em andamento...")
-                    .font(.title2)
-                    .bold()
-                    .multilineTextAlignment(.center)
-
-                Text("Por favor, aguarde a atualização ser concluída.")
-                    .font(.callout)
-                    .foregroundColor(.gray)
-                    .multilineTextAlignment(.center)
-            }
-            .padding(.horizontal, .spacing(.large))
+            MSTHeroCard(
+                status: .updating,
+                title: "Atualização de conteúdos em andamento",
+                subtitle: "Por favor, aguarde a atualização ser concluída."
+            )
+            .padding(.horizontal, .spacing(.medium))
         }
     }
 
@@ -112,15 +101,14 @@ extension ContentUpdateStatusView {
 
         var body: some View {
             VStack(spacing: .spacing(.xLarge)) {
-                InfoHeader(
-                    symbol: "checkmark",
-                    color: .green,
+                MSTHeroCard(
+                    status: .done,
                     title: "Conteúdos atualizados",
                     subtitle: lastUpdateText,
-                    showNoActionNeededText: true
+                    footnote: "Nenhuma ação é necessária."
                 )
 
-                GlassButton(title: "Como isso funciona?", color: .primary) {
+                GlassButton(title: "Como o M.S.T. funciona?", color: .mstRed) {
                     selectedDetent = .large
                     displayKnowMore.toggle()
                 }
@@ -170,9 +158,8 @@ extension ContentUpdateStatusView {
 
         var body: some View {
             VStack(spacing: .spacing(.xxLarge)) {
-                InfoHeader(
-                    symbol: "exclamationmark.triangle.fill",
-                    color: .orange,
+                MSTHeroCard(
+                    status: .error,
                     title: title,
                     subtitle: subtitle
                 )
@@ -217,52 +204,6 @@ extension ContentUpdateStatusView {
             }
             .padding(.horizontal)
             .padding(.bottom)
-        }
-    }
-
-    struct InfoHeader: View {
-
-        let symbol: String
-        let color: Color
-        let title: String
-        let subtitle: String
-        var showNoActionNeededText: Bool = false
-
-        @ScaledMetric private var iconWidth: CGFloat = 40
-
-        var body: some View {
-            HStack(spacing: .spacing(.xLarge)) {
-                Image(systemName: symbol)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: iconWidth)
-                    .foregroundStyle(.white)
-                    .bold()
-
-                VStack(alignment: .leading, spacing: .spacing(.medium)) {
-                    Text(title)
-                        .font(.headline)
-                        .multilineTextAlignment(.leading)
-
-                    Text(subtitle.uppercased())
-                        .font(.footnote)
-                        .foregroundColor(.primary.opacity(0.8))
-                        .multilineTextAlignment(.leading)
-
-                    if showNoActionNeededText {
-                        Text("Nenhuma ação é necessária.")
-                            .font(.callout)
-                    }
-                }
-
-                Spacer()
-            }
-            .padding(.leading, .spacing(.large))
-            .padding(.vertical, .spacing(.xxLarge))
-            .background {
-                RoundedRectangle(cornerRadius: .spacing(.large))
-                    .fill(color.opacity(0.6))
-            }
         }
     }
 
@@ -314,18 +255,6 @@ extension ContentUpdateStatusView {
     ScrollView {
         ContentUpdateStatusView.UpdatingView()
     }
-}
-
-#Preview("Done") {
-    VStack {
-        ContentUpdateStatusView.InfoHeader(
-            symbol: "checkmark",
-            color: .green,
-            title: "Conteúdos atualizados",
-            subtitle: "Última atualização há 2 minutos"
-        )
-    }
-    .padding(.horizontal, .spacing(.medium))
 }
 
 //#Preview("Update Error") {

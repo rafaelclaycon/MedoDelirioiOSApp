@@ -27,6 +27,11 @@ public extension Color {
     static let brightGreen = Color(UIColor(red: 0.49, green: 0.84, blue: 0.39, alpha: 1.00))
     static let brightYellow = Color(UIColor(red: 1.00, green: 0.98, blue: 0.36, alpha: 1.00))
     
+    // M.S.T. (Medo Sync Technology), after the MST flag
+    static let mstRed = Color(UIColor(red: 0.86, green: 0.09, blue: 0.12, alpha: 1.00))
+    static let mstDeepRed = Color(UIColor(red: 0.55, green: 0.03, blue: 0.06, alpha: 1.00))
+    static let mstGreen = Color(UIColor(red: 0.00, green: 0.58, blue: 0.27, alpha: 1.00))
+
     // Pastels
     static let pastelPurple = Color(UIColor(red: 0.81, green: 0.76, blue: 0.98, alpha: 1.00))
     static let pastelBabyBlue = Color(UIColor(red: 0.64, green: 0.84, blue: 0.95, alpha: 1.00))
