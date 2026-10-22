@@ -84,6 +84,7 @@ enum NowPlayingActions {
             Button(action: onOpen) {
                 Image(systemName: "magnifyingglass")
             }
+            .accessibilityLabel("Buscar na transcrição")
         }
     }
 

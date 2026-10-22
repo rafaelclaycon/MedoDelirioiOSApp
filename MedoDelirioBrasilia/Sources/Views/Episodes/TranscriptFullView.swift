@@ -7,251 +7,257 @@
 
 import SwiftUI
 
+/// The episode's whole transcript, searchable, opened from Now Playing. Text and search
+/// only: playback pauses on the way in, and tapping a line plays from there.
 struct TranscriptFullView: View {
 
-    @Environment(EpisodePlayer.self) private var player
-    let transcriptProvider: TranscriptProvider
+    /// Where the transcript is shown, which decides where the search field goes.
+    enum Presentation {
+        /// Pushed over Now Playing as its own screen, searching from the navigation bar.
+        case screen
+        /// In the canvas pane of Now Playing's split layout (unfolded iPhone Duo, wide
+        /// iPad or Mac window). The other pane keeps the cover and the transport, and the
+        /// navigation bar spans both panes, crease included, so the search field sits at
+        /// the top of this one instead.
+        case pane(onClose: () -> Void)
+    }
 
-    @State private var searchText: String = ""
-    @State private var isScrubbing: Bool = false
-    @State private var scrubValue: TimeInterval = 0
+    let transcriptProvider: TranscriptProvider
+    /// Held by Now Playing, so the query is still there when search is opened again
+    /// after playing a line.
+    @Binding var searchText: String
+    var presentation: Presentation = .screen
+    let onPlayCue: (SRTCue) -> Void
+    /// The lines matching the query, or nil with no query. Recomputed when the query or
+    /// the cues change rather than in `body`, which also re-runs every time the current
+    /// line advances.
+    @State private var matchingCues: [SRTCue]?
+
+    private static let searchPrompt = "Buscar na transcrição"
+
+    /// Keeps lines to a comfortable length where the screen is wide (unfolded iPhone Duo
+    /// in portrait, iPad).
+    private static let readableWidth: CGFloat = 640
 
     private var allCues: [SRTCue] {
         if case .loaded(let cues) = transcriptProvider.state { return cues }
         return []
     }
 
-    private var filteredCues: [SRTCue] {
-        let query = searchText.trimmingCharacters(in: .whitespaces)
-        guard !query.isEmpty else { return allCues }
-        return allCues.filter { $0.text.localizedCaseInsensitiveContains(query) }
+    private var query: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            cueList
-            Divider()
-            bottomBar
+        Group {
+            switch presentation {
+            case .screen:
+                content
+                    .navigationTitle("Transcrição")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .searchable(
+                        text: $searchText,
+                        placement: .navigationBarDrawer(displayMode: .always),
+                        prompt: Self.searchPrompt
+                    )
+            case .pane(let onClose):
+                VStack(spacing: 0) {
+                    paneSearchBar(onClose: onClose)
+                    content
+                }
+            }
         }
-        .navigationTitle("Transcrição")
-        .navigationBarTitleDisplayMode(.inline)
-        .searchable(
-            text: $searchText,
-            placement: .navigationBarDrawer(displayMode: .always),
-            prompt: "Buscar na transcrição"
-        )
+        .onChange(of: searchText) { updateMatches() }
+        .onChange(of: allCues.count) { updateMatches() }
+        // A query kept from the last time search was open.
+        .onAppear { updateMatches() }
     }
 
-    // MARK: - Cue List
+    private func updateMatches() {
+        let query = query
+        guard !query.isEmpty else {
+            matchingCues = nil
+            return
+        }
+        // Case and accent insensitive: people type "nao" for "não".
+        matchingCues = allCues.filter { $0.text.localizedStandardContains(query) }
+    }
 
-    private var cueList: some View {
-        Group {
-            if allCues.isEmpty {
-                ContentUnavailableView(
-                    "Transcrição indisponível",
-                    systemImage: "text.quote",
-                    description: Text("A transcrição deste episódio não foi carregada.")
-                )
-            } else if filteredCues.isEmpty {
-                ContentUnavailableView.search(text: searchText)
-            } else {
-                List(filteredCues) { cue in
-                    cueRow(cue)
-                        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
-                        .listRowSeparator(.hidden)
+    // MARK: - Content
+
+    @ViewBuilder
+    private var content: some View {
+        if allCues.isEmpty {
+            ContentUnavailableView(
+                "Transcrição indisponível",
+                systemImage: "text.quote",
+                description: Text("A transcrição deste episódio não foi carregada.")
+            )
+            .frame(maxHeight: .infinity)
+        } else if let matchingCues, matchingCues.isEmpty {
+            ContentUnavailableView.search(text: query)
+                .frame(maxHeight: .infinity)
+        } else {
+            cueList(matchingCues ?? allCues)
+        }
+    }
+
+    private func cueList(_ cues: [SRTCue]) -> some View {
+        let currentCueID = transcriptProvider.currentCue?.id
+
+        return ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(cues) { cue in
+                        FullTranscriptLineRow(cue: cue, query: query, isCurrent: cue.id == currentCueID) {
+                            onPlayCue(cue)
+                        }
+                        .id(cue.id)
+                    }
                 }
-                .listStyle(.plain)
+                .frame(maxWidth: Self.readableWidth)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, .spacing(.small))
+                .padding(.vertical, .spacing(.small))
+            }
+            .scrollDismissesKeyboard(.immediately)
+            // Opens on the line being played, and goes back to it when a search is
+            // cleared, rather than at the top of a long episode.
+            .onAppear {
+                scrollToCurrentCue(proxy)
+            }
+            .onChange(of: matchingCues == nil) { _, isShowingAll in
+                if isShowingAll {
+                    scrollToCurrentCue(proxy)
+                }
             }
         }
     }
 
-    private func cueRow(_ cue: SRTCue) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Button {
-                player.seek(to: cue.startTime)
-            } label: {
+    private func scrollToCurrentCue(_ proxy: ScrollViewProxy) {
+        guard let id = transcriptProvider.currentCue?.id else { return }
+        proxy.scrollTo(id, anchor: .center)
+    }
+
+    // MARK: - Pane Search Bar
+
+    private func paneSearchBar(onClose: @escaping () -> Void) -> some View {
+        HStack(spacing: .spacing(.small)) {
+            HStack(spacing: .spacing(.xSmall)) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+
+                TextField(Self.searchPrompt, text: $searchText)
+                    .submitLabel(.search)
+                    .autocorrectionDisabled()
+
+                if !searchText.isEmpty {
+                    Button {
+                        searchText = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.tertiary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Limpar busca")
+                }
+            }
+            .padding(.horizontal, .spacing(.small))
+            .padding(.vertical, .spacing(.xSmall))
+            .background(.quaternary, in: Capsule())
+
+            Button("Fechar", action: onClose)
+                .fontWeight(.semibold)
+        }
+        .frame(maxWidth: Self.readableWidth)
+        .padding(.horizontal, .spacing(.xLarge))
+        .padding(.bottom, .spacing(.xSmall))
+    }
+}
+
+// MARK: - Cue Row
+
+private struct FullTranscriptLineRow: View {
+
+    let cue: SRTCue
+    /// Already trimmed. Empty when not searching.
+    let query: String
+    let isCurrent: Bool
+    let onPlay: () -> Void
+
+    var body: some View {
+        // The whole line is the target: a search result is something to jump to, and the
+        // timestamp alone is too small to aim for. Copying moves to the context menu.
+        Button(action: onPlay) {
+            HStack(alignment: .firstTextBaseline, spacing: .spacing(.medium)) {
                 Text(cue.startTime.asPlaybackTime)
                     .font(.caption)
+                    .monospacedDigit()
                     .foregroundStyle(Color.darkerGreen)
-                    .monospacedDigit()
-                    .frame(width: 48, alignment: .leading)
+                    .frame(width: 52, alignment: .leading)
+
+                Text(highlightedText)
+                    .font(.body)
+                    .fontWeight(isCurrent ? .semibold : .regular)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .buttonStyle(.plain)
-
-            Text(cue.text)
-                .font(.body)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(.vertical, 2)
-    }
-
-    // MARK: - Bottom Bar
-
-    private var bottomBar: some View {
-        VStack(spacing: .spacing(.xSmall)) {
-            scrubberTrack
-                .padding(.horizontal, .spacing(.xLarge))
-
-            HStack {
-                Text((isScrubbing ? scrubValue : player.currentTime).asPlaybackTime)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-
-                Spacer()
-
-                Text("-" + (player.duration - (isScrubbing ? scrubValue : player.currentTime)).asPlaybackTime)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
+            .padding(.vertical, .spacing(.xSmall))
+            .padding(.horizontal, .spacing(.small))
+            .background {
+                if isCurrent {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(.quaternary)
+                }
             }
-            .padding(.horizontal, .spacing(.xLarge))
-
-            playbackControls
-                .padding(.horizontal, .spacing(.xLarge))
-                .padding(.bottom, .spacing(.medium))
-        }
-        .padding(.top, .spacing(.small))
-        .background(.bar)
-    }
-
-    // MARK: - Scrubber
-
-    private static let trackHeight: CGFloat = 4
-    private static let thumbSize: CGFloat = 14
-    private static let trackColor = Color.darkerGreen
-    private static let trackBgColor = Color(.systemGray4)
-
-    private var scrubberTrack: some View {
-        GeometryReader { geometry in
-            let totalDuration = max(player.duration, 1)
-            let currentValue = isScrubbing ? scrubValue : player.currentTime
-            let fraction = CGFloat(currentValue / totalDuration)
-            let thumbX = fraction * geometry.size.width
-
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(Self.trackBgColor)
-                    .frame(height: Self.trackHeight)
-
-                Capsule()
-                    .fill(Self.trackColor)
-                    .frame(width: max(thumbX, 0), height: Self.trackHeight)
-
-                Circle()
-                    .fill(Self.trackColor)
-                    .frame(width: Self.thumbSize, height: Self.thumbSize)
-                    .offset(x: thumbX - Self.thumbSize / 2)
-            }
-            .frame(height: Self.thumbSize)
             .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        if !isScrubbing { isScrubbing = true }
-                        let clamped = min(max(value.location.x, 0), geometry.size.width)
-                        scrubValue = TimeInterval(clamped / geometry.size.width) * totalDuration
-                    }
-                    .onEnded { _ in
-                        isScrubbing = false
-                        player.seek(to: scrubValue)
-                    }
-            )
         }
-        .frame(height: Self.thumbSize)
-    }
-
-    // MARK: - Playback Controls
-
-    private var playbackControls: some View {
-        ZStack {
-            HStack(spacing: .spacing(.xLarge)) {
-                Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    player.skipBackward()
-                } label: {
-                    Image(systemName: "gobackward.15")
-                        .font(.title2)
-                        .fontWeight(.medium)
-                        .padding(.all, .spacing(.xSmall))
-                }
-                .buttonStyle(.plain)
-
-                Button {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    player.togglePlayPause()
-                } label: {
-                    Image(systemName: player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                        .font(.system(size: 52))
-                        .contentTransition(.symbolEffect(.replace.wholeSymbol))
-                }
-                .buttonStyle(.plain)
-
-                Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    player.skipForward()
-                } label: {
-                    Image(systemName: "goforward.30")
-                        .font(.title2)
-                        .fontWeight(.medium)
-                        .padding(.all, .spacing(.xSmall))
-                }
-                .buttonStyle(.plain)
-            }
-
-            HStack {
-                speedButton
-                Spacer()
+        .buttonStyle(.plain)
+        .contextMenu {
+            Button("Copiar", systemImage: "doc.on.doc") {
+                UIPasteboard.general.string = cue.text
             }
         }
-        .foregroundStyle(.primary)
+        .accessibilityHint("Toque para ouvir a partir deste trecho")
     }
 
-    private var speedButton: some View {
-        Menu {
-            ForEach(EpisodePlayer.availableSpeeds, id: \.self) { speed in
-                Button {
-                    player.setSpeed(speed)
-                } label: {
-                    if speed == player.playbackSpeed {
-                        Label(EpisodePlayer.formattedSpeed(speed), systemImage: "checkmark")
-                    } else {
-                        Text(EpisodePlayer.formattedSpeed(speed))
-                    }
-                }
-            }
-        } label: {
-            Text(EpisodePlayer.formattedSpeed(player.playbackSpeed))
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .monospacedDigit()
-                .padding(.vertical, .spacing(.xSmall))
-                .padding(.trailing, .spacing(.small))
+    /// The line with every occurrence of the query picked out. Matches the same way the
+    /// filter does, ignoring case and accents.
+    private var highlightedText: AttributedString {
+        var text = AttributedString(cue.text)
+        guard !query.isEmpty else { return text }
+
+        var searchStart = text.startIndex
+        while let range = text[searchStart...].range(of: query, options: [.caseInsensitive, .diacriticInsensitive]) {
+            text[range].foregroundColor = Color.darkerGreen
+            text[range].inlinePresentationIntent = .stronglyEmphasized
+            searchStart = range.upperBound
         }
-        .foregroundStyle(.primary)
+        return text
     }
-
 }
 
 // MARK: - Preview
 
-#Preview {
-    struct Host: View {
-        let player: EpisodePlayer = {
-            let p = EpisodePlayer()
-            p.currentEpisode = .mockRecent
-            p.duration = PodcastEpisode.mockRecent.duration ?? 3945
-            p.currentTime = 620
-            return p
-        }()
+#Preview("Screen") {
+    @Previewable @State var searchText = ""
 
-        var body: some View {
-            NavigationStack {
-                TranscriptFullView(transcriptProvider: .mockLoaded())
-                    .environment(player)
-            }
-        }
+    NavigationStack {
+        TranscriptFullView(
+            transcriptProvider: .mockLoaded(),
+            searchText: $searchText,
+            onPlayCue: { _ in }
+        )
     }
-    return Host()
+}
+
+#Preview("Pane") {
+    @Previewable @State var searchText = ""
+
+    TranscriptFullView(
+        transcriptProvider: .mockLoaded(),
+        searchText: $searchText,
+        presentation: .pane(onClose: {}),
+        onPlayCue: { _ in }
+    )
 }

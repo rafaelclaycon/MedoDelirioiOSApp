@@ -10,14 +10,11 @@ import Foundation
 enum FeatureFlag: String, CaseIterable {
 
     case snowLeopard = "featureFlag_snowLeopard"
-    case transcriptFullView = "featureFlag_transcriptFullView"
 
     var displayName: String {
         switch self {
         case .snowLeopard:
             return "Snow Leopard"
-        case .transcriptFullView:
-            return "Transcript Full View"
         }
     }
 
@@ -25,8 +22,6 @@ enum FeatureFlag: String, CaseIterable {
         switch self {
         case .snowLeopard:
             return "Destaque de episódio popular na tela de sugestões de busca."
-        case .transcriptFullView:
-            return "Abre a transcrição completa e pesquisável a partir da tela do player."
         }
     }
 

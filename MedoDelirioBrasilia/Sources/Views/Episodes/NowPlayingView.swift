@@ -56,7 +56,12 @@ struct NowPlayingView: View {
     @State private var shareImage: Image?
     @State private var transcriptProvider: TranscriptProvider
     @State private var hasSentTranscriptViewedAnalytics: Bool = false
+    /// The searchable full transcript: pushed as its own screen, or in place of the tabs
+    /// in the split layout's canvas pane.
     @State private var showFullTranscript: Bool = false
+    /// Kept across openings of the full transcript, so going back to search after
+    /// playing a result finds the same query. Cleared when the episode changes.
+    @State private var transcriptSearchText: String = ""
     @State private var chapterProvider = ChapterProvider()
     @AppStorage("nowPlayingCanvasMode") private var currentCanvasMode: CanvasMode = .coverArt
     /// Set from the chapter list's "Ocultar capítulos" action.
@@ -149,6 +154,21 @@ struct NowPlayingView: View {
         return modes
     }
 
+    private var isTranscriptLoaded: Bool {
+        if case .loaded = transcriptProvider.state { return true }
+        return false
+    }
+
+    /// Pushes the full transcript only outside the split layout, where it would cover
+    /// both panes and run its lines across the crease. The split layout shows it in the
+    /// canvas pane instead, beside the cover and transport.
+    private var isShowingTranscriptScreen: Binding<Bool> {
+        Binding(
+            get: { showFullTranscript && !isSplitLayout },
+            set: { showFullTranscript = $0 }
+        )
+    }
+
     /// Canvases that lay out a list from the top rather than centring their content.
     private var canvasIsTopAligned: Bool {
         effectiveCanvasMode == .bookmarks || effectiveCanvasMode == .chapters || effectiveCanvasMode == .details
@@ -161,9 +181,12 @@ struct NowPlayingView: View {
                 .onToolbarVerticalEdgeChange { toolbarVerticalEdge = $0 }
                 .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
-            .navigationDestination(isPresented: $showFullTranscript) {
-                TranscriptFullView(transcriptProvider: transcriptProvider)
-                    .environment(player)
+            .navigationDestination(isPresented: isShowingTranscriptScreen) {
+                TranscriptFullView(
+                    transcriptProvider: transcriptProvider,
+                    searchText: $transcriptSearchText,
+                    onPlayCue: playFromTranscript
+                )
             }
             // The toast is attached inside `layout` (per pane in the split layout), which
             // keeps it before `.toolbar`: its safe-area inset is established inside the
@@ -184,7 +207,8 @@ struct NowPlayingView: View {
                     if chaptersEnabled {
                         chapterProvider.update(currentTime: time)
                     }
-                    if effectiveCanvasMode == .transcription {
+                    // The full transcript marks the line being played too.
+                    if effectiveCanvasMode == .transcription || showFullTranscript {
                         transcriptProvider.update(currentTime: time)
                     }
                 }
@@ -252,6 +276,7 @@ struct NowPlayingView: View {
             shareImage = await LinkShareButton.loadImage(from: player.currentEpisode?.imageURL)
         }
         .onChange(of: player.currentEpisode?.id) {
+            transcriptSearchText = ""
             if transcriptDownloadService.transcriptsDownloaded {
                 transcriptProvider.load(episodeId: player.currentEpisode?.id, pubDate: player.currentEpisode?.pubDate)
             }
@@ -364,14 +389,25 @@ struct NowPlayingView: View {
             }
             .toast(toastBinding(for: .primary))
         } secondary: {
-            VStack(spacing: 0) {
-                toggleRow
-                    .padding(.horizontal, .spacing(.xLarge))
+            Group {
+                if showFullTranscript {
+                    TranscriptFullView(
+                        transcriptProvider: transcriptProvider,
+                        searchText: $transcriptSearchText,
+                        presentation: .pane(onClose: { showFullTranscript = false }),
+                        onPlayCue: playFromTranscript
+                    )
+                } else {
+                    VStack(spacing: 0) {
+                        toggleRow
+                            .padding(.horizontal, .spacing(.xLarge))
 
-                Spacer()
-                    .frame(height: .spacing(.small))
+                        Spacer()
+                            .frame(height: .spacing(.small))
 
-                canvasArea
+                        canvasArea
+                    }
+                }
             }
             .toast(toastBinding(for: .secondary))
         }
@@ -555,9 +591,12 @@ struct NowPlayingView: View {
             NowPlayingActions.Share(episode: player.currentEpisode, image: shareImage)
         }
 
-        if FeatureFlag.isEnabled(.transcriptFullView), !transcriptsDisabled {
+        // Shown whenever transcripts are on hand, and disabled for an episode that has
+        // none yet, so the bar doesn't rearrange itself from one episode to the next.
+        if !transcriptsDisabled, transcriptDownloadService.transcriptsDownloaded {
             ToolbarItem(id: "transcript", placement: .bottomBar) {
-                NowPlayingActions.Transcript(onOpen: { showFullTranscript = true })
+                NowPlayingActions.Transcript(onOpen: openFullTranscript)
+                    .disabled(!isTranscriptLoaded)
             }
         }
     }
@@ -568,6 +607,29 @@ struct NowPlayingView: View {
         guard let episodeId = player.currentEpisode?.id else { return }
         bookmarkStore.addBookmark(episodeId: episodeId, timestamp: player.currentTime)
         showToast(Toast(message: "Marcador Adicionado", type: .success), from: .toolbar)
+    }
+
+    /// Search is for reading, so the episode pauses while it's open. Tapping a line is
+    /// what resumes it.
+    private func openFullTranscript() {
+        if player.isPlaying {
+            player.togglePlayPause()
+        }
+        // The current line is only tracked while the transcript tab is showing, so it
+        // may be stale coming from another tab.
+        transcriptProvider.update(currentTime: player.currentTime)
+        showFullTranscript = true
+        Task { await AnalyticsService().send(originatingScreen: "NowPlaying", action: "didOpenTranscriptSearch") }
+    }
+
+    /// Plays from the tapped line and goes back to Now Playing, where the transport is:
+    /// search has none, so staying would leave the episode playing with no way to pause.
+    private func playFromTranscript(_ cue: SRTCue) {
+        player.seek(to: cue.startTime)
+        if !player.isPlaying {
+            player.togglePlayPause()
+        }
+        showFullTranscript = false
     }
 
     private func startShareClip() {
