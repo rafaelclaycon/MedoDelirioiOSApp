@@ -47,6 +47,9 @@ struct ShareClipView: View {
     @State private var selectionSourceOverride: SelectionSource?
     @State private var startCueIndex: Int?
     @State private var endCueIndex: Int?
+    /// The line playing when the sheet opened, which the transcript list opens on.
+    /// Nothing is selected there until the user taps.
+    @State private var playingCueIndex: Int?
     /// The one transient bottom toast the transcript picker can show at a time —
     /// either an over-limit warning from tap-to-extend, or the chapter-cap
     /// confirmation. They share a slot since both are momentary, self-dismissing
@@ -207,6 +210,13 @@ struct ShareClipView: View {
 
     /// The waveform tab needs its samples loaded; the transcript tab only
     /// needs a picked range — it must not wait on waveform generation.
+    /// False on the transcript tab until a line is picked (and after the selection is
+    /// cleared). There's no clip then, and the waveform's range mustn't stand in for one
+    /// in the preview.
+    private var hasClipSelection: Bool {
+        selectionSource == .waveform || (startCueIndex != nil && endCueIndex != nil)
+    }
+
     private var canProceed: Bool {
         switch selectionSource {
         case .waveform: return !Self.isWaveformSelectionBlocked && loadError == nil && samples != nil
@@ -355,6 +365,7 @@ struct ShareClipView: View {
                 cues: transcriptCues,
                 startIndex: startCueIndex,
                 endIndex: endCueIndex,
+                initialScrollIndex: playingCueIndex,
                 chapterSections: chapterSections,
                 onTap: handleCueTap,
                 onTapChapterHeader: selectChapterSection
@@ -502,17 +513,21 @@ struct ShareClipView: View {
         return index
     }
 
-    /// Pre-picks the single line at the waveform's preselected spot, so the
-    /// transcript tab opens with a starting line already chosen and scrolled
-    /// to. The waveform's own range is untouched.
+    /// Finds the line being played, so the transcript tab opens scrolled to it with
+    /// nothing selected yet. The waveform's own range is untouched.
     ///
-    /// Opened from a chapter, it instead covers the whole preselected range —
+    /// Opened from a chapter, it instead selects the whole preselected range —
     /// `setInitialClipRange()` has already capped it — so the user lands on the
-    /// chapter fully selected rather than on a single line.
+    /// chapter fully selected.
     private func preselectInitialCue() {
+        guard initialChapterSelection != nil else {
+            playingCueIndex = transcriptCues.firstIndex(where: { $0.endTime > player.currentTime })
+                ?? transcriptCues.indices.last
+            return
+        }
         guard let index = transcriptCues.firstIndex(where: { $0.endTime > clipStart }) else { return }
         startCueIndex = index
-        endCueIndex = initialChapterSelection == nil ? index : lastCueIndex(endingBy: clipEnd, notBefore: index)
+        endCueIndex = lastCueIndex(endingBy: clipEnd, notBefore: index)
     }
 
     /// Last cue that still ends within `limit`, never earlier than `start`.
@@ -573,26 +588,31 @@ struct ShareClipView: View {
     }
 
     private var previewControls: some View {
-        VStack(spacing: .spacing(.xSmall)) {
+        let hint = hasClipSelection ? SocialVideoLimit.hint(for: max(activeClipEnd - activeClipStart, 0)) : nil
+
+        return VStack(spacing: .spacing(.xSmall)) {
             previewControlsRow
 
-            if let hint = SocialVideoLimit.hint(for: max(activeClipEnd - activeClipStart, 0)) {
-                HStack(spacing: .spacing(.xSmall)) {
-                    Text(hint)
-                        .multilineTextAlignment(.center)
-                        .animation(.easeInOut(duration: 0.2), value: hint)
+            // Keeps its line even with no hint, so picking the first line doesn't
+            // resize the list above.
+            HStack(spacing: .spacing(.xSmall)) {
+                Text(hint ?? " ")
+                    .multilineTextAlignment(.center)
+                    .animation(.easeInOut(duration: 0.2), value: hint)
 
-                    Button {
-                        showLimitsInfo = true
-                    } label: {
-                        Image(systemName: "info.circle")
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Ver limites de cada rede")
+                Button {
+                    showLimitsInfo = true
+                } label: {
+                    Image(systemName: "info.circle")
                 }
-                .font(.footnote)
-                .foregroundStyle(.gray)
+                .buttonStyle(.plain)
+                .accessibilityLabel("Ver limites de cada rede")
             }
+            .font(.footnote)
+            .foregroundStyle(.gray)
+            .opacity(hint == nil ? 0 : 1)
+            .allowsHitTesting(hint != nil)
+            .accessibilityHidden(hint == nil)
         }
     }
 
@@ -610,27 +630,32 @@ struct ShareClipView: View {
                     .font(.callout.weight(.bold))
                     .foregroundStyle(.white)
                     .frame(width: 32, height: 32)
-                    .background(.orange, in: Circle())
+                    .background(hasClipSelection ? Color.orange : Color.gray.opacity(0.4), in: Circle())
                     .contentTransition(.symbolEffect(.replace))
             }
             .buttonStyle(.plain)
-            .disabled(previewPlayer == nil)
+            .disabled(previewPlayer == nil || !hasClipSelection)
 
-            Label(
-                activeClipStart.asPlaybackTime,
-                systemImage: "scissors"
-            )
+            if hasClipSelection {
+                Label(
+                    activeClipStart.asPlaybackTime,
+                    systemImage: "scissors"
+                )
 
-            Text("–")
+                Text("–")
 
-            Text(activeClipEnd.asPlaybackTime)
+                Text(activeClipEnd.asPlaybackTime)
 
-            Text("·")
+                Text("·")
 
-            Label(
-                (max(activeClipEnd - activeClipStart, 0)).asPlaybackTime,
-                systemImage: "timer"
-            )
+                Label(
+                    (max(activeClipEnd - activeClipStart, 0)).asPlaybackTime,
+                    systemImage: "timer"
+                )
+            } else {
+                Text("Nenhum trecho selecionado")
+                    .foregroundStyle(.gray)
+            }
         }
         .font(.subheadline)
         .monospacedDigit()
@@ -640,7 +665,7 @@ struct ShareClipView: View {
     // MARK: - Preview Playback
 
     private func playPreview() {
-        guard let previewPlayer else { return }
+        guard let previewPlayer, hasClipSelection else { return }
         if player.isPlaying {
             player.togglePlayPause()
         }

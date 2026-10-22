@@ -17,6 +17,8 @@ struct TranscriptCueSelectionList: View {
     let cues: [SRTCue]
     let startIndex: Int?
     let endIndex: Int?
+    /// The line to open on, centred, when nothing is selected yet: the one playing.
+    var initialScrollIndex: Int? = nil
     /// The list split by chapter. The pinned titles mark where chapters change
     /// so users can find the stretch they want, and tapping one selects that
     /// whole chapter. Empty means an unsectioned list.
@@ -84,8 +86,8 @@ struct TranscriptCueSelectionList: View {
                 .animation(.easeInOut(duration: 0.2), value: endIndex)
             }
             .onAppear {
-                guard let startIndex, cues.indices.contains(startIndex) else { return }
-                proxy.scrollTo(cues[startIndex].id, anchor: .center)
+                guard let target = startIndex ?? initialScrollIndex, cues.indices.contains(target) else { return }
+                proxy.scrollTo(cues[target].id, anchor: .center)
             }
         }
     }
