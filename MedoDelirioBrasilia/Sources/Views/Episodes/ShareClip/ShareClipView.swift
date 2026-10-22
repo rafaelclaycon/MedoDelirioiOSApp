@@ -39,7 +39,7 @@ struct ShareClipView: View {
     @State private var transcriptCues: [SRTCue] = []
     @State private var chapters: [EpisodeChapter] = []
     /// Persisted so the sheet always opens on the user's preferred pick mode.
-    @AppStorage("shareClipSelectionSource") private var storedSelectionSource: SelectionSource = .waveform
+    @AppStorage("shareClipSelectionSource") private var storedSelectionSource: SelectionSource = .transcript
     @AppStorage(TranscriptPreferences.disabledKey) private var transcriptsDisabled: Bool = false
     /// Forces the transcript tab for a chapter-launched presentation without
     /// touching the stored preference — arriving here from a chapter shouldn't
@@ -65,6 +65,12 @@ struct ShareClipView: View {
         case waveform
         case transcript
     }
+
+    /// Picking the clip on the waveform is broken, and attempts to fix it haven't held up.
+    /// While this is on, its tab only explains that, the sheet always opens on the
+    /// transcript, and the waveform isn't generated at all. Turning it off brings the
+    /// waveform back as it was.
+    private static let isWaveformSelectionBlocked = true
 
     private enum TranscriptToast {
         /// A tap-to-extend would have pushed the range past the cap, so it was
@@ -98,7 +104,11 @@ struct ShareClipView: View {
                 selectionSourceHeader
 
                 if selectionSource == .waveform {
-                    waveformPane
+                    if Self.isWaveformSelectionBlocked {
+                        waveformBlockedNotice
+                    } else {
+                        waveformPane
+                    }
                 } else {
                     transcriptPane
                 }
@@ -130,6 +140,10 @@ struct ShareClipView: View {
             }
         }
         .task {
+            // A waveform pick left from before it was blocked would open on the notice.
+            if Self.isWaveformSelectionBlocked, storedSelectionSource == .waveform {
+                storedSelectionSource = .transcript
+            }
             // Clip range and transcript preselection are ready before the
             // (slower) waveform generation, so the user can switch to the
             // Transcrição tab as soon as the sheet opens.
@@ -141,7 +155,7 @@ struct ShareClipView: View {
             if let initialChapterSelection, chapterFullyFitsCap(initialChapterSelection) {
                 flashToast(.chapterFullySelected)
             }
-            await loadWaveform()
+            await loadAudio()
         }
         .onChange(of: clipStart) { resetPreviewToActiveStart() }
         .onChange(of: clipEnd) { resetPreviewToActiveStart() }
@@ -195,7 +209,7 @@ struct ShareClipView: View {
     /// needs a picked range — it must not wait on waveform generation.
     private var canProceed: Bool {
         switch selectionSource {
-        case .waveform: return loadError == nil && samples != nil
+        case .waveform: return !Self.isWaveformSelectionBlocked && loadError == nil && samples != nil
         case .transcript: return startCueIndex != nil && endCueIndex != nil
         }
     }
@@ -219,8 +233,8 @@ struct ShareClipView: View {
                 .foregroundStyle(.gray)
 
             Picker("Selecionar trecho usando", selection: selectionSourceBinding) {
-                Text("Forma de Onda").tag(SelectionSource.waveform)
                 Text("Transcrição").tag(SelectionSource.transcript)
+                Text("Forma de Onda").tag(SelectionSource.waveform)
             }
             .pickerStyle(.segmented)
         }
@@ -244,6 +258,34 @@ struct ShareClipView: View {
             }
             .padding(.horizontal, .spacing(.xLarge))
             .padding(.vertical, .spacing(.large))
+        }
+    }
+
+    /// Stands in for the waveform while it's blocked (`isWaveformSelectionBlocked`).
+    private var waveformBlockedNotice: some View {
+        ScrollView {
+            VStack(spacing: .spacing(.large)) {
+                ContentUnavailableView {
+                    Label("Forma de onda indisponível", systemImage: "waveform.badge.exclamationmark")
+                } description: {
+                    Text("Estamos investigando um problema com a seleção pela forma de onda. Se encontrarmos uma solução, ela volta em breve.\n\nEnquanto isso, você pode escolher o trecho pela transcrição.")
+                }
+
+                // Outside the content view's own actions slot, which keeps buttons to
+                // their intrinsic width.
+                Button {
+                    selectionSourceBinding.wrappedValue = .transcript
+                } label: {
+                    Text("Usar Transcrição")
+                        .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.glassProminent)
+                .controlSize(.large)
+                .tint(.orange)
+                .padding(.horizontal, .spacing(.xLarge))
+            }
+            .padding(.top, .spacing(.xxLarge))
         }
     }
 
@@ -490,6 +532,9 @@ struct ShareClipView: View {
     /// "Próximo" disabled and no obvious reason why. The waveform tab, already
     /// positioned on the chapter by `setInitialClipRange()`, is the safe landing
     /// spot whenever the transcript side comes up empty.
+    ///
+    /// While the waveform is blocked the transcript is the default tab anyway, so this
+    /// changes nothing then.
     private func applyChapterTabOverride() {
         guard initialChapterSelection != nil, startCueIndex != nil, endCueIndex != nil else { return }
         selectionSourceOverride = .transcript
@@ -675,19 +720,25 @@ struct ShareClipView: View {
         return end <= selection.start + WaveformView.maxClipLength
     }
 
-    private func loadWaveform() async {
+    /// Sets up the preview player both tabs use, then generates the waveform unless it's
+    /// blocked. The player no longer waits for the waveform: the transcript tab's preview
+    /// doesn't need it.
+    private func loadAudio() async {
         let fileURL = EpisodePlayer.localFileURL(for: episode)
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
             loadError = "Episódio não baixado."
             return
         }
+
+        previewCurrentTime = activeClipStart
+        previewPlayer = try? AVAudioPlayer(contentsOf: fileURL)
+        previewPlayer?.prepareToPlay()
+
+        guard !Self.isWaveformSelectionBlocked else { return }
+
         do {
             let barCount = min(2000, max(200, Int(player.duration * 0.4)))
-            let bars = try await AudioWaveformGenerator.generate(from: fileURL, barCount: barCount)
-            samples = bars
-            previewCurrentTime = clipStart
-            previewPlayer = try? AVAudioPlayer(contentsOf: fileURL)
-            previewPlayer?.prepareToPlay()
+            samples = try await AudioWaveformGenerator.generate(from: fileURL, barCount: barCount)
         } catch {
             loadError = error.localizedDescription
         }
