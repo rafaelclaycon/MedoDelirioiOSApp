@@ -38,6 +38,17 @@ struct TranscriptCueSelectionList: View {
         sections.first { $0.title != nil }?.id
     }
 
+    /// The widest timestamp this episode can show, which sets the timestamp column's
+    /// width so every line's text starts at the same place.
+    private var timestampTemplate: String {
+        TranscriptTimestamp.template(for: cues.last?.startTime ?? 0)
+    }
+
+    /// The list's side margin. With `TranscriptSelectionRow.horizontalInset` it puts the
+    /// checkboxes in line with the instructions above the list, at the sheet's usual
+    /// 24 pt, rather than further in.
+    fileprivate static let horizontalInset: CGFloat = .spacing(.medium)
+
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
@@ -45,7 +56,12 @@ struct TranscriptCueSelectionList: View {
                     ForEach(sections) { section in
                         Section {
                             ForEach(section.cueIndices, id: \.self) { index in
-                                TranscriptSelectionRow(text: cues[index].text, role: role(for: index))
+                                TranscriptSelectionRow(
+                                    text: cues[index].text,
+                                    startTime: cues[index].startTime,
+                                    timestampTemplate: timestampTemplate,
+                                    role: role(for: index)
+                                )
                                     .contentShape(Rectangle())
                                     .onTapGesture { onTap(index) }
                                     .id(cues[index].id)
@@ -54,6 +70,7 @@ struct TranscriptCueSelectionList: View {
                             if section.title != nil {
                                 ChapterSeparator(
                                     section: section,
+                                    timestampTemplate: timestampTemplate,
                                     onTap: onTapChapterHeader,
                                     showsTip: section.id == firstTitledSectionID
                                 )
@@ -61,7 +78,7 @@ struct TranscriptCueSelectionList: View {
                         }
                     }
                 }
-                .padding(.horizontal, .spacing(.xLarge))
+                .padding(.horizontal, Self.horizontalInset)
                 .padding(.vertical, .spacing(.medium))
                 .animation(.easeInOut(duration: 0.2), value: startIndex)
                 .animation(.easeInOut(duration: 0.2), value: endIndex)
@@ -105,6 +122,7 @@ struct TranscriptChapterSection: Identifiable {
 private struct ChapterSeparator: View {
 
     let section: TranscriptChapterSection
+    let timestampTemplate: String
     let onTap: (TranscriptChapterSection) -> Void
     var showsTip: Bool = false
 
@@ -114,7 +132,11 @@ private struct ChapterSeparator: View {
         Button {
             onTap(section)
         } label: {
-            HStack {
+            HStack(spacing: .spacing(.small)) {
+                // Holds the timestamp column's width, so the title lines up with the
+                // cue text rather than with the times.
+                TranscriptTimestamp(time: nil, template: timestampTemplate)
+
                 Text(section.title ?? "")
                     .font(.caption2)
                     .fontWeight(.semibold)
@@ -128,7 +150,7 @@ private struct ChapterSeparator: View {
             // reads as a label for the lines under it.
             .padding(.leading, TranscriptSelectionRow.gutterWidth + .spacing(.medium))
             .padding(.vertical, .spacing(.xSmall))
-            .padding(.horizontal, .spacing(.small))
+            .padding(.horizontal, TranscriptSelectionRow.horizontalInset)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -137,7 +159,7 @@ private struct ChapterSeparator: View {
             // opaque — and has to bleed past the list's own horizontal
             // padding, or lines would show through in the side margins.
             Color(.systemBackground)
-                .padding(.horizontal, -.spacing(.xLarge))
+                .padding(.horizontal, -TranscriptCueSelectionList.horizontalInset)
         }
         .accessibilityAddTraits(.isHeader)
         .accessibilityHint("Toque para selecionar este capítulo inteiro")
@@ -151,6 +173,8 @@ private struct ChapterSeparator: View {
 struct TranscriptSelectionRow: View {
 
     let text: String
+    let startTime: TimeInterval
+    let timestampTemplate: String
     let role: Role
 
     enum Role {
@@ -167,6 +191,8 @@ struct TranscriptSelectionRow: View {
 
     /// Shared with `ChapterSeparator` so its title lines up with the cue text.
     fileprivate static let gutterWidth: CGFloat = 28
+    /// Inside the selection wash, on each side. Shared with `ChapterSeparator`.
+    fileprivate static let horizontalInset: CGFloat = .spacing(.xSmall)
     private static let lineWidth: CGFloat = 2
     private static let cornerRadius: CGFloat = 12
 
@@ -175,12 +201,17 @@ struct TranscriptSelectionRow: View {
             gutter
                 .frame(width: Self.gutterWidth)
 
-            Text(text)
-                .font(.footnote)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, .spacing(.xSmall))
+            // Centred like the checkbox, so a multi-line cue reads as one row.
+            HStack(spacing: .spacing(.small)) {
+                TranscriptTimestamp(time: startTime, template: timestampTemplate)
+
+                Text(text)
+                    .font(.footnote)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.vertical, .spacing(.xSmall))
         }
-        .padding(.horizontal, .spacing(.small))
+        .padding(.horizontal, Self.horizontalInset)
         .background { selectionBackground }
     }
 
@@ -264,6 +295,37 @@ struct TranscriptSelectionRow: View {
             )
             .fill(Color.blue.opacity(0.12))
         }
+    }
+}
+
+// MARK: - Timestamp
+
+/// A line's start time, in a column as wide as `template`. The template is laid out
+/// hidden underneath, so the width follows Dynamic Type instead of being a fixed number.
+private struct TranscriptTimestamp: View {
+
+    /// Nil draws only the empty column, for a header that lines up with the text.
+    let time: TimeInterval?
+    let template: String
+
+    /// Digits are monospaced, so zeros stand in for any time of the same shape.
+    static func template(for longestTime: TimeInterval) -> String {
+        longestTime >= 3600 ? "0:00:00" : "00:00"
+    }
+
+    var body: some View {
+        ZStack(alignment: .leading) {
+            Text(template)
+                .hidden()
+
+            if let time {
+                Text(time.asPlaybackTime)
+            }
+        }
+        .font(.caption)
+        .monospacedDigit()
+        .foregroundStyle(.secondary)
+        .accessibilityHidden(true)
     }
 }
 

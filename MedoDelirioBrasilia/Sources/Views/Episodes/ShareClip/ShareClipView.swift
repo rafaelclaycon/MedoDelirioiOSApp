@@ -368,7 +368,7 @@ struct ShareClipView: View {
             }
 
             previewControls
-                .padding(.vertical, .spacing(.medium))
+                .padding(.vertical, .spacing(.small))
         }
     }
 
@@ -605,10 +605,11 @@ struct ShareClipView: View {
                     playPreview()
                 }
             } label: {
+                // Kept compact so the line list above gets the height.
                 Image(systemName: isPreviewPlaying ? "pause.fill" : "play.fill")
-                    .font(.title)
+                    .font(.callout.weight(.bold))
                     .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
+                    .frame(width: 32, height: 32)
                     .background(.orange, in: Circle())
                     .contentTransition(.symbolEffect(.replace))
             }
