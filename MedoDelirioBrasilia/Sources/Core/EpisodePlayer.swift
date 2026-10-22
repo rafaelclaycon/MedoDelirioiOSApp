@@ -594,11 +594,18 @@ final class EpisodePlayer {
         }
     }
 
+    /// The position is taken right away; the bookmark is added once its title is read
+    /// from the transcript, which here means parsing the file, off the main actor.
     @MainActor
     private func handleRemoteBookmark() {
         guard let episode = currentEpisode else { return }
-        bookmarkStore?.addBookmark(episodeId: episode.id, timestamp: currentPlaybackTime())
-        pendingRemoteBookmark = true
+        let timestamp = currentPlaybackTime()
+        Task { @MainActor [weak self] in
+            let title = await BookmarkTitleSuggester.title(episodeId: episode.id, at: timestamp)
+            guard let self else { return }
+            bookmarkStore?.addBookmark(episodeId: episode.id, timestamp: timestamp, title: title)
+            pendingRemoteBookmark = true
+        }
     }
 
     // MARK: - Audio Session Observers

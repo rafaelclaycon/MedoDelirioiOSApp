@@ -605,7 +605,14 @@ struct NowPlayingView: View {
 
     private func addBookmark() {
         guard let episodeId = player.currentEpisode?.id else { return }
-        bookmarkStore.addBookmark(episodeId: episodeId, timestamp: player.currentTime)
+        let timestamp = player.currentTime
+        // Named after what was being said. The transcript is already loaded here, for
+        // the episode playing, whenever there is one.
+        var title: String?
+        if case .loaded(let cues) = transcriptProvider.state {
+            title = BookmarkTitleSuggester.title(from: cues, at: timestamp)
+        }
+        bookmarkStore.addBookmark(episodeId: episodeId, timestamp: timestamp, title: title)
         showToast(Toast(message: "Marcador Adicionado", type: .success), from: .toolbar)
     }
 

@@ -35,9 +35,10 @@ final class EpisodeBookmarkStore {
         return loaded
     }
 
+    /// - Parameter title: usually what was being said, from `BookmarkTitleSuggester`.
     @discardableResult
-    func addBookmark(episodeId: String, timestamp: TimeInterval) -> EpisodeBookmark {
-        let bookmark = EpisodeBookmark(episodeId: episodeId, timestamp: timestamp)
+    func addBookmark(episodeId: String, timestamp: TimeInterval, title: String? = nil) -> EpisodeBookmark {
+        let bookmark = EpisodeBookmark(episodeId: episodeId, timestamp: timestamp, title: title)
         try? database.insertBookmark(bookmark)
 
         var list = bookmarksByEpisode[episodeId] ?? []

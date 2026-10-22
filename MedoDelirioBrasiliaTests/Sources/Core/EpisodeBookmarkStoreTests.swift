@@ -40,6 +40,21 @@ struct EpisodeBookmarkStoreTests {
     }
 
     @Test
+    func addBookmark_withTitle_shouldPersistTitle() {
+        sut.addBookmark(episodeId: "ep-1", timestamp: 120, title: "Deixa cada um se fuder!")
+
+        #expect(fakeDatabase.bookmarks[0].title == "Deixa cada um se fuder!")
+        #expect(sut.bookmarks(for: "ep-1").first?.title == "Deixa cada um se fuder!")
+    }
+
+    @Test
+    func addBookmark_withoutTitle_shouldLeaveItUntitled() {
+        sut.addBookmark(episodeId: "ep-1", timestamp: 120)
+
+        #expect(fakeDatabase.bookmarks[0].title == nil)
+    }
+
+    @Test
     func addBookmark_shouldUpdateInMemoryCache() {
         sut.addBookmark(episodeId: "ep-1", timestamp: 120)
 
