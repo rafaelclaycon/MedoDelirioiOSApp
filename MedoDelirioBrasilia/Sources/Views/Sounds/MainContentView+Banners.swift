@@ -15,7 +15,6 @@ extension MainContentView {
         @Binding var toast: Toast?
 
         @State private var dynamicBanner: DynamicBannerData?
-        @State private var promoBanner: PromoBannerData?
         @State private var showElectionLiveBanner: Bool = false
         @State private var officialResultsURL = ElectionLiveInfo.defaultOfficialResultsURL
         @State private var showAnniversaryBanner: Bool = false
@@ -27,12 +26,6 @@ extension MainContentView {
             VStack {
                 if showElectionLiveBanner {
                     ElectionLiveBannerView(toast: $toast, officialResultsURL: officialResultsURL)
-                        .padding(.top, .spacing(.xxxSmall))
-                        .padding(.bottom, .spacing(.xSmall))
-                }
-
-                if let promoBanner {
-                    PromoBanner(bannerData: promoBanner)
                         .padding(.top, .spacing(.xxxSmall))
                         .padding(.bottom, .spacing(.xSmall))
                 }
@@ -67,9 +60,6 @@ extension MainContentView {
             .onAppear {
                 Task{
                     dynamicBanner = await bannerRepository.dynamicBanner()
-                }
-                Task{
-                    promoBanner = await bannerRepository.promoBanner()
                 }
                 Task{
                     showAnniversaryBanner = await bannerRepository.showAnniversaryBanner()
