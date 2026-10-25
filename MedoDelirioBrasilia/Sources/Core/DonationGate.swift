@@ -8,8 +8,8 @@
 import Foundation
 
 /// Whether the app may ask for donations right now. Every ask goes through here: the
-/// Settings section, the support sheets after an episode, a clip or the election
-/// results, the chapters button and the games card.
+/// Settings section, the Dynamic Banner on Vírgulas, the support sheets after an
+/// episode, a clip or the election results, the chapters button and the games card.
 ///
 /// App Review frowns on donations in an app with digital content, so asks stay hidden
 /// unless the server says this isn't the version being reviewed (it answers with the

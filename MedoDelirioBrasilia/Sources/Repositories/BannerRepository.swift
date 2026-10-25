@@ -28,13 +28,9 @@ final class BannerRepository: BannerRepositoryProtocol {
         self.currentAppVersion = currentAppVersion
     }
 
+    /// Whether it shows is up to `DonationGate`, like every other ask.
     func dynamicBanner() async -> DynamicBannerData? {
         do {
-            let url = URL(string: apiClient.serverPath + "v4/dynamic-banner-dont-show-version")!
-            guard let blockedVersion = try await apiClient.getString(from: url) else {
-                return nil
-            }
-            guard currentAppVersion != blockedVersion else { return nil }
             let dataUrl = URL(string: apiClient.serverPath + "v4/dynamic-banner")!
             return try await apiClient.get(from: dataUrl)
         } catch {

@@ -46,7 +46,8 @@ extension MainContentView {
                         .padding(.bottom, .spacing(.xSmall))
                 }
 
-                if let dynamicBanner {
+                // Read in the body, so the banner follows the gate when it reopens or closes.
+                if DonationGate.shared.isAllowed, let dynamicBanner {
                     DynamicBanner(
                         bannerData: dynamicBanner,
                         textCopyFeedback: { message in
