@@ -69,46 +69,6 @@ final class FakeAppPersistentMemory: AppPersistentMemoryProtocol {
         //
     }
 
-    func hasSeenUniversalSearchWhatsNewScreen() -> Bool {
-        return false
-    }
-
-    func hasSeenUniversalSearchWhatsNewScreen(_ newValue: Bool) {
-        //
-    }
-
-    func hasSeenTranscriptsWhatsNewScreen() -> Bool {
-        return false
-    }
-
-    func hasSeenTranscriptsWhatsNewScreen(_ newValue: Bool) {
-        //
-    }
-
-    func hasSeenShareClipWhatsNewScreen() -> Bool {
-        return false
-    }
-
-    func hasSeenShareClipWhatsNewScreen(_ newValue: Bool) {
-        //
-    }
-
-    func hasSeenElectionLiveWhatsNewScreen() -> Bool {
-        return false
-    }
-
-    func hasSeenElectionLiveWhatsNewScreen(_ newValue: Bool) {
-        //
-    }
-
-    func hasSeenContinueListeningWhatsNewScreen() -> Bool {
-        return false
-    }
-
-    func hasSeenContinueListeningWhatsNewScreen(_ newValue: Bool) {
-        //
-    }
-
     func saveRecentSearches(_ searchTerms: [String]) {
         internalRecentSearches = searchTerms
     }

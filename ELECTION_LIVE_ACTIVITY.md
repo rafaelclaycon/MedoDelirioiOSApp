@@ -277,7 +277,7 @@ Commits de 24 e 25/09: `c2e03f5b` (Live Activity e flag), `f67997c1` (banner), `
 
 Para a próxima versão, depois da 13. Enquanto a Live Activity é a espiada, esta tela é onde a pessoa vai para ver o resto.
 
-- **Como se chega:** pelo link `medodelirio://apuracao` (`DeepLink.electionResults`), que abre uma sheet no `MainView`. Tocar na Live Activity (`widgetURL` na Tela Bloqueada e na Dynamic Island) e o botão "Ver Resultados" do banner usam esse link. Se ele chegar com a tela de novidades aberta, os resultados abrem quando ela fechar (duas sheets não trocam no mesmo instante).
+- **Como se chega:** pelo link `medodelirio://apuracao` (`DeepLink.electionResults`), que abre uma sheet no `MainView`. Tocar na Live Activity (`widgetURL` na Tela Bloqueada e na Dynamic Island) e o botão "Ver Resultados" do banner usam esse link.
 - **Topo verde**, no estilo da Live Activity: "PRESIDENTE · 1º TURNO · AO VIVO" com o ponto vermelho (ou "RESULTADO"), o totalizado grande, a barra amarela, "X de Y seções", o horário com a fonte e a frase final.
 - **Para o 2º turno (versão seguinte à 13.3):** o topo verde virou um frente a frente dos dois primeiros, com o líder à esquerda (foto, porcentagem, nome, partido, votos e selo "ELEITO"/"2º TURNO"), uma barra dividida entre os dois com uma marca nos 50%, e o totalizado discreto embaixo. A lista de todos os candidatos saiu.
 - **Brancos, nulos e abstenção** (`details.turnout`, servidor a partir do commit que lê `e.te`, `e.c`, `e.a`, `v.tv`, `v.vb` e `v.tvn` do arquivo do TSE): três cartões no lugar da lista. Brancos e nulos sobre o total de votos, abstenção sobre o eleitorado, nas seções já apuradas. Sem o bloco (servidor antigo, campo estranho no arquivo), a seção não aparece.
@@ -292,15 +292,10 @@ Para a próxima versão, depois da 13. Enquanto a Live Activity é a espiada, es
 - **Sem o `details` no servidor** (antes do deploy do `472b4a7`), a tela mostra só o topo, sem a lista.
 - **Analytics:** a partir da versão seguinte à 13.2, iniciar e parar a Live Activity por aqui manda os mesmos eventos do banner (`election_live_activity_started` e `_stopped`), com `originatingScreen` `ElectionResults`. Os endpoints de analytics contam as duas origens. Na 13.1 e na 13.2 a tela não manda eventos.
 
-#### Tela de novidades (`Sources/Views/Onboarding/WhatsNew/IntroducingElectionLiveView.swift`)
+#### Tela de novidades (removida na 13.8)
 
-- Aparece uma vez, depois do onboarding, antes das telas de Clipes e Transcrições. **Não aparece a partir de 26/10.**
-- **Header:** as fotos do Lula e do Flávio se chocam e voltam; a cada choque, um anel amarelo explode no ponto de contato e o "% TOTALIZADO" e a barra andam um passo, até 100% e recomeçar. Com Reduzir Movimento, fica parado.
-- **Fundo do header:** mini teclados de urna (1 a 9, 0 embaixo do 8, BRANCO, CORRIGE e CONFIRMA nas cores reais, ponto de braille em cada tecla), poucos, grandes e apagados, sumindo atrás das fotos e do título. Menores ou mais densos viram ruído.
-- **Itens:** Na Tela Bloqueada; Dados Oficiais do TSE; a data. Até a 13.2, "4 de Outubro, às 17h de Brasília"; a partir da versão seguinte, "2º Turno: 25 de Outubro, às 17h" (Lula e Flávio Bolsonaro).
-- **Botão:** a tecla CONFIRMA da urna (face verde sobre um degrau mais escuro, "CONFIRMA" em fonte monoespaçada, o texto em braille embaixo). Afunda ao apertar, com vibração forte e o "piririm" da urna (`Resources/ElectionStuff/urna_confirma.caf`, tocado como som de sistema: respeita a chave de silencioso e não interrompe outros áudios).
-- As fotos do Lula e do Flávio também estão no catálogo do app (`ElectionCandidate13` e `22`), porque o app não enxerga o catálogo do widget.
-- **Dev Options:** "Reexibir Election Live What's New" e "Resetar Election Live What's New" (vale na próxima abertura do app).
+- Anunciava a Live Activity uma vez, depois do onboarding, e deixou de aparecer em 26/10. Tinha as fotos do Lula e do Flávio se chocando no header e a tecla CONFIRMA da urna como botão, com o "piririm" da urna. Saiu do código na 13.8, junto com o som (`urna_confirma.caf`), que só ela tocava. Para ver como era, o último commit com ela é o `1ed48335`.
+- **Fundo de mini teclados de urna:** continua na imagem de compartilhamento dos resultados, agora em `Sources/Views/Election/ElectionKeypadPatternView.swift`. São 1 a 9, 0 embaixo do 8, BRANCO, CORRIGE e CONFIRMA nas cores reais, ponto de braille em cada tecla, poucos, grandes e apagados. Menores ou mais densos viram ruído.
 
 ### Também na versão 13 (fora da eleição)
 

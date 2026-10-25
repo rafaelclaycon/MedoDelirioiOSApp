@@ -337,12 +337,12 @@ struct FourthAnniversaryView: View {
                 )
             )
 
-            IntroducingUniversalSearchView.StarsView(colorScheme: colorScheme)
+            StarsView(colorScheme: colorScheme)
 
             VStack(spacing: 16) {
                 ZStack {
                     ForEach(Array(flyingSymbols.enumerated()), id: \.offset) { _, item in
-                        IntroducingUniversalSearchView.FlyingSymbolView(
+                        FlyingSymbolView(
                             symbol: item.symbol,
                             angle: item.angle,
                             delay: item.delay

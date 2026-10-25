@@ -18,10 +18,6 @@ struct SettingsView: View {
 
     @State private var showAskForMoneyView: Bool = false
     @State private var showOnboardingPreview: Bool = false
-    @State private var showTranscriptsWhatsNewPreview: Bool = false
-    @State private var showShareClipWhatsNewPreview: Bool = false
-    @State private var showElectionLiveWhatsNewPreview: Bool = false
-    @State private var showContinueListeningWhatsNewPreview: Bool = false
     @State private var toast: Toast?
     @State private var donors: [Donor]? = nil
     /// Written from the chapter list's "Ocultar capítulos" action; this is the
@@ -32,7 +28,6 @@ struct SettingsView: View {
     // MARK: - Environment
 
     @Environment(SettingsHelper.self) private var helper
-    @Environment(TranscriptDownloadService.self) private var transcriptDownloadService
     @Environment(\.dismiss) var dismiss
 
     // MARK: - Initializer
@@ -241,19 +236,6 @@ struct SettingsView: View {
             .sheet(isPresented: $showOnboardingPreview) {
                 OnboardingView()
             }
-            .sheet(isPresented: $showTranscriptsWhatsNewPreview) {
-                IntroducingTranscriptsView(appMemory: AppPersistentMemory.shared)
-                    .environment(transcriptDownloadService)
-            }
-            .sheet(isPresented: $showShareClipWhatsNewPreview) {
-                IntroducingShareClipView(appMemory: AppPersistentMemory.shared)
-            }
-            .sheet(isPresented: $showElectionLiveWhatsNewPreview) {
-                IntroducingElectionLiveView(appMemory: AppPersistentMemory.shared)
-            }
-            .sheet(isPresented: $showContinueListeningWhatsNewPreview) {
-                IntroducingContinueListeningView(appMemory: AppPersistentMemory.shared)
-            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     CloseButton {
@@ -275,13 +257,7 @@ struct SettingsView: View {
                     ChangeAppIconView()
 
                 case .devOptions:
-                    DevOptionsView(
-                        showOnboardingPreview: $showOnboardingPreview,
-                        showTranscriptsWhatsNewPreview: $showTranscriptsWhatsNewPreview,
-                        showShareClipWhatsNewPreview: $showShareClipWhatsNewPreview,
-                        showElectionLiveWhatsNewPreview: $showElectionLiveWhatsNewPreview,
-                        showContinueListeningWhatsNewPreview: $showContinueListeningWhatsNewPreview
-                    )
+                    DevOptionsView(showOnboardingPreview: $showOnboardingPreview)
 
                 case .diagnostics:
                     DiagnosticsView(
@@ -343,10 +319,6 @@ enum SettingsDestination: Hashable {
 struct DevOptionsView: View {
 
     @Binding var showOnboardingPreview: Bool
-    @Binding var showTranscriptsWhatsNewPreview: Bool
-    @Binding var showShareClipWhatsNewPreview: Bool
-    @Binding var showElectionLiveWhatsNewPreview: Bool
-    @Binding var showContinueListeningWhatsNewPreview: Bool
 
     @Environment(EpisodePopularityStore.self) private var popularityStore
 
@@ -354,8 +326,6 @@ struct DevOptionsView: View {
     @AppStorage("devMockShareClipGeneration") private var mockShareClipGeneration: Bool = false
     @State private var supportSheetPreviewContext: StandaloneSupportView.Context?
     @State private var showTipsResetConfirmation: Bool = false
-    @State private var showElectionLiveWhatsNewResetConfirmation: Bool = false
-    @State private var showContinueListeningWhatsNewResetConfirmation: Bool = false
     @State private var showElectionResults: Bool = false
     @State private var isGeneratingReactionsExport: Bool = false
     @State private var reactionsExportURL: URL?
@@ -371,22 +341,6 @@ struct DevOptionsView: View {
                     showOnboardingPreview = true
                 }
 
-                Button("Reexibir Transcripts What's New") {
-                    showTranscriptsWhatsNewPreview = true
-                }
-
-                Button("Reexibir ShareClip What's New") {
-                    showShareClipWhatsNewPreview = true
-                }
-
-                Button("Reexibir Election Live What's New") {
-                    showElectionLiveWhatsNewPreview = true
-                }
-
-                Button("Reexibir Continue Listening What's New (13.4)") {
-                    showContinueListeningWhatsNewPreview = true
-                }
-
                 NavigationLink("Vídeo da Apuração ao Vivo para Stories") {
                     ElectionStoriesVideoView()
                 }
@@ -395,16 +349,6 @@ struct DevOptionsView: View {
                 // or a made-up final result, picked in its toolbar.
                 Button("Exibir Tela de Resultados da Apuração") {
                     showElectionResults = true
-                }
-
-                Button("Resetar Election Live What's New") {
-                    AppPersistentMemory.shared.hasSeenElectionLiveWhatsNewScreen(false)
-                    showElectionLiveWhatsNewResetConfirmation = true
-                }
-
-                Button("Resetar Continue Listening What's New (13.4)") {
-                    AppPersistentMemory.shared.hasSeenContinueListeningWhatsNewScreen(false)
-                    showContinueListeningWhatsNewResetConfirmation = true
                 }
 
                 Menu("Exibir Tela de Apoio") {
@@ -485,18 +429,6 @@ struct DevOptionsView: View {
         }
         .sheet(isPresented: $showElectionResults) {
             ElectionResultsView(showsDemoPicker: true)
-        }
-        .alert("Continue Listening What's New resetado", isPresented: $showContinueListeningWhatsNewResetConfirmation) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            // Same launch-time check as the election one, which takes precedence until 25/10.
-            Text("Feche o app completamente e abra de novo. Ela só aparece se você já ouviu algum episódio e se a tela da eleição não aparecer nessa abertura.")
-        }
-        .alert("Election Live What's New resetado", isPresented: $showElectionLiveWhatsNewResetConfirmation) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            // MainView only checks on appear, and the screen is never shown after the 2nd round.
-            Text("Feche o app completamente e abra de novo para ver a tela outra vez. Depois de 25/10, ela não aparece mais.")
         }
         .alert("Tips resetados", isPresented: $showTipsResetConfirmation) {
             Button("OK", role: .cancel) {}

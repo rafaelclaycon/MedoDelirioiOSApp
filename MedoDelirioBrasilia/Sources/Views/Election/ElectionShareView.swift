@@ -198,10 +198,10 @@ struct ElectionShareCard: View {
         switch theme {
         case nil:
             gradient(ElectionResultsPalette.header, ElectionResultsPalette.body)
-            IntroducingElectionLiveView.KeypadPatternView()
+            ElectionKeypadPatternView()
         case .celebration:
             gradient(ElectionResultsPalette.celebrationTop, ElectionResultsPalette.celebrationBottom)
-            IntroducingElectionLiveView.KeypadPatternView()
+            ElectionKeypadPatternView()
         case .comfort:
             gradient(ElectionResultsPalette.nightTop, ElectionResultsPalette.nightBottom)
             ElectionNightSkyView(isStill: true, guidingStarPosition: guidingStarPosition)

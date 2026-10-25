@@ -27,21 +27,6 @@ protocol AppPersistentMemoryProtocol {
     func hasSeenVersion9WhatsNewScreen() -> Bool
     func hasSeenVersion9WhatsNewScreen(_ newValue: Bool)
 
-    func hasSeenUniversalSearchWhatsNewScreen() -> Bool
-    func hasSeenUniversalSearchWhatsNewScreen(_ newValue: Bool)
-
-    func hasSeenTranscriptsWhatsNewScreen() -> Bool
-    func hasSeenTranscriptsWhatsNewScreen(_ newValue: Bool)
-
-    func hasSeenShareClipWhatsNewScreen() -> Bool
-    func hasSeenShareClipWhatsNewScreen(_ newValue: Bool)
-
-    func hasSeenElectionLiveWhatsNewScreen() -> Bool
-    func hasSeenElectionLiveWhatsNewScreen(_ newValue: Bool)
-
-    func hasSeenContinueListeningWhatsNewScreen() -> Bool
-    func hasSeenContinueListeningWhatsNewScreen(_ newValue: Bool)
-
     var customInstallId: String { get }
 
     func saveRecentSearches(_ searchTerms: [String])
@@ -263,35 +248,6 @@ extension AppPersistentMemory {
         return Bool(value as! Bool)
     }
 
-    func hasSeenUniversalSearchWhatsNewScreen() -> Bool {
-        guard let value = userDefaults.object(forKey: "hasSeenUniversalSearchWhatsNewScreen") else {
-            return false
-        }
-        return Bool(value as! Bool)
-    }
-
-    func hasSeenTranscriptsWhatsNewScreen() -> Bool {
-        guard let value = userDefaults.object(forKey: "hasSeenTranscriptsWhatsNewScreen") else {
-            return false
-        }
-        return Bool(value as! Bool)
-    }
-
-    func hasSeenShareClipWhatsNewScreen() -> Bool {
-        guard let value = userDefaults.object(forKey: "hasSeenShareClipWhatsNewScreen") else {
-            return false
-        }
-        return Bool(value as! Bool)
-    }
-
-    func hasSeenElectionLiveWhatsNewScreen() -> Bool {
-        userDefaults.bool(forKey: "hasSeenElectionLiveWhatsNewScreen")
-    }
-
-    func hasSeenContinueListeningWhatsNewScreen() -> Bool {
-        userDefaults.bool(forKey: "hasSeenContinueListeningWhatsNewScreen")
-    }
-
     func recentSearches() -> [String]? {
         guard let value = userDefaults.stringArray(forKey: "recentSearches") else {
             return nil
@@ -473,26 +429,6 @@ extension AppPersistentMemory {
 
     func hasSeenVersion9WhatsNewScreen(_ newValue: Bool) {
         userDefaults.set(newValue, forKey: "hasSeenVersion9WhatsNewScreen")
-    }
-
-    func hasSeenUniversalSearchWhatsNewScreen(_ newValue: Bool) {
-        userDefaults.set(newValue, forKey: "hasSeenUniversalSearchWhatsNewScreen")
-    }
-
-    func hasSeenTranscriptsWhatsNewScreen(_ newValue: Bool) {
-        userDefaults.set(newValue, forKey: "hasSeenTranscriptsWhatsNewScreen")
-    }
-
-    func hasSeenShareClipWhatsNewScreen(_ newValue: Bool) {
-        userDefaults.set(newValue, forKey: "hasSeenShareClipWhatsNewScreen")
-    }
-
-    func hasSeenElectionLiveWhatsNewScreen(_ newValue: Bool) {
-        userDefaults.set(newValue, forKey: "hasSeenElectionLiveWhatsNewScreen")
-    }
-
-    func hasSeenContinueListeningWhatsNewScreen(_ newValue: Bool) {
-        userDefaults.set(newValue, forKey: "hasSeenContinueListeningWhatsNewScreen")
     }
 
     func saveRecentSearches(_ searchTerms: [String]) {

@@ -44,12 +44,7 @@ struct MainView: View {
 
     @State private var subviewToOpen: MainViewModalToOpen = .onboarding
     @State private var showingModalView: Bool = false
-    @State private var showElectionLiveWhatsNew: Bool = false
-    @State private var showContinueListeningWhatsNew: Bool = false
     @State private var showElectionResults: Bool = false
-    /// A sheet can't open while another one is leaving, so a results link that arrives
-    /// during the election What's New waits for it to close.
-    @State private var openElectionResultsAfterWhatsNew: Bool = false
 
     // iPad
     @State private var sidebarSelection: SidebarTab = .sounds
@@ -371,12 +366,6 @@ struct MainView: View {
             sendUserPersonalTrendsToServerIfEnabled()
             sendPlayLogsToServerIfEnabled()
             displayOnboardingIfNeeded()
-            // The election takes the launch slot until after the 2nd round, so the 13.4
-            // screen waits for a launch where it doesn't show. The Share Clip and
-            // Transcripts ones are off; Dev Options can still show them.
-            if !displayElectionLiveWhatsNewIfNeeded() {
-                displayContinueListeningWhatsNewIfNeeded()
-            }
 
             Task {
 //                if AppPersistentMemory.shared.hasAllowedContentUpdate() {
@@ -476,21 +465,6 @@ struct MainView: View {
         }
         .sheet(isPresented: $showElectionResults) {
             ElectionResultsView()
-        }
-        .sheet(isPresented: $showElectionLiveWhatsNew, onDismiss: {
-            AppPersistentMemory.shared.hasSeenElectionLiveWhatsNewScreen(true)
-            if openElectionResultsAfterWhatsNew {
-                openElectionResultsAfterWhatsNew = false
-                showElectionResults = true
-            }
-        }) {
-            IntroducingElectionLiveView(appMemory: AppPersistentMemory.shared)
-        }
-        // Swiping it away counts as seen too.
-        .sheet(isPresented: $showContinueListeningWhatsNew, onDismiss: {
-            AppPersistentMemory.shared.hasSeenContinueListeningWhatsNewScreen(true)
-        }) {
-            IntroducingContinueListeningView(appMemory: AppPersistentMemory.shared)
         }
         .sheetOrFullScreenCover(isPresented: $showNowPlaying, fullScreen: presentsNowPlayingFullScreen) {
             NowPlayingView(isFullScreen: presentsNowPlayingFullScreen)
@@ -893,12 +867,7 @@ struct MainView: View {
             }
 
         case .electionResults:
-            if showElectionLiveWhatsNew {
-                openElectionResultsAfterWhatsNew = true
-                showElectionLiveWhatsNew = false
-            } else {
-                showElectionResults = true
-            }
+            showElectionResults = true
         }
     }
 
@@ -1062,30 +1031,6 @@ struct MainView: View {
             subviewToOpen = .onboarding
             showingModalView = true
         }
-    }
-
-    @discardableResult
-    private func displayElectionLiveWhatsNewIfNeeded() -> Bool {
-        guard AppPersistentMemory.shared.hasShownNotificationsOnboarding() else { return false }
-        guard !AppPersistentMemory.shared.hasSeenElectionLiveWhatsNewScreen() else { return false }
-        guard Date.now < IntroducingElectionLiveView.lastDayToShow else { return false }
-
-        showElectionLiveWhatsNew = true
-        return true
-    }
-
-    /// Only for people who've listened to an episode: Handoff, the Mac app and episode
-    /// sync mean nothing to someone who only plays Vírgulas.
-    private func displayContinueListeningWhatsNewIfNeeded() {
-        guard AppPersistentMemory.shared.hasShownNotificationsOnboarding() else { return }
-        guard !AppPersistentMemory.shared.hasSeenContinueListeningWhatsNewScreen() else { return }
-
-        let hasListenedToEpisodes = !episodeListenStore.allListenDates().isEmpty
-            || !episodeProgressStore.entries.isEmpty
-            || !episodePlayedStore.playedIDs.isEmpty
-        guard hasListenedToEpisodes else { return }
-
-        showContinueListeningWhatsNew = true
     }
 
     private func sendFolderResearchChanges() async {
