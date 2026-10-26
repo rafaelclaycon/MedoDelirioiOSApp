@@ -59,39 +59,32 @@ extension LocalDatabase {
     // Seu Mês and the Retrospectiva. Sounds a person tapped: songs aren't Vírgulas, and
     // autoplay would let a folder played back to back take over the ranking.
 
-    func topSoundsPlayedByTheUser(in interval: DateInterval, limit: Int) throws -> [TopChartItem] {
+    /// Every tapped sound play in the range, oldest first, for Seu Mês to slice by week.
+    func soundPlayEvents(in interval: DateInterval) throws -> [PersonalSoundEvent] {
         let soundId = Expression<String>("id")
         let soundTitle = Expression<String>("title")
         let authorIdOnSounds = Expression<String>("authorId")
 
         let authorId = Expression<String>("id")
         let authorName = Expression<String>("name")
+        let authorPhoto = Expression<String?>("photo")
 
-        let playCount = playContentIdCol.count
         return try db.prepare(
             tappedSoundPlays(in: interval)
                 .join(soundTable, on: userPlayLogTable[playContentIdCol] == soundTable[soundId])
                 .join(author, on: soundTable[authorIdOnSounds] == author[authorId])
-                .select(userPlayLogTable[playContentIdCol], soundTable[soundTitle], soundTable[authorId], author[authorName], playCount)
-                .group(userPlayLogTable[playContentIdCol])
-                .order(playCount.desc)
-                .limit(limit)
+                .select(userPlayLogTable[playContentIdCol], soundTable[soundTitle], author[authorId], author[authorName], author[authorPhoto], userPlayLogTable[playDateTimeCol])
+                .order(userPlayLogTable[playDateTimeCol].asc)
         ).map { row in
-            TopChartItem(
-                id: "",
-                rankNumber: "",
+            PersonalSoundEvent(
                 contentId: row[userPlayLogTable[playContentIdCol]],
                 contentName: row[soundTable[soundTitle]],
-                contentAuthorId: row[soundTable[authorId]],
-                contentAuthorName: row[author[authorName]],
-                shareCount: row[playCount]
+                authorId: row[author[authorId]],
+                authorName: row[author[authorName]],
+                authorPhoto: row[author[authorPhoto]],
+                date: row[userPlayLogTable[playDateTimeCol]]
             )
         }
-    }
-
-    func playDates(in interval: DateInterval) throws -> [Date] {
-        try db.prepare(tappedSoundPlays(in: interval).select(userPlayLogTable[playDateTimeCol]))
-            .map { $0[userPlayLogTable[playDateTimeCol]] }
     }
 
     private func tappedSoundPlays(in interval: DateInterval) -> Table {

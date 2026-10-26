@@ -8,12 +8,18 @@
 import SwiftUI
 import Kingfisher
 
-/// A month at the moment someone taps "Compartilhar", with who they are, so the picture
-/// doesn't change while they pick a format.
+/// What gets shared from Seu Mês: a whole month, or one card of its feed.
+enum MonthlyShareContent {
+    case month(MonthlyStats)
+    case highlight(MonthlyHighlight)
+}
+
+/// The content at the moment someone taps "Compartilhar", with who they are, so the
+/// picture doesn't change while they pick a format.
 struct MonthlyStatsShareSnapshot: Identifiable {
 
     let id = UUID()
-    let stats: MonthlyStats
+    let content: MonthlyShareContent
     let nickname: String?
     /// The profile photo's URL; the picture is loaded by the share screen.
     let avatarPhoto: String?
@@ -21,23 +27,52 @@ struct MonthlyStatsShareSnapshot: Identifiable {
     var customPhoto: Data? = nil
 
     @MainActor
-    init(stats: MonthlyStats, profile: ProfileStore) {
-        self.stats = stats
+    init(content: MonthlyShareContent, profile: ProfileStore) {
+        self.content = content
         self.nickname = profile.nickname
         self.avatarPhoto = profile.avatarAuthorID.flatMap { try? LocalDatabase.shared.author(withId: $0)?.photo }
         self.customPhoto = profile.customPhoto
     }
 
-    init(stats: MonthlyStats, nickname: String?, avatarPhoto: String?) {
-        self.stats = stats
+    init(content: MonthlyShareContent, nickname: String?, avatarPhoto: String?) {
+        self.content = content
         self.nickname = nickname
         self.avatarPhoto = avatarPhoto
     }
 
-    /// "Meu Setembro no Medo e Delírio", or "Meu Outubro até agora no Medo e Delírio".
+    /// "Meu Setembro no Medo e Delírio", "Meu Outubro até agora no Medo e Delírio", or a
+    /// highlight's headline.
     var shareTitle: String {
-        let month = stats.isInProgress ? "\(stats.month.name) até agora" : stats.month.name
-        return "Meu \(month) no Medo e Delírio"
+        switch content {
+        case .month(let stats):
+            let month = stats.isInProgress ? "\(stats.month.name) até agora" : stats.month.name
+            return "Meu \(month) no Medo e Delírio"
+        case .highlight(let highlight):
+            return highlight.headline
+        }
+    }
+
+    /// For analytics: "month(2026-9)" or "highlight(authorShare)".
+    var analyticsName: String {
+        switch content {
+        case .month(let stats): "month(\(stats.month.id))"
+        case .highlight(let highlight): "highlight(\(highlight.kind.rawValue))"
+        }
+    }
+
+    /// The pictures the card needs downloaded before it can be drawn.
+    var artworkURLs: [URL] {
+        guard case .highlight(let highlight) = content else { return [] }
+        switch highlight.artwork {
+        case .author(let photo), .sound(let photo):
+            return photo.flatMap(URL.init(string:)).map { [$0] } ?? []
+        case .episode(let url):
+            return url.map { [$0] } ?? []
+        case .episodes(let urls):
+            return urls.prefix(4).compactMap { $0 }
+        case .symbol:
+            return []
+        }
     }
 }
 
@@ -51,6 +86,7 @@ struct MonthlyStatsShareView: View {
 
     @State private var format: ShareImageFormat = .stories
     @State private var avatar: UIImage?
+    @State private var artwork: [URL: UIImage] = [:]
     @State private var shareItem: ImageShareItemSource?
     @State private var isRendering = false
 
@@ -59,13 +95,20 @@ struct MonthlyStatsShareView: View {
     }
 
     private var card: MonthlyStatsShareCard {
-        MonthlyStatsShareCard(snapshot: snapshot, format: format, avatar: avatar)
+        MonthlyStatsShareCard(snapshot: snapshot, format: format, avatar: avatar, artwork: artwork)
+    }
+
+    private var explanation: String {
+        switch snapshot.content {
+        case .month: "Uma imagem com o resumo do seu mês, pra postar nos Stories ou mandar pros amigos."
+        case .highlight: "Uma imagem com este destaque, pra postar nos Stories ou mandar pros amigos."
+        }
     }
 
     var body: some View {
         NavigationStack {
             VStack(spacing: .spacing(.large)) {
-                Text("Uma imagem com o resumo do seu mês, pra postar nos Stories ou mandar pros amigos.")
+                Text(explanation)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -126,7 +169,7 @@ struct MonthlyStatsShareView: View {
                 .disabled(isPreparingShare)
             }
             .padding(.spacing(.large))
-            .navigationTitle("Compartilhar Meu Mês")
+            .navigationTitle(snapshot.content.isMonth ? "Compartilhar Meu Mês" : "Compartilhar Destaque")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -141,15 +184,18 @@ struct MonthlyStatsShareView: View {
                 Task {
                     await AnalyticsService().send(
                         originatingScreen: "MonthlyStatsShareView",
-                        action: "didShareMonthlyStats(\(snapshot.stats.month.id), format: \(format.rawValue), to: \(destination))"
+                        action: "didShareMonthlyStats(\(snapshot.analyticsName), format: \(format.rawValue), to: \(destination))"
                     )
                 }
                 dismiss()
             }
-            // `ImageRenderer` draws what's on hand, so the photo is fetched (usually from
-            // the cache) before the picture can include it.
+            // `ImageRenderer` draws what's on hand, so the photos are fetched (usually from
+            // the cache) before the picture can include them.
             .task {
                 await loadAvatar()
+            }
+            .task {
+                await loadArtwork()
             }
         }
     }
@@ -161,6 +207,22 @@ struct MonthlyStatsShareView: View {
         }
         guard let photo = snapshot.avatarPhoto, let url = URL(string: photo) else { return }
         avatar = try? await KingfisherManager.shared.retrieveImage(with: url).image
+    }
+
+    private func loadArtwork() async {
+        for url in snapshot.artworkURLs {
+            if let image = try? await KingfisherManager.shared.retrieveImage(with: url).image {
+                artwork[url] = image
+            }
+        }
+    }
+}
+
+private extension MonthlyShareContent {
+
+    var isMonth: Bool {
+        if case .month = self { return true }
+        return false
     }
 }
 
@@ -174,6 +236,7 @@ struct MonthlyStatsShareCard: View {
     let snapshot: MonthlyStatsShareSnapshot
     let format: ShareImageFormat
     let avatar: UIImage?
+    var artwork: [URL: UIImage] = [:]
 
     @MainActor
     func render() -> UIImage? {
@@ -182,7 +245,11 @@ struct MonthlyStatsShareCard: View {
         return renderer.uiImage
     }
 
-    private var stats: MonthlyStats { snapshot.stats }
+    /// Only read by the month's layouts.
+    private var stats: MonthlyStats {
+        if case .month(let stats) = snapshot.content { return stats }
+        preconditionFailure("A highlight has no month layout")
+    }
 
     private var hasPlayer: Bool {
         avatar != nil || snapshot.nickname != nil
@@ -192,9 +259,9 @@ struct MonthlyStatsShareCard: View {
     /// shows those instead.
     private var topSounds: (title: String, items: [TopChartItem]) {
         if !stats.topSharedSounds.isEmpty {
-            return ("Minhas mais compartilhadas", stats.topSharedSounds)
+            return ("Minhas mais compartilhadas", Array(stats.topSharedSounds.prefix(3)))
         }
-        return ("Minhas mais tocadas", stats.topPlayedSounds)
+        return ("Minhas mais tocadas", Array(stats.topPlayedSounds.prefix(3)))
     }
 
     /// Up to three numbers, the most telling first. Days in the app fill in for a month
@@ -229,9 +296,11 @@ struct MonthlyStatsShareCard: View {
                 endRadius: 260
             )
 
-            switch format {
-            case .square: square
-            case .stories: stories
+            switch (snapshot.content, format) {
+            case (.month, .square): square
+            case (.month, .stories): stories
+            case (.highlight(let highlight), .square): highlightSquare(highlight)
+            case (.highlight(let highlight), .stories): highlightStories(highlight)
             }
         }
         .foregroundStyle(.white)
@@ -246,7 +315,7 @@ struct MonthlyStatsShareCard: View {
     /// left evenly, whatever the month has in it.
     private var stories: some View {
         VStack(spacing: 0) {
-            pill
+            pill()
 
             Spacer(minLength: 10)
 
@@ -333,11 +402,185 @@ struct MonthlyStatsShareCard: View {
         .padding(.vertical, 20)
     }
 
+    // MARK: - Highlight Layouts
+
+    /// The feed card as a poster: the week, the big picture, the headline and the sentence.
+    private func highlightStories(_ highlight: MonthlyHighlight) -> some View {
+        VStack(spacing: 0) {
+            pill(highlight.dateLabel)
+
+            Spacer(minLength: 16)
+
+            // Shrinks before the text does when the sentence runs long, and takes its full
+            // size ahead of the spaces when there's room.
+            artworkImage(highlight.artwork)
+                .aspectRatio(1, contentMode: .fit)
+                .frame(maxWidth: 230, maxHeight: 230)
+                .shadow(color: .black.opacity(0.35), radius: 16, y: 8)
+                .layoutPriority(1)
+
+            Spacer(minLength: 16)
+
+            VStack(spacing: 10) {
+                Text(highlight.headline)
+                    .font(.system(size: 30, weight: .heavy, design: .rounded))
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.7)
+
+                Text(highlight.detailText(nameColor: .brightYellow))
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .lineLimit(4)
+                    .minimumScaleFactor(0.8)
+            }
+            .multilineTextAlignment(.center)
+            // The flexible spaces around would otherwise squeeze the headline to one line.
+            .fixedSize(horizontal: false, vertical: true)
+
+            if hasPlayer {
+                player(avatarSize: 32, nameSize: 15)
+                    .padding(.top, 16)
+            }
+
+            Spacer(minLength: 16)
+
+            HStack(alignment: .center, spacing: 12) {
+                Image("podcast_logo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: 36)
+
+                Spacer(minLength: 0)
+
+                Text("Veja o seu no app Medo e Delírio iOS")
+                    .font(.system(size: 12, weight: .medium))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .foregroundStyle(.white.opacity(0.8))
+            }
+        }
+        .padding(.horizontal, 28)
+        .padding(.vertical, ShareImageFormat.storiesSafeVerticalPadding)
+    }
+
+    /// Picture on the left, words on the right: a square has no room to stack them.
+    private func highlightSquare(_ highlight: MonthlyHighlight) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(highlight.dateLabel.uppercased())
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(.white.opacity(0.7))
+
+            Spacer(minLength: 8)
+
+            HStack(alignment: .center, spacing: 16) {
+                artworkImage(highlight.artwork)
+                    .frame(width: 120, height: 120)
+                    .shadow(color: .black.opacity(0.3), radius: 10, y: 5)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(highlight.headline)
+                        .font(.system(size: 22, weight: .heavy, design: .rounded))
+                        .lineLimit(3)
+                        .minimumScaleFactor(0.7)
+
+                    Text(highlight.detailText(nameColor: .brightYellow))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.85))
+                        .lineLimit(5)
+                        .minimumScaleFactor(0.8)
+                }
+            }
+
+            Spacer(minLength: 8)
+
+            HStack(spacing: 8) {
+                Image("IconePadrao")
+                    .resizable()
+                    .frame(width: 24, height: 24)
+                    .clipShape(.rect(cornerRadius: 6))
+                Text("Medo e Delírio iOS")
+                    .font(.system(size: 12, weight: .bold))
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+                if hasPlayer {
+                    player(avatarSize: 22, nameSize: 12)
+                }
+            }
+        }
+        .padding(.horizontal, 22)
+        .padding(.vertical, 20)
+    }
+
+    /// The highlight's picture from what the share screen downloaded. `SeuMesArtwork`
+    /// can't be used: a picture is drawn in one pass, with no time to download.
+    @ViewBuilder
+    private func artworkImage(_ artwork: MonthlyHighlight.Artwork) -> some View {
+        switch artwork {
+        case .author(let photo):
+            loadedImage(photo.flatMap(URL.init(string:)), placeholder: "person.fill")
+                .clipShape(Circle())
+                .overlay(Circle().strokeBorder(.white.opacity(0.9), lineWidth: 3))
+
+        case .sound(let photo):
+            loadedImage(photo.flatMap(URL.init(string:)), placeholder: "waveform")
+                .clipShape(.rect(cornerRadius: 8))
+
+        case .episode(let url):
+            loadedImage(url, placeholder: "headphones")
+                .clipShape(.rect(cornerRadius: 8))
+
+        case .episodes(let urls):
+            let columns = [GridItem(.flexible(), spacing: 4), GridItem(.flexible(), spacing: 4)]
+            LazyVGrid(columns: columns, spacing: 4) {
+                ForEach(Array(urls.prefix(4).enumerated()), id: \.offset) { _, url in
+                    loadedImage(url, placeholder: "headphones")
+                        .clipShape(.rect(cornerRadius: 6))
+                }
+            }
+
+        case .symbol(let name):
+            ZStack {
+                LinearGradient(
+                    colors: [Color(red: 0.16, green: 0.10, blue: 0.42), Color(red: 0.42, green: 0.22, blue: 0.70)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                Image(systemName: name)
+                    .resizable()
+                    .scaledToFit()
+                    .padding(36)
+                    .foregroundStyle(.white.opacity(0.9))
+            }
+            .clipShape(.rect(cornerRadius: 8))
+        }
+    }
+
+    private func loadedImage(_ url: URL?, placeholder: String) -> some View {
+        Color.white.opacity(0.12)
+            .overlay {
+                if let url, let image = artwork[url] {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    GeometryReader { proxy in
+                        Image(systemName: placeholder)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: proxy.size.width * 0.35, height: proxy.size.width * 0.35)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .foregroundStyle(.white.opacity(0.4))
+                    }
+                }
+            }
+            .clipped()
+    }
+
     // MARK: - Blocks
 
-    /// What this is in a faint outline, without competing with the month's name.
-    private var pill: some View {
-        Text("Meu mês no Medo e Delírio")
+    /// What this is in a faint outline, without competing with what's under it.
+    private func pill(_ text: String = "Meu mês no Medo e Delírio") -> some View {
+        Text(text)
             .font(.system(size: 14, weight: .semibold, design: .rounded))
             .lineLimit(1)
             .padding(.horizontal, 16)
@@ -411,7 +654,7 @@ struct MonthlyStatsShareCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func episodeBlock(_ episode: MonthlyStats.TopEpisode) -> some View {
+    private func episodeBlock(_ episode: MonthlyStats.RankedEpisode) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("EPISÓDIO DO MÊS")
                 .font(.system(size: 13, weight: .bold))
@@ -458,38 +701,58 @@ private let previewStats = MonthlyStats(
     month: StatsMonth(year: 2026, month: 9),
     isInProgress: false,
     shareCount: 47,
-    uniqueSoundsShared: 21,
+    playCount: 112,
+    secondsListened: 12_000,
+    episodesFinished: 3,
+    activeDays: 14,
     topSharedSounds: [
         TopChartItem(id: "1", rankNumber: "1", contentId: "a", contentName: "Uma Vírgula de exemplo", contentAuthorId: "x", contentAuthorName: "Autor de Exemplo", shareCount: 9),
         TopChartItem(id: "2", rankNumber: "2", contentId: "b", contentName: "Outra Vírgula", contentAuthorId: "y", contentAuthorName: "Outro Autor", shareCount: 6),
         TopChartItem(id: "3", rankNumber: "3", contentId: "c", contentName: "Uma Vírgula com um título bem comprido para testar", contentAuthorId: "z", contentAuthorName: "Terceiro Autor", shareCount: 4)
     ],
-    topAuthor: nil,
-    playCount: 112,
     topPlayedSounds: [],
-    secondsListened: 12_000,
-    topEpisode: MonthlyStats.TopEpisode(title: "Um episódio de exemplo com um título comprido que ocupa duas linhas", secondsListened: 5_400),
-    episodesFinished: 3,
-    activeDays: 14
+    topAuthors: [],
+    topEpisodes: [
+        MonthlyStats.RankedEpisode(id: "e", title: "Um episódio de exemplo com um título comprido que ocupa duas linhas", imageURL: nil, secondsListened: 5_400)
+    ],
+    highlights: []
+)
+
+private let previewHighlight = MonthlyHighlight(
+    kind: .authorShare,
+    week: DateInterval(start: .now, duration: 7 * 86_400),
+    headline: "40% dos seus compartilhamentos",
+    detail: "Nesta semana, 6 das Vírgulas que você compartilhou foram de Autor de Exemplo.",
+    emphasized: ["Autor de Exemplo"],
+    artwork: .author(photo: nil),
+    dateLabel: "12 a 18 de out. de 2026"
 )
 
 #Preview("Share Screen") {
     MonthlyStatsShareView(
-        snapshot: MonthlyStatsShareSnapshot(stats: previewStats, nickname: "Rafa", avatarPhoto: nil)
+        snapshot: MonthlyStatsShareSnapshot(content: .month(previewStats), nickname: "Rafa", avatarPhoto: nil)
     )
 }
 
 #Preview("Stories Card") {
     MonthlyStatsShareCard(
-        snapshot: MonthlyStatsShareSnapshot(stats: previewStats, nickname: "Rafa", avatarPhoto: nil),
+        snapshot: MonthlyStatsShareSnapshot(content: .month(previewStats), nickname: "Rafa", avatarPhoto: nil),
         format: .stories,
         avatar: nil
     )
 }
 
-#Preview("Square Card") {
+#Preview("Highlight, Stories") {
     MonthlyStatsShareCard(
-        snapshot: MonthlyStatsShareSnapshot(stats: previewStats, nickname: nil, avatarPhoto: nil),
+        snapshot: MonthlyStatsShareSnapshot(content: .highlight(previewHighlight), nickname: "Rafa", avatarPhoto: nil),
+        format: .stories,
+        avatar: nil
+    )
+}
+
+#Preview("Highlight, Square") {
+    MonthlyStatsShareCard(
+        snapshot: MonthlyStatsShareSnapshot(content: .highlight(previewHighlight), nickname: nil, avatarPhoto: nil),
         format: .square,
         avatar: nil
     )

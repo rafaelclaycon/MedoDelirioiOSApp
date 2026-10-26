@@ -47,8 +47,8 @@ class FakeLocalDatabase: LocalDatabaseProtocol {
     var topSharedSounds: [TopChartItem] = []
     var topSharedAuthor: TopAuthorItem?
     var shareDates: [Date] = []
-    var topPlayedSounds: [TopChartItem] = []
-    var playDates: [Date] = []
+    var shareEvents: [PersonalSoundEvent] = []
+    var playEvents: [PersonalSoundEvent] = []
     var numberOfTimesInsertUpdateEventWasCalled = 0
 
     var sounds = [Sound]()
@@ -311,8 +311,9 @@ class FakeLocalDatabase: LocalDatabaseProtocol {
         return topSharedSounds
     }
 
-    // Personal stats in a date range. Shares and plays are kept as dates; the rankings
-    // come back for any range that has at least one of them.
+    // Personal stats in a date range. For the Retrospectiva's totals, shares are kept as
+    // dates and the rankings come back for any range with one of them; Seu Mês reads the
+    // events.
 
     func topSoundsSharedByTheUser(in interval: DateInterval, limit: Int) throws -> [TopChartItem] {
         try shareDates(in: interval).isEmpty ? [] : Array(topSharedSounds.prefix(limit))
@@ -330,12 +331,12 @@ class FakeLocalDatabase: LocalDatabaseProtocol {
         ((try? shareDates(in: interval)) ?? []).isEmpty ? 0 : topSharedSounds.count
     }
 
-    func topSoundsPlayedByTheUser(in interval: DateInterval, limit: Int) throws -> [TopChartItem] {
-        try playDates(in: interval).isEmpty ? [] : Array(topPlayedSounds.prefix(limit))
+    func soundShareEvents(in interval: DateInterval) throws -> [PersonalSoundEvent] {
+        shareEvents.filter { $0.date >= interval.start && $0.date < interval.end }
     }
 
-    func playDates(in interval: DateInterval) throws -> [Date] {
-        playDates.filter { $0 >= interval.start && $0 < interval.end }
+    func soundPlayEvents(in interval: DateInterval) throws -> [PersonalSoundEvent] {
+        playEvents.filter { $0.date >= interval.start && $0.date < interval.end }
     }
 
     // Pinned Reactions

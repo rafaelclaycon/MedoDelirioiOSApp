@@ -83,8 +83,8 @@ internal protocol LocalDatabaseProtocol {
     func topAuthorSharedByTheUser(in interval: DateInterval) throws -> TopAuthorItem?
     func shareDates(in interval: DateInterval) throws -> [Date]
     func sharedSoundsCount(in interval: DateInterval) -> Int
-    func topSoundsPlayedByTheUser(in interval: DateInterval, limit: Int) throws -> [TopChartItem]
-    func playDates(in interval: DateInterval) throws -> [Date]
+    func soundShareEvents(in interval: DateInterval) throws -> [PersonalSoundEvent]
+    func soundPlayEvents(in interval: DateInterval) throws -> [PersonalSoundEvent]
 
     // Pinned Reactions
     func insert(_ pinnedReaction: Reaction) throws

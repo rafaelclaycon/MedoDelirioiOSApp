@@ -12,6 +12,18 @@ struct TopAuthorItem {
     let shareCount: Int
 }
 
+// MARK: - Personal Event Model
+
+/// One share or tapped play of a sound, with what Seu Mês shows about it.
+struct PersonalSoundEvent: Hashable {
+    let contentId: String
+    let contentName: String
+    let authorId: String
+    let authorName: String
+    let authorPhoto: String?
+    let date: Date
+}
+
 extension LocalDatabase {
 
     // MARK: - Personal Top Chart
@@ -198,6 +210,40 @@ extension LocalDatabase {
                 .where(userShareLog[content_type] == 0 || userShareLog[content_type] == 2)
                 .filter(date_time >= interval.start && date_time < interval.end)
         ).map { $0[date_time] }
+    }
+
+    /// Every share in the range, oldest first, for Seu Mês to slice by week.
+    func soundShareEvents(in interval: DateInterval) throws -> [PersonalSoundEvent] {
+        let content_id = Expression<String>("contentId")
+        let content_type = Expression<Int>("contentType")
+        let dateTime = Expression<Date>("dateTime")
+
+        let soundId = Expression<String>("id")
+        let soundTitle = Expression<String>("title")
+        let authorIdOnSounds = Expression<String>("authorId")
+
+        let authorId = Expression<String>("id")
+        let authorName = Expression<String>("name")
+        let authorPhoto = Expression<String?>("photo")
+
+        return try db.prepare(
+            userShareLog
+                .join(soundTable, on: userShareLog[content_id] == soundTable[soundId])
+                .join(author, on: soundTable[authorIdOnSounds] == author[authorId])
+                .select(userShareLog[content_id], soundTable[soundTitle], author[authorId], author[authorName], author[authorPhoto], userShareLog[dateTime])
+                .where(userShareLog[content_type] == 0 || userShareLog[content_type] == 2)
+                .filter(userShareLog[dateTime] >= interval.start && userShareLog[dateTime] < interval.end)
+                .order(userShareLog[dateTime].asc)
+        ).map { row in
+            PersonalSoundEvent(
+                contentId: row[userShareLog[content_id]],
+                contentName: row[soundTable[soundTitle]],
+                authorId: row[author[authorId]],
+                authorName: row[author[authorName]],
+                authorPhoto: row[author[authorPhoto]],
+                date: row[userShareLog[dateTime]]
+            )
+        }
     }
 
     func sharedSoundsCount(in interval: DateInterval) -> Int {
