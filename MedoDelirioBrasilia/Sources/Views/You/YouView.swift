@@ -39,7 +39,7 @@ struct YouView: View {
                         YouCardLabel(
                             systemImage: "chart.line.uptrend.xyaxis",
                             title: "Suas Tendências",
-                            detail: "Suas vírgulas mais compartilhadas e seus números nos episódios."
+                            detail: "O resumo do seu mês, suas vírgulas mais compartilhadas e seus números nos episódios."
                         )
                     }
                     .buttonStyle(.plain)
