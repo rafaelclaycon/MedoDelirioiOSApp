@@ -7,7 +7,7 @@
 
 import Foundation
 
-/// Dev-only export of the sound catalog and existing Reaction titles, used
+/// Dev-only export of the sound and song catalog and existing Reaction titles, used
 /// offline to feed a Claude-based script that suggests new Reactions.
 enum ReactionsExportGenerator {
 
@@ -38,8 +38,9 @@ enum ReactionsExportGenerator {
         let contentRepository = ContentRepository(database: LocalDatabase.shared)
         let reactionRepository = ReactionRepository()
 
+        // Songs too: Reactions can hold them. Keys stay "sound" because the script reads them,
+        // and a song's subtitle is its genre rather than an author.
         let sounds = try contentRepository.allContent(true, .titleAscending)
-            .filter { $0.type == .sound }
             .map { ExportSound(id: $0.id, title: $0.title, authorName: $0.subtitle) }
         let soundTitlesById = Dictionary(uniqueKeysWithValues: sounds.map { ($0.id, $0.title) })
 
