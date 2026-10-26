@@ -75,19 +75,16 @@ internal protocol LocalDatabaseProtocol {
     // SyncLog
     func insert(syncLog newSyncLog: SyncLog)
 
-    // Retrospective
+    // Personal Top Chart
     func getTopSoundsSharedByTheUser(_ limit: Int) throws -> [TopChartItem]
-    func getTopAuthorSharedByTheUser() throws -> TopAuthorItem?
-    func totalShareCount() -> Int
-    func allDatesInWhichTheUserShared() throws -> [Date]
-    func sharedSoundsCount() -> Int
-    
-    // Retrospective 2025
-    func getTopSoundsSharedByTheUserFor2025Retro(_ limit: Int) throws -> [TopChartItem]
-    func getTopAuthorSharedByTheUserFor2025Retro() throws -> TopAuthorItem?
-    func totalShareCountFor2025Retro() -> Int
-    func allDatesInWhichTheUserSharedFor2025Retro() throws -> [Date]
-    func sharedSoundsCountFor2025Retro() -> Int
+
+    // Personal stats in a date range (Seu Mês, Retrospectiva)
+    func topSoundsSharedByTheUser(in interval: DateInterval, limit: Int) throws -> [TopChartItem]
+    func topAuthorSharedByTheUser(in interval: DateInterval) throws -> TopAuthorItem?
+    func shareDates(in interval: DateInterval) throws -> [Date]
+    func sharedSoundsCount(in interval: DateInterval) -> Int
+    func topSoundsPlayedByTheUser(in interval: DateInterval, limit: Int) throws -> [TopChartItem]
+    func playDates(in interval: DateInterval) throws -> [Date]
 
     // Pinned Reactions
     func insert(_ pinnedReaction: Reaction) throws

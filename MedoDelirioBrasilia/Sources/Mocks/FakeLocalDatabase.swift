@@ -45,8 +45,10 @@ class FakeLocalDatabase: LocalDatabaseProtocol {
     var didCallInsertSyncLog = false
 
     var topSharedSounds: [TopChartItem] = []
-    var shareCount: Int = 0
+    var topSharedAuthor: TopAuthorItem?
     var shareDates: [Date] = []
+    var topPlayedSounds: [TopChartItem] = []
+    var playDates: [Date] = []
     var numberOfTimesInsertUpdateEventWasCalled = 0
 
     var sounds = [Sound]()
@@ -303,48 +305,37 @@ class FakeLocalDatabase: LocalDatabaseProtocol {
         didCallInsertSyncLog = true
     }
 
-    // Retrospective
+    // Personal Top Chart
 
     func getTopSoundsSharedByTheUser(_ limit: Int) throws -> [TopChartItem] {
         return topSharedSounds
     }
 
-    func getTopAuthorSharedByTheUser() throws -> TopAuthorItem? {
-        nil
+    // Personal stats in a date range. Shares and plays are kept as dates; the rankings
+    // come back for any range that has at least one of them.
+
+    func topSoundsSharedByTheUser(in interval: DateInterval, limit: Int) throws -> [TopChartItem] {
+        try shareDates(in: interval).isEmpty ? [] : Array(topSharedSounds.prefix(limit))
     }
 
-    func totalShareCount() -> Int {
-        return shareCount
+    func topAuthorSharedByTheUser(in interval: DateInterval) throws -> TopAuthorItem? {
+        try shareDates(in: interval).isEmpty ? nil : topSharedAuthor
     }
 
-    func allDatesInWhichTheUserShared() throws -> [Date] {
-        return shareDates
+    func shareDates(in interval: DateInterval) throws -> [Date] {
+        shareDates.filter { $0 >= interval.start && $0 < interval.end }
     }
 
-    func sharedSoundsCount() -> Int {
-        0
+    func sharedSoundsCount(in interval: DateInterval) -> Int {
+        ((try? shareDates(in: interval)) ?? []).isEmpty ? 0 : topSharedSounds.count
     }
 
-    // Retrospective 2025
-
-    func getTopSoundsSharedByTheUserFor2025Retro(_ limit: Int) throws -> [TopChartItem] {
-        return topSharedSounds
+    func topSoundsPlayedByTheUser(in interval: DateInterval, limit: Int) throws -> [TopChartItem] {
+        try playDates(in: interval).isEmpty ? [] : Array(topPlayedSounds.prefix(limit))
     }
 
-    func getTopAuthorSharedByTheUserFor2025Retro() throws -> TopAuthorItem? {
-        nil
-    }
-
-    func totalShareCountFor2025Retro() -> Int {
-        return shareCount
-    }
-
-    func allDatesInWhichTheUserSharedFor2025Retro() throws -> [Date] {
-        return shareDates
-    }
-
-    func sharedSoundsCountFor2025Retro() -> Int {
-        0
+    func playDates(in interval: DateInterval) throws -> [Date] {
+        playDates.filter { $0 >= interval.start && $0 < interval.end }
     }
 
     // Pinned Reactions

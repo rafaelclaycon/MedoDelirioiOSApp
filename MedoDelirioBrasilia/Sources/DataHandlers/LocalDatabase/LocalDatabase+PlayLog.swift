@@ -54,6 +54,53 @@ extension LocalDatabase {
         try db.run(userPlayLogTable.delete())
     }
 
+    // MARK: - Personal Stats in a Date Range
+
+    // Seu Mês and the Retrospectiva. Sounds a person tapped: songs aren't Vírgulas, and
+    // autoplay would let a folder played back to back take over the ranking.
+
+    func topSoundsPlayedByTheUser(in interval: DateInterval, limit: Int) throws -> [TopChartItem] {
+        let soundId = Expression<String>("id")
+        let soundTitle = Expression<String>("title")
+        let authorIdOnSounds = Expression<String>("authorId")
+
+        let authorId = Expression<String>("id")
+        let authorName = Expression<String>("name")
+
+        let playCount = playContentIdCol.count
+        return try db.prepare(
+            tappedSoundPlays(in: interval)
+                .join(soundTable, on: userPlayLogTable[playContentIdCol] == soundTable[soundId])
+                .join(author, on: soundTable[authorIdOnSounds] == author[authorId])
+                .select(userPlayLogTable[playContentIdCol], soundTable[soundTitle], soundTable[authorId], author[authorName], playCount)
+                .group(userPlayLogTable[playContentIdCol])
+                .order(playCount.desc)
+                .limit(limit)
+        ).map { row in
+            TopChartItem(
+                id: "",
+                rankNumber: "",
+                contentId: row[userPlayLogTable[playContentIdCol]],
+                contentName: row[soundTable[soundTitle]],
+                contentAuthorId: row[soundTable[authorId]],
+                contentAuthorName: row[author[authorName]],
+                shareCount: row[playCount]
+            )
+        }
+    }
+
+    func playDates(in interval: DateInterval) throws -> [Date] {
+        try db.prepare(tappedSoundPlays(in: interval).select(userPlayLogTable[playDateTimeCol]))
+            .map { $0[userPlayLogTable[playDateTimeCol]] }
+    }
+
+    private func tappedSoundPlays(in interval: DateInterval) -> Table {
+        userPlayLogTable
+            .filter(userPlayLogTable[playContentTypeCol] == ContentType.sound.rawValue)
+            .filter(userPlayLogTable[playIsAutoplayCol] == false)
+            .filter(userPlayLogTable[playDateTimeCol] >= interval.start && userPlayLogTable[playDateTimeCol] < interval.end)
+    }
+
     private func playLog(from row: Row) -> UserPlayLog {
         UserPlayLog(
             id: row[playIdCol],

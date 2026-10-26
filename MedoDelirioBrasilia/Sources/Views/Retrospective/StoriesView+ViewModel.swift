@@ -26,12 +26,20 @@ extension StoriesView {
         // MARK: - Private Properties
         
         private let database: LocalDatabaseProtocol
+        /// The whole year being looked back on, in the person's own time zone.
+        private let year: DateInterval
         private var cancellables = Set<AnyCancellable>()
         
         // MARK: - Initializer
         
-        init(database: LocalDatabaseProtocol = LocalDatabase.shared) {
+        init(
+            database: LocalDatabaseProtocol = LocalDatabase.shared,
+            year: Int = 2026,
+            calendar: Calendar = .current
+        ) {
             self.database = database
+            let start = calendar.date(from: DateComponents(year: year, month: 1, day: 1)) ?? .distantPast
+            self.year = calendar.dateInterval(of: .year, for: start) ?? DateInterval(start: start, duration: 0)
         }
         
         // MARK: - Public Methods
@@ -41,25 +49,24 @@ extension StoriesView {
             
             // Load top sounds
             do {
-                topSounds = try database.getTopSoundsSharedByTheUserFor2025Retro(5)
+                topSounds = try database.topSoundsSharedByTheUser(in: year, limit: 5)
             } catch {
                 print("Error loading top sounds: \(error)")
                 topSounds = []
             }
             
-            // Load share counts
-            totalShareCount = database.totalShareCountFor2025Retro()
-            totalUniqueSoundsShared = database.sharedSoundsCountFor2025Retro()
+            // Load unique sounds and top author
+            totalUniqueSoundsShared = database.sharedSoundsCount(in: year)
+            topAuthor = try? database.topAuthorSharedByTheUser(in: year)
             
-            // Load top author
-            topAuthor = try? database.getTopAuthorSharedByTheUserFor2025Retro()
-            
-            // Load most common share day
+            // Load share count and most common share day
             do {
-                let dates = try database.allDatesInWhichTheUserSharedFor2025Retro()
+                let dates = try database.shareDates(in: year)
+                totalShareCount = dates.count
                 mostCommonShareDay = mostCommonDay(from: dates) ?? "-"
             } catch {
                 print("Error loading share dates: \(error)")
+                totalShareCount = 0
                 mostCommonShareDay = "-"
             }
             
