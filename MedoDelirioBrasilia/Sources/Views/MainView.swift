@@ -313,9 +313,13 @@ struct MainView: View {
             goToTrends(timeInterval: .allTime)
         }
         .onChange(of: tabSelection.wrappedValue) { _, newTab in
+            Breadcrumbs.leave("Tab: \(newTab)")
             if newTab == .episodes {
                 episodesBadgeStore.markAsVisited()
             }
+        }
+        .onChange(of: sidebarSelection) { _, newSelection in
+            Breadcrumbs.leave("Sidebar: \(newSelection)")
         }
         .onChange(of: episodePlayer.pendingRemoteBookmark) { _, isPending in
             guard isPending else { return }

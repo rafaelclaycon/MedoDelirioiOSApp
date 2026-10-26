@@ -25,10 +25,12 @@ final class AnalyticsService: AnalyticsServiceProtocol {
         self.apiClient = apiClient
     }
 
+    /// Every event is also left as a crash breadcrumb (`Breadcrumbs`).
     func send(
         originatingScreen: String = "",
         action: String
     ) async {
+        Breadcrumbs.leave(originatingScreen.isEmpty ? action : "\(originatingScreen): \(action)")
         do {
             let usageMetric = await UsageMetric(
                 customInstallId: AppPersistentMemory.shared.customInstallId,
@@ -52,6 +54,8 @@ final class AnalyticsService: AnalyticsServiceProtocol {
         folderName: String,
         action: String
     ) async {
+        // Without the folder's name: people name their own folders.
+        Breadcrumbs.leave("\(currentScreen): \(action)")
         do {
             let usageMetric = UsageMetric(
                 customInstallId: AppPersistentMemory.shared.customInstallId,
