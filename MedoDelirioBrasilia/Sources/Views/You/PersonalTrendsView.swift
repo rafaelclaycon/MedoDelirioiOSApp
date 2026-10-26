@@ -25,7 +25,10 @@ struct PersonalTrendsView: View {
                             systemImage: "calendar",
                             symbolColor: .darkerGreen,
                             title: "Seu Mês: \(featuredMonth.title)",
-                            detail: featuredMonth.summary
+                            detail: featuredMonth.summary,
+                            // Green, to stand out a little from the rankings below.
+                            background: .darkerGreen.opacity(0.16),
+                            border: .darkerGreen.opacity(0.6)
                         )
                     }
                     .buttonStyle(.plain)

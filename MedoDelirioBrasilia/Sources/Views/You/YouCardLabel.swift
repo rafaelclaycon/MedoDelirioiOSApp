@@ -15,6 +15,9 @@ struct YouCardLabel: View {
     var symbolColor: Color = .accentColor
     let title: String
     let detail: String
+    var background: Color = .gray.opacity(0.12)
+    /// For a card that should stand out from the others.
+    var border: Color? = nil
 
     var body: some View {
         HStack(spacing: .spacing(.medium)) {
@@ -43,8 +46,14 @@ struct YouCardLabel: View {
         .padding(.spacing(.medium))
         .background(
             RoundedRectangle(cornerRadius: .spacing(.medium), style: .continuous)
-                .fill(Color.gray.opacity(0.12))
+                .fill(background)
         )
+        .overlay {
+            if let border {
+                RoundedRectangle(cornerRadius: .spacing(.medium), style: .continuous)
+                    .strokeBorder(border, lineWidth: 1.5)
+            }
+        }
         .contentShape(Rectangle())
     }
 }
