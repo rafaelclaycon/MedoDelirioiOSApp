@@ -13,6 +13,7 @@ struct StoryProgressIndicator: View {
     let numberOfStories: Int
     let currentStoryIndex: Int
     let currentProgress: CGFloat
+    var tint: Color = .white
     
     private let spacing: CGFloat = 4
     private let height: CGFloat = 3
@@ -24,13 +25,13 @@ struct StoryProgressIndicator: View {
                     ZStack(alignment: .leading) {
                         // Background bar
                         Rectangle()
-                            .foregroundStyle(Color.white.opacity(0.3))
+                            .foregroundStyle(tint.opacity(0.3))
                             .cornerRadius(height / 2)
                         
                         // Progress bar
                         Rectangle()
                             .frame(width: progressWidth(for: index, totalWidth: geometry.size.width))
-                            .foregroundStyle(Color.white.opacity(0.9))
+                            .foregroundStyle(tint.opacity(0.9))
                             .cornerRadius(height / 2)
                             .animation(.linear(duration: 0.1), value: currentProgress)
                     }

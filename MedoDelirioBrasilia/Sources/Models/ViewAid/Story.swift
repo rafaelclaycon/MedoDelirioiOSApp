@@ -48,46 +48,56 @@ enum StoryBackgroundStyle {
     }
 }
 
-/// Defines the different types of story pages in the retrospective
+/// The pages of the Retrospectiva, each in its own flat color.
 enum StoryPage: String, CaseIterable {
-    case welcome
+    case intro
+    case shares
+    case topAuthor
     case topSound1
     case topSound2
     case topSound3
-    case stats
+    case listening
+    case topEpisode
+    case habits
     case share
-    
+
+    /// Pages to read get a little longer than pages to look at.
     var story: Story {
         switch self {
-        case .welcome:
-            return Story(
-                id: "welcome",
-                duration: 4.0,
-                backgroundColor: .gradient(
-                    Gradient(colors: [.darkestGreen, .green, .yellow]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-        case .topSound1:
-            return Story(id: "topSound1", duration: 5.0, backgroundColor: .solid(.darkerGreen))
-        case .topSound2:
-            return Story(id: "topSound2", duration: 5.0, backgroundColor: .solid(.darkerGreen))
-        case .topSound3:
-            return Story(id: "topSound3", duration: 5.0, backgroundColor: .solid(.green))
-        case .stats:
-            return Story(id: "stats", duration: 6.0, backgroundColor: .solid(.darkestGreen))
+        case .intro: Story(id: rawValue, duration: 4.0, backgroundColor: .solid(.black))
+        case .shares: Story(id: rawValue, duration: 6.0, backgroundColor: .solid(RetroPalette.red))
+        case .topAuthor: Story(id: rawValue, duration: 6.0, backgroundColor: .solid(RetroPalette.deepRed))
+        case .topSound3: Story(id: rawValue, duration: 6.0, backgroundColor: .solid(RetroPalette.wine))
+        case .topSound2: Story(id: rawValue, duration: 6.0, backgroundColor: .solid(RetroPalette.deepRed))
+        case .topSound1: Story(id: rawValue, duration: 7.0, backgroundColor: .solid(RetroPalette.cream))
+        case .listening: Story(id: rawValue, duration: 6.0, backgroundColor: .solid(RetroPalette.wine))
+        case .topEpisode: Story(id: rawValue, duration: 6.0, backgroundColor: .solid(.black))
+        case .habits: Story(id: rawValue, duration: 6.0, backgroundColor: .solid(RetroPalette.red))
         case .share:
-            return Story(
-                id: "share",
+            Story(
+                id: rawValue,
                 duration: 10.0,
                 backgroundColor: .gradient(
-                    Gradient(colors: [.yellow, .green, .darkestGreen]),
+                    Gradient(colors: [RetroPalette.shareTop, RetroPalette.shareBottom]),
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
             )
         }
     }
-}
 
+    /// The cream page, where the bars and buttons on top go dark.
+    var isLight: Bool {
+        self == .topSound1
+    }
+
+    /// The Vírgula a countdown page is about, 0 for the number one.
+    var topSoundIndex: Int? {
+        switch self {
+        case .topSound1: 0
+        case .topSound2: 1
+        case .topSound3: 2
+        default: nil
+        }
+    }
+}
