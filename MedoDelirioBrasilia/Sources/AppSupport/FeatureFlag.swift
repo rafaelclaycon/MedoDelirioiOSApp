@@ -10,11 +10,14 @@ import Foundation
 enum FeatureFlag: String, CaseIterable {
 
     case snowLeopard = "featureFlag_snowLeopard"
+    case retrospective = "featureFlag_retrospective"
 
     var displayName: String {
         switch self {
         case .snowLeopard:
             return "Snow Leopard"
+        case .retrospective:
+            return "Retrospectiva 2026"
         }
     }
 
@@ -22,6 +25,8 @@ enum FeatureFlag: String, CaseIterable {
         switch self {
         case .snowLeopard:
             return "Destaque de episódio popular na tela de sugestões de busca."
+        case .retrospective:
+            return "Banner da Retrospectiva no topo de Vírgulas."
         }
     }
 

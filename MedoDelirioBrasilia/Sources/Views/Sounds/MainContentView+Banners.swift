@@ -19,11 +19,24 @@ extension MainContentView {
         @State private var officialResultsURL = ElectionLiveInfo.defaultOfficialResultsURL
         @State private var showAnniversaryBanner: Bool = false
         @State private var showDunBanner = !AppPersistentMemory.shared.hasDismissedDunBanner()
+        /// Until the Retrospectiva launches, only for whoever turns it on in Dev Options.
+        @AppStorage(FeatureFlag.retrospective.rawValue) private var isRetrospectiveEnabled = false
+        @State private var showRetroBanner = true
+        @State private var showRetroStories = false
 
         @Environment(\.scenePhase) private var scenePhase
 
         var body: some View {
             VStack {
+                if isRetrospectiveEnabled, showRetroBanner {
+                    RetroBanner(
+                        openStoriesAction: { showRetroStories = true },
+                        dismissAction: { showRetroBanner = false }
+                    )
+                    .padding(.top, .spacing(.xxxSmall))
+                    .padding(.bottom, .spacing(.xSmall))
+                }
+
                 if showElectionLiveBanner {
                     ElectionLiveBannerView(toast: $toast, officialResultsURL: officialResultsURL)
                         .padding(.top, .spacing(.xxxSmall))
@@ -57,6 +70,15 @@ extension MainContentView {
                     .padding(.top, .spacing(.xxxSmall))
                     .padding(.bottom, .spacing(.xSmall))
                 }
+            }
+            .fullScreenCover(isPresented: $showRetroStories) {
+                StoriesView(onShareAnalytics: { analyticsString in
+                    // A tap on the share button, not a confirmed share: the sheet can still
+                    // be cancelled.
+                    Task {
+                        await AnalyticsService().send(originatingScreen: "Retro2026", action: analyticsString)
+                    }
+                })
             }
             .onAppear {
                 Task{
