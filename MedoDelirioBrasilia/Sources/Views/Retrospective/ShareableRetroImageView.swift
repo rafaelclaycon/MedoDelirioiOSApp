@@ -18,6 +18,8 @@ enum RetroPalette {
     static let cream = Color(red: 1.0, green: 0.94, blue: 0.88)
     /// Big numbers on the darkest reds, where the bright red would sink.
     static let coral = Color(red: 1.0, green: 0.56, blue: 0.50)
+    /// A soft light red, for edges that should show without standing out.
+    static let blush = Color(red: 0.96, green: 0.55, blue: 0.56)
 
     static let shareTop = Color(red: 0.90, green: 0.11, blue: 0.14)
     static let shareBottom = Color(red: 0.45, green: 0.02, blue: 0.06)
@@ -134,7 +136,11 @@ struct ShareableRetroImageView: View {
             }
         }
         .frame(width: 500, height: photoHeight)
-        .clipped()
+        .clipShape(.rect(cornerRadius: 32, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 32, style: .continuous)
+                .strokeBorder(RetroPalette.blush, lineWidth: 5)
+        }
     }
 
     private func label(_ text: String) -> some View {
@@ -209,10 +215,13 @@ struct ShareableRetroImageView: View {
 
             Spacer(minLength: 0)
 
+            // Pulled right to sit as far from the edge as the logo's letters, whose image
+            // has its own margin.
             Text("Retrospectiva \(String(year))")
                 .font(.system(size: 46, weight: .bold))
                 .foregroundStyle(RetroPalette.ink.opacity(0.9))
                 .padding(.bottom, 8)
+                .padding(.trailing, -14)
         }
     }
 }
