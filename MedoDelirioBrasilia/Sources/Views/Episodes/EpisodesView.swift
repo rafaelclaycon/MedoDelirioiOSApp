@@ -297,7 +297,6 @@ struct EpisodesView: View {
             .tint(.yellow)
         }
         .listRowSeparator(.visible)
-        .episodeHighlightRowBackground(highlightStore.highlight(for: episode.id))
         .listRowInsets(EdgeInsets(
             top: 6,
             leading: horizontalRowInset,
@@ -492,6 +491,7 @@ extension EpisodesView {
             }
             .padding(.vertical, .spacing(.small))
             .opacity(isPlayed ? 0.5 : 1.0)
+            .episodeHighlight(highlight)
         }
 
     }
@@ -647,7 +647,7 @@ private extension View {
 }
 
 #Preview("Highlighted Episode") {
-    let highlight = EpisodeHighlightStore.Highlight(episodeId: PodcastEpisode.mockLastWeek.id, style: .lulaWin, label: nil)
+    let highlight = EpisodeHighlightStore.Highlight(episodeId: PodcastEpisode.mockLastWeek.id, style: .lulaWin, label: "Lula eleito")
     List {
         EpisodesView.EpisodeRow(
             episode: .mockLastWeek,
@@ -657,7 +657,6 @@ private extension View {
             isPlayed: false,
             highlight: highlight
         )
-        .episodeHighlightRowBackground(highlight)
     }
     .listStyle(.plain)
     .environment(EpisodePlayer())

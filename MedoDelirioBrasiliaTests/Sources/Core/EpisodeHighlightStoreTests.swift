@@ -35,19 +35,18 @@ struct EpisodeHighlightStoreTests {
     }
 
     @Test
-    func load_withoutALabel_leavesItNil() async {
+    func load_withoutALabel_highlightsNothing() async {
         respond(#"{"episodeId": "ep-1", "style": "lulaWin"}"#)
         let sut = makeSUT()
 
         await sut.loadIfNeeded()
 
-        #expect(sut.highlight?.label == nil)
-        #expect(sut.highlight?.style == .lulaWin)
+        #expect(sut.highlight == nil)
     }
 
     @Test
     func load_withAStyleThisVersionDoesntKnow_highlightsNothing() async {
-        respond(#"{"episodeId": "ep-1", "style": "fireworks"}"#)
+        respond(#"{"episodeId": "ep-1", "style": "fireworks", "label": "Fogos"}"#)
         let sut = makeSUT()
 
         await sut.loadIfNeeded()
@@ -57,7 +56,7 @@ struct EpisodeHighlightStoreTests {
 
     @Test
     func reload_afterTheHighlightIsTakenOff_clearsIt() async {
-        respond(#"{"episodeId": "ep-1", "style": "lulaWin"}"#)
+        respond(#"{"episodeId": "ep-1", "style": "lulaWin", "label": "Lula eleito"}"#)
         let sut = makeSUT()
         await sut.loadIfNeeded()
 
@@ -69,7 +68,7 @@ struct EpisodeHighlightStoreTests {
 
     @Test
     func reload_whenTheRequestFails_keepsTheHighlight() async {
-        respond(#"{"episodeId": "ep-1", "style": "lulaWin"}"#)
+        respond(#"{"episodeId": "ep-1", "style": "lulaWin", "label": "Lula eleito"}"#)
         let sut = makeSUT()
         await sut.loadIfNeeded()
 

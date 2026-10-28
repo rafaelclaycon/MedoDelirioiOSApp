@@ -23,8 +23,8 @@ final class EpisodeHighlightStore {
     struct Highlight: Equatable {
         let episodeId: String
         let style: Style
-        /// The badge's text, when the server sends one.
-        let label: String?
+        /// The badge's text, from the server.
+        let label: String
     }
 
     @ObservationIgnored private let apiClient: APIClientProtocol
@@ -72,6 +72,6 @@ extension EpisodeHighlightStore {
     private struct HighlightResponse: Codable {
         let episodeId: String
         let style: String
-        let label: String?
+        let label: String
     }
 }
