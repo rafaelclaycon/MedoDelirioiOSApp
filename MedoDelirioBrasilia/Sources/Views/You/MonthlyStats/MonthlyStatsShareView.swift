@@ -319,11 +319,11 @@ struct MonthlyStatsShareCard: View {
 
             Spacer(minLength: 10)
 
-            monthTitle(nameSize: 56, detailSize: 17)
+            monthTitle(nameSize: 64, detailSize: 18)
 
             if hasPlayer {
-                player(avatarSize: 36, nameSize: 16)
-                    .padding(.top, 12)
+                player(avatarSize: 40, nameSize: 17)
+                    .padding(.top, 14)
             }
 
             Spacer(minLength: 10)
@@ -361,8 +361,13 @@ struct MonthlyStatsShareCard: View {
             }
         }
         .padding(.horizontal, 28)
-        .padding(.vertical, ShareImageFormat.storiesSafeVerticalPadding)
+        .padding(.vertical, Self.storiesVerticalPadding)
     }
+
+    /// Less than `ShareImageFormat.storiesSafeVerticalPadding`: the pill and the credit can
+    /// sit where Instagram's top and bottom bars fade in, and the blocks in between get the
+    /// room instead of crowding the middle.
+    static let storiesVerticalPadding: CGFloat = 52
 
     /// The same blocks, tighter, without the episode: a square has room for the month,
     /// its numbers and the Vírgulas.
@@ -603,25 +608,42 @@ struct MonthlyStatsShareCard: View {
         }
     }
 
+    /// The numbers side by side, all the same size, labels on one line: each shrinking on
+    /// its own to fit would leave "4h 10min" smaller than "18" and its label higher.
     private func numbersRow(valueSize: CGFloat, labelSize: CGFloat) -> some View {
-        HStack(alignment: .top, spacing: 8) {
+        let size = Self.sharedValueSize(for: numbers.map(\.value), base: valueSize)
+        let longestLabel = numbers.map(\.label.count).max() ?? 0
+        let label = longestLabel > 14 ? labelSize * 0.9 : labelSize
+        return HStack(alignment: .top, spacing: 8) {
             ForEach(numbers, id: \.label) { number in
                 VStack(spacing: 2) {
                     Text(number.value)
-                        .font(.system(size: valueSize, weight: .heavy, design: .rounded))
+                        .font(.system(size: size, weight: .heavy, design: .rounded))
                         .monospacedDigit()
                         .lineLimit(1)
-                        .minimumScaleFactor(0.5)
+                        .minimumScaleFactor(0.8)
+                        .frame(height: size * 1.25)
 
-                    // One line that shrinks: two would break "compartilhamentos" mid-word.
+                    // One line: two would break "compartilhamentos" mid-word.
                     Text(number.label)
-                        .font(.system(size: labelSize, weight: .semibold))
+                        .font(.system(size: label, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.8))
                         .lineLimit(1)
-                        .minimumScaleFactor(0.6)
+                        .minimumScaleFactor(0.8)
                 }
                 .frame(maxWidth: .infinity)
             }
+        }
+    }
+
+    /// One size for every number in the row, set by the longest, so a duration like
+    /// "4h 10min" doesn't make the row uneven.
+    static func sharedValueSize(for values: [String], base: CGFloat) -> CGFloat {
+        let longest = values.map(\.count).max() ?? 0
+        switch longest {
+        case ...5: return base
+        case ...7: return base * 0.86
+        default: return base * 0.78
         }
     }
 
