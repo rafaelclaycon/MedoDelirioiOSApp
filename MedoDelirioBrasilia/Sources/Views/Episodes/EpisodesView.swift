@@ -16,6 +16,7 @@ struct EpisodesView: View {
     @Environment(EpisodeBookmarkStore.self) private var bookmarkStore
     @Environment(EpisodesBadgeStore.self) private var badgeStore
     @Environment(EpisodePopularityStore.self) private var popularityStore
+    @Environment(EpisodeHighlightStore.self) private var highlightStore
     @Environment(TranscriptDownloadService.self) private var transcriptService
     @Environment(\.push) private var push
     @Environment(\.horizontalSizeClass) private var hSizeClass
@@ -102,7 +103,9 @@ struct EpisodesView: View {
                             }
                             .listStyle(.plain)
                             .refreshable {
+                                async let highlight: Void = highlightStore.reload()
                                 await viewModel.onPullToRefresh()
+                                await highlight
                             }
                         }
                     }
@@ -182,6 +185,9 @@ struct EpisodesView: View {
         .task {
             await popularityStore.loadIfNeeded()
         }
+        .task {
+            await highlightStore.loadIfNeeded()
+        }
         .onAppear {
             badgeStore.markAsVisited()
             Task {
@@ -252,7 +258,8 @@ struct EpisodesView: View {
             bookmarkCount: bookmarkStore.bookmarks(for: episode.id).count,
             progress: progressStore.progress(for: episode.id),
             isPlayed: playedStore.isPlayed(episode.id),
-            weeklyListeners: popularityStore.weeklyListeners(for: episode.id)
+            weeklyListeners: popularityStore.weeklyListeners(for: episode.id),
+            highlight: highlightStore.highlight(for: episode.id)
         )
         .contentShape(Rectangle())
         .onTapGesture {
@@ -290,6 +297,7 @@ struct EpisodesView: View {
             .tint(.yellow)
         }
         .listRowSeparator(.visible)
+        .episodeHighlightRowBackground(highlightStore.highlight(for: episode.id))
         .listRowInsets(EdgeInsets(
             top: 6,
             leading: horizontalRowInset,
@@ -398,6 +406,8 @@ extension EpisodesView {
         let isPlayed: Bool
         /// Set only for the week's most popular episodes.
         var weeklyListeners: Int?
+        /// The episode the server picked to dress up, if this is it.
+        var highlight: EpisodeHighlightStore.Highlight?
 
         private var hasProgress: Bool {
             guard let progress else { return false }
@@ -407,6 +417,10 @@ extension EpisodesView {
         var body: some View {
             HStack(spacing: .spacing(.xSmall)) {
                 VStack(alignment: .leading, spacing: .spacing(.xSmall)) {
+                    if let highlight {
+                        EpisodeHighlightBadge(highlight: highlight)
+                    }
+
                     HStack(spacing: .spacing(.xxxSmall)) {
                         Text(episode.formattedDate)
                             .font(.caption)
@@ -591,6 +605,7 @@ private extension View {
     .environment(EpisodeBookmarkStore())
     .environment(EpisodesBadgeStore())
     .environment(EpisodePopularityStore())
+    .environment(EpisodeHighlightStore())
     .environment(TranscriptDownloadService())
 }
 
@@ -628,5 +643,22 @@ private extension View {
         isPlayed: true
     )
     .padding()
+    .environment(EpisodePlayer())
+}
+
+#Preview("Highlighted Episode") {
+    let highlight = EpisodeHighlightStore.Highlight(episodeId: PodcastEpisode.mockLastWeek.id, style: .lulaWin, label: nil)
+    List {
+        EpisodesView.EpisodeRow(
+            episode: .mockLastWeek,
+            isFavorite: false,
+            bookmarkCount: 0,
+            progress: nil,
+            isPlayed: false,
+            highlight: highlight
+        )
+        .episodeHighlightRowBackground(highlight)
+    }
+    .listStyle(.plain)
     .environment(EpisodePlayer())
 }

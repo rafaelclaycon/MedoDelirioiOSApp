@@ -73,6 +73,7 @@ struct MainView: View {
     @State private var episodeListenStore = EpisodeListenStore()
     @State private var episodesBadgeStore = EpisodesBadgeStore()
     @State private var episodePopularityStore = EpisodePopularityStore()
+    @State private var episodeHighlightStore = EpisodeHighlightStore()
     /// Created on first appear, since it needs the stores above.
     @State private var cloudStateSync: CloudStateSync?
     @State private var profileStore = ProfileStore()
@@ -274,6 +275,7 @@ struct MainView: View {
         .environment(episodeListenStore)
         .environment(episodesBadgeStore)
         .environment(episodePopularityStore)
+        .environment(episodeHighlightStore)
         .environment(profileStore)
         // Siri Suggestions. Attached here, on the shared ancestor, so they fire on
         // every device path (both iPhone TabView variants and iPad).

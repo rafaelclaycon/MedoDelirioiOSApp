@@ -30,11 +30,22 @@ class FakeAPIClient: APIClientProtocol {
     var author: Author?
     var musicGenre: MusicGenre?
 
+    /// JSON that `get(from:)` decodes, by full URL.
+    var getResponses: [String: Data] = [:]
+    /// Errors that `get(from:)` throws, by full URL. Checked before `getResponses`.
+    var getErrors: [String: Error] = [:]
+
     init() {
         serverPath = ""
     }
 
     func get<T>(from url: URL) async throws -> T where T : Decodable, T : Encodable {
+        if let error = getErrors[url.absoluteString] {
+            throw error
+        }
+        if let data = getResponses[url.absoluteString] {
+            return try JSONDecoder().decode(T.self, from: data)
+        }
         return T.self as! T
     }
 
