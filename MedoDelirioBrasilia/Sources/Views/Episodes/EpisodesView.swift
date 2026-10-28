@@ -416,8 +416,8 @@ extension EpisodesView {
         var body: some View {
             HStack(spacing: .spacing(.xSmall)) {
                 VStack(alignment: .leading, spacing: .spacing(.xSmall)) {
-                    if let highlight {
-                        EpisodeHighlightBadge(highlight: highlight)
+                    if let highlight, let label = highlight.label {
+                        EpisodeHighlightBadge(style: highlight.style, label: label)
                     }
 
                     HStack(spacing: .spacing(.xxxSmall)) {

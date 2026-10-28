@@ -18,7 +18,8 @@ import SwiftUI
 /// faint red tint.
 struct EpisodeHighlightBadge: View {
 
-    let highlight: EpisodeHighlightStore.Highlight
+    let style: EpisodeHighlightStore.Style
+    let label: String
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -28,11 +29,11 @@ struct EpisodeHighlightBadge: View {
     }
 
     var body: some View {
-        switch highlight.style {
+        switch style {
         case .lulaWin:
             HStack(spacing: 4) {
                 Image(systemName: "star.fill")
-                Text(highlight.label)
+                Text(label)
             }
             .font(.caption.weight(.semibold))
             .foregroundStyle(tint)

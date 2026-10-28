@@ -35,13 +35,24 @@ struct EpisodeHighlightStoreTests {
     }
 
     @Test
-    func load_withoutALabel_highlightsNothing() async {
+    func load_withoutALabel_highlightsWithoutABadge() async {
         respond(#"{"episodeId": "ep-1", "style": "lulaWin"}"#)
         let sut = makeSUT()
 
         await sut.loadIfNeeded()
 
-        #expect(sut.highlight == nil)
+        #expect(sut.highlight == .init(episodeId: "ep-1", style: .lulaWin, label: nil))
+    }
+
+    @Test
+    func load_withABlankLabel_highlightsWithoutABadge() async {
+        respond(#"{"episodeId": "ep-1", "style": "lulaWin", "label": "  "}"#)
+        let sut = makeSUT()
+
+        await sut.loadIfNeeded()
+
+        #expect(sut.highlight?.episodeId == "ep-1")
+        #expect(sut.highlight?.label == nil)
     }
 
     @Test

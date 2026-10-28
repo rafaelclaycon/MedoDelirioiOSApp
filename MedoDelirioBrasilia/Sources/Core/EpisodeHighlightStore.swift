@@ -23,8 +23,8 @@ final class EpisodeHighlightStore {
     struct Highlight: Equatable {
         let episodeId: String
         let style: Style
-        /// The badge's text, from the server.
-        let label: String
+        /// The badge's text, from the server. No badge when it sends none, or an empty one.
+        let label: String?
     }
 
     @ObservationIgnored private let apiClient: APIClientProtocol
@@ -54,7 +54,7 @@ final class EpisodeHighlightStore {
         do {
             let response: HighlightResponse = try await apiClient.get(from: url)
             highlight = Style(rawValue: response.style).map {
-                Highlight(episodeId: response.episodeId, style: $0, label: response.label)
+                Highlight(episodeId: response.episodeId, style: $0, label: Self.badgeText(response.label))
             }
         } catch {
             // A 404 means nothing is highlighted; anything else, keep what's there.
@@ -72,6 +72,12 @@ extension EpisodeHighlightStore {
     private struct HighlightResponse: Codable {
         let episodeId: String
         let style: String
-        let label: String
+        let label: String?
+    }
+
+    /// Blank reads as no badge.
+    private static func badgeText(_ label: String?) -> String? {
+        guard let label = label?.trimmingCharacters(in: .whitespaces), !label.isEmpty else { return nil }
+        return label
     }
 }
