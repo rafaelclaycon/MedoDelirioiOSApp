@@ -127,67 +127,9 @@ extension RetroBanner {
                     .offset(x: 110, y: 70)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
 
-                Canvas { context, size in
-                    for star in Self.stars {
-                        draw(star, at: time, in: &context, size: size)
-                    }
-                }
+                RisingStars(time: time)
             }
             .accessibilityHidden(true)
-        }
-
-        private struct Star {
-            /// Across the banner, 0 to 1.
-            let x: Double
-            /// Where in its climb it starts, 0 to 1.
-            let phase: Double
-            /// Banner heights per second.
-            let speed: Double
-            let size: CGFloat
-            let opacity: Double
-        }
-
-        /// Fixed, so the sky looks the same each time; spread so none overlap for long.
-        private static let stars: [Star] = (0..<16).map { index in
-            let i = Double(index)
-            return Star(
-                x: (i * 0.618).truncatingRemainder(dividingBy: 1) * 0.9 + 0.05,
-                phase: (i * 0.377).truncatingRemainder(dividingBy: 1),
-                speed: 0.05 + (i * 0.731).truncatingRemainder(dividingBy: 1) * 0.06,
-                size: 6 + CGFloat((i * 0.419).truncatingRemainder(dividingBy: 1)) * 10,
-                opacity: 0.25 + (i * 0.283).truncatingRemainder(dividingBy: 1) * 0.4
-            )
-        }
-
-        private func draw(_ star: Star, at time: TimeInterval, in context: inout GraphicsContext, size: CGSize) {
-            let progress = (star.phase + time * star.speed).truncatingRemainder(dividingBy: 1)
-            // Rises from just below the bottom, swaying a little, and fades out up top.
-            let y = size.height * (1.1 - progress * 1.2)
-            let x = size.width * star.x + sin(time * 0.9 + star.phase * 6) * 8
-            let fade = min(1, (1 - progress) * 3) * min(1, progress * 6)
-
-            var star5 = context
-            star5.opacity = star.opacity * fade
-            star5.translateBy(x: x, y: y)
-            star5.rotate(by: .radians(time * 0.4 + star.phase * 3))
-            star5.fill(Self.starPath(radius: star.size / 2), with: .color(.white))
-        }
-
-        /// A five-pointed star, as on the flag of the party that won.
-        private static func starPath(radius: CGFloat) -> Path {
-            Path { path in
-                for point in 0..<10 {
-                    let angle = Double(point) * .pi / 5 - .pi / 2
-                    let length = point.isMultiple(of: 2) ? radius : radius * 0.42
-                    let location = CGPoint(x: cos(angle) * length, y: sin(angle) * length)
-                    if point == 0 {
-                        path.move(to: location)
-                    } else {
-                        path.addLine(to: location)
-                    }
-                }
-                path.closeSubpath()
-            }
         }
     }
 }
