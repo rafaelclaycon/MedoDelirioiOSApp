@@ -535,7 +535,8 @@ struct NowPlayingView: View {
                     chapterProvider: chapterProvider,
                     onHideChapters: hideChapters,
                     onReportIssue: reportChapterIssue,
-                    onShareChapterClip: shareChapterClip
+                    onShareChapterClip: shareChapterClip,
+                    isWide: isSplitLayout
                 )
             }
         }

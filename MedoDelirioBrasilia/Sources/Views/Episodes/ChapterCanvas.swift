@@ -21,6 +21,8 @@ struct ChapterCanvas: View {
     /// Second argument is where the chapter ends, or nil while the episode's
     /// duration is still unknown — the clip screen falls back to its own cap.
     let onShareChapterClip: (EpisodeChapter, TimeInterval?) -> Void
+    /// Wide Now Playing: taller rows, see-through to its moving background.
+    var isWide: Bool = false
 
     @State private var showChapterOptions: Bool = false
     @State private var showHideConfirmation: Bool = false
@@ -131,7 +133,7 @@ struct ChapterCanvas: View {
                 let length = Self.length(at: index, in: chapters, episodeDuration: episodeDuration)
                 let isCurrent = chapter.id == currentChapterID
 
-                let row = Button {
+                let button = Button {
                     player.seek(to: chapter.start)
                     Task {
                         await AnalyticsService().send(originatingScreen: "NowPlaying", action: "didTapChapter(\(chapter.id), \(chapter.title))")
@@ -144,14 +146,16 @@ struct ChapterCanvas: View {
                             player: player,
                             number: index + 1,
                             chapter: chapter,
-                            length: length
+                            length: length,
+                            isWide: isWide
                         )
                     } else {
                         ChapterRow(
                             number: index + 1,
                             chapter: chapter,
                             length: length,
-                            isCurrent: false
+                            isCurrent: false,
+                            isWide: isWide
                         )
                     }
                 }
@@ -162,11 +166,30 @@ struct ChapterCanvas: View {
                     .contextMenuPreview,
                     RoundedRectangle(cornerRadius: ChapterRow.cornerRadius, style: .continuous)
                 )
-                .contextMenu {
-                    Button {
-                        onShareChapterClip(chapter, length.map { chapter.start + $0 })
-                    } label: {
-                        Label("Compartilhar Trecho", systemImage: "scissors")
+
+                let row = Group {
+                    if isWide {
+                        button
+                            .contextMenu {
+                                shareClipButton(for: chapter, length: length)
+                            } preview: {
+                                // Wide rows are see-through, so the long-press lifts this
+                                // opaque copy instead of showing its own shadow through
+                                // the text.
+                                ChapterRow(
+                                    number: index + 1,
+                                    chapter: chapter,
+                                    length: length,
+                                    isCurrent: isCurrent
+                                )
+                                .frame(width: 360)
+                                .background(Color(.systemBackground))
+                            }
+                    } else {
+                        button
+                            .contextMenu {
+                                shareClipButton(for: chapter, length: length)
+                            }
                     }
                 }
                 .id(chapter.id)
@@ -189,6 +212,14 @@ struct ChapterCanvas: View {
 
             Spacer()
                 .frame(height: .spacing(.small))
+        }
+    }
+
+    private func shareClipButton(for chapter: EpisodeChapter, length: TimeInterval?) -> some View {
+        Button {
+            onShareChapterClip(chapter, length.map { chapter.start + $0 })
+        } label: {
+            Label("Compartilhar Trecho", systemImage: "scissors")
         }
     }
 
@@ -254,6 +285,8 @@ private struct ChapterRow: View {
     let chapter: EpisodeChapter
     let length: TimeInterval?
     let isCurrent: Bool
+    /// Taller, and see-through to the wide layout's background.
+    var isWide: Bool = false
 
     static let cornerRadius: CGFloat = 10
 
@@ -282,14 +315,15 @@ private struct ChapterRow: View {
                     .foregroundStyle(.tertiary)
             }
         }
-        .padding(.vertical, .spacing(.small))
+        .padding(.vertical, .spacing(isWide ? .large : .small))
         .padding(.horizontal, .spacing(.small))
         // Matches the screen behind it, so the list looks unchanged — but gives
         // the context menu something opaque to lift. Without it the long-press
         // shows its own shadow straight through the row, behind the text.
-        // The playing row brings its own opaque progress fill.
+        // The playing row brings its own opaque progress fill. Wide rows sit on
+        // a moving background instead and lift a copy made for the menu.
         .background {
-            if !isCurrent {
+            if !isCurrent, !isWide {
                 RoundedRectangle(cornerRadius: Self.cornerRadius)
                     .fill(Color(.systemBackground))
             }
@@ -327,9 +361,10 @@ private struct PlayingChapterRow: View {
     let number: Int
     let chapter: EpisodeChapter
     let length: TimeInterval?
+    let isWide: Bool
 
     var body: some View {
-        ChapterRow(number: number, chapter: chapter, length: length, isCurrent: true)
+        ChapterRow(number: number, chapter: chapter, length: length, isCurrent: true, isWide: isWide)
             .background(progressBackground)
     }
 
@@ -341,13 +376,14 @@ private struct PlayingChapterRow: View {
     private var progressBackground: some View {
         GeometryReader { geometry in
             // Both grays are semantic, so the bar stays subtle in dark mode instead
-            // of becoming a bright band behind the title.
+            // of becoming a bright band behind the title. Wide rows tint the moving
+            // background instead of covering it with a gray slab.
             ZStack(alignment: .leading) {
                 Rectangle()
-                    .fill(Color(.systemGray6))
+                    .fill(isWide ? Color.primary.opacity(0.06) : Color(.systemGray6))
 
                 Rectangle()
-                    .fill(Color(.systemGray4))
+                    .fill(isWide ? Color.primary.opacity(0.1) : Color(.systemGray4))
                     .frame(width: geometry.size.width * progress)
             }
             .clipShape(RoundedRectangle(cornerRadius: ChapterRow.cornerRadius))
@@ -378,6 +414,34 @@ private struct PlayingChapterRow: View {
                 .padding(.horizontal, .spacing(.xLarge))
                 .environment(player)
             }
+        }
+    }
+    return Host()
+}
+
+#Preview("Tela larga") {
+    struct Host: View {
+        let player: EpisodePlayer = {
+            let player = EpisodePlayer()
+            player.currentEpisode = .mockRecent
+            player.duration = 3945
+            player.currentTime = 620
+            return player
+        }()
+
+        var body: some View {
+            ScrollView {
+                ChapterCanvas(
+                    chapterProvider: .mockLoaded(),
+                    onHideChapters: {},
+                    onReportIssue: {},
+                    onShareChapterClip: { _, _ in },
+                    isWide: true
+                )
+                .padding(.horizontal, .spacing(.xLarge))
+                .environment(player)
+            }
+            .background { NowPlayingAmbientBackground(isPlaying: false) }
         }
     }
     return Host()
