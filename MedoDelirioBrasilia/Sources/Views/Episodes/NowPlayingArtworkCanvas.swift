@@ -12,6 +12,9 @@ import Kingfisher
 /// canvas before a transcript has loaded.
 struct NowPlayingArtworkCanvas: View {
 
+    /// The largest the cover gets. Wide layouts raise it so the cover fills its pane.
+    var maxSide: CGFloat = 300
+
     @Environment(EpisodePlayer.self) private var player
     @Environment(\.colorScheme) private var colorScheme
 
@@ -24,7 +27,7 @@ struct NowPlayingArtworkCanvas: View {
             .onFailure { _ in }
             .resizable()
             .aspectRatio(contentMode: .fit)
-            .frame(maxWidth: 300, maxHeight: 300)
+            .frame(maxWidth: maxSide, maxHeight: maxSide)
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .shadow(
                 color: player.isPlaying

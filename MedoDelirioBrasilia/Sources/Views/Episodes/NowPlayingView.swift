@@ -381,9 +381,12 @@ struct NowPlayingView: View {
     private func splitLayout(_ split: PaneSplit) -> some View {
         SplitPanes(split) {
             VStack(spacing: 0) {
-                NowPlayingArtworkCanvas()
+                // As big as the pane allows, up to a point: a cover the size of a big
+                // window's half would crowd the transport under it.
+                NowPlayingArtworkCanvas(maxSide: 560)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(.horizontal, .spacing(.xLarge))
+                    .padding(.vertical, .spacing(.large))
 
                 bottomControls(width: nil)
             }
@@ -405,11 +408,30 @@ struct NowPlayingView: View {
                         Spacer()
                             .frame(height: .spacing(.small))
 
-                        canvasArea
+                        // The pane has room for the whole transcript, read like lyrics;
+                        // the three live lines would float in it. It scrolls itself, so
+                        // it stays out of the canvas's scroll view.
+                        if effectiveCanvasMode == .transcription,
+                           transcriptDownloadService.transcriptsDownloaded,
+                           isTranscriptLoaded {
+                            TranscriptLyricsView(
+                                transcriptProvider: transcriptProvider,
+                                onDisableTranscripts: disableTranscripts,
+                                onPlayCue: playFromTranscript
+                            )
+                        } else {
+                            canvasArea
+                        }
                     }
                 }
             }
+            // The bar above this pane is empty, and its edge effect would show as a band
+            // of another shade over the background's colors.
+            .scrollEdgeEffectHidden(true, for: .top)
             .toast(toastBinding(for: .secondary))
+        }
+        .background {
+            NowPlayingAmbientBackground(isPlaying: player.isPlaying)
         }
     }
 

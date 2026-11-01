@@ -169,6 +169,32 @@ extension TranscriptProvider {
         return provider
     }
 
+    /// Thirty lines, five seconds each, from 9:40, so a preview player at 10:20 (620 s)
+    /// lands in the middle of them.
+    static func mockLoadedFullTranscript() -> TranscriptProvider {
+        let provider = TranscriptProvider()
+        let sentences = [
+            "Boa noite, boa noite.",
+            "Hoje o assunto é sério, gente.",
+            "Vamos lá que o bagulho tá doido.",
+            "E aí o cara chegou lá na sessão e falou assim, olha, eu não vou aceitar.",
+            "Aí o outro respondeu na mesma hora, no microfone aberto pra todo mundo ouvir.",
+            "O plenário inteiro ficou naquele burburinho."
+        ]
+        let mockCues = (0..<30).map { index in
+            SRTCue(
+                index: index + 1,
+                startTime: 580 + Double(index) * 5,
+                endTime: 585 + Double(index) * 5,
+                text: sentences[index % sentences.count]
+            )
+        }
+        provider.cues = mockCues
+        provider.state = .loaded(cues: mockCues)
+        provider.update(currentTime: 620)
+        return provider
+    }
+
     static func mockLoadedLongLines() -> TranscriptProvider {
         let provider = TranscriptProvider()
         let mockCues: [SRTCue] = [

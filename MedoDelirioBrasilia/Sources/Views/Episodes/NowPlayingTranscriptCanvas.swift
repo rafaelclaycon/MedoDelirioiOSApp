@@ -56,10 +56,6 @@ private struct LoadedOverlay: View {
     let transcriptProvider: TranscriptProvider
     let onDisableTranscripts: () -> Void
 
-    @State private var showAIUsageDetails: Bool = false
-    @State private var showOptions: Bool = false
-    @State private var showDisableConfirmation: Bool = false
-
     var body: some View {
         VStack(alignment: .leading, spacing: .spacing(.xSmall)) {
             TranscriptOverlayView(
@@ -68,19 +64,34 @@ private struct LoadedOverlay: View {
                 nextCue: transcriptProvider.nextCue
             )
 
-            HStack(spacing: .spacing(.xSmall)) {
-                Text("Transcrição gerada por IA. Pode conter erros.")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+            TranscriptAIFooter(onDisableTranscripts: onDisableTranscripts)
+                .padding(.bottom, .spacing(.large))
+        }
+    }
+}
 
-                // Same pattern as the chapter list's options: details, or switching
-                // the feature off behind a second confirmation.
-                Button("Opções") {
-                    showOptions = true
-                }
+// MARK: - AI Footer
+
+/// "Transcrição gerada por IA" with its options: details, or switching the feature off
+/// behind a second confirmation. Under the live lines and the full transcript alike.
+struct TranscriptAIFooter: View {
+
+    let onDisableTranscripts: () -> Void
+
+    @State private var showAIUsageDetails: Bool = false
+    @State private var showOptions: Bool = false
+    @State private var showDisableConfirmation: Bool = false
+
+    var body: some View {
+        HStack(spacing: .spacing(.xSmall)) {
+            Text("Transcrição gerada por IA. Pode conter erros.")
                 .font(.caption2)
+                .foregroundStyle(.tertiary)
+
+            Button("Opções") {
+                showOptions = true
             }
-            .padding(.bottom, .spacing(.large))
+            .font(.caption2)
         }
         .alert("Transcrições", isPresented: $showOptions) {
             Button("Detalhes sobre o uso de IA") {
