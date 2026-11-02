@@ -120,7 +120,8 @@ extension MonthlyStatsView {
                         episode: invitedEpisode,
                         title: "Ouça um episódio e ele entra no seu mês",
                         caption: highlightStore.highlight(for: invitedEpisode.id)?.label,
-                        originatingScreen: "MonthlyStatsInvitation"
+                        originatingScreen: "MonthlyStatsInvitation",
+                        background: SeuMesPalette.card
                     )
                 }
 

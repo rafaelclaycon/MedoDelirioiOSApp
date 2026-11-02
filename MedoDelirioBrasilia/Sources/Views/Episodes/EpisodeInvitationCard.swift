@@ -22,20 +22,27 @@ struct EpisodeInvitationCard: View {
     let originatingScreen: String
     /// Shows a close button when set.
     var onDismiss: (() -> Void)?
+    /// Neutral, so the green play button is what stands out. Screens on a gray background
+    /// pass their own card color.
+    var background: Color = Color(.secondarySystemBackground)
 
     @Environment(EpisodePlayer.self) private var player
     @Environment(\.colorScheme) private var colorScheme
 
-    private var textColor: Color {
-        colorScheme == .dark ? .primary : .darkestGreen
+    private var accentColor: Color {
+        colorScheme == .dark ? .green : .darkerGreen
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: .spacing(.medium)) {
             if let title {
-                Label(title, systemImage: "headphones")
-                    .bold()
-                    .foregroundStyle(textColor)
+                Label {
+                    Text(title)
+                } icon: {
+                    Image(systemName: "headphones")
+                        .foregroundStyle(accentColor)
+                }
+                .bold()
                     // Clear of the close button.
                     .padding(.trailing, onDismiss == nil ? 0 : 30)
             }
@@ -55,12 +62,11 @@ struct EpisodeInvitationCard: View {
                 VStack(alignment: .leading, spacing: .spacing(.xxxSmall)) {
                     Text(caption ?? episode.formattedDate)
                         .font(.caption)
-                        .foregroundStyle(textColor.opacity(0.7))
+                        .foregroundStyle(.secondary)
 
                     Text(episode.title)
                         .font(.callout)
                         .bold()
-                        .foregroundStyle(textColor)
                         .lineLimit(3)
                         .multilineTextAlignment(.leading)
                         // Wraps instead of cutting to one line in a scroll view's
@@ -74,11 +80,7 @@ struct EpisodeInvitationCard: View {
             }
         }
         .padding(.all, .spacing(.large))
-        .background {
-            RoundedRectangle(cornerRadius: 15)
-                .foregroundColor(.green)
-                .opacity(colorScheme == .dark ? 0.3 : 0.15)
-        }
+        .background(background, in: RoundedRectangle(cornerRadius: 15))
         .overlay(alignment: .topTrailing) {
             if let onDismiss {
                 Button {
@@ -88,7 +90,8 @@ struct EpisodeInvitationCard: View {
                     onDismiss()
                 } label: {
                     Image(systemName: "xmark")
-                        .foregroundColor(colorScheme == .dark ? .green : Color.darkestGreen)
+                        // Gray, not the button's tint, so play stays the only green.
+                        .foregroundStyle(Color(.secondaryLabel))
                 }
                 .padding()
                 .accessibilityLabel("Fechar")
