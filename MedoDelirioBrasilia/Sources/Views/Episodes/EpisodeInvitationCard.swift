@@ -24,10 +24,15 @@ struct EpisodeInvitationCard: View {
     var onDismiss: (() -> Void)?
     /// Neutral, so the green play button is what stands out. Screens on a gray background
     /// pass their own card color.
-    var background: Color = Color(.secondarySystemBackground)
+    var background: Color?
 
     @Environment(EpisodePlayer.self) private var player
     @Environment(\.colorScheme) private var colorScheme
+
+    /// A step lighter in dark mode, where the light gray's counterpart nearly melts into black.
+    private var neutralBackground: Color {
+        colorScheme == .dark ? Color(.tertiarySystemBackground) : Color(.secondarySystemBackground)
+    }
 
     private var accentColor: Color {
         colorScheme == .dark ? .green : .darkerGreen
@@ -80,7 +85,7 @@ struct EpisodeInvitationCard: View {
             }
         }
         .padding(.all, .spacing(.large))
-        .background(background, in: RoundedRectangle(cornerRadius: 15))
+        .background(background ?? neutralBackground, in: RoundedRectangle(cornerRadius: 15))
         .overlay(alignment: .topTrailing) {
             if let onDismiss {
                 Button {
