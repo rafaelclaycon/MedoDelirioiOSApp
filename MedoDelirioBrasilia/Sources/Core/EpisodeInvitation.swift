@@ -30,11 +30,18 @@ struct EpisodeInvitation {
         self.calendar = calendar
     }
 
+    /// The feature flag that shows the invitation to anyone, every time, for testing. Leaves
+    /// the real closed and days shown state alone.
+    var isAlwaysShown: Bool {
+        userDefaults.bool(forKey: FeatureFlag.alwaysShowEpisodeInvitation.rawValue)
+    }
+
     // MARK: - Who and What
 
     /// No listens logged here and no place saved in any episode, which also syncs over from
     /// their other devices. When the database can't say, assume they have, and stay quiet.
     func hasNeverListened() -> Bool {
+        guard !isAlwaysShown else { return true }
         guard
             let progress = try? database.allEpisodeProgress(), progress.isEmpty,
             let logs = try? database.allEpisodeListenLogs(), logs.isEmpty
@@ -56,6 +63,7 @@ struct EpisodeInvitation {
     /// Not closed, and not yet shown on its share of days. A day it already showed on still
     /// counts as open, so it doesn't vanish halfway through the last one.
     func canShowCard(on date: Date = .now) -> Bool {
+        guard !isAlwaysShown else { return true }
         guard !userDefaults.bool(forKey: Keys.dismissed) else { return false }
         if let lastDay = userDefaults.object(forKey: Keys.lastDayShown) as? Date,
            calendar.isDate(lastDay, inSameDayAs: date) {
@@ -66,6 +74,7 @@ struct EpisodeInvitation {
 
     /// Counts each day once.
     func cardWasShown(on date: Date = .now) {
+        guard !isAlwaysShown else { return }
         if let lastDay = userDefaults.object(forKey: Keys.lastDayShown) as? Date,
            calendar.isDate(lastDay, inSameDayAs: date) {
             return
@@ -75,6 +84,7 @@ struct EpisodeInvitation {
     }
 
     func dismissCard() {
+        guard !isAlwaysShown else { return }
         userDefaults.set(true, forKey: Keys.dismissed)
     }
 

@@ -108,4 +108,32 @@ struct EpisodeInvitationTests {
 
         #expect(sut.canShowCard(on: date(EpisodeInvitation.maximumCardDays, hour: 22)))
     }
+
+    // MARK: - Testing Flag
+
+    @Test
+    func alwaysShownFlag_showsTheCardToSomeoneWhoListenedAndClosedIt() {
+        database.episodeListenLogs = [
+            EpisodeListenLog(episodeId: "ep-1", startedAt: date(1), endedAt: date(1), durationListened: 60, didComplete: false)
+        ]
+        sut.dismissCard()
+        for day in 1...EpisodeInvitation.maximumCardDays {
+            sut.cardWasShown(on: date(day))
+        }
+        defaults.set(true, forKey: FeatureFlag.alwaysShowEpisodeInvitation.rawValue)
+
+        #expect(sut.hasNeverListened())
+        #expect(sut.canShowCard(on: date(EpisodeInvitation.maximumCardDays + 1)))
+    }
+
+    @Test
+    func alwaysShownFlag_leavesTheRealCardStateAlone() {
+        defaults.set(true, forKey: FeatureFlag.alwaysShowEpisodeInvitation.rawValue)
+        sut.cardWasShown(on: date(1))
+        sut.dismissCard()
+        defaults.set(false, forKey: FeatureFlag.alwaysShowEpisodeInvitation.rawValue)
+
+        #expect(sut.canShowCard(on: date(2)))
+        #expect(defaults.integer(forKey: "episodeInvitationCardDaysShown") == 0)
+    }
 }

@@ -11,6 +11,7 @@ enum FeatureFlag: String, CaseIterable {
 
     case snowLeopard = "featureFlag_snowLeopard"
     case retrospective = "featureFlag_retrospective"
+    case alwaysShowEpisodeInvitation = "featureFlag_alwaysShowEpisodeInvitation"
 
     var displayName: String {
         switch self {
@@ -18,6 +19,8 @@ enum FeatureFlag: String, CaseIterable {
             return "Snow Leopard"
         case .retrospective:
             return "Retrospectiva 2026"
+        case .alwaysShowEpisodeInvitation:
+            return "Convite para Episódios sempre visível"
         }
     }
 
@@ -27,6 +30,8 @@ enum FeatureFlag: String, CaseIterable {
             return "Destaque de episódio popular na tela de sugestões de busca."
         case .retrospective:
             return "Banner da Retrospectiva no topo de Vírgulas."
+        case .alwaysShowEpisodeInvitation:
+            return "Mostra o convite para ouvir um episódio em Vírgulas, Suas Tendências e Seu Mês mesmo para quem já ouviu ou fechou o card."
         }
     }
 

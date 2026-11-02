@@ -17,6 +17,8 @@ struct EpisodeStatsView: View {
 
     /// Offered in place of the stats while there are none.
     @State private var invitedEpisode: PodcastEpisode?
+    /// The testing flag puts the invitation in place of the stats, even when there are some.
+    @State private var isInvitationAlwaysShown = false
 
     private let cardColumns = [
         GridItem(.flexible()),
@@ -27,7 +29,7 @@ struct EpisodeStatsView: View {
         VStack(spacing: .spacing(.large)) {
             sectionHeader
 
-            if viewModel.hasData {
+            if viewModel.hasData && !isInvitationAlwaysShown {
                 statCardsSection
                 topEpisodesSection
             } else {
@@ -39,8 +41,10 @@ struct EpisodeStatsView: View {
                 listenStore: listenStore,
                 bookmarkStore: bookmarkStore
             )
-            if !viewModel.hasData {
-                invitedEpisode = EpisodeInvitation().suggestedEpisode(highlightedEpisodeId: highlightStore.highlight?.episodeId)
+            let invitation = EpisodeInvitation()
+            isInvitationAlwaysShown = invitation.isAlwaysShown
+            if !viewModel.hasData || isInvitationAlwaysShown {
+                invitedEpisode = invitation.suggestedEpisode(highlightedEpisodeId: highlightStore.highlight?.episodeId)
             }
         }
     }
