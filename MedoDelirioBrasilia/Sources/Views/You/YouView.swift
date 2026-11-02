@@ -98,4 +98,6 @@ struct YouView: View {
     .environment(EpisodePlayedStore(database: FakeLocalDatabase()))
     .environment(EpisodeListenStore())
     .environment(EpisodeBookmarkStore())
+    .environment(EpisodeHighlightStore())
+    .environment(EpisodePlayer())
 }

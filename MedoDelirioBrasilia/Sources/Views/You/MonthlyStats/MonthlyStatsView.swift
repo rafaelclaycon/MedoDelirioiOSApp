@@ -16,11 +16,14 @@ struct MonthlyStatsView: View {
     let initialMonth: StatsMonth?
 
     @Environment(ProfileStore.self) private var profileStore
+    @Environment(EpisodeHighlightStore.self) private var highlightStore
 
     /// Newest first.
     @State private var months: [MonthlyStats] = []
     @State private var hasLoaded = false
     @State private var shareSnapshot: MonthlyStatsShareSnapshot?
+    /// Offered in the month in progress to people who have never played an episode.
+    @State private var invitedEpisode: PodcastEpisode?
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -39,6 +42,7 @@ struct MonthlyStatsView: View {
                         ForEach(months) { stats in
                             MonthSection(
                                 stats: stats,
+                                invitedEpisode: stats.isInProgress ? invitedEpisode : nil,
                                 onShareMonth: { share(.month(stats)) },
                                 onShareHighlight: { share(.highlight($0)) }
                             )
@@ -72,6 +76,10 @@ struct MonthlyStatsView: View {
 
     private func load() {
         months = MonthlyStatsProvider().availableMonths().reversed()
+        let invitation = EpisodeInvitation()
+        invitedEpisode = invitation.hasNeverListened()
+            ? invitation.suggestedEpisode(highlightedEpisodeId: highlightStore.highlight?.episodeId)
+            : nil
         guard !hasLoaded else { return }
         hasLoaded = true
         Task {
@@ -95,15 +103,26 @@ extension MonthlyStatsView {
     struct MonthSection: View {
 
         let stats: MonthlyStats
+        var invitedEpisode: PodcastEpisode?
         let onShareMonth: () -> Void
         let onShareHighlight: (MonthlyHighlight) -> Void
 
+        @Environment(EpisodeHighlightStore.self) private var highlightStore
         @State private var isShowingInfo = false
 
         var body: some View {
             VStack(alignment: .leading, spacing: .spacing(.small)) {
                 header
                 summary
+
+                if let invitedEpisode {
+                    EpisodeInvitationCard(
+                        episode: invitedEpisode,
+                        title: "Ouça um episódio e ele entra no seu mês",
+                        caption: highlightStore.highlight(for: invitedEpisode.id)?.label,
+                        originatingScreen: "MonthlyStatsInvitation"
+                    )
+                }
 
                 ForEach(stats.highlights) { highlight in
                     SeuMesHighlightCard(highlight: highlight) {
@@ -302,4 +321,6 @@ extension MonthlyStatsView {
         MonthlyStatsView(initialMonth: nil)
     }
     .environment(ProfileStore(cloudStore: FakeCloudKeyValueStore(), database: FakeLocalDatabase()))
+    .environment(EpisodeHighlightStore())
+    .environment(EpisodePlayer())
 }

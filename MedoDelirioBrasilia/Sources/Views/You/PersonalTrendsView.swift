@@ -64,5 +64,7 @@ struct PersonalTrendsView: View {
     }
     .environment(EpisodeListenStore())
     .environment(EpisodeBookmarkStore())
+    .environment(EpisodeHighlightStore())
+    .environment(EpisodePlayer())
     .environment(ProfileStore(cloudStore: FakeCloudKeyValueStore(), database: FakeLocalDatabase()))
 }

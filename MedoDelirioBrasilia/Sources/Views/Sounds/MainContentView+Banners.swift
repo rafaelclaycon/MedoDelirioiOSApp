@@ -23,8 +23,12 @@ extension MainContentView {
         @AppStorage(FeatureFlag.retrospective.rawValue) private var isRetrospectiveEnabled = false
         @State private var showRetroBanner = true
         @State private var showRetroStories = false
+        /// Offered to people who have never played an episode. Nil hides the card.
+        @State private var invitedEpisode: PodcastEpisode?
+        private let episodeInvitation = EpisodeInvitation()
 
         @Environment(\.scenePhase) private var scenePhase
+        @Environment(EpisodeHighlightStore.self) private var highlightStore
 
         var body: some View {
             VStack {
@@ -47,6 +51,23 @@ extension MainContentView {
                     AnniversaryBannerView()
                         .padding(.top, .spacing(.xxxSmall))
                         .padding(.bottom, .spacing(.xSmall))
+                }
+
+                if let invitedEpisode {
+                    EpisodeInvitationCard(
+                        episode: invitedEpisode,
+                        title: "Ouça o podcast aqui no app",
+                        caption: highlightStore.highlight(for: invitedEpisode.id)?.label,
+                        originatingScreen: "VirgulasEpisodeInvitation",
+                        onDismiss: {
+                            episodeInvitation.dismissCard()
+                            withAnimation {
+                                self.invitedEpisode = nil
+                            }
+                        }
+                    )
+                    .padding(.top, .spacing(.xxxSmall))
+                    .padding(.bottom, .spacing(.xSmall))
                 }
 
                 TranscriptDownloadBannerView()
@@ -90,6 +111,11 @@ extension MainContentView {
                 Task{
                     await updateElectionLiveBanner()
                 }
+                Task {
+                    // Only Episodes loads it otherwise, and these people haven't been there.
+                    await highlightStore.loadIfNeeded()
+                    updateEpisodeInvitation()
+                }
             }
             // The server switches the election banner on during election day, often while
             // the app sits in the background, so check again whenever it comes back.
@@ -98,7 +124,21 @@ extension MainContentView {
                     Task {
                         await updateElectionLiveBanner()
                     }
+                    updateEpisodeInvitation()
                 }
+            }
+        }
+
+        /// Checked on every appearance, so the card goes away once they've listened from it
+        /// and come back, or from anywhere else.
+        private func updateEpisodeInvitation() {
+            guard episodeInvitation.canShowCard(), episodeInvitation.hasNeverListened() else {
+                invitedEpisode = nil
+                return
+            }
+            invitedEpisode = episodeInvitation.suggestedEpisode(highlightedEpisodeId: highlightStore.highlight?.episodeId)
+            if invitedEpisode != nil {
+                episodeInvitation.cardWasShown()
             }
         }
 

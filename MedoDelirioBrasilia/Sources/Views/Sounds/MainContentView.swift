@@ -182,4 +182,6 @@ extension MainContentView {
         bannerRepository: BannerRepository(),
         analyticsService: FakeAnalyticsService()
     )
+    .environment(EpisodeHighlightStore())
+    .environment(EpisodePlayer())
 }

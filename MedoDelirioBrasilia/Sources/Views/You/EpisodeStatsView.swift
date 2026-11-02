@@ -13,6 +13,10 @@ struct EpisodeStatsView: View {
 
     @Environment(EpisodeListenStore.self) private var listenStore
     @Environment(EpisodeBookmarkStore.self) private var bookmarkStore
+    @Environment(EpisodeHighlightStore.self) private var highlightStore
+
+    /// Offered in place of the stats while there are none.
+    @State private var invitedEpisode: PodcastEpisode?
 
     private let cardColumns = [
         GridItem(.flexible()),
@@ -35,6 +39,9 @@ struct EpisodeStatsView: View {
                 listenStore: listenStore,
                 bookmarkStore: bookmarkStore
             )
+            if !viewModel.hasData {
+                invitedEpisode = EpisodeInvitation().suggestedEpisode(highlightedEpisodeId: highlightStore.highlight?.episodeId)
+            }
         }
     }
 
@@ -104,7 +111,28 @@ struct EpisodeStatsView: View {
         .padding(.bottom, .spacing(.large))
     }
 
+    /// An episode to start with, when there's one to offer.
+    @ViewBuilder
     private var noDataView: some View {
+        if let invitedEpisode {
+            VStack(alignment: .leading, spacing: .spacing(.medium)) {
+                Text("Ouça um episódio e suas estatísticas aparecem aqui.")
+                    .foregroundStyle(.secondary)
+
+                EpisodeInvitationCard(
+                    episode: invitedEpisode,
+                    caption: highlightStore.highlight(for: invitedEpisode.id)?.label,
+                    originatingScreen: "EpisodeStatsInvitation"
+                )
+            }
+            .padding(.horizontal)
+            .padding(.bottom, .spacing(.large))
+        } else {
+            nothingToOfferView
+        }
+    }
+
+    private var nothingToOfferView: some View {
         VStack(spacing: .spacing(.large)) {
             Spacer()
 
@@ -296,4 +324,6 @@ extension EpisodeStatsView {
     }
     .environment(EpisodeListenStore())
     .environment(EpisodeBookmarkStore())
+    .environment(EpisodeHighlightStore())
+    .environment(EpisodePlayer())
 }
