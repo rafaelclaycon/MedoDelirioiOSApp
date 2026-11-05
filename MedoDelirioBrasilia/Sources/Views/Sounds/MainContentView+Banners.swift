@@ -60,6 +60,9 @@ extension MainContentView {
                     )
                     .padding(.top, .spacing(.xxxSmall))
                     .padding(.bottom, .spacing(.xSmall))
+                    .onAppear {
+                        sendRetroImpressionIfNeeded()
+                    }
                 }
 
                 if showElectionLiveBanner {
@@ -188,6 +191,17 @@ extension MainContentView {
             hasRetroStats = StoriesView.ViewModel.hasSomethingToShow(year: Self.retroYear)
             guard let allowed = await bannerRepository.showRetroBanner() else { return }
             isRetroAllowedByServer = allowed
+        }
+
+        /// Whether this launch already counted the banner as seen.
+        private static var hasSentRetroImpression = false
+
+        /// Once per launch, however many times Vírgulas comes back into view. Distinct installs
+        /// give the reach, the rows the launches it was seen in.
+        private func sendRetroImpressionIfNeeded() {
+            guard !Self.hasSentRetroImpression else { return }
+            Self.hasSentRetroImpression = true
+            sendRetroAnalytics("didShowRetroBanner")
         }
 
         private func sendRetroAnalytics(_ action: String) {
