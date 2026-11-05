@@ -7,25 +7,17 @@
 
 import SwiftUI
 
-/// The way into the Retrospectiva from Vírgulas, in the year's flat red: stars rising like
-/// election night confetti, and the year rolling over from the last one, like an odometer.
+/// The way into the Retrospectiva from Vírgulas, in the year's flat red, with stars rising like
+/// election night confetti.
 struct RetroBanner: View {
 
-    let year: Int
+    var year: Int = 2026
     let openStoriesAction: () -> Void
     let dismissAction: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    @State private var shownYear: Int
     @State private var isButtonPulsing = false
-
-    init(year: Int = 2026, openStoriesAction: @escaping () -> Void, dismissAction: @escaping () -> Void) {
-        self.year = year
-        self.openStoriesAction = openStoriesAction
-        self.dismissAction = dismissAction
-        _shownYear = State(initialValue: year - 1)
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: .spacing(.small)) {
@@ -34,10 +26,9 @@ struct RetroBanner: View {
                 .tracking(1.6)
                 .opacity(0.8)
 
-            Text(verbatim: String(shownYear))
+            Text(verbatim: String(year))
                 .font(.system(size: 64, weight: .black, design: .rounded))
                 .monospacedDigit()
-                .contentTransition(.numericText(value: Double(shownYear)))
                 .lineLimit(1)
 
             Text("Bora ver o que nós aprontamos juntos esse ano?")
@@ -75,22 +66,14 @@ struct RetroBanner: View {
             .padding(.spacing(.xxSmall))
         }
         .onAppear {
-            rollOver()
+            startPulsing()
         }
     }
 
-    /// From last year to this one, a beat after the banner shows up. Then the button starts
-    /// a slow pulse, so the eye lands on it.
-    private func rollOver() {
-        guard !reduceMotion else {
-            shownYear = year
-            return
-        }
-        shownYear = year - 1
-        withAnimation(.spring(duration: 0.9, bounce: 0.3).delay(0.6)) {
-            shownYear = year
-        }
-        withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true).delay(1.6)) {
+    /// A slow pulse on the button, a beat after the banner shows up, so the eye lands on it.
+    private func startPulsing() {
+        guard !reduceMotion else { return }
+        withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true).delay(1.0)) {
             isButtonPulsing = true
         }
     }
