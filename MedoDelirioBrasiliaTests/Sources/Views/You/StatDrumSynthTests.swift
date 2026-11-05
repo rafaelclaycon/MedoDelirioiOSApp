@@ -72,3 +72,30 @@ struct StatDrumSynthTests {
     }
 }
 
+/// Telling a muted hit from a heard one.
+@MainActor
+struct StatDrumKitTests {
+
+    @Test
+    func aKickThatEndsRightAway_looksSilenced() {
+        #expect(StatDrumKit.looksSilenced(.kick, elapsed: 0.005))
+    }
+
+    @Test
+    func aKickThatRingsOut_isHeard() {
+        #expect(!StatDrumKit.looksSilenced(.kick, elapsed: 0.46))
+    }
+
+    @Test
+    func theHiHatIsTooShortToTell() {
+        #expect(!StatDrumKit.canTellSilence(for: .hiHat))
+        #expect(!StatDrumKit.looksSilenced(.hiHat, elapsed: 0.001))
+        #expect(StatDrumKit.canTellSilence(for: .kick))
+        #expect(StatDrumKit.canTellSilence(for: .snare))
+    }
+
+    @Test
+    func theSilencedNote_hasNoEmDash() {
+        #expect(!YouNumbersView.silencedMessage.contains("—"))
+    }
+}

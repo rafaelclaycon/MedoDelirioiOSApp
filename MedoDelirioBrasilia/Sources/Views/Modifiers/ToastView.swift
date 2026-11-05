@@ -12,6 +12,8 @@ import SwiftUI
 public enum ToastType {
     
     case success, warning, wait, thankYou
+    /// The silent switch is keeping a sound from playing.
+    case silenced
 }
 
 public struct Toast {
@@ -48,6 +50,8 @@ struct ToastView {
                 "clock.fill"
             case .thankYou:
                 "heart"
+            case .silenced:
+                "bell.slash.fill"
             }
         }
 
@@ -61,6 +65,8 @@ struct ToastView {
                 .orange
             case .thankYou:
                 .pink
+            case .silenced:
+                .orange
             }
         }
 
@@ -124,6 +130,8 @@ extension ToastView {
                                     HapticFeedback.warning()
                                 case .thankYou:
                                     HapticFeedback.success()
+                                case .silenced:
+                                    HapticFeedback.warning()
                                 }
 
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 4) {

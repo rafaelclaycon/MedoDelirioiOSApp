@@ -75,10 +75,52 @@ final class StatDrumKit {
         }
     }
 
-    func play(_ drum: StatDrum) {
+    /// When the last hit landed, to tell a hit on its own from one in a roll.
+    private var lastHit = Date.distantPast
+
+    /// `onSilenced` runs, on the main actor, when the hit looks muted by the silent switch.
+    func play(_ drum: StatDrum, onSilenced: (() -> Void)? = nil) {
         prepare()
         guard let soundID = soundIDs[drum] else { return }
-        AudioServicesPlaySystemSound(soundID)
+
+        let now = Date.now
+        let isOnItsOwn = now.timeIntervalSince(lastHit) > StatDrum.kick.duration
+        lastHit = now
+
+        // iOS has no way to ask about the silent switch, but a muted system sound ends right
+        // away instead of after its length. Only timed on its own, so the hit before can't
+        // get in the way, and not on the Mac, which has no switch.
+        guard
+            let onSilenced,
+            isOnItsOwn,
+            !ProcessInfo.processInfo.isiOSAppOnMac,
+            Self.canTellSilence(for: drum)
+        else {
+            AudioServicesPlaySystemSound(soundID)
+            return
+        }
+        let start = ProcessInfo.processInfo.systemUptime
+        AudioServicesPlaySystemSoundWithCompletion(soundID) {
+            let elapsed = ProcessInfo.processInfo.systemUptime - start
+            guard Self.looksSilenced(drum, elapsed: elapsed) else { return }
+            Task { @MainActor in
+                onSilenced()
+            }
+        }
+    }
+
+    // MARK: - Silent Switch
+
+    /// Below this, a sound that ended was never heard.
+    nonisolated static let silencedThreshold: TimeInterval = 0.1
+
+    /// The hi-hat is too short to tell a muted hit from a heard one.
+    nonisolated static func canTellSilence(for drum: StatDrum) -> Bool {
+        drum.duration >= silencedThreshold * 2
+    }
+
+    nonisolated static func looksSilenced(_ drum: StatDrum, elapsed: TimeInterval) -> Bool {
+        canTellSilence(for: drum) && elapsed < silencedThreshold
     }
 }
 

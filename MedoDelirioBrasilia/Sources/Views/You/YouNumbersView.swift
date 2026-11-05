@@ -14,10 +14,16 @@ import SwiftUI
 /// a drum (`StatDrum`), with nothing saying so: a little easter egg to play with.
 struct YouNumbersView: View {
 
+    /// For the note about the silent switch, shown by `YouView`.
+    @Binding var toast: Toast?
+
     @Environment(EpisodePlayedStore.self) private var playedStore
 
     @State private var shareCount = 0
     @State private var favoriteCount = 0
+
+    /// Once per launch is enough to make the point.
+    private static var hasWarnedAboutSilence = false
 
     /// An `HStack` sized to its tallest card, with every card filling that height, so a
     /// label that wraps doesn't leave the others shorter.
@@ -64,8 +70,16 @@ struct YouNumbersView: View {
     // MARK: - Drums
 
     private func hit(_ drum: StatDrum) {
-        StatDrumKit.shared.play(drum)
+        StatDrumKit.shared.play(drum, onSilenced: drumWasSilenced)
     }
+
+    private func drumWasSilenced() {
+        guard !Self.hasWarnedAboutSilence else { return }
+        Self.hasWarnedAboutSilence = true
+        toast = Toast(message: Self.silencedMessage, type: .silenced)
+    }
+
+    static let silencedMessage = "Tá no silencioso! Desliga o modo silencioso pra ouvir a bateria 🥁"
 }
 
 // MARK: - Stat Card
@@ -141,7 +155,7 @@ extension YouNumbersView {
 }
 
 #Preview {
-    YouNumbersView()
+    YouNumbersView(toast: .constant(nil))
         .padding(.vertical)
         .background(Color.green.opacity(0.4))
         .environment(EpisodePlayedStore(database: FakeLocalDatabase()))

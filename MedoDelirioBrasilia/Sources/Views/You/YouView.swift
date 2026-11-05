@@ -17,6 +17,7 @@ struct YouView: View {
     @Environment(\.usesSidebarLayout) private var usesSidebarLayout
 
     @State private var isEditingProfile = false
+    @State private var toast: Toast?
 
     var body: some View {
         ScrollView {
@@ -28,7 +29,7 @@ struct YouView: View {
                 }
                 .buttonStyle(.plain)
 
-                YouNumbersView()
+                YouNumbersView(toast: $toast)
 
                 YouGamesSection()
 
@@ -53,6 +54,7 @@ struct YouView: View {
         // The hero's green runs up under the status bar, so the bar's own fade would
         // only muddy it.
         .scrollEdgeEffectHidden(true, for: .top)
+        .toast($toast)
         .navigationTitle("Você")
         // The hero already says who this is; a title over it would compete with the name.
         // Inline first: removing the title alone leaves the large title's space behind.
