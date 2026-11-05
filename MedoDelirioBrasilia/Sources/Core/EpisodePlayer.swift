@@ -737,11 +737,17 @@ final class EpisodePlayer {
         )
     }
 
+    /// Pauses if it's playing, and does nothing otherwise.
+    @MainActor
+    func pause() {
+        guard audioPlayer?.isPlaying == true else { return }
+        togglePlayPause()
+    }
+
     /// Another device picked this episode up over Handoff; stop playing over it.
     @MainActor
     private func pauseForHandoff() {
-        guard isPlaying else { return }
-        togglePlayPause()
+        pause()
     }
 
     // MARK: - Chapters

@@ -35,6 +35,7 @@ extension MainContentView {
 
         @Environment(\.scenePhase) private var scenePhase
         @Environment(EpisodeHighlightStore.self) private var highlightStore
+        @Environment(EpisodePlayer.self) private var episodePlayer
 
         var body: some View {
             VStack {
@@ -42,6 +43,8 @@ extension MainContentView {
                     RetroBanner(
                         year: Self.retroYear,
                         openStoriesAction: {
+                            // The top Vírgulas play out loud, and would talk over it.
+                            episodePlayer.pause()
                             showRetroStories = true
                             sendRetroAnalytics("didOpenRetroFromBanner")
                         },
