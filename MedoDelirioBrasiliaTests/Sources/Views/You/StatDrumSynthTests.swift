@@ -72,7 +72,7 @@ struct StatDrumSynthTests {
     }
 }
 
-/// Telling a muted hit from a heard one.
+/// Telling a muted hit from a heard one, and what a visit reports.
 @MainActor
 struct StatDrumKitTests {
 
@@ -92,6 +92,19 @@ struct StatDrumKitTests {
         #expect(!StatDrumKit.looksSilenced(.hiHat, elapsed: 0.001))
         #expect(StatDrumKit.canTellSilence(for: .kick))
         #expect(StatDrumKit.canTellSilence(for: .snare))
+    }
+
+    @Test
+    func aVisitWithHits_reportsEachDrum() {
+        let action = YouNumbersView.drumsAnalyticsAction(hits: [.kick: 10, .hiHat: 3], wasSilenced: true)
+
+        #expect(action == "didPlayStatDrums; 13; kick 10; snare 0; hiHat 3; silenced yes")
+    }
+
+    @Test
+    func aVisitWithoutHits_reportsNothing() {
+        #expect(YouNumbersView.drumsAnalyticsAction(hits: [:], wasSilenced: false) == nil)
+        #expect(YouNumbersView.drumsAnalyticsAction(hits: [.snare: 0], wasSilenced: true) == nil)
     }
 
     @Test

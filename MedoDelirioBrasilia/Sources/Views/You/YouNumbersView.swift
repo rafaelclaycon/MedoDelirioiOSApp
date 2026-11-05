@@ -18,10 +18,15 @@ struct YouNumbersView: View {
     @Binding var toast: Toast?
 
     @Environment(EpisodePlayedStore.self) private var playedStore
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var shareCount = 0
     @State private var favoriteCount = 0
 
+    /// Hits on each drum since the last report, sent when they leave.
+    @State private var drumHits: [StatDrum: Int] = [:]
+    /// Whether a hit since the last report was muted by the silent switch.
+    @State private var wasSilenced = false
     /// Once per launch is enough to make the point.
     private static var hasWarnedAboutSilence = false
 
@@ -65,21 +70,52 @@ struct YouNumbersView: View {
             favoriteCount = (try? LocalDatabase.shared.favoriteCount()) ?? 0
             StatDrumKit.shared.prepare()
         }
+        .onDisappear {
+            reportDrums()
+        }
+        // Leaving the app doesn't make the view disappear.
+        .onChange(of: scenePhase) {
+            if scenePhase == .background {
+                reportDrums()
+            }
+        }
     }
 
     // MARK: - Drums
 
     private func hit(_ drum: StatDrum) {
+        drumHits[drum, default: 0] += 1
         StatDrumKit.shared.play(drum, onSilenced: drumWasSilenced)
     }
 
+    /// Still checked after the note, so the report knows.
     private func drumWasSilenced() {
+        wasSilenced = true
         guard !Self.hasWarnedAboutSilence else { return }
         Self.hasWarnedAboutSilence = true
         toast = Toast(message: Self.silencedMessage, type: .silenced)
     }
 
     static let silencedMessage = "Tá no silencioso! Desliga o modo silencioso pra ouvir a bateria 🥁"
+
+    private func reportDrums() {
+        guard let action = Self.drumsAnalyticsAction(hits: drumHits, wasSilenced: wasSilenced) else { return }
+        drumHits = [:]
+        wasSilenced = false
+        Task {
+            await AnalyticsService().send(originatingScreen: "YouView", action: action)
+        }
+    }
+
+    /// `didPlayStatDrums; <total>; kick <n>; snare <n>; hiHat <n>; silenced <yes|no>`, one per
+    /// visit to Você with at least one hit. Nil without hits.
+    static func drumsAnalyticsAction(hits: [StatDrum: Int], wasSilenced: Bool) -> String? {
+        let total = hits.values.reduce(0, +)
+        guard total > 0 else { return nil }
+        let perDrum = StatDrum.allCases.map { "\($0.rawValue) \(hits[$0, default: 0])" }
+        return (["didPlayStatDrums", "\(total)"] + perDrum + ["silenced \(wasSilenced ? "yes" : "no")"])
+            .joined(separator: "; ")
+    }
 }
 
 // MARK: - Stat Card
