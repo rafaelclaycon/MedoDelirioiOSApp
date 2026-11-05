@@ -50,7 +50,7 @@ extension LocalDatabase {
             userShareLog
                 .join(soundTable, on: userShareLog[content_id] == soundTable[soundId])
                 .join(author, on: soundTable[authorIdOnSounds] == author[authorId])
-                .select(userShareLog[content_id], soundTable[soundTitle], soundTable[authorId], author[authorName], contentCount)
+                .select(userShareLog[content_id], soundTable[soundTitle], soundTable[authorIdOnSounds], author[authorName], contentCount)
                 .where(userShareLog[content_type] == 0 || userShareLog[content_type] == 2)
                 .filter(dateTime > firstDay2023)
                 .group(userShareLog[content_id])
@@ -63,7 +63,7 @@ extension LocalDatabase {
                     rankNumber: "",
                     contentId: row[content_id],
                     contentName: row[soundTable[soundTitle]],
-                    contentAuthorId: row[soundTable[authorId]],
+                    contentAuthorId: row[soundTable[authorIdOnSounds]],
                     contentAuthorName: row[author[authorName]],
                     shareCount: row[contentCount]
                 )
@@ -94,7 +94,7 @@ extension LocalDatabase {
             audienceSharingStatistic
                 .join(soundTable, on: audienceSharingStatistic[content_id] == soundTable[soundId])
                 .join(author, on: soundTable[authorIdOnSounds] == author[authorId])
-                .select(audienceSharingStatistic[content_id], soundTable[soundTitle], soundTable[authorId], author[authorName], totalShareCount)
+                .select(audienceSharingStatistic[content_id], soundTable[soundTitle], soundTable[authorIdOnSounds], author[authorName], totalShareCount)
                 .where(audienceSharingStatistic[content_type] == 0)
                 .where(audienceSharingStatistic[ranking_type] == timeInterval.rawValue)
                 .group(audienceSharingStatistic[content_id])
@@ -107,7 +107,7 @@ extension LocalDatabase {
                     rankNumber: "",
                     contentId: row[audienceSharingStatistic[content_id]],
                     contentName: row[soundTable[soundTitle]],
-                    contentAuthorId: row[soundTable[authorId]],
+                    contentAuthorId: row[soundTable[authorIdOnSounds]],
                     contentAuthorName: row[author[authorName]],
                     shareCount: row[totalShareCount] ?? 0
                 )
@@ -140,7 +140,7 @@ extension LocalDatabase {
             userShareLog
                 .join(soundTable, on: userShareLog[content_id] == soundTable[soundId])
                 .join(author, on: soundTable[authorIdOnSounds] == author[authorId])
-                .select(userShareLog[content_id], soundTable[soundTitle], soundTable[authorId], author[authorName], contentCount)
+                .select(userShareLog[content_id], soundTable[soundTitle], soundTable[authorIdOnSounds], author[authorName], contentCount)
                 .where(userShareLog[content_type] == 0 || userShareLog[content_type] == 2)
                 .filter(dateTime >= interval.start && dateTime < interval.end)
                 .group(userShareLog[content_id])
@@ -152,7 +152,7 @@ extension LocalDatabase {
                 rankNumber: "",
                 contentId: row[content_id],
                 contentName: row[soundTable[soundTitle]],
-                contentAuthorId: row[soundTable[authorId]],
+                contentAuthorId: row[soundTable[authorIdOnSounds]],
                 contentAuthorName: row[author[authorName]],
                 shareCount: row[contentCount]
             )
