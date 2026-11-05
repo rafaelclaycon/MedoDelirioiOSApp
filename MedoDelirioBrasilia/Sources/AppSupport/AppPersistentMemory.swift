@@ -228,6 +228,10 @@ extension AppPersistentMemory {
         return Bool(value as! Bool)
     }
 
+    func hasDismissedRetroBanner(year: Int) -> Bool {
+        userDefaults.bool(forKey: "hasDismissedRetro\(year)Banner")
+    }
+
     func getHasDismissedEpisodeNotificationsBanner() -> Bool {
         guard let value = userDefaults.object(forKey: "hasDismissedEpisodeNotificationsBanner") else {
             return false
@@ -411,6 +415,11 @@ extension AppPersistentMemory {
 
     func setHasDismissedDunBanner(to newValue: Bool) {
         userDefaults.set(newValue, forKey: "hasDismissedDunBanner")
+    }
+
+    /// Per year, so next year's banner shows again.
+    func setHasDismissedRetroBanner(year: Int, to newValue: Bool) {
+        userDefaults.set(newValue, forKey: "hasDismissedRetro\(year)Banner")
     }
 
     func setHasDismissedEpisodeNotificationsBanner(to newValue: Bool) {

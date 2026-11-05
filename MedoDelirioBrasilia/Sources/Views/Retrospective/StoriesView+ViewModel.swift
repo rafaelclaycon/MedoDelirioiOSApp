@@ -55,8 +55,33 @@ extension StoriesView {
             self.database = database
             self.yearNumber = year
             self.calendar = calendar
+            self.year = Self.interval(of: year, calendar: calendar)
+        }
+
+        // MARK: - Availability
+
+        /// Whether the year has anything to look back on: a Vírgula shared or a minute of
+        /// episodes. Without either, the stories would be just the intro and an empty picture,
+        /// so the banner stays away.
+        static func hasSomethingToShow(
+            year: Int = 2026,
+            database: LocalDatabaseProtocol = LocalDatabase.shared,
+            calendar: Calendar = .current
+        ) -> Bool {
+            let interval = interval(of: year, calendar: calendar)
+            if database.sharedSoundsCount(in: interval) > 0 {
+                return true
+            }
+            let secondsListened = ((try? database.allEpisodeListenLogs()) ?? [])
+                .filter { $0.startedAt >= interval.start && $0.startedAt < interval.end }
+                .reduce(0) { $0 + $1.durationListened }
+            return secondsListened >= 60
+        }
+
+        /// The whole year, in the person's own time zone.
+        private static func interval(of year: Int, calendar: Calendar) -> DateInterval {
             let start = calendar.date(from: DateComponents(year: year, month: 1, day: 1)) ?? .distantPast
-            self.year = calendar.dateInterval(of: .year, for: start) ?? DateInterval(start: start, duration: 0)
+            return calendar.dateInterval(of: .year, for: start) ?? DateInterval(start: start, duration: 0)
         }
 
         // MARK: - Computed Properties

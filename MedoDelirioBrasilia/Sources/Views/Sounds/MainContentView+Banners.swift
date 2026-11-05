@@ -19,9 +19,15 @@ extension MainContentView {
         @State private var officialResultsURL = ElectionLiveInfo.defaultOfficialResultsURL
         @State private var showAnniversaryBanner: Bool = false
         @State private var showDunBanner = !AppPersistentMemory.shared.hasDismissedDunBanner()
-        /// Until the Retrospectiva launches, only for whoever turns it on in Dev Options.
-        @AppStorage(FeatureFlag.retrospective.rawValue) private var isRetrospectiveEnabled = false
-        @State private var showRetroBanner = true
+        /// Dev Options' switch: shows the banner whatever the server, the year's data or an
+        /// earlier dismissal say.
+        @AppStorage(FeatureFlag.retrospective.rawValue) private var isRetrospectiveForced = false
+        /// What the server last said for this version, kept when a check fails.
+        @State private var isRetroAllowedByServer = false
+        /// Closed in this session. Remembered for good too, unless it was forced.
+        @State private var isRetroBannerClosed = false
+        /// Read when Vírgulas appears rather than in the body, since it goes to the database.
+        @State private var hasRetroStats = false
         @State private var showRetroStories = false
         /// Offered to people who have never played an episode. Nil hides the card.
         @State private var invitedEpisode: PodcastEpisode?
@@ -32,10 +38,22 @@ extension MainContentView {
 
         var body: some View {
             VStack {
-                if isRetrospectiveEnabled, showRetroBanner {
+                if showRetroBanner {
                     RetroBanner(
-                        openStoriesAction: { showRetroStories = true },
-                        dismissAction: { showRetroBanner = false }
+                        year: Self.retroYear,
+                        openStoriesAction: {
+                            showRetroStories = true
+                            sendRetroAnalytics("didOpenRetroFromBanner")
+                        },
+                        dismissAction: {
+                            if !isRetrospectiveForced {
+                                AppPersistentMemory.shared.setHasDismissedRetroBanner(year: Self.retroYear, to: true)
+                            }
+                            withAnimation {
+                                isRetroBannerClosed = true
+                            }
+                            sendRetroAnalytics("didDismissRetroBanner")
+                        }
                     )
                     .padding(.top, .spacing(.xxxSmall))
                     .padding(.bottom, .spacing(.xSmall))
@@ -93,12 +111,10 @@ extension MainContentView {
                 }
             }
             .fullScreenCover(isPresented: $showRetroStories) {
-                StoriesView(onShareAnalytics: { analyticsString in
+                StoriesView(year: Self.retroYear, onShareAnalytics: { analyticsString in
                     // A tap on the share button, not a confirmed share: the sheet can still
                     // be cancelled.
-                    Task {
-                        await AnalyticsService().send(originatingScreen: "Retro2026", action: analyticsString)
-                    }
+                    sendRetroAnalytics(analyticsString)
                 })
             }
             .onAppear {
@@ -112,6 +128,9 @@ extension MainContentView {
                     await updateElectionLiveBanner()
                 }
                 Task {
+                    await updateRetroBanner()
+                }
+                Task {
                     // Only Episodes loads it otherwise, and these people haven't been there.
                     await highlightStore.loadIfNeeded()
                     updateEpisodeInvitation()
@@ -123,6 +142,10 @@ extension MainContentView {
                 if scenePhase == .active {
                     Task {
                         await updateElectionLiveBanner()
+                    }
+                    // Turned on on the server while the app sat in the background.
+                    Task {
+                        await updateRetroBanner()
                     }
                     updateEpisodeInvitation()
                 }
@@ -141,6 +164,35 @@ extension MainContentView {
                 episodeInvitation.cardWasShown()
             }
         }
+
+        // MARK: - Retrospectiva
+
+        static let retroYear = 2026
+
+        /// Forced in Dev Options, or the server allows this version, they've never closed it and
+        /// the year has something in it to show.
+        private var showRetroBanner: Bool {
+            guard !isRetroBannerClosed else { return false }
+            if isRetrospectiveForced { return true }
+            return isRetroAllowedByServer
+                && hasRetroStats
+                && !AppPersistentMemory.shared.hasDismissedRetroBanner(year: Self.retroYear)
+        }
+
+        /// The server's answer is kept when the request fails.
+        private func updateRetroBanner() async {
+            hasRetroStats = StoriesView.ViewModel.hasSomethingToShow(year: Self.retroYear)
+            guard let allowed = await bannerRepository.showRetroBanner() else { return }
+            isRetroAllowedByServer = allowed
+        }
+
+        private func sendRetroAnalytics(_ action: String) {
+            Task {
+                await AnalyticsService().send(originatingScreen: "Retro\(Self.retroYear)", action: action)
+            }
+        }
+
+        // MARK: - Election
 
         /// Keeps the current state when the request fails.
         private func updateElectionLiveBanner() async {

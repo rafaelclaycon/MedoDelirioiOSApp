@@ -29,7 +29,7 @@ enum FeatureFlag: String, CaseIterable {
         case .snowLeopard:
             return "Destaque de episódio popular na tela de sugestões de busca."
         case .retrospective:
-            return "Banner da Retrospectiva no topo de Vírgulas."
+            return "Mostra o banner da Retrospectiva no topo de Vírgulas mesmo com o servidor desligado, sem dados no ano ou depois de fechado."
         case .alwaysShowEpisodeInvitation:
             return "Mostra o convite para ouvir um episódio em Vírgulas, Suas Tendências e Seu Mês mesmo para quem já ouviu ou fechou o card."
         }
