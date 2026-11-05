@@ -12,16 +12,26 @@ import SwiftUI
 struct StoriesView: View {
 
     var onShareAnalytics: ((String) -> Void)?
+    /// Once, on the way out, with how far they got. See `closeAnalyticsString`.
+    var onCloseAnalytics: ((String) -> Void)?
 
     @Environment(\.dismiss) var dismiss
     @StateObject private var viewModel: ViewModel
 
-    init(year: Int = 2026, onShareAnalytics: ((String) -> Void)? = nil) {
+    init(
+        year: Int = 2026,
+        onShareAnalytics: ((String) -> Void)? = nil,
+        onCloseAnalytics: ((String) -> Void)? = nil
+    ) {
         self.onShareAnalytics = onShareAnalytics
+        self.onCloseAnalytics = onCloseAnalytics
         _viewModel = StateObject(wrappedValue: ViewModel(year: year))
     }
 
     @State private var currentStoryIndex: Int = 0
+    /// The furthest page they reached, even if they went back after.
+    @State private var furthestStoryIndex: Int = 0
+    @State private var hasReportedClose = false
     @State private var progress: CGFloat = 0.0
     @State private var timerActive: Bool = false
     @State private var isMuted: Bool = false
@@ -87,7 +97,7 @@ struct StoriesView: View {
                 // Close button (after tap zones so it's on top)
                 .overlay(alignment: .topTrailing) {
                     Button {
-                        dismiss()
+                        close(.closeButton)
                     } label: {
                         Image(systemName: "xmark")
                             .font(.title2)
@@ -168,10 +178,45 @@ struct StoriesView: View {
                 .onEnded { value in
                     // Dismiss if swiped down significantly
                     if value.translation.height > 100 {
-                        dismiss()
+                        close(.swipeDown)
                     }
                 }
         )
+    }
+
+    // MARK: - Closing
+
+    enum CloseReason: String {
+        case closeButton
+        case swipeDown
+        /// A tap on the right edge of the last page.
+        case tappedPastEnd
+    }
+
+    private func close(_ reason: CloseReason) {
+        if !hasReportedClose {
+            hasReportedClose = true
+            onCloseAnalytics?(
+                Self.closeAnalyticsString(
+                    pages: viewModel.isLoading ? [] : viewModel.stories.map(\.id),
+                    furthestIndex: furthestStoryIndex,
+                    reason: reason
+                )
+            )
+        }
+        dismiss()
+    }
+
+    /// `didCloseRetroStories; <furthest page>; <its number>; <page count>; <reason>`, numbers
+    /// from 1, like `didCloseRetroStories; topSound1; 6; 9; swipeDown`. Pages are
+    /// `StoryPage`'s raw values, and each person gets only the ones they have data for, so
+    /// compare pages by name. Closed before the data loaded reads `loading; 0; 0`.
+    static func closeAnalyticsString(pages: [String], furthestIndex: Int, reason: CloseReason) -> String {
+        guard !pages.isEmpty else {
+            return "didCloseRetroStories; loading; 0; 0; \(reason.rawValue)"
+        }
+        let index = min(max(furthestIndex, 0), pages.count - 1)
+        return "didCloseRetroStories; \(pages[index]); \(index + 1); \(pages.count); \(reason.rawValue)"
     }
 
     // MARK: - Computed Properties
@@ -281,11 +326,12 @@ struct StoriesView: View {
             withAnimation(.easeInOut(duration: 0.3)) {
                 currentStoryIndex += 1
             }
+            furthestStoryIndex = max(furthestStoryIndex, currentStoryIndex)
             progress = 0.0
         } else {
             // Reached the end
             stopTimer()
-            dismiss()
+            close(.tappedPastEnd)
         }
     }
 

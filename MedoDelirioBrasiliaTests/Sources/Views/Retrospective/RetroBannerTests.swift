@@ -96,3 +96,42 @@ struct RetroBannerTests {
         #expect(await makeRepository(apiClient).showRetroBanner() == nil)
     }
 }
+
+/// What the Stories report when they close, for the drop-off dashboard.
+@MainActor
+struct StoriesCloseAnalyticsTests {
+
+    private let pages = ["intro", "shares", "topSound1", "share"]
+
+    @Test
+    func reportsTheFurthestPageWithItsNumberAndTheCount() {
+        #expect(
+            StoriesView.closeAnalyticsString(pages: pages, furthestIndex: 2, reason: .swipeDown)
+                == "didCloseRetroStories; topSound1; 3; 4; swipeDown"
+        )
+    }
+
+    @Test
+    func onTheLastPage_reportsItAsTheEnd() {
+        #expect(
+            StoriesView.closeAnalyticsString(pages: pages, furthestIndex: 3, reason: .tappedPastEnd)
+                == "didCloseRetroStories; share; 4; 4; tappedPastEnd"
+        )
+    }
+
+    @Test
+    func beforeTheDataLoads_reportsLoading() {
+        #expect(
+            StoriesView.closeAnalyticsString(pages: [], furthestIndex: 0, reason: .swipeDown)
+                == "didCloseRetroStories; loading; 0; 0; swipeDown"
+        )
+    }
+
+    @Test
+    func anOutOfRangeIndex_isClampedToTheLastPage() {
+        #expect(
+            StoriesView.closeAnalyticsString(pages: pages, furthestIndex: 9, reason: .closeButton)
+                == "didCloseRetroStories; share; 4; 4; closeButton"
+        )
+    }
+}

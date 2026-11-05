@@ -117,12 +117,16 @@ extension MainContentView {
                 }
             }
             .fullScreenCover(isPresented: $showRetroStories) {
-                StoriesView(year: Self.retroYear, onShareAnalytics: { analyticsString in
-                    // A tap on the share button, not a confirmed share: the sheet can still
-                    // be cancelled. One fixed action to count the taps, then their stats.
-                    sendRetroAnalytics("didTapRetroShareButton")
-                    sendRetroAnalytics(analyticsString)
-                })
+                StoriesView(
+                    year: Self.retroYear,
+                    onShareAnalytics: { analyticsString in
+                        // A tap on the share button, not a confirmed share: the sheet can still
+                        // be cancelled. One fixed action to count the taps, then their stats.
+                        sendRetroAnalytics("didTapRetroShareButton")
+                        sendRetroAnalytics(analyticsString)
+                    },
+                    onCloseAnalytics: sendRetroAnalytics
+                )
             }
             .onAppear {
                 Task{
